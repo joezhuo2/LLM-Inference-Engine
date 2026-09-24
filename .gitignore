@@ -1,0 +1,15 @@
+build/
+models
+reports/
+tests/golden/*
+!tests/golden/.gitkeep
+*.nsys-rep
+*.ncu-rep
+*.sqlite
+__pycache__/
+.venv/
+.ipynb_checkpoints/
+.DS_Store
+.vscode/
+.cache/
+compile_commands.json
