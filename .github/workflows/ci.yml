@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  cpu:
+    name: CPU build + tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtest-dev nlohmann-json3-dev
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja googletest nlohmann-json
+      - run: cmake --preset cpu
+      - run: cmake --build --preset cpu
+      - run: ctest --preset cpu
+
+  cuda-compile:
+    name: CUDA compile check (no GPU)
+    runs-on: ubuntu-24.04
+    container: nvidia/cuda:13.3.1-devel-ubuntu24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: apt-get update && apt-get install -y cmake ninja-build git libgtest-dev nlohmann-json3-dev
+      - run: cmake --preset release -DCMAKE_CUDA_ARCHITECTURES="120;89;75"
+      - run: cmake --build --preset release
+
+  format:
+    name: clang-format check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y clang-format
+      - run: |
+          files=$(git ls-files '*.cpp' '*.h' '*.cu' '*.cuh')
+          [ -z "$files" ] || clang-format --dry-run --Werror $files
