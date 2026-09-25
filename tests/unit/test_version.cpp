@@ -2,4 +2,6 @@
 
 #include "engine/core/version.h"
 
-TEST(Version, IsSet) { EXPECT_FALSE(engine::version().empty()); }
+TEST(Version, IsSet) {
+    EXPECT_FALSE(engine::version().empty());
+}
