@@ -1,8 +1,9 @@
-#include <iostream>
-#include <vector>
 #include <cuda_runtime.h>
 
-__global__ void vectorAdd(const float *a, const float *b, float *c, int n) {
+#include <iostream>
+#include <vector>
+
+__global__ void vectorAdd(const float* a, const float* b, float* c, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) {
         c[i] = a[i] + b[i];

@@ -1,18 +1,21 @@
-#include <cstddef>
-#include <type_traits>
 #include <gtest/gtest.h>
-#include <utility>
-#include <cstring>
+
+#include <cstddef>
 #include <cstdlib>
+#include <cstring>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "Buffer.hpp"
 
-static_assert(std::is_nothrow_move_constructible_v<Buffer>, "Buffer must be nothrow move-constructible");
+static_assert(std::is_nothrow_move_constructible_v<Buffer>,
+              "Buffer must be nothrow move-constructible");
 static_assert(std::is_nothrow_move_assignable_v<Buffer>, "Buffer must be nothrow move-assignable");
 static_assert(!std::is_copy_constructible_v<Buffer>, "Buffer must not be copy-constructible");
 static_assert(!std::is_copy_assignable_v<Buffer>, "Buffer must not be copy-assignable");
-static_assert(!std::is_convertible_v<std::size_t, Buffer>, "Buffer(std::size_t) constructor must be explicit");
+static_assert(!std::is_convertible_v<std::size_t, Buffer>,
+              "Buffer(std::size_t) constructor must be explicit");
 
 // TEST(BufferTest, AsanSanityCheck) {
 //     void* ptr = std::malloc(128);
@@ -40,10 +43,8 @@ TEST(BufferTest, ConstructionAndSize) {
     std::memset(sized_buf.data(), 0, 64);
 
     const Buffer const_buf(32);
-    static_assert(
-        std::is_same_v<decltype(std::declval<const Buffer&>().data()), const void*>,
-        "const Buffer::data() must return const void*"
-    );
+    static_assert(std::is_same_v<decltype(std::declval<const Buffer&>().data()), const void*>,
+                  "const Buffer::data() must return const void*");
     EXPECT_NE(const_buf.data(), nullptr);
     EXPECT_FALSE(const_buf.empty());
 }
@@ -101,7 +102,6 @@ TEST(BufferTest, MoveAssignEmptyCases) {
     EXPECT_TRUE(sized_dest.empty());
 }
 
-
 TEST(BufferTest, SelfMoveAssignment) {
     Buffer buf(100);
     void* original_ptr = buf.data();
@@ -137,7 +137,7 @@ TEST(BufferTest, ChainedMovesAndReuse) {
 TEST(BufferTest, VectorIntegration) {
     std::vector<Buffer> vec;
 
-    for (std::size_t i = 1; i <= 100; ++i) { 
+    for (std::size_t i = 1; i <= 100; ++i) {
         vec.emplace_back(i);
     }
 
