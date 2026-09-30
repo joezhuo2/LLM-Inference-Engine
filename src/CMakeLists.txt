@@ -14,3 +14,7 @@ if(ENGINE_CUDA)
   target_link_libraries(engine_kernels PUBLIC engine_core CUDA::cudart CUDA::cublas)
   target_link_libraries(engine PRIVATE engine_kernels)
 endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/practice/CMakeLists.txt")
+  add_subdirectory(practice)
+endif()
