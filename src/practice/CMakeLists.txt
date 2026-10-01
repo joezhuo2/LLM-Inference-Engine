@@ -17,3 +17,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(read_header SafetensorReaderTest.cpp)
 target_compile_options(read_header PRIVATE -Wall -Wextra -Wpedantic)
+
+if(ENGINE_CUDA)
+  add_executable(AddTest AddTester.cu)
+endif()

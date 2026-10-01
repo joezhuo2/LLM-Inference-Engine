@@ -3,6 +3,9 @@
 - **kernel** => function that can be run by multiple GPU threads at the same time with different sets of data
 - **thread** => thing that performs its assigned set of instructions with its own data
 - **memory overflow** =>
+- **block** => 
+- **grid** => 
+- **warp** => 
 
 ### Core C++
 - **`&` (lvalue reference)** => reference to memory location of variable
@@ -23,6 +26,8 @@
 - **`size_t`** => unsigned int that can match the system architecture (can be 32 bit or 64 bit), no overflow or negative numbers
 - **`nullptr`** => pointer type, null pointer, used to clear confusion by setting pointers to `0` or `NULL`, which are `int`s
 - **const** => for variables: immutability, for methods: object state is immutable 
+- **`sizeof`** => returns (as a `std::size_t`) the size of the parameter in bytes
+- **`sizeof(float)`** => memory size occupied by a singular precision number (usually 4 bytes)
 
 # Part 0 - Foundations
 ## Buffer (Task 1)
@@ -90,7 +95,6 @@
 - **little endian unsigned int** => 
 - **std::endian + static_assert** => 
 - **why `sizeof(uint64_t)` instead of 8** => 
-- **sizeof** => 
 - **std::memcpy** => 
 - **strict aliasing (why memcpy instead of `*(uint64_t*)ptr`)** => 
 - **static_cast** => 
@@ -124,14 +128,12 @@
 
 ## Bandwith Test (Task 3/CUDA Task 1)
 ### Execution model
-- **block** => 
-- **grid** => 
-- **warp** => 
 - **`__global__`** => 
 - **`<<<...>>>` (execution configuration operator)** => 
 - **`blockIdx` / `blockIdx.x`** => 
 - **`blockDim.x`** => 
 - **`threadIdx`** => 
+- **thread global index calculation** =>
 - **global thread index (`blockIdx.x * blockDim.x + threadIdx.x`)** => 
 - **bounds check (`if (i < n)`)** => 
 - **ceiling division for grid size** => 
@@ -178,7 +180,18 @@
 - **`ncu` (Nsight Compute)** => 
 
 ### Three way Summation (Task 4/CUDA Task 2)
-- native atomics
-- shared memory
-- warp shuffle
-- reductions
+- **`naive atomics`**
+- **`shared memory`**
+- **`warp shuffle`**
+- **`warp reduction`**
+- **`reductions`**
+- **`atomicAdd(address, val)`**
+- **`__shared__`**
+- **`__syncthreads()`**
+- **binary tree reduction loop**
+- **`>>=` (bitwise right shift)**
+- **`__shfl_down_sync(mask, val, offset)`**
+- **`0xffffffff` mask**
+- **`cudaMemcpyHostToDevice`**
+- **`free()`**
+- **`constexpr`**
