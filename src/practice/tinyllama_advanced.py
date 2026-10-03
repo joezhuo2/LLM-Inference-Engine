@@ -105,7 +105,7 @@ def rel_err(a, b):
 
 @torch.no_grad()
 def main():
-    hf = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16).to(DEVICE).eval()
+    hf = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16, attn_implementation="eager").to(DEVICE).eval()
     rope = precompute_rope_cache()
     layer1_errs, layer22_errs, logit_errs = [], [], []
     tf_hits = tf_total = free_hits = 0
