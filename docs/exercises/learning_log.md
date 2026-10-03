@@ -372,3 +372,58 @@
 - **`torch.argmax`** => 
 - **`.item()`** => 
 - **`dtype` and `device` of masks and caches** =>
+
+### KV cache
+- **KV cache** => 
+- **why K and V are cached but Q is not** => 
+- **prefill** => 
+- **decode** => 
+- **prefill vs decode (matrix x matrix vs matrix x vector)** => 
+- **static preallocated cache vs `torch.cat` growing cache** => 
+- **cache shape `[layers, batch, kv_heads, max_len, head_dim]`** => 
+- **cache size per token (2 x layers x kv_heads x head_dim x 2 bytes)** => 
+- **in-place slice assignment (`kc[i, :, :, start:end] = k`)** => 
+- **`start` offset (absolute position of the first new token)** => 
+- **slicing the valid cache region (`[:end]`)** => 
+- **RoPE applied before caching (keys are stored already rotated)** => 
+- **RoPE cos/sin sliced by absolute position (`cos[:, :, start:end]`)** => 
+- **why the cache removes the O(n^2) recompute per token** => 
+- **rectangular score matrix `[T, end]` (new queries vs all cached keys)** => 
+- **causal mask offset (`triu(start + 1)`)** => 
+- **decode mask is empty (`T = 1` sees every cached key)** => 
+- **GQA shrinks the cache 8x (4 KV heads instead of 32)** => 
+- **`last_only` (lm_head on the last token only)** => 
+- **why `lm_head` is skipped for prompt positions during generation** => 
+- **why zeros in the unused cache region never get read** => 
+
+### Generation loop
+- **generation loop** => 
+- **greedy decoding with a cache (prefill once, then one token per step)** => 
+- **`pos` counter (position of the next token)** => 
+- **feeding the sampled token back as the next input** => 
+- **`torch.tensor([[tok]])` (batch 1, seq 1 input)** => 
+- **EOS token (`tokenizer.eos_token_id`)** => 
+- **stop conditions (EOS or max new tokens)** => 
+- **max context length (`MAX_LEN` = 2048)** => 
+- **`.item()` GPU sync per token** => 
+
+### Verification against HF
+- **oracle comparison** => 
+- **golden test** => 
+- **`output_hidden_states=True`** => 
+- **`hidden_states` alignment (embedding + 22 layers, last entry is post-norm)** => 
+- **relative error (`||a - b|| / ||b||`)** => 
+- **mean absolute logit error** => 
+- **why tolerances instead of bit-exact equality** => 
+- **error growth across layers** => 
+- **teacher forcing** => 
+- **teacher-forced argmax match rate** => 
+- **free-running greedy match** => 
+- **first divergence index** => 
+- **near-tie logits (why argmax can flip on tiny error)** => 
+- **`hf.generate(do_sample=False)`** => 
+- **`attention_mask`** => 
+- **`.eval()`** => 
+- **`from_pretrained` with `torch_dtype`** => 
+- **PASS/FAIL thresholds from the plan (1e-2, 5e-2, 0.05, 99%, 90%)** => 
+- **debugging method (first layer that diverges, then first op)** =>
