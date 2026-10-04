@@ -428,7 +428,6 @@
 - **PASS/FAIL thresholds from the plan (1e-2, 5e-2, 0.05, 99%, 90%)** => 
 - **debugging method (first layer that diverges, then first op)** =>
 
-
 # Part 1 - Engine (M1 Foundations)
 ## Build Scaffolding (Branch 1)
 ### CMake and dependencies
