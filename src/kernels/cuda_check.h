@@ -26,7 +26,6 @@
         }                                                                               \
     } while (0)
 
-// Debug builds synchronize after every launch so an asynchronous fault is reported at the kernel that caused it. Synchronizing a stream that is being captured into a CUDA Graph invalidates the capture, so the sync is skipped while capturing.
 #ifdef NDEBUG
 #define KERNEL_CHECK(stream) CUDA_CHECK(cudaGetLastError())
 #else

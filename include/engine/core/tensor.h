@@ -23,7 +23,6 @@ constexpr size_t dtype_size(DType dtype) {
     return 0;
 }
 
-// Non-owning view of contiguous row-major memory, usually on the device.
 struct Tensor {
     static constexpr int kMaxDims = 4;
 

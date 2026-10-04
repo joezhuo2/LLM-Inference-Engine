@@ -4,7 +4,6 @@
 
 namespace engine {
 
-// Move-only owner of one cudaMalloc allocation.
 class DeviceBuffer {
 public:
     DeviceBuffer() = default;

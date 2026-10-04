@@ -10,7 +10,6 @@ DeviceBuffer::DeviceBuffer(size_t bytes) : size_(bytes) {
     if (bytes == 0) return;
     CUDA_CHECK(cudaMalloc(&ptr_, bytes));
 #ifndef NDEBUG
-    // All-ones bytes are NaN in both BF16 and FP32, so reading memory nothing has written yet shows up immediately instead of looking almost right.
     CUDA_CHECK(cudaMemset(ptr_, 0xFF, bytes));
 #endif
 }

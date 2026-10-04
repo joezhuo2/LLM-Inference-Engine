@@ -76,7 +76,7 @@ TEST(DeviceBuffer, DebugBuildsFillWithNaN) {
     CUDA_CHECK(cudaMemcpy(words.data(), b.data(), b.size(), cudaMemcpyDeviceToHost));
     for (uint32_t w : words) {
         EXPECT_TRUE(std::isnan(std::bit_cast<float>(w)));
-        EXPECT_EQ(w >> 16, 0xFFFFu);  // high BF16 half is also NaN
+        EXPECT_EQ(w >> 16, 0xFFFFu);
     }
 #endif
 }
