@@ -1,4 +1,5 @@
 CompileFlags:
+  CompilationDatabase: build/debug
   Remove: [-forward-unknown-to-host-compiler, --generate-code=*, -arch=*, -lineinfo, --expt-relaxed-constexpr, -Xcompiler*, --options-file, -rdc=*]
 ---
 If:
