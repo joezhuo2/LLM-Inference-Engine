@@ -8,6 +8,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Set `ReflowComments: false` in `.clang-format` so long comments stay single-line paragraphs instead of being wrapped at 100 columns; no existing file changes formatting. (Part A)
 - Add `engine::Stream`, an alias for `cudaStream_t` declared through a forward-declared `CUstream_st`, so kernel launchers in `include/engine/` can take a stream without including CUDA headers; a static_assert in `gpu_tests` proves the types are identical. (Part A)
 - Add `CUBLAS_CHECK` (prints the cuBLAS status name and message, then aborts) and `KERNEL_CHECK(stream)` to `src/kernels/cuda_check.h`; in debug builds `KERNEL_CHECK` also synchronizes the stream so asynchronous faults point at the right kernel, except while the stream is being captured into a CUDA Graph. Death tests cover both abort paths. (Part A)
+- Add the `engine_runtime` library (CUDA host code, built only when CUDA is found) and a move-only RAII `DeviceBuffer` over `cudaMalloc`/`cudaFree`; debug builds fill new buffers with 0xFF bytes, which are NaN in BF16 and FP32, so reads of unwritten memory are obvious. (Part A)
 
 ## build/m1-scaffolding
 

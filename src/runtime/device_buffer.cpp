@@ -1,0 +1,34 @@
+#include "engine/runtime/device_buffer.h"
+
+#include <utility>
+
+#include "kernels/cuda_check.h"
+
+namespace engine {
+
+DeviceBuffer::DeviceBuffer(size_t bytes) : size_(bytes) {
+    if (bytes == 0) return;
+    CUDA_CHECK(cudaMalloc(&ptr_, bytes));
+#ifndef NDEBUG
+    // All-ones bytes are NaN in both BF16 and FP32, so reading memory nothing has written yet shows up immediately instead of looking almost right.
+    CUDA_CHECK(cudaMemset(ptr_, 0xFF, bytes));
+#endif
+}
+
+DeviceBuffer::~DeviceBuffer() {
+    CUDA_CHECK(cudaFree(ptr_));
+}
+
+DeviceBuffer::DeviceBuffer(DeviceBuffer&& other) noexcept
+    : ptr_(std::exchange(other.ptr_, nullptr)), size_(std::exchange(other.size_, 0)) {}
+
+DeviceBuffer& DeviceBuffer::operator=(DeviceBuffer&& other) noexcept {
+    if (this != &other) {
+        CUDA_CHECK(cudaFree(ptr_));
+        ptr_ = std::exchange(other.ptr_, nullptr);
+        size_ = std::exchange(other.size_, 0);
+    }
+    return *this;
+}
+
+}  // namespace engine
