@@ -497,3 +497,25 @@
 - **`cublasSetWorkspace` and why a fixed workspace matters for CUDA Graphs** => 
 - **`cublasSetStream` resets the workspace (call order)** => 
 - **`cublasGetStream`** => 
+
+### Row-major GEMM through cuBLAS
+- **column-major vs row-major storage** => 
+- **a row-major matrix read as column-major is its transpose** => 
+- **the row-major trick (`Y^T = W X^T`)** => 
+- **`CUBLAS_OP_T` / `CUBLAS_OP_N`** => 
+- **`m`, `n`, `k` in `cublasGemmEx` (out, B, in)** => 
+- **leading dimension (`lda`, `ldb`, `ldc`)** => 
+- **`cublasGemmEx` (mixed-precision GEMM)** => 
+- **`CUDA_R_16BF`** => 
+- **`CUBLAS_COMPUTE_32F` (FP32 accumulation)** => 
+- **`alpha` / `beta` and why they are `float` here** => 
+- **`CUBLAS_GEMM_DEFAULT` (algorithm selection)** => 
+- **Tensor Cores** => 
+- **GEMM vs GEMV (B = 1)** => 
+
+### Testing
+- **test fixtures (`TEST_F`, `SetUp`, `TearDown`)** => 
+- **parameterized tests (`TEST_P`, `INSTANTIATE_TEST_SUITE_P`)** => 
+- **CPU reference on BF16-rounded inputs** => 
+- **mixed absolute and relative tolerance** => 
+- **`ASSERT_NEAR`** => 

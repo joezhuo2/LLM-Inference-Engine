@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include "engine/core/stream.h"
+#include "engine/core/tensor.h"
 
 struct cublasContext;
 
@@ -23,5 +24,7 @@ private:
     cublasContext* handle_ = nullptr;
     Stream stream_ = nullptr;
 };
+
+void gemm(const Blas& blas, const Tensor& y, const Tensor& x, const Tensor& w);
 
 }  // namespace engine
