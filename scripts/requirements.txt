@@ -1,0 +1,12 @@
+# Python deps for the reference, golden and plotting scripts (never on the engine's hot path).
+# The cu128 index supplies a torch build with sm_120 support; other platforms fall back to PyPI.
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0
+transformers==5.17.0
+tokenizers==0.23.2
+safetensors==0.8.0
+sentencepiece==0.2.2
+huggingface_hub==1.33.0
+numpy==2.5.3
+pandas==3.0.6
+matplotlib==3.11.2
