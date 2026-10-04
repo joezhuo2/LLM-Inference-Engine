@@ -1,6 +1,7 @@
 include(GoogleTest)
 
 add_executable(unit_tests
+  unit/test_tensor.cpp
   unit/test_version.cpp
 )
 target_link_libraries(unit_tests PRIVATE engine_core GTest::gtest_main)
