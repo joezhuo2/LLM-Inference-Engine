@@ -484,3 +484,9 @@
 - **death tests (`EXPECT_DEATH(stmt, regex)`)** => 
 - **`GTEST_SKIP()`** => 
 - **`compute-sanitizer --leak-check full`** => 
+
+## cuBLAS GEMM (Branch 3)
+### Numerics
+- **round-to-nearest-even (float to BF16)** => 
+- **the `+ 0x7FFF + lsb` rounding trick** => 
+- **`0x1p-8f` hex float literals** => 

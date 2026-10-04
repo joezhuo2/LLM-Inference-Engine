@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/cublas-gemm
+
+- Add `tests/support/bf16.h`, host-side float to BF16 conversion with round-to-nearest-even, for building CPU reference results; unit tests cover ties and special values, and a GPU-test sweep checks one million random floats against CUDA's `__float2bfloat16`. (Part A)
+
 ## core/tensor-and-buffers
 
 - Add the `DType` enum, `dtype_size`, and a non-owning `Tensor` view (data pointer, dtype, up to 4 dims, `numel`, `bytes`) as the common currency between the loader, kernels and runtime. (Part A)
