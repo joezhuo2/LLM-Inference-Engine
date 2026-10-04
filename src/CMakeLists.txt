@@ -5,7 +5,7 @@ target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(engine_core PUBLIC nlohmann_json::nlohmann_json)
 
 add_executable(engine app/main.cpp)
-target_link_libraries(engine PRIVATE engine_core)
+target_link_libraries(engine PRIVATE engine_core CLI11::CLI11)
 
 if(ENGINE_CUDA)
   add_library(engine_kernels
