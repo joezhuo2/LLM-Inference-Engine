@@ -11,6 +11,7 @@ if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_cuda_check.cpp
     gpu/test_device_buffer.cpp
+    gpu/test_pinned_buffer.cpp
     gpu/test_smoke.cpp
     gpu/test_stream.cpp
   )
