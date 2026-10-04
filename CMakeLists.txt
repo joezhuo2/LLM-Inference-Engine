@@ -36,11 +36,14 @@ set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
 FetchContent_Declare(googletest
   URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
   FIND_PACKAGE_ARGS NAMES GTest)
-FetchContent_Declare(json
+FetchContent_Declare(nlohmann_json
   URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
   FIND_PACKAGE_ARGS NAMES nlohmann_json)
+FetchContent_Declare(cli11
+  URL https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.4.2.tar.gz
+  FIND_PACKAGE_ARGS NAMES CLI11)
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest json)
+FetchContent_MakeAvailable(googletest nlohmann_json cli11)
 
 enable_testing()
 add_subdirectory(src)
