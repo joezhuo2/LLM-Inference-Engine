@@ -427,3 +427,59 @@
 - **`from_pretrained` with `torch_dtype`** => 
 - **PASS/FAIL thresholds from the plan (1e-2, 5e-2, 0.05, 99%, 90%)** => 
 - **debugging method (first layer that diverges, then first op)** =>
+
+# Part 1 - Engine (M1 Foundations)
+## Build Scaffolding (Branch 1)
+### CMake and dependencies
+- **`FetchContent` with `FIND_PACKAGE_ARGS`** => 
+- **FetchContent name vs package name** => 
+- **CLI11 subcommands** => 
+- **`target_link_libraries` `PUBLIC` vs `PRIVATE`** => 
+
+### CI and tooling
+- **ctest labels and `-L` / `-LE`** => 
+- **`todo_joe` label** => 
+- **GitHub Actions job / matrix** => 
+- **`python -m py_compile`** => 
+- **clangd `CompilationDatabase`** => 
+- **`ReflowComments: false`** => 
+
+### Python
+- **pinned requirements (`==`)** => 
+- **`--extra-index-url` and local versions (`2.11.0+cu128`)** => 
+
+## Tensor and Buffers (Branch 2)
+### C++
+- **`enum class X : uint8_t`** => 
+- **`constexpr` function** => 
+- **switch case fallthrough labels** => 
+- **owning vs non-owning (view) types** => 
+- **`std::initializer_list` constructor** => 
+- **`static constexpr` member** => 
+- **forward declaration / incomplete type** => 
+- **type alias (`using Stream = CUstream_st*`)** => 
+- **`std::is_same_v` in a `static_assert`** => 
+- **`std::bit_cast<float>(uint32_t)`** => 
+- **destruction order of statics** => 
+
+### CUDA error handling
+- **`cublasStatus_t` / `cublasGetStatusName`** => 
+- **`NDEBUG` (Debug vs Release)** => 
+- **asynchronous errors** => 
+- **`cudaGetLastError`** => 
+- **stream capture (`cudaStreamIsCapturing`)** => 
+- **capture modes (`cudaStreamCaptureModeThreadLocal`)** => 
+
+### Memory
+- **NaN bit patterns** => 
+- **`cudaMemset`** => 
+- **`cudaFree(nullptr)`** => 
+- **pageable vs pinned (page-locked) memory** => 
+- **`cudaMallocHost` / `cudaFreeHost`** => 
+- **`cudaMemcpyAsync` from pageable memory** => 
+- **`cudaPointerGetAttributes`** => 
+
+### Testing
+- **death tests (`EXPECT_DEATH(stmt, regex)`)** => 
+- **`GTEST_SKIP()`** => 
+- **`compute-sanitizer --leak-check full`** => 
