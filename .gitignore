@@ -13,3 +13,9 @@ __pycache__/
 .vscode/
 .cache/
 compile_commands.json
+model_dir/
+*.safetensors
+*.bin
+*.pth
+*.pt
+.cache/
