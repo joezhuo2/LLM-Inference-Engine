@@ -14,6 +14,7 @@ if(ENGINE_CUDA)
     gpu/test_bf16_cuda.cpp
     gpu/test_cuda_check.cpp
     gpu/test_device_buffer.cpp
+    gpu/test_gemm.cpp
     gpu/test_pinned_buffer.cpp
     gpu/test_smoke.cpp
     gpu/test_stream.cpp

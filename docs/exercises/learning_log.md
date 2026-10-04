@@ -490,3 +490,10 @@
 - **round-to-nearest-even (float to BF16)** => 
 - **the `+ 0x7FFF + lsb` rounding trick** => 
 - **`0x1p-8f` hex float literals** => 
+
+### cuBLAS setup
+- **`cublasHandle_t` (`cublasContext*`)** => 
+- **`cublasSetStream`** => 
+- **`cublasSetWorkspace` and why a fixed workspace matters for CUDA Graphs** => 
+- **`cublasSetStream` resets the workspace (call order)** => 
+- **`cublasGetStream`** => 

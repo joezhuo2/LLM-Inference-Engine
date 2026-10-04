@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## kernel/cublas-gemm
 
 - Add `tests/support/bf16.h`, host-side float to BF16 conversion with round-to-nearest-even, for building CPU reference results; unit tests cover ties and special values, and a GPU-test sweep checks one million random floats against CUDA's `__float2bfloat16`. (Part A)
+- Add `engine::Blas`, a non-copyable cuBLAS handle bound to one stream with a caller-owned workspace set through `cublasSetWorkspace` (so cuBLAS never allocates during CUDA Graph capture later); taking the workspace pointer keeps `engine_kernels` independent of `engine_runtime`. (Part B)
 
 ## core/tensor-and-buffers
 
