@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 
 #include "engine/model/config.h"
+#include "support/paths.h"
 
 using engine::ModelConfig;
 using engine::parse_config;
@@ -126,4 +128,16 @@ TEST(Config, RejectsInvalidJson) {
 
 TEST(Config, MissingFileThrows) {
     EXPECT_THROW(engine::load_config("/nonexistent/config.json"), std::runtime_error);
+}
+
+TEST(Config, LoadsTheRealTinyLlamaConfig) {
+    const auto path = engine::test::model_dir() / "config.json";
+    if (!std::filesystem::exists(path)) GTEST_SKIP() << path << " not found";
+    const ModelConfig c = engine::load_config(path);
+    EXPECT_EQ(c.hidden, 2048);
+    EXPECT_EQ(c.layers, 22);
+    EXPECT_EQ(c.kv_heads, 4);
+    EXPECT_EQ(c.qkv_dim(), 2560);
+    EXPECT_EQ(c.vocab, 32000);
+    EXPECT_DOUBLE_EQ(c.rms_eps, 1e-5);
 }

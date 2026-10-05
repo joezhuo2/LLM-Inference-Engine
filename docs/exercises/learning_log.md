@@ -543,3 +543,6 @@
 ### Testing
 - **raw string literals (`R"(...)"`)** => 
 - **asserting on the exception message, not just the type** => 
+- **`target_compile_definitions` (passing a path into C++ as a macro)** => 
+- **`std::getenv` overrides** => 
+- **skipping tests that need local data (`GTEST_SKIP` when the model is missing)** => 

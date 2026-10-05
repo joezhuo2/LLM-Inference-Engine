@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## model/config
 
 - Add `engine::ModelConfig` with `parse_config(json)` and `load_config(path)` reading the HF `config.json` through nlohmann/json, plus derived widths (`kv_dim` 256, `qkv_dim` 2560, `group_size` 8 for TinyLlama). It rejects anything the engine does not implement (non-llama models, RoPE scaling, non-SiLU activations, attention or MLP biases, `pretraining_tp` above 1) and inconsistent head counts, with errors that name the offending field. (Part A)
+- Add `tests/support/paths.h` with `engine::test::model_dir()` (compile-time default `models/tinyllama`, overridable with the `ENGINE_MODEL_DIR` environment variable) and a test that loads the real TinyLlama `config.json`, skipping when the model is not present (as in CI). (Part A)
 
 ## kernel/cublas-gemm
 
