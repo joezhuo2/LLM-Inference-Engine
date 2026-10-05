@@ -1,6 +1,7 @@
 add_library(engine_core
   core/tensor.cpp
   core/version.cpp
+  model/config.cpp
 )
 target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(engine_core PUBLIC nlohmann_json::nlohmann_json)

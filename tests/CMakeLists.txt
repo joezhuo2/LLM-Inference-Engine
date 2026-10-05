@@ -2,6 +2,7 @@ include(GoogleTest)
 
 add_executable(unit_tests
   unit/test_bf16.cpp
+  unit/test_config.cpp
   unit/test_tensor.cpp
   unit/test_version.cpp
 )
