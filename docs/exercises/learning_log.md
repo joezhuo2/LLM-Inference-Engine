@@ -483,3 +483,38 @@
 - **death tests (`EXPECT_DEATH(stmt, regex)`)** => 
 - **`GTEST_SKIP()`** => 
 - **`compute-sanitizer --leak-check full`** => 
+
+## cuBLAS GEMM (Branch 3)
+### Numerics
+- **round-to-nearest-even (float to BF16)** => 
+- **the `+ 0x7FFF + lsb` rounding trick** => 
+- **`0x1p-8f` hex float literals** => 
+
+### cuBLAS setup
+- **`cublasHandle_t` (`cublasContext*`)** => 
+- **`cublasSetStream`** => 
+- **`cublasSetWorkspace` and why a fixed workspace matters for CUDA Graphs** => 
+- **`cublasSetStream` resets the workspace (call order)** => 
+- **`cublasGetStream`** => 
+
+### Row-major GEMM through cuBLAS
+- **column-major vs row-major storage** => 
+- **a row-major matrix read as column-major is its transpose** => 
+- **the row-major trick (`Y^T = W X^T`)** => 
+- **`CUBLAS_OP_T` / `CUBLAS_OP_N`** => 
+- **`m`, `n`, `k` in `cublasGemmEx` (out, B, in)** => 
+- **leading dimension (`lda`, `ldb`, `ldc`)** => 
+- **`cublasGemmEx` (mixed-precision GEMM)** => 
+- **`CUDA_R_16BF`** => 
+- **`CUBLAS_COMPUTE_32F` (FP32 accumulation)** => 
+- **`alpha` / `beta` and why they are `float` here** => 
+- **`CUBLAS_GEMM_DEFAULT` (algorithm selection)** => 
+- **Tensor Cores** => 
+- **GEMM vs GEMV (B = 1)** => 
+
+### Testing
+- **test fixtures (`TEST_F`, `SetUp`, `TearDown`)** => 
+- **parameterized tests (`TEST_P`, `INSTANTIATE_TEST_SUITE_P`)** => 
+- **CPU reference on BF16-rounded inputs** => 
+- **mixed absolute and relative tolerance** => 
+- **`ASSERT_NEAR`** => 

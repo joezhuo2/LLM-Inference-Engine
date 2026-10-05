@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/cublas-gemm
+
+- Add `tests/support/bf16.h`, host-side float to BF16 conversion with round-to-nearest-even, for building CPU reference results; unit tests cover ties and special values, and a GPU-test sweep checks one million random floats against CUDA's `__float2bfloat16`. (Part A)
+- Add `engine::Blas`, a non-copyable cuBLAS handle bound to one stream with a caller-owned workspace set through `cublasSetWorkspace` (so cuBLAS never allocates during CUDA Graph capture later); taking the workspace pointer keeps `engine_kernels` independent of `engine_runtime`. (Part B)
+- Add `engine::gemm(blas, y, x, w)` computing `y[B, out] = x[B, in] W^T` for row-major BF16 tensors with FP32 accumulation through one `cublasGemmEx` call (the row-major trick: ask cuBLAS for the column-major `Y^T = W X^T` with `CUBLAS_OP_T, CUBLAS_OP_N`); rejects non-2-D, non-BF16 or mismatched shapes. Tests: an exact 3x5 hand example and a CPU-reference sweep over B=1, odd sizes, fused QKV, down-proj and lm_head shapes. (Part B)
+
 ## core/tensor-and-buffers
 
 - Add the `DType` enum, `dtype_size`, and a non-owning `Tensor` view (data pointer, dtype, up to 4 dims, `numel`, `bytes`) as the common currency between the loader, kernels and runtime. (Part A)

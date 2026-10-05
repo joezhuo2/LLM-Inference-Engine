@@ -10,6 +10,7 @@ target_link_libraries(engine PRIVATE engine_core CLI11::CLI11)
 
 if(ENGINE_CUDA)
   add_library(engine_kernels
+    kernels/gemm.cpp
     kernels/smoke.cu
   )
   target_link_libraries(engine_kernels PUBLIC engine_core CUDA::cudart CUDA::cublas)
