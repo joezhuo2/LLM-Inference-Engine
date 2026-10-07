@@ -518,3 +518,31 @@
 - **CPU reference on BF16-rounded inputs** => 
 - **mixed absolute and relative tolerance** => 
 - **`ASSERT_NEAR`** => 
+
+## Model Config (Branch 4)
+### Parsing
+- **`nlohmann::json::parse`** => 
+- **`json::at` vs `json::value` (required vs optional fields)** => 
+- **`json::get<T>()`** => 
+- **`json::parse_error` / `json::type_error`** => 
+- **rethrowing with context (wrapping a library exception)** => 
+- **`[[noreturn]]`** => 
+- **function templates (`template <typename T> T field(...)`)** => 
+- **`std::string_view` parameters** => 
+- **`std::filesystem::path`** => 
+- **reading a whole file (`std::ifstream` + `rdbuf()`)** => 
+
+### Config semantics
+- **`rope_scaling` (and why the engine rejects it)** => 
+- **`hidden_act` (`silu`)** => 
+- **`attention_bias` / `mlp_bias`** => 
+- **`pretraining_tp`** => 
+- **derived widths (`kv_dim`, `qkv_dim`, `group_size`)** => 
+- **fail fast on unsupported configs** => 
+
+### Testing
+- **raw string literals (`R"(...)"`)** => 
+- **asserting on the exception message, not just the type** => 
+- **`target_compile_definitions` (passing a path into C++ as a macro)** => 
+- **`std::getenv` overrides** => 
+- **skipping tests that need local data (`GTEST_SKIP` when the model is missing)** => 
