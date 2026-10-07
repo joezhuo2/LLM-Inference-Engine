@@ -559,3 +559,21 @@
 - **`const_cast` (and why `munmap` needs it here)** => 
 - **`static std::atomic<int>` counter for unique temp names** => 
 - **`std::filesystem::temp_directory_path`** => 
+
+### Safetensors parsing (your Part C)
+- **little-endian `uint64` length prefix** => 
+- **the 100,000,000-byte header limit** => 
+- **byte ranges that tile the data section (no gaps, no overlaps, full coverage)** => 
+- **overflow-safe size math (shape product times dtype size)** => 
+- **JSON integers vs `1.0`** => 
+- **UTF-8 validation of the header** => 
+- **duplicate JSON keys (last one wins)** => 
+- **`__metadata__` (null or string map)** => 
+- **`std::map` ordering of string keys (`layers.10` before `layers.2`)** => 
+- **`std::logic_error` vs `std::runtime_error` (why the stub cannot pass the rejection tests)** => 
+
+### Testing
+- **`todo_joe` workflow (`ctest -L todo_joe`, then move the file to `tests/unit/`)** => 
+- **`std::as_bytes`** => 
+- **building malformed inputs byte by byte** => 
+- **`-Wdangling-reference` (a reference into a temporary's member)** => 
