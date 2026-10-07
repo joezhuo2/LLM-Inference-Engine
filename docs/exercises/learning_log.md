@@ -39,8 +39,9 @@
 - **lambda and capture `[&]`** => 
 - **macro (`#define`) and the `do { } while (0)` idiom** => 
 - **scope resolution `::` (eg. `::open`, `std::`)** => 
-- **pointer arithmetic** => 
-- **stack vs heap** => 
+- **pointer arithmetic** => arithemetic using pointers (+, -, comparison), changes/compares where the pointer is pointing, not the data at the pointer locationo
+- **stack** => uses LIFO, CPU auto manage, ultra fast, small, can get stack overflow, things disappear after function finishes
+- **heap** => ask for specific amount of memory, computer finds location with that much free memory and returns the pointe, slower, massive size, long-duration, stays until you explicitly delete it
 
 # Part 0 - Foundations
 ## Buffer (Task 1)
@@ -192,14 +193,14 @@
 - **memory hierarchy** => 
 - **memory coalescing** => 
 - **host vs device memory** => 
-- **`cudaMalloc()`** => 
+- **`cudaMalloc()`** => allocates free high speed memory to CPU host
 - **`cudaMallocManaged()`** => 
 - **managed memory page migration** => 
 - **PCIe bottleneck** => 
 - **`cudaMemcpy()`** => 
 - **`cudaMemcpyHostToDevice` / `cudaMemcpyDeviceToHost`** => 
 - **`cudaMemset()`** => 
-- **`cudaFree()`** => 
+- **`cudaFree()`** => frees high speed memory allocated to CPU host
 - **treating `*a`, `*b`, `*c` as arrays but they are defined as float pointers** => 
 - **`std::fill`** => 
 - **`delete[]`** => 
@@ -243,11 +244,11 @@
 
 ## Three way Summation (Task 4/CUDA Task 2)
 ### Core Ideas
-- **`reductions`** => 
-- **`naive atomics`** => 
-- **`shared memory`** => 
-- **`warp shuffle`** => 
-- **`warp reduction`** => 
+- **`reductions`** => turning large collections of values into single value
+- **`naive atomics`** => unoptimized code that has many threads call the same function concurrently
+- **`shared memory`** => user managed on-chip SRAM that is shared across threads in the same block
+- **`warp shuffle`** => allows threads within the same warp to share data with each other without reading or writing
+- **`warp reduction`** => computing result using all threads of a warp using warp shuffle
 - **warp / block / grid reduction hierarchy** => 
 - **atomic contention (serialization on one address)** => 
 - **floating point non-associativity (summation order)** => 
@@ -255,7 +256,7 @@
 - **vectorized loads (`float4`)** => 
 
 ### Atomics and shared memory
-- **`atomicAdd(address, val)`** => 
+- **`atomicAdd(address, val)`** => uses one uninterupted action instead of 3 (RMW) and guarantees thread safety and correct answer by queuing concurrent calls
 - **`__shared__`** => 
 - **dynamic shared memory** => 
 - **`__syncthreads()`** => 
@@ -374,10 +375,10 @@
 - **`dtype` and `device` of masks and caches** =>
 
 ### KV cache
-- **KV cache** => 
-- **why K and V are cached but Q is not** => 
-- **prefill** => 
-- **decode** => 
+- **KV (Key-Value) cache** => AI makes notes about every word it has already generated to prevent recomputing all tokens from scratch by storing it (usually in GPU VRAM)
+- **why K and V are cached but Q is not** => K (read from) and V (meaning) need to be used in the future, and Q (questions about past tokens) are not needed by future tokens
+- **prefill** => initial calculation of all KV tensors for all prompt tokens and storing into KV cache
+- **decode** => phase when AI generates one token at a time and adding new KV to the cache
 - **prefill vs decode (matrix x matrix vs matrix x vector)** => 
 - **static preallocated cache vs `torch.cat` growing cache** => 
 - **cache shape `[layers, batch, kv_heads, max_len, head_dim]`** => 
