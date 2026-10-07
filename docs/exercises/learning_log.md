@@ -577,3 +577,5 @@
 - **`std::as_bytes`** => 
 - **building malformed inputs byte by byte** => 
 - **`-Wdangling-reference` (a reference into a temporary's member)** => 
+- **most vexing parse (`T(f())` read as a declaration; `T{f()}` fixes it)** => 
+- **GCC vs Clang strictness (why macOS CI caught what Ubuntu did not)** => 

@@ -43,7 +43,7 @@ TEST(MappedFile, MissingFileThrowsWithErrno) {
 }
 
 TEST(MappedFile, DirectoryCannotBeMapped) {
-    EXPECT_THROW(MappedFile(std::filesystem::temp_directory_path()), std::system_error);
+    EXPECT_THROW(MappedFile{std::filesystem::temp_directory_path()}, std::system_error);
 }
 
 TEST(MappedFile, MoveTransfersTheMapping) {
