@@ -47,7 +47,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get $APT_OPTS update && sudo apt-get $APT_OPTS install -y clang-format
+      - name: Install clang-format 18 unless the runner already has it
+        run: clang-format --version 2>/dev/null | grep -q 'version 18\.' || (sudo apt-get $APT_OPTS update && sudo apt-get $APT_OPTS install -y clang-format)
+      - run: clang-format --version
       - run: |
           files=$(git ls-files '*.cpp' '*.h' '*.cu' '*.cuh')
           [ -z "$files" ] || clang-format --dry-run --Werror $files
