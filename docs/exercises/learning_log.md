@@ -519,6 +519,13 @@
 - **mixed absolute and relative tolerance** => 
 - **`ASSERT_NEAR`** => 
 
+## CI Hardening (build/ci-timeouts)
+- **`timeout-minutes` (and GitHub's 6-hour default)** => 
+- **workflow-level `env:` in GitHub Actions** => 
+- **`apt-get -o Acquire::Retries` / `Acquire::http::Timeout`** => 
+- **package mirrors (why the CUDA container's apt worked while the runner's hung)** => 
+- **pinning the clang-format major version (why 17 and 18 can disagree)** => 
+- **`cmd || (fallback)` in a shell step** => 
 ## Model Config (Branch 4)
 ### Parsing
 - **`nlohmann::json::parse`** => 
