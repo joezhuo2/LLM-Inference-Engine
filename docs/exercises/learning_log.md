@@ -521,3 +521,6 @@
 
 ## CI Hardening (build/ci-timeouts)
 - **`timeout-minutes` (and GitHub's 6-hour default)** => 
+- **workflow-level `env:` in GitHub Actions** => 
+- **`apt-get -o Acquire::Retries` / `Acquire::http::Timeout`** => 
+- **package mirrors (why the CUDA container's apt worked while the runner's hung)** => 
