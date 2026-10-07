@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## loader/safetensors-stub
+
+- Add `engine::MappedFile`, a move-only RAII read-only `mmap` of a whole file (`open`, `fstat`, `mmap(PROT_READ, MAP_PRIVATE)`, then the descriptor is closed because the mapping outlives it; `munmap` on destruction) exposing `std::span<const std::byte>`. Empty files give an empty span, and failures throw `std::system_error` carrying `errno` and the path. Adds `tests/support/temp_file.h` for tests that need real files. (Part A)
+- Add the Part C stub `parse_safetensors_header(std::span<const std::byte>)` returning `SafetensorsHeader` (absolute `data_offset` plus a name-sorted map of `TensorEntry` with dtype, shape, absolute offset and byte length); it throws `std::logic_error("unimplemented: parse_safetensors_header")` under a TODO(JOE) spec whose accept and reject rules were checked against Python safetensors 0.8.0. Adds `tests/support/safetensors_bytes.h` and 28 tests in the new `todo_unit_tests` target (label `todo_joe`), all failing until the parser exists. (Part C stub)
+- Fix the macOS CI build: `EXPECT_THROW(MappedFile(std::filesystem::temp_directory_path()), ...)` is the most vexing parse under Apple Clang (read as a declaration), so the test now uses brace initialization. (Part A)
+
 ## model/config
 
 - Add `engine::ModelConfig` with `parse_config(json)` and `load_config(path)` reading the HF `config.json` through nlohmann/json, plus derived widths (`kv_dim` 256, `qkv_dim` 2560, `group_size` 8 for TinyLlama). It rejects anything the engine does not implement (non-llama models, RoPE scaling, non-SiLU activations, attention or MLP biases, `pretraining_tp` above 1) and inconsistent head counts, with errors that name the offending field. (Part A)
