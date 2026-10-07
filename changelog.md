@@ -7,6 +7,14 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Give every CI job a `timeout-minutes` limit (15 minutes, 30 for the CUDA compile job) so a hung step fails quickly instead of running for GitHub's 6-hour default; jobs normally finish in one or two minutes. (Part A)
 - Run every `apt-get` in CI with `APT_OPTS` (3 retries, 30-second HTTP and HTTPS timeouts), so a slow or unreachable package mirror is retried and then fails instead of hanging; this is what stalled PRs #9 and #10 for over an hour. (Part A)
 - The clang-format job skips `apt-get` entirely when the runner already has clang-format 18 (the version used locally and shipped by Ubuntu 24.04, since other major versions can format differently), and prints the version it used. (Part A)
+
+
+## loader/safetensors-stub
+
+- Add `engine::MappedFile`, a move-only RAII read-only `mmap` of a whole file (`open`, `fstat`, `mmap(PROT_READ, MAP_PRIVATE)`, then the descriptor is closed because the mapping outlives it; `munmap` on destruction) exposing `std::span<const std::byte>`. Empty files give an empty span, and failures throw `std::system_error` carrying `errno` and the path. Adds `tests/support/temp_file.h` for tests that need real files. (Part A)
+- Add the Part C stub `parse_safetensors_header(std::span<const std::byte>)` returning `SafetensorsHeader` (absolute `data_offset` plus a name-sorted map of `TensorEntry` with dtype, shape, absolute offset and byte length); it throws `std::logic_error("unimplemented: parse_safetensors_header")` under a TODO(JOE) spec whose accept and reject rules were checked against Python safetensors 0.8.0. Adds `tests/support/safetensors_bytes.h` and 28 tests in the new `todo_unit_tests` target (label `todo_joe`), all failing until the parser exists. (Part C stub)
+- Fix the macOS CI build: `EXPECT_THROW(MappedFile(std::filesystem::temp_directory_path()), ...)` is the most vexing parse under Apple Clang (read as a declaration), so the test now uses brace initialization. (Part A)
+
 ## model/config
 
 - Add `engine::ModelConfig` with `parse_config(json)` and `load_config(path)` reading the HF `config.json` through nlohmann/json, plus derived widths (`kv_dim` 256, `qkv_dim` 2560, `group_size` 8 for TinyLlama). It rejects anything the engine does not implement (non-llama models, RoPE scaling, non-SiLU activations, attention or MLP biases, `pretraining_tp` above 1) and inconsistent head counts, with errors that name the offending field. (Part A)

@@ -553,3 +553,36 @@
 - **`target_compile_definitions` (passing a path into C++ as a macro)** => 
 - **`std::getenv` overrides** => 
 - **skipping tests that need local data (`GTEST_SKIP` when the model is missing)** => 
+
+## Safetensors Loader Stub (Branch 5)
+### Mapping files
+- **`MAP_PRIVATE` vs `MAP_SHARED` for a read-only mapping** => 
+- **closing the file descriptor right after `mmap`** => 
+- **`O_CLOEXEC`** => 
+- **why `mmap` of a zero-length file fails** => 
+- **`std::span<const std::byte>`** => 
+- **`std::byte` vs `uint8_t`** => 
+- **`std::system_error` and `std::generic_category()`** => 
+- **`const_cast` (and why `munmap` needs it here)** => 
+- **`static std::atomic<int>` counter for unique temp names** => 
+- **`std::filesystem::temp_directory_path`** => 
+
+### Safetensors parsing (your Part C)
+- **little-endian `uint64` length prefix** => 
+- **the 100,000,000-byte header limit** => 
+- **byte ranges that tile the data section (no gaps, no overlaps, full coverage)** => 
+- **overflow-safe size math (shape product times dtype size)** => 
+- **JSON integers vs `1.0`** => 
+- **UTF-8 validation of the header** => 
+- **duplicate JSON keys (last one wins)** => 
+- **`__metadata__` (null or string map)** => 
+- **`std::map` ordering of string keys (`layers.10` before `layers.2`)** => 
+- **`std::logic_error` vs `std::runtime_error` (why the stub cannot pass the rejection tests)** => 
+
+### Testing
+- **`todo_joe` workflow (`ctest -L todo_joe`, then move the file to `tests/unit/`)** => 
+- **`std::as_bytes`** => 
+- **building malformed inputs byte by byte** => 
+- **`-Wdangling-reference` (a reference into a temporary's member)** => 
+- **most vexing parse (`T(f())` read as a declaration; `T{f()}` fixes it)** => 
+- **GCC vs Clang strictness (why macOS CI caught what Ubuntu did not)** => 
