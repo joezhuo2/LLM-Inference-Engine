@@ -7,6 +7,10 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Give every CI job a `timeout-minutes` limit (15 minutes, 30 for the CUDA compile job) so a hung step fails quickly instead of running for GitHub's 6-hour default; jobs normally finish in one or two minutes. (Part A)
 - Run every `apt-get` in CI with `APT_OPTS` (3 retries, 30-second HTTP and HTTPS timeouts), so a slow or unreachable package mirror is retried and then fails instead of hanging; this is what stalled PRs #9 and #10 for over an hour. (Part A)
 - The clang-format job skips `apt-get` entirely when the runner already has clang-format 18 (the version used locally and shipped by Ubuntu 24.04, since other major versions can format differently), and prints the version it used. (Part A)
+## model/config
+
+- Add `engine::ModelConfig` with `parse_config(json)` and `load_config(path)` reading the HF `config.json` through nlohmann/json, plus derived widths (`kv_dim` 256, `qkv_dim` 2560, `group_size` 8 for TinyLlama). It rejects anything the engine does not implement (non-llama models, RoPE scaling, non-SiLU activations, attention or MLP biases, `pretraining_tp` above 1) and inconsistent head counts, with errors that name the offending field. (Part A)
+- Add `tests/support/paths.h` with `engine::test::model_dir()` (compile-time default `models/tinyllama`, overridable with the `ENGINE_MODEL_DIR` environment variable) and a test that loads the real TinyLlama `config.json`, skipping when the model is not present (as in CI). (Part A)
 
 ## kernel/cublas-gemm
 
