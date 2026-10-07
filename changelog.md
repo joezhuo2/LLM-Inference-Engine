@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## build/ci-timeouts
+
+- Give every CI job a `timeout-minutes` limit (15 minutes, 30 for the CUDA compile job) so a hung step fails quickly instead of running for GitHub's 6-hour default; jobs normally finish in one or two minutes. (Part A)
+
 ## kernel/cublas-gemm
 
 - Add `tests/support/bf16.h`, host-side float to BF16 conversion with round-to-nearest-even, for building CPU reference results; unit tests cover ties and special values, and a GPU-test sweep checks one million random floats against CUDA's `__float2bfloat16`. (Part A)

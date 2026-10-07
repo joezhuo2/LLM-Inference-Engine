@@ -518,3 +518,6 @@
 - **CPU reference on BF16-rounded inputs** => 
 - **mixed absolute and relative tolerance** => 
 - **`ASSERT_NEAR`** => 
+
+## CI Hardening (build/ci-timeouts)
+- **`timeout-minutes` (and GitHub's 6-hour default)** => 
