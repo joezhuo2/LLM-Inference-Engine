@@ -1,6 +1,7 @@
 add_library(engine_core
   core/tensor.cpp
   core/version.cpp
+  loader/mapped_file.cpp
   model/config.cpp
 )
 target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)

@@ -546,3 +546,16 @@
 - **`target_compile_definitions` (passing a path into C++ as a macro)** => 
 - **`std::getenv` overrides** => 
 - **skipping tests that need local data (`GTEST_SKIP` when the model is missing)** => 
+
+## Safetensors Loader Stub (Branch 5)
+### Mapping files
+- **`MAP_PRIVATE` vs `MAP_SHARED` for a read-only mapping** => 
+- **closing the file descriptor right after `mmap`** => 
+- **`O_CLOEXEC`** => 
+- **why `mmap` of a zero-length file fails** => 
+- **`std::span<const std::byte>`** => 
+- **`std::byte` vs `uint8_t`** => 
+- **`std::system_error` and `std::generic_category()`** => 
+- **`const_cast` (and why `munmap` needs it here)** => 
+- **`static std::atomic<int>` counter for unique temp names** => 
+- **`std::filesystem::temp_directory_path`** => 

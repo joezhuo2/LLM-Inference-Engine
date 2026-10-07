@@ -5,6 +5,7 @@ set(ENGINE_TEST_DEFINITIONS ENGINE_MODEL_DIR="${PROJECT_SOURCE_DIR}/models/tinyl
 add_executable(unit_tests
   unit/test_bf16.cpp
   unit/test_config.cpp
+  unit/test_mapped_file.cpp
   unit/test_tensor.cpp
   unit/test_version.cpp
 )
