@@ -10,6 +10,10 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add `upload_weights(file, layout, device, stream, chunk_bytes)`, which walks the copy list in chunks of up to 64 MB through two pinned staging buffers, with one CUDA event per buffer guarding its reuse, so the host's `memcpy` out of the mmap overlaps the PCIe transfer of the previous chunk. Returns bytes copied, seconds and GB/s. GPU tests upload a fake checkpoint with chunk sizes 1, 7, 64 and 1 MiB (so chunk boundaries fall inside tensors at odd offsets) and compare every destination byte with the source. (Part A)
 - Add `load_weights(model_dir, stream)` returning `DeviceWeights` (config, layout, the one `DeviceBuffer`, bound `ModelWeights` and upload stats): it loads `config.json`, maps `model.safetensors`, parses the header, plans the layout, uploads, binds the views and unmaps the file on return. Its real-checkpoint test (shapes, the 2,200,096,768-byte total, and four whole tensors compared byte for byte, two of them inside fused regions) needs the parser, so it lives in the new `todo_gpu_tests` target with the `todo_joe` label. (Part A)
 
+## docs/ignore-claude-notes
+
+- Ignore `docs/claude/`, the local handoff notes (project context, build plan, setup guide, working rules, status, review and technical notes) that let a new Claude session continue without the original chat; also add the missing trailing newline to `.gitignore`. (Part A)
+
 ## build/ci-timeouts
 
 - Give every CI job a `timeout-minutes` limit (15 minutes, 30 for the CUDA compile job) so a hung step fails quickly instead of running for GitHub's 6-hour default; jobs normally finish in one or two minutes. (Part A)

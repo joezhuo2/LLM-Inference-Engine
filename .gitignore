@@ -19,3 +19,4 @@ model_dir/
 *.pth
 *.pt
 .cache/
+docs/claude/
