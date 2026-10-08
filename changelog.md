@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## loader/weight-upload
 
 - Fix a debug-only race in `DeviceBuffer`: the NaN fill is a `cudaMemset` that runs asynchronously on the legacy default stream, which a non-blocking stream does not wait for, so a copy issued right after allocation could be overwritten by the fill. The constructor now synchronizes after the fill (debug builds only). (Part A)
+- Add `plan_weight_layout(config, header)`, pure C++ that checks every tensor the config implies is present, BF16 and correctly shaped (and that nothing unexpected is in the file), then places all weights in one allocation with 256-byte aligned regions: Q, K and V fused into `wqkv` `[q + 2 kv, hidden]`, gate and up fused into `wgu` `[2 ff, hidden]`, and a copy list sorted by file offset so the file is read front to back. Adds `tests/support/fake_checkpoint.h` (tiny and TinyLlama-sized configs and headers) so the planner is tested without the real file or the parser. (Part A)
 
 ## build/ci-timeouts
 

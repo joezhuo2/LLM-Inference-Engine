@@ -3,6 +3,7 @@ add_library(engine_core
   core/version.cpp
   loader/mapped_file.cpp
   loader/safetensors.cpp
+  loader/weight_layout.cpp
   model/config.cpp
 )
 target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)

@@ -593,3 +593,17 @@
 - **`cudaMemset` is asynchronous with respect to the host** => 
 - **legacy default stream vs `cudaStreamNonBlocking` streams (implicit synchronization)** => 
 - **`cudaDeviceSynchronize`** => 
+
+### Weight layout
+- **one allocation for all weights vs one per tensor** => 
+- **256-byte alignment and rounding up (`(x + a - 1) / a * a`)** => 
+- **fusing QKV and gate/up by stacking rows (why row-major makes it a byte concatenation)** => 
+- **why fusion turns 5 GEMMs per layer into 2** => 
+- **copy list sorted by source offset (sequential reads of an mmap)** => 
+- **rejecting unexpected tensors (fail fast)** => 
+- **`std::set::contains` / `std::sort` with a lambda comparator** => 
+
+### Testing
+- **fake checkpoints (testing the planner without the real file)** => 
+- **invariant tests (aligned, ordered, disjoint, fully covered)** => 
+- **`-Wdangling-else` with gtest macros (always brace)** => 
