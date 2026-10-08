@@ -587,3 +587,9 @@
 - **`-Wdangling-reference` (a reference into a temporary's member)** => 
 - **most vexing parse (`T(f())` read as a declaration; `T{f()}` fixes it)** => 
 - **GCC vs Clang strictness (why macOS CI caught what Ubuntu did not)** => 
+
+## Weight Upload (Branch 6)
+### Streams and ordering
+- **`cudaMemset` is asynchronous with respect to the host** => 
+- **legacy default stream vs `cudaStreamNonBlocking` streams (implicit synchronization)** => 
+- **`cudaDeviceSynchronize`** => 
