@@ -622,3 +622,9 @@
 - **`std::chrono::steady_clock` and `duration<double>`** => 
 - **effective GB/s (bytes / seconds / 1e9)** => 
 - **page faults on first touch of an mmap (disk reads hidden inside `memcpy`)** => 
+
+### Loading end to end
+- **composing small pieces (config, map, parse, plan, upload, bind)** => 
+- **why the mmap can be released once the upload is synchronized** => 
+- **moving a struct that owns a `DeviceBuffer` (views stay valid because the pointer does not change)** => 
+- **CMake list escaping (why `LABELS "todo_joe;gpu"` lost a label through `gtest_discover_tests`)** => 

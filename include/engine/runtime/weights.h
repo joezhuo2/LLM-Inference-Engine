@@ -2,10 +2,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <span>
 
 #include "engine/core/stream.h"
 #include "engine/loader/weight_layout.h"
+#include "engine/model/config.h"
+#include "engine/model/weights.h"
+#include "engine/runtime/device_buffer.h"
 
 namespace engine {
 
@@ -20,5 +24,15 @@ struct UploadStats {
 
 UploadStats upload_weights(std::span<const std::byte> file, const WeightLayout& layout,
                            void* device, Stream stream, size_t chunk_bytes = kUploadChunkBytes);
+
+struct DeviceWeights {
+    ModelConfig config;
+    WeightLayout layout;
+    DeviceBuffer buffer;
+    ModelWeights weights;
+    UploadStats stats;
+};
+
+DeviceWeights load_weights(const std::filesystem::path& model_dir, Stream stream);
 
 }  // namespace engine

@@ -6,6 +6,8 @@
 #include <cstring>
 #include <stdexcept>
 
+#include "engine/loader/mapped_file.h"
+#include "engine/loader/safetensors.h"
 #include "engine/runtime/pinned_buffer.h"
 #include "kernels/cuda_check.h"
 
@@ -51,6 +53,17 @@ UploadStats upload_weights(std::span<const std::byte> file, const WeightLayout& 
     CUDA_CHECK(cudaStreamSynchronize(stream));
     stats.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
     return stats;
+}
+
+DeviceWeights load_weights(const std::filesystem::path& model_dir, Stream stream) {
+    DeviceWeights w;
+    w.config = load_config(model_dir / "config.json");
+    const MappedFile file(model_dir / "model.safetensors");
+    w.layout = plan_weight_layout(w.config, parse_safetensors_header(file.bytes()));
+    w.buffer = DeviceBuffer(w.layout.total_bytes);
+    w.stats = upload_weights(file.bytes(), w.layout, w.buffer.data(), stream);
+    w.weights = bind_weights(w.layout, w.buffer.data());
+    return w;
 }
 
 }  // namespace engine
