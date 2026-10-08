@@ -23,6 +23,7 @@ if(ENGINE_CUDA)
   add_library(engine_runtime
     runtime/device_buffer.cpp
     runtime/pinned_buffer.cpp
+    runtime/weights.cpp
   )
   target_include_directories(engine_runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(engine_runtime PUBLIC engine_kernels)

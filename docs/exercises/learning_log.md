@@ -609,3 +609,16 @@
 - **`-Wdangling-else` with gtest macros (always brace)** => 
 - **pointer arithmetic on `std::byte*` (byte offsets into one allocation)** => 
 - **`SCOPED_TRACE` in loops** => 
+
+### Double-buffered upload
+- **double buffering (overlapping host copies with PCIe transfers)** => 
+- **staging through pinned memory instead of copying from the mmap directly** => 
+- **`cudaEvent_t` as a "this buffer is free again" signal** => 
+- **`cudaEventCreateWithFlags(..., cudaEventDisableTiming)`** => 
+- **`cudaEventRecord` / `cudaEventSynchronize`** => 
+- **synchronizing on an event that was never recorded (returns immediately)** => 
+- **`cudaEventSynchronize` vs `cudaStreamSynchronize`** => 
+- **chunking a copy (`std::min` of the chunk and the remaining bytes)** => 
+- **`std::chrono::steady_clock` and `duration<double>`** => 
+- **effective GB/s (bytes / seconds / 1e9)** => 
+- **page faults on first touch of an mmap (disk reads hidden inside `memcpy`)** => 
