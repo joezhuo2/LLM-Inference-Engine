@@ -587,3 +587,44 @@
 - **`-Wdangling-reference` (a reference into a temporary's member)** => 
 - **most vexing parse (`T(f())` read as a declaration; `T{f()}` fixes it)** => 
 - **GCC vs Clang strictness (why macOS CI caught what Ubuntu did not)** => 
+
+## Weight Upload (Branch 6)
+### Streams and ordering
+- **`cudaMemset` is asynchronous with respect to the host** => 
+- **legacy default stream vs `cudaStreamNonBlocking` streams (implicit synchronization)** => 
+- **`cudaDeviceSynchronize`** => 
+
+### Weight layout
+- **one allocation for all weights vs one per tensor** => 
+- **256-byte alignment and rounding up (`(x + a - 1) / a * a`)** => 
+- **fusing QKV and gate/up by stacking rows (why row-major makes it a byte concatenation)** => 
+- **why fusion turns 5 GEMMs per layer into 2** => 
+- **copy list sorted by source offset (sequential reads of an mmap)** => 
+- **rejecting unexpected tensors (fail fast)** => 
+- **`std::set::contains` / `std::sort` with a lambda comparator** => 
+
+### Testing
+- **fake checkpoints (testing the planner without the real file)** => 
+- **invariant tests (aligned, ordered, disjoint, fully covered)** => 
+- **`-Wdangling-else` with gtest macros (always brace)** => 
+- **pointer arithmetic on `std::byte*` (byte offsets into one allocation)** => 
+- **`SCOPED_TRACE` in loops** => 
+
+### Double-buffered upload
+- **double buffering (overlapping host copies with PCIe transfers)** => 
+- **staging through pinned memory instead of copying from the mmap directly** => 
+- **`cudaEvent_t` as a "this buffer is free again" signal** => 
+- **`cudaEventCreateWithFlags(..., cudaEventDisableTiming)`** => 
+- **`cudaEventRecord` / `cudaEventSynchronize`** => 
+- **synchronizing on an event that was never recorded (returns immediately)** => 
+- **`cudaEventSynchronize` vs `cudaStreamSynchronize`** => 
+- **chunking a copy (`std::min` of the chunk and the remaining bytes)** => 
+- **`std::chrono::steady_clock` and `duration<double>`** => 
+- **effective GB/s (bytes / seconds / 1e9)** => 
+- **page faults on first touch of an mmap (disk reads hidden inside `memcpy`)** => 
+
+### Loading end to end
+- **composing small pieces (config, map, parse, plan, upload, bind)** => 
+- **why the mmap can be released once the upload is synchronized** => 
+- **moving a struct that owns a `DeviceBuffer` (views stay valid because the pointer does not change)** => 
+- **CMake list escaping (why `LABELS "todo_joe;gpu"` lost a label through `gtest_discover_tests`)** => 

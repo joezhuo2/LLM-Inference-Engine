@@ -2,12 +2,19 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## loader/weight-upload
+
+- Fix a debug-only race in `DeviceBuffer`: the NaN fill is a `cudaMemset` that runs asynchronously on the legacy default stream, which a non-blocking stream does not wait for, so a copy issued right after allocation could be overwritten by the fill. The constructor now synchronizes after the fill (debug builds only). (Part A)
+- Add `plan_weight_layout(config, header)`, pure C++ that checks every tensor the config implies is present, BF16 and correctly shaped (and that nothing unexpected is in the file), then places all weights in one allocation with 256-byte aligned regions: Q, K and V fused into `wqkv` `[q + 2 kv, hidden]`, gate and up fused into `wgu` `[2 ff, hidden]`, and a copy list sorted by file offset so the file is read front to back. Adds `tests/support/fake_checkpoint.h` (tiny and TinyLlama-sized configs and headers) so the planner is tested without the real file or the parser. (Part A)
+- Add `ModelWeights` / `LayerWeights` (BF16 `Tensor` views named after their role: `ln1`, `wqkv`, `wo`, `ln2`, `wgu`, `wdown`, plus `embed`, `final_norm`, `lm_head`) and `bind_weights(layout, base)`, which points every view into the single weight allocation; this is the struct the forward pass will take. (Part A)
+- Add `upload_weights(file, layout, device, stream, chunk_bytes)`, which walks the copy list in chunks of up to 64 MB through two pinned staging buffers, with one CUDA event per buffer guarding its reuse, so the host's `memcpy` out of the mmap overlaps the PCIe transfer of the previous chunk. Returns bytes copied, seconds and GB/s. GPU tests upload a fake checkpoint with chunk sizes 1, 7, 64 and 1 MiB (so chunk boundaries fall inside tensors at odd offsets) and compare every destination byte with the source. (Part A)
+- Add `load_weights(model_dir, stream)` returning `DeviceWeights` (config, layout, the one `DeviceBuffer`, bound `ModelWeights` and upload stats): it loads `config.json`, maps `model.safetensors`, parses the header, plans the layout, uploads, binds the views and unmaps the file on return. Its real-checkpoint test (shapes, the 2,200,096,768-byte total, and four whole tensors compared byte for byte, two of them inside fused regions) needs the parser, so it lives in the new `todo_gpu_tests` target with the `todo_joe` label. (Part A)
+
 ## build/ci-timeouts
 
 - Give every CI job a `timeout-minutes` limit (15 minutes, 30 for the CUDA compile job) so a hung step fails quickly instead of running for GitHub's 6-hour default; jobs normally finish in one or two minutes. (Part A)
 - Run every `apt-get` in CI with `APT_OPTS` (3 retries, 30-second HTTP and HTTPS timeouts), so a slow or unreachable package mirror is retried and then fails instead of hanging; this is what stalled PRs #9 and #10 for over an hour. (Part A)
 - The clang-format job skips `apt-get` entirely when the runner already has clang-format 18 (the version used locally and shipped by Ubuntu 24.04, since other major versions can format differently), and prints the version it used. (Part A)
-
 
 ## loader/safetensors-stub
 

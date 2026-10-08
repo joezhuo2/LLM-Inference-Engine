@@ -11,6 +11,7 @@ DeviceBuffer::DeviceBuffer(size_t bytes) : size_(bytes) {
     CUDA_CHECK(cudaMalloc(&ptr_, bytes));
 #ifndef NDEBUG
     CUDA_CHECK(cudaMemset(ptr_, 0xFF, bytes));
+    CUDA_CHECK(cudaDeviceSynchronize());
 #endif
 }
 
