@@ -607,3 +607,5 @@
 - **fake checkpoints (testing the planner without the real file)** => 
 - **invariant tests (aligned, ordered, disjoint, fully covered)** => 
 - **`-Wdangling-else` with gtest macros (always brace)** => 
+- **pointer arithmetic on `std::byte*` (byte offsets into one allocation)** => 
+- **`SCOPED_TRACE` in loops** => 

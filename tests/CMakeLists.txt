@@ -6,6 +6,7 @@ add_executable(unit_tests
   unit/test_bf16.cpp
   unit/test_config.cpp
   unit/test_mapped_file.cpp
+  unit/test_model_weights.cpp
   unit/test_tensor.cpp
   unit/test_version.cpp
   unit/test_weight_layout.cpp
