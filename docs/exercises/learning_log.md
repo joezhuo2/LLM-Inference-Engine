@@ -779,3 +779,5 @@
 - **cuBLAS algorithm selection by shape (why a fused QKV GEMM and separate K and V GEMMs round differently)** => 
 - **why a one-row decode GEMM and a T-row prefill GEMM give slightly different results** => 
 - **relative L2 error per layer as a hidden-state tolerance** => 
+### Golden harness
+- **averaging an error over every position vs averaging per-prompt averages (why short prompts weigh less)** => 
