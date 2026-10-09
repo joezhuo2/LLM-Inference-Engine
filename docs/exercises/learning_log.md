@@ -789,3 +789,6 @@
 - **incremental detokenization (decode everything, emit the new suffix)** => 
 - **byte-fallback tokens and why a partial UTF-8 character decodes as U+FFFD** => 
 - **range-for over a member of a temporary (`for (x : f().member())` dangles before C++23)** => 
+### engine generate
+- **time to first token vs decode tokens per second** => 
+- **stdout vs stderr buffering (why output order can interleave, and `fflush`)** => 
