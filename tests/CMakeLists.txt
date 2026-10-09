@@ -6,6 +6,7 @@ set(ENGINE_TEST_DEFINITIONS
 
 add_executable(unit_tests
   unit/test_bf16.cpp
+  unit/test_chat.cpp
   unit/test_checksum.cpp
   unit/test_checksum_golden.cpp
   unit/test_config.cpp
