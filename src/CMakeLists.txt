@@ -23,6 +23,7 @@ if(ENGINE_CUDA)
     kernels/embedding.cu
     kernels/gemm.cpp
     kernels/rmsnorm.cu
+    kernels/rope.cu
     kernels/smoke.cu
   )
   target_link_libraries(engine_kernels PUBLIC engine_core CUDA::cudart CUDA::cublas)

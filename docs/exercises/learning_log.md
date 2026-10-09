@@ -738,3 +738,9 @@
 ### Residual add
 - **64-bit element index (`int64_t(blockIdx.x) * blockDim.x`) and when 32 bits overflow** => 
 - **BF16 + BF16 in PyTorch (computed in FP32, rounded once)** => 
+### RoPE kernel
+- **in-place update of a fused QKV row (Q heads and K heads are one contiguous range)** => 
+- **passing a small array to a kernel by value (a struct parameter instead of a device buffer)** => 
+- **why `powf` on the GPU and on the CPU can differ in the last bit** => 
+- **catastrophic cancellation (a 1-ulp input change becoming many ulps of a small difference)** => 
+- **why angle errors grow with position (`pos * inv_freq`)** => 
