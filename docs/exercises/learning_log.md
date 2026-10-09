@@ -652,3 +652,10 @@
 - **JSON round-trip of doubles (17 significant digits)** => 
 - **verifying an upload by reading it back (round-trip testing)** => 
 - **why identical values summed in the same order give bit-identical results** => 
+
+### CLI
+- **CLI11 options, flags, `->required()` and `->check(CLI::ExistingDirectory)`** => 
+- **sharing parsed options with a callback (`std::make_shared<Options>` captured by the lambda)** => 
+- **catching exceptions at the top of `main` (`app.parse` vs `CLI11_PARSE`)** => 
+- **`$<BOOL:...>` generator expression and `#if ENGINE_HAS_CUDA`** => 
+- **the legacy default stream (`nullptr` as a `cudaStream_t`)** => 
