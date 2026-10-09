@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## loader/safetensors-parser
+
+- Implement `parse_safetensors_header`: reads the 8-byte little-endian header length (capped at 100,000,000 bytes and bounded by the file size), parses the JSON header with nlohmann, validates `__metadata__` as null or a string-to-string map, and for every tensor checks `dtype` (BF16, F16, F32, I32, I64), integer non-negative `shape`, and integer `data_offsets` with begin <= end. It then checks that each declared byte range equals the shape's byte size (with 64-bit overflow checks) and that the sorted ranges tile the data section exactly, with no gaps, overlaps or uncovered bytes. Whitespace was reformatted with clang-format. (Part C)
+
 ## loader/weight-upload
 
 - Fix a debug-only race in `DeviceBuffer`: the NaN fill is a `cudaMemset` that runs asynchronously on the legacy default stream, which a non-blocking stream does not wait for, so a copy issued right after allocation could be overwritten by the fill. The constructor now synchronizes after the fill (debug builds only). (Part A)
