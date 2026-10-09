@@ -15,6 +15,14 @@ TEST(DType, Sizes) {
     EXPECT_EQ(engine::dtype_size(DType::I64), 8u);
 }
 
+TEST(DType, NamesMatchSafetensors) {
+    EXPECT_EQ(engine::dtype_name(DType::BF16), "BF16");
+    EXPECT_EQ(engine::dtype_name(DType::F16), "F16");
+    EXPECT_EQ(engine::dtype_name(DType::F32), "F32");
+    EXPECT_EQ(engine::dtype_name(DType::I32), "I32");
+    EXPECT_EQ(engine::dtype_name(DType::I64), "I64");
+}
+
 TEST(Tensor, NumelAndBytes) {
     Tensor t(nullptr, DType::BF16, {2560, 2048});
     EXPECT_EQ(t.ndim, 2);
