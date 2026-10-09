@@ -687,3 +687,4 @@
 ### Git
 - **`git rm --cached` (untracking a file without deleting it locally)** => 
 - **why pulling a commit that untracks a file deletes it from other checkouts** => 
+- **why compiled binaries stay out of git (build outputs vs sources)** => 

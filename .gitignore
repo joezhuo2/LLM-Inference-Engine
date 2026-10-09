@@ -20,3 +20,4 @@ model_dir/
 *.pt
 .cache/
 docs/claude/
+src/practice/bandwith_test
