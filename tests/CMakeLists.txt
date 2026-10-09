@@ -28,6 +28,7 @@ gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_add.cpp
+    gpu/test_attention.cpp
     gpu/test_bf16_cuda.cpp
     gpu/test_checksum_device.cpp
     gpu/test_checksum_golden.cpp

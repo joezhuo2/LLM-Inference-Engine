@@ -748,3 +748,8 @@
 - **fused gate and up output (`[T, 2 * ff]`, gate in the first half of each row)** => 
 - **`expf` vs the fast `__expf` intrinsic (and why the oracle uses the accurate one)** => 
 - **mapping a flat index to row and column (`t = idx / ff`, `j = idx % ff`)** => 
+
+## Naive Attention (Branch 12)
+### Contiguous KV cache
+- **`cudaMemcpy2DAsync` (copying a strided column block: pitch vs width vs height)** => 
+- **contiguous KV cache layout (`[max_seq, kv_heads * head_dim]` per layer, row = position)** => 
