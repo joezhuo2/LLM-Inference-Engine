@@ -18,6 +18,7 @@ using engine::DeviceBuffer;
 using engine::DType;
 using engine::Tensor;
 using engine::naive::rmsnorm;
+using engine::test::close_up_to_reduction_order;
 using engine::test::compare_bf16;
 using engine::test::CudaStream;
 using engine::test::download;
@@ -71,7 +72,7 @@ TEST_P(RmsnormShapeTest, MatchesCpuReference) {
     const auto w = engine::test::random_bf16(size_t(hidden), 4, -2.0f, 2.0f);
     const auto diff =
         compare_bf16(gpu_rmsnorm(x, w, hidden, kEps), cpu_rmsnorm(x, w, hidden, kEps));
-    EXPECT_EQ(diff.mismatches, 0u) << diff;
+    EXPECT_TRUE(close_up_to_reduction_order(diff, x.size())) << diff;
 }
 
 INSTANTIATE_TEST_SUITE_P(Shapes, RmsnormShapeTest,
@@ -92,7 +93,7 @@ TEST(Rmsnorm, WorksInPlace) {
     rmsnorm(t, t, Tensor(dw.data(), DType::BF16, {hidden}), kEps, stream);
     CUDA_CHECK(cudaStreamSynchronize(stream));
     const auto diff = compare_bf16(download<uint16_t>(dx), cpu_rmsnorm(x, w, hidden, kEps));
-    EXPECT_EQ(diff.mismatches, 0u) << diff;
+    EXPECT_TRUE(close_up_to_reduction_order(diff, x.size())) << diff;
 }
 
 TEST(Rmsnorm, ZeroTokensIsANoOp) {
@@ -134,7 +135,7 @@ TEST(Rmsnorm, MatchesHuggingFaceLn1OnEveryTracedLayer) {
         const auto w = weights.read<uint16_t>("model." + l + "input_layernorm.weight");
         const auto diff = compare_bf16(gpu_rmsnorm(x, w, config.hidden, float(config.rms_eps)),
                                        ref.read<uint16_t>(l + "ln1"));
-        EXPECT_EQ(diff.mismatches, 0u) << diff;
+        EXPECT_TRUE(close_up_to_reduction_order(diff, x.size())) << diff;
     }
 }
 
@@ -147,9 +148,9 @@ TEST(Rmsnorm, MatchesHuggingFaceFinalNormOnEveryPrompt) {
     for (const auto& prompt : engine::test::load_reference_manifest()) {
         SCOPED_TRACE(prompt.name);
         const engine::test::SafetensorsFile ref(prompt.file);
-        const auto diff = compare_bf16(
-            gpu_rmsnorm(ref.read<uint16_t>(last), w, config.hidden, float(config.rms_eps)),
-            ref.read<uint16_t>("final_norm"));
-        EXPECT_EQ(diff.mismatches, 0u) << diff;
+        const auto x = ref.read<uint16_t>(last);
+        const auto diff = compare_bf16(gpu_rmsnorm(x, w, config.hidden, float(config.rms_eps)),
+                                       ref.read<uint16_t>("final_norm"));
+        EXPECT_TRUE(close_up_to_reduction_order(diff, x.size())) << diff;
     }
 }

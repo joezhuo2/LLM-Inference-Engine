@@ -732,3 +732,6 @@
 - **`rsqrtf` (CUDA's reciprocal square root)** => 
 - **matching HF's intermediate rounding (normalize in FP32, round to BF16, then multiply by the weight)** => 
 - **aliasing `out` and `x` safely (each thread reads element i before writing element i)** => 
+- **why FP32 summation order changes the result (non-associative floating-point addition)** => 
+- **a tolerance derived from the algorithm (one flipped rounding, then a multiply, is at most 2 ulps)** => 
+- **mutation testing (breaking the kernel on purpose to check the tolerance still fails)** => 

@@ -46,3 +46,11 @@ TEST(Bf16, CompareReportsCountWorstAndFirst) {
     EXPECT_EQ(d.max_ulps, 3);
     EXPECT_EQ(d.first, 1u);
 }
+
+TEST(Bf16, ReductionOrderToleranceAllowsRareTwoUlpFlips) {
+    using engine::test::close_up_to_reduction_order;
+    EXPECT_TRUE(close_up_to_reduction_order({0, 0, 0}, 10));
+    EXPECT_TRUE(close_up_to_reduction_order({2, 2, 5}, 2000));
+    EXPECT_FALSE(close_up_to_reduction_order({3, 2, 5}, 2000));
+    EXPECT_FALSE(close_up_to_reduction_order({1, 3, 5}, 2000));
+}
