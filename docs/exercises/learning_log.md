@@ -708,3 +708,5 @@
 - **chat templates (Jinja in `tokenizer_config.json`) and the Zephyr format** => 
 - **generation prompt (`add_generation_prompt`)** => 
 - **why `apply_chat_template` adds no BOS here** => 
+### Golden tests for the tokenizer
+- **fuzzing against a reference implementation (seeded random inputs)** => 
