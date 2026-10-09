@@ -704,3 +704,7 @@
 - **HF `legacy: false` (no prefix after a special token)** => 
 - **pimpl-style forward declaration with `std::unique_ptr` (keeping a dependency's header private)** => 
 - **why the destructor must be defined in the .cpp when a member is `unique_ptr` to an incomplete type** => 
+### Chat template
+- **chat templates (Jinja in `tokenizer_config.json`) and the Zephyr format** => 
+- **generation prompt (`add_generation_prompt`)** => 
+- **why `apply_chat_template` adds no BOS here** => 

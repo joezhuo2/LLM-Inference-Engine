@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "engine/tokenizer/chat.h"
 #include "engine/tokenizer/tokenizer.h"
 #include "support/paths.h"
 
@@ -68,6 +69,13 @@ TEST_F(TokenizerTest, DecodesLikeHuggingFace) {
 TEST_F(TokenizerTest, DecodeRejectsOutOfRangeIds) {
     EXPECT_THROW(tok->decode(Ids{32000}), std::out_of_range);
     EXPECT_THROW(tok->decode(Ids{-1}), std::out_of_range);
+}
+
+TEST_F(TokenizerTest, ChatPromptMatchesApplyChatTemplate) {
+    const std::vector<engine::ChatMessage> m{{"user", "Hi"}};
+    EXPECT_EQ(tok->encode(engine::chat_prompt(m, true), false),
+              (Ids{529, 29989, 1792, 29989, 29958, 13, 18567, 2, 13, 29966, 29989, 465, 22137,
+                   29989, 29958, 13}));
 }
 
 TEST(Tokenizer, MissingModelThrows) {
