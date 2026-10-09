@@ -640,3 +640,13 @@
 - **validating in one pass instead of re-walking the input** => 
 - **`git mv` (keeping file history across a move)** => 
 - **CTest labels and `ctest -LE` (excluding tests by label)** => 
+
+## Checksums (Branch 7)
+### Checksum math
+- **why a checksum sums in FP64 (and also sums absolute values)** => 
+- **comparing sums relative to the abs-sum, not to the sum (cancellation near zero)** => 
+- **decoding little-endian byte pairs instead of casting to `uint16_t*` (alignment)** => 
+- **BF16 to float by shifting 16 bits left** => 
+- **`std::span::subspan`** => 
+- **`nlohmann/json_fwd.hpp` (forward declarations to keep headers light)** => 
+- **JSON round-trip of doubles (17 significant digits)** => 
