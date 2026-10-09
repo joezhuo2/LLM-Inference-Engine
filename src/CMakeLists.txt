@@ -20,6 +20,7 @@ target_link_libraries(engine PRIVATE engine_core CLI11::CLI11)
 if(ENGINE_CUDA)
   add_library(engine_kernels
     kernels/add.cu
+    kernels/attention.cu
     kernels/embedding.cu
     kernels/gemm.cpp
     kernels/rmsnorm.cu
