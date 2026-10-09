@@ -785,3 +785,7 @@
 - **free-running vs teacher-forced evaluation (why one early flip changes every later token)** => 
 - **comparing at the first divergence only (after it the two sequences condition on different tokens)** => 
 - **a near-tie measured in BF16 ulps of the reference's own logits** => 
+### Streaming text
+- **incremental detokenization (decode everything, emit the new suffix)** => 
+- **byte-fallback tokens and why a partial UTF-8 character decodes as U+FFFD** => 
+- **range-for over a member of a temporary (`for (x : f().member())` dangles before C++23)** => 
