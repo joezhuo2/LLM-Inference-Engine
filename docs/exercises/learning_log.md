@@ -676,3 +676,6 @@
 ### Ownership
 - **authorship vs review (writing code yourself vs reviewing code someone else wrote)** => 
 - **git author identity (why `git log` cannot show who wrote a commit here)** => 
+### README
+- **reproducing results from a clean clone** => 
+- **dangling symlink (a tracked link to an absolute path on one machine)** => 
