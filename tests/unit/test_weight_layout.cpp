@@ -59,6 +59,7 @@ TEST(WeightLayout, CopiesEveryTensorExactlyOnce) {
         EXPECT_TRUE(names.insert(c.name).second) << c.name;
         EXPECT_EQ(c.src, h.tensors.at(c.name).offset) << c.name;
         EXPECT_EQ(c.bytes, h.tensors.at(c.name).bytes) << c.name;
+        EXPECT_EQ(c.shape, h.tensors.at(c.name).shape) << c.name;
     }
 }
 
