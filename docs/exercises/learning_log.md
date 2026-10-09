@@ -753,3 +753,10 @@
 ### Contiguous KV cache
 - **`cudaMemcpy2DAsync` (copying a strided column block: pitch vs width vs height)** => 
 - **contiguous KV cache layout (`[max_seq, kv_heads * head_dim]` per layer, row = position)** => 
+### Naive attention kernel
+- **one block per (token, head) with a 2D grid (`blockIdx.x`, `blockIdx.y`)** => 
+- **sizing dynamic shared memory at launch (the third `<<<>>>` parameter and the 48 KB default limit)** => 
+- **the order of roundings in HF's eager attention (scores to BF16, scale, FP32 softmax back to BF16, then P @ V)** => 
+- **subtracting the max before `exp` (numerically stable softmax)** => 
+- **`fmaf` and FMA contraction (why the GPU's `a * b + c` and the CPU's can round differently)** => 
+- **one attention call for prefill and decode (query `t` at position `start + t` sees cache rows `0..start + t`)** => 
