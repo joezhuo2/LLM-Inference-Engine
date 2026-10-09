@@ -41,6 +41,7 @@ if(ENGINE_CUDA)
     gpu/test_rope.cpp
     gpu/test_smoke.cpp
     gpu/test_stream.cpp
+    gpu/test_swiglu.cpp
     gpu/test_weight_upload.cpp
   )
   target_include_directories(gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})

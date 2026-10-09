@@ -744,3 +744,7 @@
 - **why `powf` on the GPU and on the CPU can differ in the last bit** => 
 - **catastrophic cancellation (a 1-ulp input change becoming many ulps of a small difference)** => 
 - **why angle errors grow with position (`pos * inv_freq`)** => 
+### SwiGLU kernel
+- **fused gate and up output (`[T, 2 * ff]`, gate in the first half of each row)** => 
+- **`expf` vs the fast `__expf` intrinsic (and why the oracle uses the accurate one)** => 
+- **mapping a flat index to row and column (`t = idx / ff`, `j = idx % ff`)** => 
