@@ -696,3 +696,11 @@
 - **`URL_HASH SHA256=...` (pinning a download)** => 
 - **`EXCLUDE_FROM_ALL` (only build what you link)** => 
 - **directory-scoped `add_compile_options` and why third-party code should not get your warning flags** => 
+### Tokenization
+- **SentencePiece BPE (pieces, merges, scores)** => 
+- **the `▁` word-boundary marker and the dummy prefix** => 
+- **byte fallback (`<0x0A>` and other byte pieces)** => 
+- **special tokens (`<s>` BOS, `</s>` EOS, `<unk>`) and why their text maps to one id** => 
+- **HF `legacy: false` (no prefix after a special token)** => 
+- **pimpl-style forward declaration with `std::unique_ptr` (keeping a dependency's header private)** => 
+- **why the destructor must be defined in the .cpp when a member is `unique_ptr` to an incomplete type** => 

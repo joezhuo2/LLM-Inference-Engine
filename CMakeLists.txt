@@ -55,6 +55,7 @@ else()
     EXCLUDE_FROM_ALL)
   FetchContent_MakeAvailable(sentencepiece)
   target_include_directories(sentencepiece-static INTERFACE ${sentencepiece_SOURCE_DIR}/src)
+  target_compile_options(sentencepiece-static PRIVATE -w)
   add_library(engine_sentencepiece ALIAS sentencepiece-static)
 endif()
 
