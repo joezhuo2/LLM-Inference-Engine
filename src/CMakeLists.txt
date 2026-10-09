@@ -22,6 +22,7 @@ if(ENGINE_CUDA)
   target_link_libraries(engine_kernels PUBLIC engine_core CUDA::cudart CUDA::cublas)
 
   add_library(engine_runtime
+    runtime/checksum.cpp
     runtime/device_buffer.cpp
     runtime/pinned_buffer.cpp
     runtime/weights.cpp

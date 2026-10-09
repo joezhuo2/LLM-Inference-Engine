@@ -8,6 +8,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add `dtype_name(DType)`, returning the safetensors spelling (`"BF16"` and so on), for the checksum output and its JSON. (Part A)
 - Add `checksum_bf16` (FP64 sum and sum of absolute values over a BF16 byte range, decoding little-endian byte pairs so any alignment works), `checksum_file` (every tensor of a parsed safetensors file, in name order) and `checksums_to_json` / `checksums_from_json` (the `{"tensors": {name: {dtype, shape, sum, abs_sum}}}` golden format shared with the Python script; doubles round-trip exactly). Pure C++, so it runs in CI and on machines without a GPU. (Part A)
 - Each `CopyOp` in the weight layout now records the shape of the tensor it copies, so per-tensor results (like checksums) can be reported for tensors that live inside the fused `wqkv` and `wgu` regions. (Part A)
+- Add `checksum_device(layout, device)`, which copies each original tensor's slice of the device weight buffer back to the host (in name order, reusing one host buffer sized to the largest tensor) and checksums it, so a match with Python proves the parser, layout, fusion offsets and upload together. Its GPU test uploads a fake checkpoint of valid BF16 values and requires the device checksums to equal the file checksums exactly. (Part A)
 
 ## loader/safetensors-parser
 
