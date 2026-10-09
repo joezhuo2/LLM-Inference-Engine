@@ -26,11 +26,6 @@ if(NOT ENGINE_FORCE_CPU)
 endif()
 message(STATUS "ENGINE_CUDA = ${ENGINE_CUDA}")
 
-add_compile_options(
-  "$<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>"
-  "$<$<COMPILE_LANGUAGE:CUDA>:-lineinfo;--expt-relaxed-constexpr;-Xcompiler=-Wall>"
-)
-
 include(FetchContent)
 set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
 FetchContent_Declare(googletest
@@ -44,6 +39,29 @@ FetchContent_Declare(cli11
   FIND_PACKAGE_ARGS NAMES CLI11)
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest nlohmann_json cli11)
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(sentencepiece QUIET IMPORTED_TARGET GLOBAL sentencepiece)
+endif()
+if(sentencepiece_FOUND)
+  add_library(engine_sentencepiece ALIAS PkgConfig::sentencepiece)
+else()
+  set(SPM_ENABLE_SHARED OFF CACHE BOOL "" FORCE)
+  set(SPM_ENABLE_TCMALLOC OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(sentencepiece
+    URL https://github.com/google/sentencepiece/archive/refs/tags/v0.2.1.tar.gz
+    URL_HASH SHA256=c1a59e9259c9653ad0ade653dadff074cd31f0a6ff2a11316f67bee4189a8f1b
+    EXCLUDE_FROM_ALL)
+  FetchContent_MakeAvailable(sentencepiece)
+  target_include_directories(sentencepiece-static INTERFACE ${sentencepiece_SOURCE_DIR}/src)
+  add_library(engine_sentencepiece ALIAS sentencepiece-static)
+endif()
+
+add_compile_options(
+  "$<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>"
+  "$<$<COMPILE_LANGUAGE:CUDA>:-lineinfo;--expt-relaxed-constexpr;-Xcompiler=-Wall>"
+)
 
 enable_testing()
 add_subdirectory(src)

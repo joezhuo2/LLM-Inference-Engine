@@ -688,3 +688,11 @@
 - **`git rm --cached` (untracking a file without deleting it locally)** => 
 - **why pulling a commit that untracks a file deletes it from other checkouts** => 
 - **why compiled binaries stay out of git (build outputs vs sources)** => 
+
+## Tokenizer (Branch 10)
+### Dependencies
+- **pkg-config and `.pc` files (how C/C++ libraries advertise include and link flags)** => 
+- **`pkg_check_modules(... IMPORTED_TARGET)`** => 
+- **`URL_HASH SHA256=...` (pinning a download)** => 
+- **`EXCLUDE_FROM_ALL` (only build what you link)** => 
+- **directory-scoped `add_compile_options` and why third-party code should not get your warning flags** => 
