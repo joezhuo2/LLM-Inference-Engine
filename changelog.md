@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## model/forward
+
+- Add `engine::greedy(ids, logits, stream)` (`include/engine/sampling/greedy.h`, `src/sampling/greedy.cu`, built into `engine_kernels`), greedy decoding on the GPU: for each row of BF16 `[T, vocab]` logits it writes the index of the largest value to I32 `ids` `[T]`. Ties go to the lowest index, as `torch.argmax` returns the first maximum, which HF's greedy `generate()` uses. One 1024-thread block per row: each thread scans a strided slice keeping its best (value, index), then a shared-memory tree reduction keeps the larger value or, on equal values, the smaller index. A row of `-inf` returns 0. Tests: it matches a CPU first-maximum argmax at vocab sizes 1 to 32,000 and on the stored HF logits of all 20 reference prompts, ties at indices in the same thread, different threads and the last thread all resolve to the lowest index, and it rejects bad dtypes and shapes. Breaking the tie rule fails the tests. (Part B)
+
 ## kernel/naive-attention
 
 - Add `engine::naive::store_kv(k_cache, v_cache, qkv, start, stream)` (`include/engine/kernels/attention.h`), the write side of the contiguous KV cache that the naive attention reads: it copies the K and V slices of each fused `[T, (heads + 2 * kv_heads) * head_dim]` row (the weight planner's Q, K, V order, after RoPE) into rows `start` to `start + T - 1` of two BF16 caches `[S, kv_heads * head_dim]`, with one strided `cudaMemcpy2DAsync` per cache. The slice widths come from the shapes alone (K starts at `width - 2 * kv_width`), so no head counts are needed. It throws when the rows do not fit in the cache, `start` is negative, the caches disagree in shape or the qkv row is not wider than K plus V, and does nothing for `T = 0`. This is batch-1 and contiguous only; M3 replaces it with the paged `write_kv` (Part C). Tests check that only the target rows change and hold exactly K and V. (Part B)

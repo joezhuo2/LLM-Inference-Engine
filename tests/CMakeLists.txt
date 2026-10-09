@@ -36,6 +36,7 @@ if(ENGINE_CUDA)
     gpu/test_device_buffer.cpp
     gpu/test_embedding.cpp
     gpu/test_gemm.cpp
+    gpu/test_greedy.cpp
     gpu/test_load_weights.cpp
     gpu/test_pinned_buffer.cpp
     gpu/test_rmsnorm.cpp
