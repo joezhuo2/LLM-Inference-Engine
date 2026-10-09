@@ -764,3 +764,6 @@
 - **why a different dot-product order flips BF16 scores, and why `exp` amplifies a flip in a large score** => 
 - **ulps vs absolute error near zero (why a huge ulp count can be a tiny difference)** => 
 - **scaling a tolerance by the inputs (`|error| <= c * max |v|` for a weighted average of V)** => 
+### CI container images
+- **container registries (Docker Hub vs NVIDIA's nvcr.io) and the image reference `registry/namespace/repo:tag`** => 
+- **anonymous pull rate limits on shared CI runners (why a job can fail before building anything)** => 

@@ -32,7 +32,7 @@ jobs:
   cuda-compile:
     name: CUDA compile check (no GPU)
     runs-on: ubuntu-24.04
-    container: nvidia/cuda:13.3.1-devel-ubuntu24.04
+    container: nvcr.io/nvidia/cuda:13.3.1-devel-ubuntu24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
