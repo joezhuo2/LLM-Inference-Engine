@@ -8,8 +8,13 @@
 #include <vector>
 
 #include "engine/kernels/attention.h"
+#include "engine/kernels/rope.h"
+#include "engine/model/config.h"
 #include "support/bf16.h"
 #include "support/device.h"
+#include "support/paths.h"
+#include "support/reference.h"
+#include "support/safetensors_file.h"
 
 using engine::DeviceBuffer;
 using engine::DType;
@@ -92,6 +97,28 @@ size_t outside_softmax_rounding(const std::vector<uint16_t>& actual, const Expec
     size_t n = 0;
     for (size_t i = 0; i < actual.size(); ++i)
         if (std::abs(from_bf16(actual[i]) - from_bf16(e.out[i])) > e.slack[i]) ++n;
+    return n;
+}
+
+size_t outside_value_scale(const std::vector<uint16_t>& actual,
+                           const std::vector<uint16_t>& expected, const std::vector<uint16_t>& v,
+                           const Layout& l) {
+    const int64_t tokens = int64_t(actual.size()) / l.q_width();
+    const int group = l.heads / l.kv_heads;
+    std::vector<float> v_max(size_t(l.kv_width()), 0.0f);
+    size_t n = 0;
+    for (int64_t t = 0; t < tokens; ++t) {
+        for (int64_t c = 0; c < l.kv_width(); ++c)
+            v_max[size_t(c)] =
+                std::max(v_max[size_t(c)], std::abs(from_bf16(v[size_t(t * l.kv_width() + c)])));
+        for (int64_t c = 0; c < l.q_width(); ++c) {
+            const size_t i = size_t(t * l.q_width() + c);
+            const int64_t kv_c = (c / l.head_dim) / group * l.head_dim + c % l.head_dim;
+            if (std::abs(from_bf16(actual[i]) - from_bf16(expected[i])) >
+                kBf16Epsilon * v_max[size_t(kv_c)])
+                ++n;
+        }
+    }
     return n;
 }
 
@@ -293,4 +320,45 @@ TEST(Attention, RejectsBadShapesAndRanges) {
     EXPECT_THROW(attention(out, qkv, Tensor(p, DType::BF16, {20000, 16}),
                            Tensor(p, DType::BF16, {20000, 16}), 12280, 4, 2, stream),
                  std::invalid_argument);
+}
+
+TEST(Attention, MatchesHuggingFaceAttnOnEveryTracedLayer) {
+    if (const auto why = engine::test::reference_skip_reason(); !why.empty()) GTEST_SKIP() << why;
+    const auto config = engine::load_config(engine::test::model_dir() / "config.json");
+    const engine::test::SafetensorsFile ref(engine::test::traced_reference_prompt().file);
+    const Layout l{config.heads, config.kv_heads, config.head_dim};
+    const int64_t tokens = ref.entry("input_ids").shape[0];
+    std::vector<int32_t> positions(static_cast<size_t>(tokens));
+    for (int64_t t = 0; t < tokens; ++t) positions[size_t(t)] = int32_t(t);
+    CudaStream stream;
+    DeviceBuffer dpos = upload(positions);
+    for (int layer = 0; layer < config.layers; ++layer) {
+        SCOPED_TRACE("layer " + std::to_string(layer));
+        const std::string name = "layers." + std::to_string(layer) + ".";
+        const auto q = ref.read<uint16_t>(name + "q");
+        const auto k = ref.read<uint16_t>(name + "k");
+        const auto v = ref.read<uint16_t>(name + "v");
+        std::vector<uint16_t> qkv;
+        qkv.reserve(size_t(tokens * l.width()));
+        for (int64_t t = 0; t < tokens; ++t) {
+            qkv.insert(qkv.end(), q.begin() + t * l.q_width(), q.begin() + (t + 1) * l.q_width());
+            qkv.insert(qkv.end(), k.begin() + t * l.kv_width(), k.begin() + (t + 1) * l.kv_width());
+            qkv.insert(qkv.end(), v.begin() + t * l.kv_width(), v.begin() + (t + 1) * l.kv_width());
+        }
+        DeviceBuffer dqkv = upload(qkv);
+        DeviceBuffer out(size_t(tokens * l.q_width()) * sizeof(uint16_t));
+        const Tensor x(dqkv.data(), DType::BF16, {tokens, l.width()});
+        Cache cache(tokens, l);
+        engine::naive::rope(x, Tensor(dpos.data(), DType::I32, {tokens}), l.heads, l.kv_heads,
+                            float(config.rope_theta), stream);
+        store_kv(cache.k(), cache.v(), x, 0, stream);
+        attention(Tensor(out.data(), DType::BF16, {tokens, l.q_width()}), x, cache.k(), cache.v(),
+                  0, l.heads, l.kv_heads, stream);
+        CUDA_CHECK(cudaStreamSynchronize(stream));
+        const auto actual = download<uint16_t>(out);
+        const auto expected = ref.read<uint16_t>(name + "attn");
+        const auto diff = compare_bf16(actual, expected);
+        EXPECT_LE(diff.mismatches * 1000, actual.size()) << diff;
+        EXPECT_EQ(outside_value_scale(actual, expected, v, l), 0u) << diff;
+    }
 }
