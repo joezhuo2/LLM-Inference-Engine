@@ -66,10 +66,14 @@ Developed on an RTX 5060 Laptop GPU (Blackwell, compute capability 12.0, 8 GB GD
 
 ## Building
 
-Requires CUDA 12.8 or newer (for `sm_120`), CMake 3.28 or newer, Ninja and a C++20 compiler; GoogleTest, nlohmann/json and CLI11 are found on the system or fetched. Download the model, then point the repo's `models` symlink at the directory that holds it (or set `ENGINE_MODEL_DIR` to the model directory):
+Requires CUDA 12.8 or newer (for `sm_120`), CMake 3.28 or newer, Ninja and a C++20 compiler; GoogleTest, nlohmann/json and CLI11 are found on the system or fetched. Download the model and link the directory that holds it into the repo as `models` (gitignored), or set `ENGINE_MODEL_DIR` to the model directory instead:
 
 ```bash
 hf download TinyLlama/TinyLlama-1.1B-Chat-v1.0 --local-dir ~/models/tinyllama
+```
+
+```bash
+ln -s ~/models models
 ```
 
 ```bash
