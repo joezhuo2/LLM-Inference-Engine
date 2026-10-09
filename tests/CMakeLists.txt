@@ -21,6 +21,7 @@ gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_bf16_cuda.cpp
+    gpu/test_checksum_device.cpp
     gpu/test_cuda_check.cpp
     gpu/test_device_buffer.cpp
     gpu/test_gemm.cpp

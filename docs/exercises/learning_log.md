@@ -650,3 +650,5 @@
 - **`std::span::subspan`** => 
 - **`nlohmann/json_fwd.hpp` (forward declarations to keep headers light)** => 
 - **JSON round-trip of doubles (17 significant digits)** => 
+- **verifying an upload by reading it back (round-trip testing)** => 
+- **why identical values summed in the same order give bit-identical results** => 
