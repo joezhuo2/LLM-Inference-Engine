@@ -35,6 +35,7 @@ if(ENGINE_CUDA)
   add_library(engine_runtime
     runtime/checksum.cpp
     runtime/device_buffer.cpp
+    runtime/generate.cpp
     runtime/model_runner.cpp
     runtime/pinned_buffer.cpp
     runtime/weights.cpp
