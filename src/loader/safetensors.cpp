@@ -1,30 +1,274 @@
 #include "engine/loader/safetensors.h"
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace engine {
+namespace {
+constexpr uint64_t MAX_HEADER_SIZE = 100'000'000;
 
-/*
-TODO(JOE): parse_safetensors_header
-
-Purpose. This function reads the header of a .safetensors file that is already mapped into memory and returns, for every tensor in the file, its dtype, its shape and the exact byte range its data occupies. It exists so that exactly one place in the engine interprets the file format: the weight loader uses the result to validate the checkpoint against ModelConfig, plan the device layout and copy each tensor to the GPU, and nothing downstream looks at the length prefix or the JSON again. Because the file comes from disk, every byte of it is untrusted input.
-
-Interface. The argument is the entire file as a read-only byte span, as returned by MappedFile::bytes(); the span outlives the call, and the result refers to the file only through offsets. The function returns a SafetensorsHeader. Its data_offset is the absolute file offset of the first byte after the JSON header, which is 8 plus the header length. Its tensors map holds one TensorEntry per tensor name, where dtype is the DType for the entry's dtype string, shape is the dimension list in file order (an empty list means a scalar with one element), offset is the absolute file offset of the tensor's first byte (data_offset plus the entry's begin offset), and bytes is the length of the tensor's data. On malformed input the function throws std::runtime_error with a message that says what is wrong and, when it concerns one tensor, names that tensor; no other exception type may escape. It never reads outside the span, never crashes on any input and never returns a partially valid result.
-
-File format. The first 8 bytes are an unsigned 64-bit little-endian integer N, the length of the JSON header in bytes. The next N bytes are a UTF-8 JSON object, which may have whitespace before or after it inside those N bytes. Every key other than "__metadata__" is a tensor name whose value is an object with the fields "dtype" (a string), "shape" (an array of non-negative integers) and "data_offsets" (an array of exactly two non-negative integers [begin, end], relative to data_offset, with end exclusive); any other fields in that object are ignored. Integers must be written as JSON integers, so a number with a fraction or exponent, even 1.0, is an error. The optional "__metadata__" key is either null or an object whose values are all strings; it is not a tensor and does not appear in the result. Everything from data_offset to the end of the file is the data section.
-
-Dtypes. The dtype strings "BF16", "F16", "F32", "I32" and "I64" map to the DType enumerators of the same names, and the comparison is case-sensitive, so "bf16" is an error. Every other dtype string is an error that names the tensor and the dtype, including strings the Python library accepts but the engine does not support, such as "F64", "I8", "U8", "BOOL" and "F8_E4M3".
-
-Matching the reference. For every file the Python safetensors library (version pinned in scripts/requirements.txt) accepts and whose dtypes are all supported, the result must list the same tensor names, dtypes, shapes and byte ranges that library reports. Every file that library rejects must be rejected here too. That library requires the byte ranges of all tensors, ordered by begin, to tile the data section exactly: the first range begins at 0, each range begins where the previous one ends, the last ends at the end of the file, and no two overlap. It also requires each tensor's end minus begin to equal the product of its dimensions times the dtype size. The order of keys in the JSON does not matter, and when a key appears more than once the last occurrence is the one that counts.
-
-Edge cases and boundaries. A file shorter than 8 bytes is an error. N larger than 100,000,000 is an error regardless of the file size, which is also the reference's limit. N larger than the number of bytes remaining after the 8-byte prefix is an error, and this check must give the right answer for every N up to 2^64 - 1. N equal to the remaining bytes is valid and means the data section is empty, in which case the object must contain no tensors with non-zero size. A header that is not valid UTF-8, is not valid JSON, or whose top level is not an object is an error. A tensor value that is not an object is an error, and so is a tensor entry that is missing a field, has a field of the wrong JSON type, has a negative or non-integer dimension or offset, has data_offsets with other than two elements, or has begin greater than end. A "__metadata__" that is neither null nor an object, or an object with a non-string value, is an error. Zero-sized tensors (any dimension 0, so begin equals end) are valid and take part in the tiling rule. The product of the dimensions times the dtype size must be computed so that a shape whose true byte size does not fit in 64 bits is rejected instead of wrapping around to a value that happens to match the range. Gaps between ranges, overlapping ranges, a range ending past the end of the file and bytes after the last range are all errors. Tensor names are compared as plain strings, so "model.layers.10.mlp.up_proj.weight" sorts before "model.layers.2.mlp.up_proj.weight" in the map.
-
-What to compare against. For the real checkpoint, compare names, dtypes, shapes and absolute offsets with what the Python safetensors library reports for models/tinyllama/model.safetensors (201 tensors, all BF16). For malformed input, compare with the rules above, each of which was checked against that library's behavior.
-
-Tests that prove it. tests/todo/unit/test_safetensors.cpp builds files byte by byte and has one test per rule above, plus RealTinyLlamaHeader for the actual checkpoint (skipped when the model is absent). These run in the todo_unit_tests target with the todo_joe label, so ctest --preset debug -L todo_joe shows them failing until this function is implemented. When they all pass, move the file to tests/unit/, add it to unit_tests and delete todo_unit_tests if it is empty. The checksum golden test in branch 7 then checks the parser and loader together against Python on all 201 tensors.
-*/
-SafetensorsHeader parse_safetensors_header(std::span<const std::byte>) {
-    throw std::logic_error("unimplemented: parse_safetensors_header");
+[[noreturn]] void throw_error(const std::string& message) {
+    throw std::runtime_error("safetensors parser error: " + message);
 }
 
+[[noreturn]] void throw_tensor_error(std::string_view tensor_name, const std::string& message) {
+    throw std::runtime_error("safetensors error for tensor " + std::string(tensor_name) + ": " +
+                             message);
+}
+
+size_t get_dtype_size(DType dtype) {
+    switch (dtype) {
+        case DType::BF16:
+        case DType::F16:
+            return 2;
+        case DType::F32:
+        case DType::I32:
+            return 4;
+        case DType::I64:
+            return 8;
+        default:
+            throw_error("unsupported enum DType");
+    }
+}
+}  // namespace
+
+SafetensorsHeader parse_safetensors_header(std::span<const std::byte> file_bytes) {
+    const size_t total_file_size = file_bytes.size();
+
+    if (total_file_size < 8) {
+        throw_error("file size is smaller than the minimum 8 byte header prefix");
+    }
+
+    uint64_t header_length = 0;
+    for (size_t i = 0; i < 8; ++i) {
+        header_length |= static_cast<uint64_t>(static_cast<uint8_t>(file_bytes[i])) << (8 * i);
+    }
+
+    if (header_length > MAX_HEADER_SIZE) {
+        throw_error("Header length N (" + std::to_string(header_length) +
+                    " bytes) exceeds maximum allowed bytes of 100,000,000 bytes");
+    }
+
+    const uint64_t remaining_bytes = static_cast<uint64_t>(total_file_size - 8);
+    if (header_length > remaining_bytes) {
+        throw_error("Header length N (" + std::to_string(header_length) +
+                    " bytes) exceeds remaining file size (" + std::to_string(remaining_bytes) +
+                    " bytes)");
+    }
+
+    const uint64_t data_offset = 8 + header_length;
+
+    const char* json_data_ptr = reinterpret_cast<const char*>(file_bytes.data() + 8);
+    const std::string_view json_view(json_data_ptr, static_cast<size_t>(header_length));
+
+    nlohmann::json root;
+    try {
+        root = nlohmann::json::parse(json_view);
+    } catch (const nlohmann::json::exception& e) {
+        throw_error("invalid json header: " + std::string(e.what()));
+    }
+
+    if (!root.is_object()) {
+        throw_error("top level json value must be an object");
+    }
+
+    if (root.contains("__metadata__")) {
+        const auto& metadata = root["__metadata__"];
+        if (metadata.is_object()) {
+            for (auto it = metadata.begin(); it != metadata.end(); ++it) {
+                if (!it.value().is_string()) {
+                    throw_error("metadata key '" + it.key() + "' must have a string value");
+                }
+            }
+        } else if (!metadata.is_null()) {
+            throw_error("metadata must be null or an object");
+        }
+    }
+
+    SafetensorsHeader header;
+    header.data_offset = data_offset;
+
+    auto is_strict_integer = [](const nlohmann::json& val) -> bool {
+        return val.is_number_integer() || val.is_number_unsigned();
+    };
+
+    auto parse_dtype_string = [](std::string_view tensor_name,
+                                 const std::string& dtype_str) -> DType {
+        if (dtype_str == "BF16") return DType::BF16;
+        if (dtype_str == "F16") return DType::F16;
+        if (dtype_str == "F32") return DType::F32;
+        if (dtype_str == "I32") return DType::I32;
+        if (dtype_str == "I64") return DType::I64;
+
+        throw_tensor_error(tensor_name, "Unsupported or invalid dtype '" + dtype_str + "'");
+    };
+
+    for (auto it = root.begin(); it != root.end(); ++it) {
+        const std::string& tensor_name = it.key();
+
+        if (tensor_name == "__metadata__") {
+            continue;
+        }
+
+        const auto& tensor_val = it.value();
+
+        if (!tensor_val.is_object()) {
+            throw_tensor_error(tensor_name, "value must be a json object");
+        }
+
+        if (!tensor_val.contains("dtype") || !tensor_val.contains("shape") ||
+            !tensor_val.contains("data_offsets")) {
+            throw_tensor_error(tensor_name, "missing required field dtype, shape, or data offsets");
+        }
+
+        const auto& dtype_val = tensor_val["dtype"];
+        if (!dtype_val.is_string()) {
+            throw_tensor_error(tensor_name, "dtype must be a string");
+        }
+        DType dtype = parse_dtype_string(tensor_name, dtype_val.get<std::string>());
+
+        const auto& shape_val = tensor_val["shape"];
+        if (!shape_val.is_array()) {
+            throw_tensor_error(tensor_name, "shape must be an array");
+        }
+
+        std::vector<int64_t> shape;
+        shape.reserve(shape_val.size());
+        for (const auto& dim_val : shape_val) {
+            if (!is_strict_integer(dim_val)) {
+                throw_tensor_error(tensor_name, "shape elements must be strict integers");
+            }
+
+            int64_t dim = dim_val.get<int64_t>();
+            if (dim < 0) {
+                throw_tensor_error(tensor_name, "shape elements cannot be negative");
+            }
+
+            shape.push_back(static_cast<uint64_t>(dim));
+        }
+
+        const auto& offsets_val = tensor_val["data_offsets"];
+        if (!offsets_val.is_array() || offsets_val.size() != 2) {
+            throw_tensor_error(tensor_name, "data offsets must be an array of 2 integers");
+        }
+
+        if (!is_strict_integer(offsets_val[0]) || !is_strict_integer(offsets_val[1])) {
+            throw_tensor_error(tensor_name, "data offset values must be strict integers");
+        }
+
+        int64_t begin_offset = offsets_val[0].get<int64_t>();
+        int64_t end_offset = offsets_val[1].get<int64_t>();
+
+        if (begin_offset > end_offset) {
+            throw_tensor_error(tensor_name, "begin offset (" + std::to_string(begin_offset) +
+                                                ") is greater than end offset (" +
+                                                std::to_string(end_offset) + ")");
+        }
+
+        TensorEntry entry;
+        entry.dtype = dtype;
+        entry.shape = std::move(shape);
+        entry.offset = data_offset + static_cast<uint64_t>(begin_offset);
+        entry.bytes = static_cast<uint64_t>(end_offset - begin_offset);
+
+        header.tensors[tensor_name] = entry;
+    }
+
+    struct Range {
+        uint64_t begin;
+        uint64_t end;
+        std::string name;
+    };
+
+    std::vector<Range> ranges;
+    ranges.reserve(header.tensors.size());
+
+    for (auto it = root.begin(); it != root.end(); ++it) {
+        const std::string& name = it.key();
+        if (name == "__metadata__") {
+            continue;
+        }
+
+        const auto& tensor_entry = header.tensors.at(name);
+        const auto& offsets_val = it.value()["data_offsets"];
+
+        uint64_t begin = static_cast<uint64_t>(offsets_val[0].get<int64_t>());
+        uint64_t end = static_cast<uint64_t>(offsets_val[1].get<int64_t>());
+        uint64_t declared_bytes = end - begin;
+
+        uint64_t total_elements = 1;
+        size_t dtype_size = get_dtype_size(tensor_entry.dtype);
+
+        for (uint64_t dim : tensor_entry.shape) {
+            if (dim == 0) {
+                total_elements = 0;
+                break;
+            }
+            if (total_elements > std::numeric_limits<uint64_t>::max() / dim) {
+                throw_tensor_error(name, "Shape dimensions overflow 64-bit integer limit");
+            }
+            total_elements *= dim;
+        }
+
+        if (total_elements > std::numeric_limits<uint64_t>::max() / dtype_size) {
+            throw_tensor_error(name, "Total byte size overflows 64-bit integer limit");
+        }
+        uint64_t expected_bytes = total_elements * static_cast<uint64_t>(dtype_size);
+
+        if (declared_bytes != expected_bytes) {
+            throw_tensor_error(name, "Declared data_offsets byte range (" +
+                                         std::to_string(declared_bytes) +
+                                         ") does not match calculated shape byte size (" +
+                                         std::to_string(expected_bytes) + ")");
+        }
+
+        ranges.push_back(Range{begin, end, name});
+    }
+
+    std::sort(ranges.begin(), ranges.end(), [](const Range& a, const Range& b) {
+        if (a.begin != b.begin) {
+            return a.begin < b.begin;
+        }
+        return a.end < b.end;
+    });
+
+    const uint64_t payload_size = static_cast<uint64_t>(total_file_size) - data_offset;
+
+    if (ranges.empty()) {
+        if (payload_size != 0) {
+            throw_error("Data section has " + std::to_string(payload_size) +
+                        " bytes but contains no tensors");
+        }
+    } else {
+        if (ranges[0].begin != 0) {
+            throw_error("First tensor range does not begin at relative offset 0 (begins at " +
+                        std::to_string(ranges[0].begin) + ")");
+        }
+
+        for (size_t i = 1; i < ranges.size(); ++i) {
+            if (ranges[i].begin != ranges[i - 1].end) {
+                if (ranges[i].begin < ranges[i - 1].end) {
+                    throw_tensor_error(ranges[i].name, "Overlaps with previous tensor range");
+                } else {
+                    throw_tensor_error(ranges[i].name, "Gap detected before this tensor range");
+                }
+            }
+        }
+
+        if (ranges.back().end != payload_size) {
+            throw_error("Tensor ranges do not tile the data section exactly (last range ends at " +
+                        std::to_string(ranges.back().end) + ", expected " +
+                        std::to_string(payload_size) + ")");
+        }
+    }
+
+    return header;
+}
 }  // namespace engine
