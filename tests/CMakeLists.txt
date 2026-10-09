@@ -1,10 +1,13 @@
 include(GoogleTest)
 
-set(ENGINE_TEST_DEFINITIONS ENGINE_MODEL_DIR="${PROJECT_SOURCE_DIR}/models/tinyllama")
+set(ENGINE_TEST_DEFINITIONS
+  ENGINE_MODEL_DIR="${PROJECT_SOURCE_DIR}/models/tinyllama"
+  ENGINE_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/tests/golden")
 
 add_executable(unit_tests
   unit/test_bf16.cpp
   unit/test_checksum.cpp
+  unit/test_checksum_golden.cpp
   unit/test_config.cpp
   unit/test_mapped_file.cpp
   unit/test_model_weights.cpp
@@ -22,6 +25,7 @@ if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_bf16_cuda.cpp
     gpu/test_checksum_device.cpp
+    gpu/test_checksum_golden.cpp
     gpu/test_cuda_check.cpp
     gpu/test_device_buffer.cpp
     gpu/test_gemm.cpp
