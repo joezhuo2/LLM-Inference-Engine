@@ -735,3 +735,6 @@
 - **why FP32 summation order changes the result (non-associative floating-point addition)** => 
 - **a tolerance derived from the algorithm (one flipped rounding, then a multiply, is at most 2 ulps)** => 
 - **mutation testing (breaking the kernel on purpose to check the tolerance still fails)** => 
+### Residual add
+- **64-bit element index (`int64_t(blockIdx.x) * blockDim.x`) and when 32 bits overflow** => 
+- **BF16 + BF16 in PyTorch (computed in FP32, rounded once)** => 
