@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## build/repo-housekeeping
 
 - Stop tracking the `models` symlink, which pointed at `/home/crystalflux/models` and so dangled on every other clone; it was already in `.gitignore`. Each machine now creates its own link (`ln -s ~/models models`), as the README's build section says, or sets `ENGINE_MODEL_DIR`. (Part A)
+- Stop tracking `src/practice/bandwith_test`, a 1 MB compiled executable of the bandwidth exercise, and ignore it; the source `bandwith_test.cu` stays tracked and rebuilds it with `nvcc`. (Part A)
 
 ## docs/m1-readme
 
