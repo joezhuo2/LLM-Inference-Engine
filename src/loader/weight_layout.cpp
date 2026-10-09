@@ -43,7 +43,7 @@ public:
         if (t.shape != shape)
             fail(name + " has shape " + shape_string(t.shape) + ", expected " +
                  shape_string(shape));
-        copies_.push_back({name, t.offset, dst, t.bytes});
+        copies_.push_back({name, t.offset, dst, t.bytes, shape});
         used_.insert(name);
     }
 

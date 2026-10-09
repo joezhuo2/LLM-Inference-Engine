@@ -26,6 +26,7 @@ struct CopyOp {
     uint64_t src = 0;
     uint64_t dst = 0;
     uint64_t bytes = 0;
+    std::vector<int64_t> shape;
 };
 
 struct WeightLayout {
