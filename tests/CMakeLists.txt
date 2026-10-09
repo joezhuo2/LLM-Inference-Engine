@@ -38,6 +38,7 @@ if(ENGINE_CUDA)
     gpu/test_load_weights.cpp
     gpu/test_pinned_buffer.cpp
     gpu/test_rmsnorm.cpp
+    gpu/test_rope.cpp
     gpu/test_smoke.cpp
     gpu/test_stream.cpp
     gpu/test_weight_upload.cpp
