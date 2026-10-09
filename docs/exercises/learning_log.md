@@ -717,3 +717,12 @@
 - **greedy decoding** => 
 - **BF16 near-ties (why two correct implementations can pick different argmax tokens)** => 
 - **self-consistency checks on golden data (checking the reference before trusting it)** => 
+
+## Naive Oracle Kernels (Branch 11)
+### Embedding
+- **`__nv_bfloat16` (`cuda_bf16.h`)** => 
+- **one block per row with a block-stride loop (`for (i = threadIdx.x; i < n; i += blockDim.x)`)** => 
+- **why a zero-size grid is an invalid launch configuration** => 
+- **oracle kernel (a simple, obviously correct kernel used to check fast ones)** => 
+### Testing kernels
+- **distance in ulps between two BF16 values (ordering sign-magnitude bit patterns)** => 
