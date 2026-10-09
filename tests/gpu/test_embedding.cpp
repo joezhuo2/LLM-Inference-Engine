@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <filesystem>
 #include <stdexcept>
 #include <vector>
 
@@ -68,13 +67,9 @@ TEST(Embedding, RejectsMismatchedShapesAndDtypes) {
 }
 
 TEST(Embedding, MatchesHuggingFaceOnEveryPrompt) {
-    const auto model = engine::test::model_dir() / "model.safetensors";
-    const auto manifest = engine::test::reference_dir() / "manifest.json";
-    if (!std::filesystem::exists(model)) GTEST_SKIP() << model << " not found";
-    if (!std::filesystem::exists(manifest))
-        GTEST_SKIP() << manifest << " not found, run scripts/dump_reference.py";
+    if (const auto why = engine::test::reference_skip_reason(); !why.empty()) GTEST_SKIP() << why;
 
-    const engine::test::SafetensorsFile weights(model);
+    const engine::test::SafetensorsFile weights(engine::test::model_dir() / "model.safetensors");
     const auto& entry = weights.entry("model.embed_tokens.weight");
     const int64_t vocab = entry.shape[0], hidden = entry.shape[1];
     DeviceBuffer table = upload(weights.read<uint16_t>("model.embed_tokens.weight"));

@@ -726,3 +726,9 @@
 - **oracle kernel (a simple, obviously correct kernel used to check fast ones)** => 
 ### Testing kernels
 - **distance in ulps between two BF16 values (ordering sign-magnitude bit patterns)** => 
+### RMSNorm
+- **block-level sum with a shared-memory tree reduction (`stride = blockDim / 2; stride > 0; stride /= 2`)** => 
+- **why the reduction loop needs `__syncthreads()` after every step, outside the `if`** => 
+- **`rsqrtf` (CUDA's reciprocal square root)** => 
+- **matching HF's intermediate rounding (normalize in FP32, round to BF16, then multiply by the weight)** => 
+- **aliasing `out` and `x` safely (each thread reads element i before writing element i)** => 
