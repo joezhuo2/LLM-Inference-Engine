@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## docs/m1-readme
 
 - Add `docs/ownership.md`: the Part A, B and C split (who writes, who reviews, what each covers), a component-by-component table of who wrote every piece of M1 including Joe's parser, exercises and notes, and the parts planned for later milestones. Every commit lands under Joe's git identity, so this page and the changelog tags are the record of authorship. (Part A)
+- Write the README, which was empty: what the engine is, the milestone table with M1's status, what works today (including the measured 323.6 GB/s bandwidth), the pinned toolchain versions, getting the model (and that the tracked `models` symlink points at `/home/crystalflux/models`, so other machines repoint it or set `ENGINE_MODEL_DIR`), the three presets, test labels and the compute-sanitizer command, what CI checks, the `todo_joe` workflow, `engine checksum` with `scripts/checksum.py` and the golden tests, the repository layout and the commit conventions. (Part A)
 
 ## tools/checksum
 
