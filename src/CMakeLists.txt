@@ -21,6 +21,7 @@ if(ENGINE_CUDA)
   add_library(engine_kernels
     kernels/embedding.cu
     kernels/gemm.cpp
+    kernels/rmsnorm.cu
     kernels/smoke.cu
   )
   target_link_libraries(engine_kernels PUBLIC engine_core CUDA::cudart CUDA::cublas)

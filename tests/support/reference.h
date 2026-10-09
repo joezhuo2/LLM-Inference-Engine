@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -44,6 +45,21 @@ inline std::vector<ReferencePrompt> load_reference_manifest() {
         out.push_back(std::move(r));
     }
     return out;
+}
+
+inline std::string reference_skip_reason() {
+    const auto model = model_dir() / "model.safetensors";
+    if (!std::filesystem::exists(model)) return model.string() + " not found";
+    const auto manifest = reference_dir() / "manifest.json";
+    if (!std::filesystem::exists(manifest))
+        return manifest.string() + " not found, run scripts/dump_reference.py";
+    return {};
+}
+
+inline ReferencePrompt traced_reference_prompt() {
+    for (auto& p : load_reference_manifest())
+        if (p.trace) return p;
+    throw std::runtime_error("reference manifest has no traced prompt");
 }
 
 }  // namespace engine::test
