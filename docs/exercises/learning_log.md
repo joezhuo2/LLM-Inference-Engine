@@ -659,3 +659,9 @@
 - **catching exceptions at the top of `main` (`app.parse` vs `CLI11_PARSE`)** => 
 - **`$<BOOL:...>` generator expression and `#if ENGINE_HAS_CUDA`** => 
 - **the legacy default stream (`nullptr` as a `cudaStream_t`)** => 
+
+### Python reference
+- **`safe_open(..., framework="pt")` and `get_slice(name).get_dtype()`** => 
+- **`tensor.to(torch.float64)` before summing** => 
+- **`argparse` with `type=Path`** => 
+- **why PyTorch's pairwise summation and a sequential C++ loop still agree to about 1e-16 here** => 
