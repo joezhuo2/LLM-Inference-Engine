@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <string_view>
 
 namespace engine {
 
@@ -21,6 +22,22 @@ constexpr size_t dtype_size(DType dtype) {
             return 8;
     }
     return 0;
+}
+
+constexpr std::string_view dtype_name(DType dtype) {
+    switch (dtype) {
+        case DType::BF16:
+            return "BF16";
+        case DType::F16:
+            return "F16";
+        case DType::F32:
+            return "F32";
+        case DType::I32:
+            return "I32";
+        case DType::I64:
+            return "I64";
+    }
+    return "?";
 }
 
 struct Tensor {

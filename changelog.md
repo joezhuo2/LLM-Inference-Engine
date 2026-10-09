@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## tools/checksum
 
 - Move the real-checkpoint `load_weights` test from `tests/todo/gpu/` into `gpu_tests` now that the parser exists, and delete the empty `todo_gpu_tests` target; `tests/todo/` is now empty. (Part A)
+- Add `dtype_name(DType)`, returning the safetensors spelling (`"BF16"` and so on), for the checksum output and its JSON. (Part A)
 
 ## loader/safetensors-parser
 
