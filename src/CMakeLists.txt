@@ -8,6 +8,7 @@ add_library(engine_core
   model/config.cpp
   model/weights.cpp
   tokenizer/chat.cpp
+  tokenizer/text_stream.cpp
   tokenizer/tokenizer.cpp
 )
 target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
