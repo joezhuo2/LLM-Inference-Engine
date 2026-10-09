@@ -760,3 +760,7 @@
 - **subtracting the max before `exp` (numerically stable softmax)** => 
 - **`fmaf` and FMA contraction (why the GPU's `a * b + c` and the CPU's can round differently)** => 
 - **one attention call for prefill and decode (query `t` at position `start + t` sees cache rows `0..start + t`)** => 
+### Attention against HF
+- **why a different dot-product order flips BF16 scores, and why `exp` amplifies a flip in a large score** => 
+- **ulps vs absolute error near zero (why a huge ulp count can be a tiny difference)** => 
+- **scaling a tolerance by the inputs (`|error| <= c * max |v|` for a weighted average of V)** => 
