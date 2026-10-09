@@ -27,7 +27,9 @@ if(ENGINE_CUDA)
     kernels/rope.cu
     kernels/swiglu.cu
     kernels/smoke.cu
+    sampling/greedy.cu
   )
+  target_include_directories(engine_kernels PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(engine_kernels PUBLIC engine_core CUDA::cudart CUDA::cublas)
 
   add_library(engine_runtime

@@ -767,3 +767,7 @@
 ### CI container images
 - **container registries (Docker Hub vs NVIDIA's nvcr.io) and the image reference `registry/namespace/repo:tag`** => 
 - **anonymous pull rate limits on shared CI runners (why a job can fail before building anything)** => 
+
+## Forward Pass (Branch 13)
+### Greedy decoding
+- **argmax reduction carrying (value, index) pairs, and why ties must go to the lowest index to match `torch.argmax`** => 
