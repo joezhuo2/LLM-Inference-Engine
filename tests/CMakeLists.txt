@@ -13,6 +13,7 @@ add_executable(unit_tests
   unit/test_model_weights.cpp
   unit/test_safetensors.cpp
   unit/test_tensor.cpp
+  unit/test_tokenizer.cpp
   unit/test_version.cpp
   unit/test_weight_layout.cpp
 )

@@ -7,9 +7,10 @@ add_library(engine_core
   loader/weight_layout.cpp
   model/config.cpp
   model/weights.cpp
+  tokenizer/tokenizer.cpp
 )
 target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(engine_core PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(engine_core PUBLIC nlohmann_json::nlohmann_json PRIVATE engine_sentencepiece)
 
 add_executable(engine app/main.cpp app/checksum_command.cpp)
 target_compile_definitions(engine PRIVATE ENGINE_HAS_CUDA=$<BOOL:${ENGINE_CUDA}>)
