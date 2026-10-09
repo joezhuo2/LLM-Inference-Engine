@@ -716,3 +716,4 @@
 - **eager vs SDPA attention in HF** => 
 - **greedy decoding** => 
 - **BF16 near-ties (why two correct implementations can pick different argmax tokens)** => 
+- **self-consistency checks on golden data (checking the reference before trusting it)** => 

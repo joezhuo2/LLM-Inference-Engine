@@ -12,6 +12,7 @@ add_executable(unit_tests
   unit/test_config.cpp
   unit/test_mapped_file.cpp
   unit/test_model_weights.cpp
+  unit/test_reference_golden.cpp
   unit/test_safetensors.cpp
   unit/test_tensor.cpp
   unit/test_tokenizer.cpp
