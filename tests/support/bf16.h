@@ -58,6 +58,10 @@ inline Bf16Diff compare_bf16(const std::vector<uint16_t>& actual,
     return d;
 }
 
+inline bool close_up_to_reduction_order(const Bf16Diff& d, size_t n) {
+    return d.max_ulps <= 2 && d.mismatches * 1000 <= n;
+}
+
 inline std::ostream& operator<<(std::ostream& os, const Bf16Diff& d) {
     return os << d.mismatches << " mismatches, max " << d.max_ulps << " ulps, first at index "
               << d.first;
