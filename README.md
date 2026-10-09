@@ -86,6 +86,14 @@ ctest --preset release -LE todo_joe
 
 The `cpu` preset builds and tests only the pure C++ parts, for machines without CUDA.
 
+## Running
+
+```bash
+./build/release/bin/engine generate --model models/tinyllama --prompt "Write a haiku about GPUs."
+```
+
+The answer streams to stdout as it decodes, followed on stderr by the prompt and generated token counts, the time to the first token and the decode rate. `--system` adds a system message and `--max-new-tokens` (default 256) caps the answer. Decoding is greedy, batch 1, on the naive kernels and a contiguous KV cache (milestone M2): about 111 tokens/s on the RTX 5060.
+
 ## Repository layout
 
 ```

@@ -18,6 +18,7 @@ int main(int argc, char** argv) {
     app.require_subcommand(0, 1);
     app.add_subcommand("version", "Print the engine version")->callback(print_version);
     engine::app::add_checksum_command(app);
+    engine::app::add_generate_command(app);
     try {
         app.parse(argc, argv);
     } catch (const CLI::ParseError& e) {
