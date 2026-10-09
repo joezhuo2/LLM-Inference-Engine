@@ -37,6 +37,7 @@ if(ENGINE_CUDA)
     gpu/test_embedding.cpp
     gpu/test_forward_golden.cpp
     gpu/test_gemm.cpp
+    gpu/test_generate.cpp
     gpu/test_greedy.cpp
     gpu/test_load_weights.cpp
     gpu/test_model_runner.cpp

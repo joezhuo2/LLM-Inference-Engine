@@ -781,3 +781,7 @@
 - **relative L2 error per layer as a hidden-state tolerance** => 
 ### Golden harness
 - **averaging an error over every position vs averaging per-prompt averages (why short prompts weigh less)** => 
+### Free-running generation
+- **free-running vs teacher-forced evaluation (why one early flip changes every later token)** => 
+- **comparing at the first divergence only (after it the two sequences condition on different tokens)** => 
+- **a near-tie measured in BF16 ulps of the reference's own logits** => 
