@@ -671,3 +671,8 @@
 - **tolerance as a fraction of the abs-sum (6+ significant digits)** => 
 - **skipping when local data is missing vs failing** => 
 - **proving a test can fail (tampering with the golden on purpose)** => 
+
+## Docs (Branch 8)
+### Ownership
+- **authorship vs review (writing code yourself vs reviewing code someone else wrote)** => 
+- **git author identity (why `git log` cannot show who wrote a commit here)** => 

@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## docs/m1-readme
+
+- Add `docs/ownership.md`: the Part A, B and C split (who writes, who reviews, what each covers), a component-by-component table of who wrote every piece of M1 including Joe's parser, exercises and notes, and the parts planned for later milestones. Every commit lands under Joe's git identity, so this page and the changelog tags are the record of authorship. (Part A)
+
 ## tools/checksum
 
 - Move the real-checkpoint `load_weights` test from `tests/todo/gpu/` into `gpu_tests` now that the parser exists, and delete the empty `todo_gpu_tests` target; `tests/todo/` is now empty. (Part A)
