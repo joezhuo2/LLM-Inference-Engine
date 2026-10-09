@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## tokenizer/sentencepiece
+
+- Add the SentencePiece C++ library as `engine_sentencepiece`: an installed copy found through pkg-config (Ubuntu's `libsentencepiece-dev` and Homebrew ship a `sentencepiece.pc`, not a CMake package) is used first, and otherwise v0.2.1 is fetched (pinned by SHA-256, static, no tcmalloc, `EXCLUDE_FROM_ALL` so its command-line tools are not built). v0.2.1 is the newest release that bundles its own trimmed absl; v0.2.2 git-clones and builds all of abseil at configure time. CI installs `pkg-config` and `libsentencepiece-dev` (0.2.0) on Ubuntu and in the CUDA container; macOS fetches 0.2.1, because Homebrew's 0.2.2 headers need a separate abseil install. The warning flags are now added after the dependencies, so `-Wall -Wextra -Wpedantic` applies to the engine's own targets only and third-party code cannot fail the zero-warning build. (Part A)
+
 ## build/repo-housekeeping
 
 - Stop tracking the `models` symlink, which pointed at `/home/crystalflux/models` and so dangled on every other clone; it was already in `.gitignore`. Each machine now creates its own link (`ln -s ~/models models`), as the README's build section says, or sets `ENGINE_MODEL_DIR`. (Part A)
