@@ -679,3 +679,6 @@
 ### README
 - **reproducing results from a clean clone** => 
 - **dangling symlink (a tracked link to an absolute path on one machine)** => 
+### Project overview
+- **arithmetic intensity (FLOPs per byte read)** => 
+- **bandwidth floor on decode latency (bytes read per token / bandwidth)** => 
