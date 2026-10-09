@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## build/repo-housekeeping
+
+- Stop tracking the `models` symlink, which pointed at `/home/crystalflux/models` and so dangled on every other clone; it was already in `.gitignore`. Each machine now creates its own link (`ln -s ~/models models`), as the README's build section says, or sets `ENGINE_MODEL_DIR`. (Part A)
+
 ## docs/m1-readme
 
 - Add `docs/ownership.md`: the Part A, B and C split (who writes, who reviews, what each covers), a component-by-component table of who wrote every piece of M1 including Joe's parser, exercises and notes, and the parts planned for later milestones. Every commit lands under Joe's git identity, so this page and the changelog tags are the record of authorship. (Part A)

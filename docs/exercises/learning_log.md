@@ -682,3 +682,8 @@
 ### Project overview
 - **arithmetic intensity (FLOPs per byte read)** => 
 - **bandwidth floor on decode latency (bytes read per token / bandwidth)** => 
+
+## Repo Housekeeping (Branch 9)
+### Git
+- **`git rm --cached` (untracking a file without deleting it locally)** => 
+- **why pulling a commit that untracks a file deletes it from other checkouts** => 
