@@ -110,6 +110,15 @@ SafetensorsHeader parse_safetensors_header(std::span<const std::byte> file_bytes
         throw_tensor_error(tensor_name, "Unsupported or invalid dtype '" + dtype_str + "'");
     };
 
+    struct Range {
+        uint64_t begin;
+        uint64_t end;
+        std::string name;
+    };
+
+    std::vector<Range> ranges;
+    ranges.reserve(root.size());
+
     for (auto it = root.begin(); it != root.end(); ++it) {
         const std::string& tensor_name = it.key();
 
@@ -151,7 +160,7 @@ SafetensorsHeader parse_safetensors_header(std::span<const std::byte> file_bytes
                 throw_tensor_error(tensor_name, "shape elements cannot be negative");
             }
 
-            shape.push_back(static_cast<uint64_t>(dim));
+            shape.push_back(dim);
         }
 
         const auto& offsets_val = tensor_val["data_offsets"];
@@ -159,12 +168,12 @@ SafetensorsHeader parse_safetensors_header(std::span<const std::byte> file_bytes
             throw_tensor_error(tensor_name, "data offsets must be an array of 2 integers");
         }
 
-        if (!is_strict_integer(offsets_val[0]) || !is_strict_integer(offsets_val[1])) {
-            throw_tensor_error(tensor_name, "data offset values must be strict integers");
+        if (!offsets_val[0].is_number_unsigned() || !offsets_val[1].is_number_unsigned()) {
+            throw_tensor_error(tensor_name, "data offset values must be non-negative integers");
         }
 
-        int64_t begin_offset = offsets_val[0].get<int64_t>();
-        int64_t end_offset = offsets_val[1].get<int64_t>();
+        const uint64_t begin_offset = offsets_val[0].get<uint64_t>();
+        const uint64_t end_offset = offsets_val[1].get<uint64_t>();
 
         if (begin_offset > end_offset) {
             throw_tensor_error(tensor_name, "begin offset (" + std::to_string(begin_offset) +
@@ -172,64 +181,42 @@ SafetensorsHeader parse_safetensors_header(std::span<const std::byte> file_bytes
                                                 std::to_string(end_offset) + ")");
         }
 
-        TensorEntry entry;
-        entry.dtype = dtype;
-        entry.shape = std::move(shape);
-        entry.offset = data_offset + static_cast<uint64_t>(begin_offset);
-        entry.bytes = static_cast<uint64_t>(end_offset - begin_offset);
-
-        header.tensors[tensor_name] = entry;
-    }
-
-    struct Range {
-        uint64_t begin;
-        uint64_t end;
-        std::string name;
-    };
-
-    std::vector<Range> ranges;
-    ranges.reserve(header.tensors.size());
-
-    for (auto it = root.begin(); it != root.end(); ++it) {
-        const std::string& name = it.key();
-        if (name == "__metadata__") {
-            continue;
-        }
-
-        const auto& tensor_entry = header.tensors.at(name);
-        const auto& offsets_val = it.value()["data_offsets"];
-
-        uint64_t begin = static_cast<uint64_t>(offsets_val[0].get<int64_t>());
-        uint64_t end = static_cast<uint64_t>(offsets_val[1].get<int64_t>());
-        uint64_t declared_bytes = end - begin;
-
         uint64_t total_elements = 1;
-        size_t dtype_size = get_dtype_size(tensor_entry.dtype);
+        const size_t dtype_size = get_dtype_size(dtype);
 
-        for (uint64_t dim : tensor_entry.shape) {
+        for (const int64_t dim : shape) {
             if (dim == 0) {
                 total_elements = 0;
                 break;
             }
-            if (total_elements > std::numeric_limits<uint64_t>::max() / dim) {
-                throw_tensor_error(name, "Shape dimensions overflow 64-bit integer limit");
+            if (total_elements >
+                std::numeric_limits<uint64_t>::max() / static_cast<uint64_t>(dim)) {
+                throw_tensor_error(tensor_name, "Shape dimensions overflow 64-bit integer limit");
             }
-            total_elements *= dim;
+            total_elements *= static_cast<uint64_t>(dim);
         }
 
         if (total_elements > std::numeric_limits<uint64_t>::max() / dtype_size) {
-            throw_tensor_error(name, "Total byte size overflows 64-bit integer limit");
+            throw_tensor_error(tensor_name, "Total byte size overflows 64-bit integer limit");
         }
-        uint64_t expected_bytes = total_elements * static_cast<uint64_t>(dtype_size);
+        const uint64_t expected_bytes = total_elements * static_cast<uint64_t>(dtype_size);
+        const uint64_t declared_bytes = end_offset - begin_offset;
 
         if (declared_bytes != expected_bytes) {
-            throw_tensor_error(name, "Declared data_offsets byte range (" +
-                                         std::to_string(declared_bytes) +
-                                         ") does not match calculated shape byte size (" +
-                                         std::to_string(expected_bytes) + ")");
+            throw_tensor_error(tensor_name, "Declared data_offsets byte range (" +
+                                                std::to_string(declared_bytes) +
+                                                ") does not match calculated shape byte size (" +
+                                                std::to_string(expected_bytes) + ")");
         }
 
-        ranges.push_back(Range{begin, end, name});
+        TensorEntry entry;
+        entry.dtype = dtype;
+        entry.shape = std::move(shape);
+        entry.offset = data_offset + begin_offset;
+        entry.bytes = declared_bytes;
+
+        header.tensors[tensor_name] = entry;
+        ranges.push_back(Range{begin_offset, end_offset, tensor_name});
     }
 
     std::sort(ranges.begin(), ranges.end(), [](const Range& a, const Range& b) {

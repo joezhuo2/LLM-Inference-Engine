@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## loader/safetensors-parser
 
 - Implement `parse_safetensors_header`: reads the 8-byte little-endian header length (capped at 100,000,000 bytes and bounded by the file size), parses the JSON header with nlohmann, validates `__metadata__` as null or a string-to-string map, and for every tensor checks `dtype` (BF16, F16, F32, I32, I64), integer non-negative `shape`, and integer `data_offsets` with begin <= end. It then checks that each declared byte range equals the shape's byte size (with 64-bit overflow checks) and that the sorted ranges tile the data section exactly, with no gaps, overlaps or uncovered bytes. Whitespace was reformatted with clang-format. (Part C)
+- Tighten `parse_safetensors_header`: `data_offsets` must be non-negative JSON integers read as `uint64_t` (before, `-1` or values above INT64_MAX passed through `int64_t` and wrapped, and only the tiling check caught them), the byte-size check and range collection happen in the one pass over the header instead of a second walk of the JSON, and a redundant `uint64_t` cast when storing shape dims is gone. (Part C, cleanup by Claude)
 
 ## loader/weight-upload
 
