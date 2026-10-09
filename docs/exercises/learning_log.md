@@ -771,3 +771,11 @@
 ## Forward Pass (Branch 13)
 ### Greedy decoding
 - **argmax reduction carrying (value, index) pairs, and why ties must go to the lowest index to match `torch.argmax`** => 
+### Model runner
+- **preallocating every activation buffer for `max_tokens` rows (no allocation inside the forward pass)** => 
+- **the residual stream updated in place (`x = x + attn_out`, `x = x + mlp_out`)** => 
+- **`cudaMemcpyAsync` from pageable host memory (staged through a pinned buffer; when the host copy may be freed)** => 
+- **inspecting intermediate tensors with a callback (`std::function` hook per layer)** => 
+- **cuBLAS algorithm selection by shape (why a fused QKV GEMM and separate K and V GEMMs round differently)** => 
+- **why a one-row decode GEMM and a T-row prefill GEMM give slightly different results** => 
+- **relative L2 error per layer as a hidden-state tolerance** => 
