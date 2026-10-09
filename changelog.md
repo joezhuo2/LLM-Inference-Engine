@@ -6,6 +6,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Move the real-checkpoint `load_weights` test from `tests/todo/gpu/` into `gpu_tests` now that the parser exists, and delete the empty `todo_gpu_tests` target; `tests/todo/` is now empty. (Part A)
 - Add `dtype_name(DType)`, returning the safetensors spelling (`"BF16"` and so on), for the checksum output and its JSON. (Part A)
+- Add `checksum_bf16` (FP64 sum and sum of absolute values over a BF16 byte range, decoding little-endian byte pairs so any alignment works), `checksum_file` (every tensor of a parsed safetensors file, in name order) and `checksums_to_json` / `checksums_from_json` (the `{"tensors": {name: {dtype, shape, sum, abs_sum}}}` golden format shared with the Python script; doubles round-trip exactly). Pure C++, so it runs in CI and on machines without a GPU. (Part A)
 
 ## loader/safetensors-parser
 
