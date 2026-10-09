@@ -10,4 +10,9 @@ inline std::filesystem::path model_dir() {
     return ENGINE_MODEL_DIR;
 }
 
+inline std::filesystem::path golden_dir() {
+    if (const char* env = std::getenv("ENGINE_GOLDEN_DIR")) return env;
+    return ENGINE_GOLDEN_DIR;
+}
+
 }  // namespace engine::test
