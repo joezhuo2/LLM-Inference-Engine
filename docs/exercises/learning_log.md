@@ -632,3 +632,9 @@
 ## Local Notes (docs/ignore-claude-notes)
 - **`.gitignore` directory patterns (`docs/claude/`)** => 
 - **ignored files are per working tree (not shared between `git worktree` checkouts)** => 
+
+## Safetensors Parser (loader/safetensors-parser)
+- **nlohmann `is_number_integer()` vs `is_number_unsigned()` (non-negative integers parse as unsigned)** => 
+- **`get<int64_t>()` on a value above INT64_MAX** => 
+- **signed-to-unsigned conversion wraparound (`static_cast<uint64_t>(-1)`)** => 
+- **validating in one pass instead of re-walking the input** => 
