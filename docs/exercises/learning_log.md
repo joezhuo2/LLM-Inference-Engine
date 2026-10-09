@@ -710,3 +710,9 @@
 - **why `apply_chat_template` adds no BOS here** => 
 ### Golden tests for the tokenizer
 - **fuzzing against a reference implementation (seeded random inputs)** => 
+### Reference dumps
+- **teacher forcing (feeding the reference tokens instead of your own)** => 
+- **PyTorch forward hooks (`register_forward_hook`, capturing a module's input or output)** => 
+- **eager vs SDPA attention in HF** => 
+- **greedy decoding** => 
+- **BF16 near-ties (why two correct implementations can pick different argmax tokens)** => 

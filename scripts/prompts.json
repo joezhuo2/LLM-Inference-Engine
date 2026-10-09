@@ -1,0 +1,204 @@
+{
+  "prompts": [
+    {
+      "name": "kv_cache",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Explain what a KV cache is in a transformer and why it speeds up generation."
+        }
+      ]
+    },
+    {
+      "name": "capital",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is the capital of Canada?"
+        }
+      ]
+    },
+    {
+      "name": "haiku",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Write a haiku about a GPU running out of memory."
+        }
+      ]
+    },
+    {
+      "name": "fibonacci",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Write a Python function that returns the n-th Fibonacci number."
+        }
+      ]
+    },
+    {
+      "name": "arithmetic",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is 17 multiplied by 23? Show your work."
+        }
+      ]
+    },
+    {
+      "name": "photosynthesis",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a patient science teacher for ten-year-olds."
+        },
+        {
+          "role": "user",
+          "content": "How do plants make food from sunlight?"
+        }
+      ]
+    },
+    {
+      "name": "pirate",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a friendly chatbot who always responds in the style of a pirate."
+        },
+        {
+          "role": "user",
+          "content": "How many helicopters can a human eat in one sitting?"
+        }
+      ]
+    },
+    {
+      "name": "list",
+      "messages": [
+        {
+          "role": "user",
+          "content": "List five tips for studying for a final exam."
+        }
+      ]
+    },
+    {
+      "name": "translate",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Translate 'Where is the train station?' into French and Spanish."
+        }
+      ]
+    },
+    {
+      "name": "story",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Tell me a short story about a robot who learns to paint."
+        }
+      ]
+    },
+    {
+      "name": "cpp_raii",
+      "messages": [
+        {
+          "role": "user",
+          "content": "In C++, what does RAII mean? Give a small example."
+        }
+      ]
+    },
+    {
+      "name": "bandwidth",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Why is generating text with a large language model usually limited by memory bandwidth rather than compute?"
+        }
+      ]
+    },
+    {
+      "name": "summary",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Summarize the plot of Romeo and Juliet in three sentences."
+        }
+      ]
+    },
+    {
+      "name": "email",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You write concise, polite emails."
+        },
+        {
+          "role": "user",
+          "content": "Write an email asking my professor for a one-day extension on an assignment."
+        }
+      ]
+    },
+    {
+      "name": "compare",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What are the differences between a process and a thread?"
+        }
+      ]
+    },
+    {
+      "name": "recipe",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Give me a simple recipe for pancakes."
+        }
+      ]
+    },
+    {
+      "name": "multi_turn",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I am planning a trip to Japan."
+        },
+        {
+          "role": "assistant",
+          "content": "That sounds exciting! When are you planning to go, and what are you interested in seeing?"
+        },
+        {
+          "role": "user",
+          "content": "In April. I like temples and food. Where should I go?"
+        }
+      ]
+    },
+    {
+      "name": "definition",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Define entropy in one paragraph."
+        }
+      ]
+    },
+    {
+      "name": "sql",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Write a SQL query that finds the ten customers with the highest total order value."
+        }
+      ]
+    },
+    {
+      "name": "unicode",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Say hello in Japanese, Korean and Arabic, and explain what each greeting means. 🙂"
+        }
+      ]
+    }
+  ]
+}
