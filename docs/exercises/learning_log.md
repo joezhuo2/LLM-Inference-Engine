@@ -638,3 +638,5 @@
 - **`get<int64_t>()` on a value above INT64_MAX** => 
 - **signed-to-unsigned conversion wraparound (`static_cast<uint64_t>(-1)`)** => 
 - **validating in one pass instead of re-walking the input** => 
+- **`git mv` (keeping file history across a move)** => 
+- **CTest labels and `ctest -LE` (excluding tests by label)** => 
