@@ -193,14 +193,14 @@
 - **memory hierarchy** => 
 - **memory coalescing** => 
 - **host vs device memory** => 
-- **`cudaMalloc()`** => allocates free high speed memory to CPU host
+- **`cudaMalloc()`** => allocates free high speed GPU memory
 - **`cudaMallocManaged()`** => 
 - **managed memory page migration** => 
 - **PCIe bottleneck** => 
 - **`cudaMemcpy()`** => 
 - **`cudaMemcpyHostToDevice` / `cudaMemcpyDeviceToHost`** => 
 - **`cudaMemset()`** => 
-- **`cudaFree()`** => frees high speed memory allocated to CPU host
+- **`cudaFree()`** => frees high speed GPU memory
 - **treating `*a`, `*b`, `*c` as arrays but they are defined as float pointers** => 
 - **`std::fill`** => 
 - **`delete[]`** => 
