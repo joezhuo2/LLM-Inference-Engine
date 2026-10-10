@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <functional>
@@ -94,23 +95,51 @@ std::vector<double> softmax(const std::vector<uint16_t>& row, float temperature)
     return p;
 }
 
-std::vector<double> truncated_softmax(const std::vector<uint16_t>& row,
-                                      const SamplingParams& params) {
+struct Truncated {
+    std::vector<double> p;
+    double margin = 1;
+};
+
+Truncated truncate(const std::vector<uint16_t>& row, const SamplingParams& params) {
     std::vector<float> s(row.size());
     for (size_t i = 0; i < row.size(); ++i) s[i] = from_bf16(row[i]) / params.temperature;
+    auto sorted = s;
+    std::sort(sorted.begin(), sorted.end(), std::greater<>());
+    const double top = sorted.front();
+    const auto mass = [&](float cut) {
+        double sum = 0;
+        for (const float v : s)
+            if (v >= cut) sum += std::exp(double(v) - top);
+        return sum;
+    };
+
     float cut = -INFINITY;
-    if (params.top_k > 0 && size_t(params.top_k) < row.size()) {
-        auto sorted = s;
-        std::sort(sorted.begin(), sorted.end(), std::greater<>());
-        cut = sorted[size_t(params.top_k) - 1];
+    if (params.top_k > 0 && size_t(params.top_k) < s.size()) cut = sorted[size_t(params.top_k) - 1];
+    Truncated t;
+    if (params.top_p < 1) {
+        const double p = params.top_p;
+        const double total = mass(cut);
+        for (size_t j = 0; j < sorted.size() && sorted[j] >= cut;) {
+            const double above = mass(std::nextafter(sorted[j], INFINITY)) / total;
+            t.margin = std::min(t.margin, std::abs(above - p));
+            if (above >= p) {
+                cut = std::nextafter(sorted[j], INFINITY);
+                break;
+            }
+            const float value = sorted[j];
+            while (j < sorted.size() && sorted[j] == value) ++j;
+        }
     }
-    std::vector<double> p(row.size(), 0.0);
-    const double top = *std::max_element(s.begin(), s.end());
-    double sum = 0;
-    for (size_t i = 0; i < row.size(); ++i)
-        if (s[i] >= cut) sum += p[i] = std::exp(double(s[i]) - top);
-    for (auto& v : p) v /= sum;
-    return p;
+    const double total = mass(cut);
+    t.p.assign(s.size(), 0.0);
+    for (size_t i = 0; i < s.size(); ++i)
+        if (s[i] >= cut) t.p[i] = std::exp(double(s[i]) - top) / total;
+    return t;
+}
+
+std::vector<double> truncated_softmax(const std::vector<uint16_t>& row,
+                                      const SamplingParams& params) {
+    return truncate(row, params).p;
 }
 
 double chi_square_critical(int dof) {
@@ -370,6 +399,114 @@ TEST(Sample, TopKNeverDrawsNegativeInfinity) {
     EXPECT_EQ(none({1.0f, 0, 1}, 0), (std::vector<int32_t>{0}));
 }
 
+TEST(Sample, TopPMatchesTheNucleusOnASmallVocab) {
+    const auto row = bf16_row({2.0f, 1.0f, 0.0f, -1.0f, 0.5f, -INFINITY, -3.0f});
+    const auto vocab = int64_t(row.size());
+    Batch batch(repeat_rows(row, 50'000), vocab);
+    for (const SamplingParams params : {SamplingParams{1.0f, 7, 0, 0.6f},
+                                        {1.0f, 7, 0, 0.8f},
+                                        {2.0f, 7, 0, 0.9f},
+                                        {0.5f, 7, 0, 0.95f},
+                                        {2.0f, 7, 3, 0.8f}}) {
+        SCOPED_TRACE("temperature " + std::to_string(params.temperature) + ", top_k " +
+                     std::to_string(params.top_k) + ", top_p " + std::to_string(params.top_p));
+        const Truncated expected = truncate(row, params);
+        ASSERT_GT(expected.margin, 1e-3);
+        const auto counts = histogram(batch, vocab, params, 4);
+        const Fit fit = goodness_of_fit(counts, expected.p, 5);
+        std::printf("temperature %.1f, top_k %d, top_p %.2f: chi-square %.2f, critical %.2f\n",
+                    params.temperature, params.top_k, params.top_p, fit.chi2, fit.critical);
+        EXPECT_EQ(fit.impossible, 0);
+        EXPECT_LT(fit.chi2, fit.critical);
+    }
+}
+
+TEST(Sample, TopPMatchesTheNucleusOnHuggingFaceLogits) {
+    if (const auto why = engine::test::reference_skip_reason(); !why.empty()) GTEST_SKIP() << why;
+    const auto prompts = engine::test::load_reference_manifest();
+    for (const auto& prompt : {prompts.front(), prompts.back()}) {
+        SCOPED_TRACE(prompt.name);
+        const engine::test::SafetensorsFile ref(prompt.file);
+        const int64_t vocab = ref.entry("logits").shape[1];
+        const auto logits = ref.read<uint16_t>("logits");
+        const auto first = logits.begin() + (prompt.prompt_len - 1) * vocab;
+        const std::vector<uint16_t> row(first, first + vocab);
+        Batch batch(repeat_rows(row, 1000), vocab);
+        for (const SamplingParams params :
+             {SamplingParams{1.0f, 7, 0, 0.9f}, {1.5f, 7, 0, 0.8f}, {1.0f, 7, 20, 0.8f}}) {
+            SCOPED_TRACE("temperature " + std::to_string(params.temperature) + ", top_k " +
+                         std::to_string(params.top_k) + ", top_p " + std::to_string(params.top_p));
+            const Truncated expected = truncate(row, params);
+            ASSERT_GT(expected.margin, 1e-4);
+            const auto counts = histogram(batch, vocab, params, 100);
+            const Fit fit = goodness_of_fit(counts, expected.p, 20);
+            int64_t kept = 0;
+            for (const auto v : expected.p) kept += v > 0;
+            std::printf(
+                "%s, temperature %.1f, top_k %d, top_p %.2f: %lld kept, margin %.1e, chi-square "
+                "%.2f, critical %.2f\n",
+                prompt.name.c_str(), params.temperature, params.top_k, params.top_p,
+                static_cast<long long>(kept), expected.margin, fit.chi2, fit.critical);
+            EXPECT_EQ(fit.impossible, 0);
+            EXPECT_LT(fit.chi2, fit.critical);
+        }
+    }
+}
+
+TEST(Sample, TopPKeepsTheSmallestSetOfTopTokensReachingP) {
+    const int64_t vocab = 1000;
+    auto row = engine::test::random_bf16(size_t(vocab), 13, -12, -8);
+    const std::vector<int32_t> order = {600, 7, 999, 0, 321, 42};
+    for (size_t j = 0; j < order.size(); ++j) row[size_t(order[j])] = to_bf16(5 - 0.5f * float(j));
+    Batch batch(repeat_rows(row, 1000), vocab);
+    const auto probs = truncated_softmax(row, {1.0f, 7});
+    double reached = 0;
+    for (size_t j = 0; j < order.size(); ++j) {
+        const double next = reached + probs[size_t(order[j])];
+        const auto p = float((reached + next) / 2);
+        SCOPED_TRACE("top_p " + std::to_string(p));
+        EXPECT_EQ(drawn(batch, vocab, {1.0f, 7, 0, p}, 20),
+                  std::set<int32_t>(order.begin(), order.begin() + ptrdiff_t(j) + 1));
+        reached = next;
+    }
+}
+
+TEST(Sample, TopPKeepsEveryTokenTiedAtTheCut) {
+    Batch batch(repeat_rows(bf16_row({3.0f, 2.0f, 2.0f, 2.0f, 1.0f, 0.0f}), 1000), 6);
+    EXPECT_EQ(drawn(batch, 6, {1.0f, 7, 0, 0.5f}, 10), (std::set<int32_t>{0, 1, 2, 3}));
+    EXPECT_EQ(drawn(batch, 6, {1.0f, 7, 0, 0.4f}, 10), (std::set<int32_t>{0}));
+}
+
+TEST(Sample, TopPHandlesLogitsWhoseExponentialOverflows) {
+    Batch batch(repeat_rows(bf16_row({100.0f, 99.0f, 99.0f, 98.0f, 90.0f}), 1000), 5);
+    EXPECT_EQ(drawn(batch, 5, {1.0f, 7, 0, 0.5f}, 10), (std::set<int32_t>{0}));
+    EXPECT_EQ(drawn(batch, 5, {1.0f, 7, 0, 0.6f}, 10), (std::set<int32_t>{0, 1, 2}));
+    EXPECT_EQ(drawn(batch, 5, {0.5f, 7, 0, 0.9f}, 10), (std::set<int32_t>{0, 1, 2}));
+}
+
+TEST(Sample, TinyTopPIsGreedyAndTopPOfOneChangesNothing) {
+    const int64_t vocab = 32000;
+    const int64_t rows = 64;
+    auto logits = engine::test::random_bf16(size_t(rows * vocab), 3, -8, 4);
+    for (int64_t r = 0; r < rows; ++r)
+        logits[size_t(r * vocab + (r * 997) % vocab)] = to_bf16(4.5f);
+    Batch batch(logits, vocab);
+    const auto greedy = batch.greedy();
+    for (uint64_t step = 0; step < 4; ++step)
+        EXPECT_EQ(batch({1.5f, 1, 0, 1e-6f}, step * uint64_t(rows)), greedy);
+    const auto plain = batch({1.0f, 7}, 0);
+    EXPECT_EQ(batch({1.0f, 7, 0, 1.0f}, 0), plain);
+    EXPECT_NE(batch({1.0f, 7, 0, 0.5f}, 0), plain);
+}
+
+TEST(Sample, TopPNeverDrawsNegativeInfinity) {
+    Batch batch(repeat_rows(bf16_row({-INFINITY, 1.0f, -INFINITY, 0.0f, -INFINITY}), 1000), 5);
+    EXPECT_EQ(drawn(batch, 5, {1.0f, 7, 0, 0.99f}, 4), (std::set<int32_t>{1, 3}));
+    Batch none(std::vector<uint16_t>(3000, to_bf16(-INFINITY)), 3000);
+    EXPECT_EQ(none({1.0f, 0, 0, 0.5f}, 0), (std::vector<int32_t>{0}));
+    EXPECT_EQ(none({1.0f, 0, 5, 0.5f}, 0), (std::vector<int32_t>{0}));
+}
+
 TEST(Sample, ARowOfNegativeInfinityPicksTheFirstIndex) {
     Batch batch(std::vector<uint16_t>(3000, to_bf16(-INFINITY)), 3000);
     EXPECT_EQ(batch({1.0f, 0}, 0), (std::vector<int32_t>{0}));
@@ -408,6 +545,11 @@ TEST(Sample, RejectsBadArguments) {
     auto negative_k = two;
     negative_k[0].params.top_k = -1;
     EXPECT_THROW(sampler(ids, logits, negative_k, stream), std::invalid_argument);
+    for (const float p : {0.0f, -0.5f, 1.01f, std::numeric_limits<float>::quiet_NaN()}) {
+        auto bad = two;
+        bad[0].params.top_p = p;
+        EXPECT_THROW(sampler(ids, logits, bad, stream), std::invalid_argument);
+    }
     EXPECT_THROW(sampler(ids, Tensor(p, DType::F32, {2, 10}), two, stream), std::invalid_argument);
     EXPECT_THROW(sampler(ids, Tensor(p, DType::BF16, {2, 0}), two, stream), std::invalid_argument);
     EXPECT_THROW(sampler(ids, Tensor(p, DType::BF16, {20}), two, stream), std::invalid_argument);

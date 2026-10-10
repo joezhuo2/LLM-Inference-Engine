@@ -896,3 +896,14 @@
 - **block-uniform loop control (why every thread must see the same total before deciding)** => 
 - **upper midpoint `hi - (hi - lo) / 2` (avoids overflow and an endless loop when `lo = mid`)** => 
 - **equivalent mutant (a change that cannot alter any observable result)** => 
+### Top-p by threshold search
+- **top-p (nucleus) sampling (the smallest set of top tokens whose probability reaches p)** => 
+- **HF's top-p rule (`cumsum(sorted ascending) <= 1 - p` removed) as "mass strictly above < p"** => 
+- **why the threshold search needs a monotone function (float sums of non-negative terms never decrease as terms are added)** => 
+- **max subtraction before `expf` (softmax without overflow)** => 
+- **ties at the cut: a threshold on values cannot split a group of equal logits** => 
+- **stable vs unstable sort (why HF keeps different tied tokens on CPU and CUDA)** => 
+- **BF16 logit ties (one ulp is 0.0625 between 8 and 16)** => 
+- **a generic block reduction with an operator (`block_reduce(v, op)` for sum and max)** => 
+- **`fmaxf` (and why max is commutative, so the butterfly agrees in every lane)** => 
+- **chi-square test at a setting near a cut (why the tests assert a margin first)** => 
