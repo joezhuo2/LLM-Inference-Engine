@@ -884,3 +884,15 @@
 - **block-uniform branch vs warp divergence (every thread of a block takes the same side of `temperature == 0`)** => 
 - **noise keyed by (seed, step, token) instead of the batch row (the same request draws the same tokens in any batch)** => 
 - **`std::span<const T>` parameters and `size_bytes()`** => 
+### Top-k by threshold search
+- **top-k sampling (keep the k most likely tokens, renormalize, draw)** => 
+- **order of HF's logits warpers (temperature, then top-k, then top-p)** => 
+- **selecting by a threshold instead of sorting (the k-th largest value as a binary search over counts)** => 
+- **order-preserving integer key of a float (flip the sign bit of positives, every bit of negatives)** => 
+- **`-0.0f` vs `+0.0f` (equal as floats, different bits; `x + 0.0f` folds them)** => 
+- **`__float_as_uint` (reinterpreting bits without conversion)** => 
+- **`__shfl_xor_sync` butterfly reduction (every lane ends with the same total)** => 
+- **block-wide sum reused in a loop (why a `__syncthreads()` before writing the shared array)** => 
+- **block-uniform loop control (why every thread must see the same total before deciding)** => 
+- **upper midpoint `hi - (hi - lo) / 2` (avoids overflow and an endless loop when `lo = mid`)** => 
+- **equivalent mutant (a change that cannot alter any observable result)** => 

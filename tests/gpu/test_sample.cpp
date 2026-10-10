@@ -4,9 +4,12 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <functional>
+#include <initializer_list>
 #include <limits>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "engine/runtime/sampler.h"
@@ -91,6 +94,25 @@ std::vector<double> softmax(const std::vector<uint16_t>& row, float temperature)
     return p;
 }
 
+std::vector<double> truncated_softmax(const std::vector<uint16_t>& row,
+                                      const SamplingParams& params) {
+    std::vector<float> s(row.size());
+    for (size_t i = 0; i < row.size(); ++i) s[i] = from_bf16(row[i]) / params.temperature;
+    float cut = -INFINITY;
+    if (params.top_k > 0 && size_t(params.top_k) < row.size()) {
+        auto sorted = s;
+        std::sort(sorted.begin(), sorted.end(), std::greater<>());
+        cut = sorted[size_t(params.top_k) - 1];
+    }
+    std::vector<double> p(row.size(), 0.0);
+    const double top = *std::max_element(s.begin(), s.end());
+    double sum = 0;
+    for (size_t i = 0; i < row.size(); ++i)
+        if (s[i] >= cut) sum += p[i] = std::exp(double(s[i]) - top);
+    for (auto& v : p) v /= sum;
+    return p;
+}
+
 double chi_square_critical(int dof) {
     const double k = dof;
     const double z = 3.090;
@@ -137,6 +159,20 @@ std::vector<int64_t> histogram(Batch& batch, int64_t vocab, const SamplingParams
     for (int d = 0; d < draws; ++d)
         for (const auto id : batch(params, uint64_t(d * batch.rows()))) ++counts[size_t(id)];
     return counts;
+}
+
+std::set<int32_t> drawn(Batch& batch, int64_t vocab, const SamplingParams& params, int draws) {
+    const auto counts = histogram(batch, vocab, params, draws);
+    std::set<int32_t> ids;
+    for (size_t i = 0; i < counts.size(); ++i)
+        if (counts[i] > 0) ids.insert(int32_t(i));
+    return ids;
+}
+
+std::vector<uint16_t> bf16_row(std::initializer_list<float> values) {
+    std::vector<uint16_t> row;
+    for (const float v : values) row.push_back(to_bf16(v));
+    return row;
 }
 
 }  // namespace
@@ -244,6 +280,96 @@ TEST(Sample, ARowDependsOnlyOnItsLogitsAndParametersNotOnItsBatch) {
     EXPECT_EQ(out, together);
 }
 
+TEST(Sample, TopKMatchesTheTruncatedSoftmaxOnASmallVocab) {
+    const auto row = bf16_row({2.0f, 1.0f, 0.0f, -1.0f, 0.5f, -INFINITY, -3.0f});
+    const auto vocab = int64_t(row.size());
+    Batch batch(repeat_rows(row, 50'000), vocab);
+    for (const int k : {2, 4, 5}) {
+        for (const float temperature : {0.5f, 2.0f}) {
+            SCOPED_TRACE("top_k " + std::to_string(k) + ", temperature " +
+                         std::to_string(temperature));
+            const SamplingParams params{temperature, 7, k};
+            const auto counts = histogram(batch, vocab, params, 4);
+            const Fit fit = goodness_of_fit(counts, truncated_softmax(row, params), 5);
+            std::printf("top_k %d, temperature %.1f: chi-square %.2f, critical %.2f\n", k,
+                        temperature, fit.chi2, fit.critical);
+            EXPECT_EQ(fit.impossible, 0);
+            EXPECT_LT(fit.chi2, fit.critical);
+        }
+    }
+}
+
+TEST(Sample, TopKMatchesTheTruncatedSoftmaxOnHuggingFaceLogits) {
+    if (const auto why = engine::test::reference_skip_reason(); !why.empty()) GTEST_SKIP() << why;
+    const auto prompts = engine::test::load_reference_manifest();
+    for (const auto& prompt : {prompts.front(), prompts.back()}) {
+        SCOPED_TRACE(prompt.name);
+        const engine::test::SafetensorsFile ref(prompt.file);
+        const int64_t vocab = ref.entry("logits").shape[1];
+        const auto logits = ref.read<uint16_t>("logits");
+        const auto first = logits.begin() + (prompt.prompt_len - 1) * vocab;
+        const std::vector<uint16_t> row(first, first + vocab);
+        Batch batch(repeat_rows(row, 1000), vocab);
+        for (const SamplingParams params : {SamplingParams{0.7f, 7, 10}, {1.0f, 7, 50}}) {
+            SCOPED_TRACE("top_k " + std::to_string(params.top_k));
+            const auto counts = histogram(batch, vocab, params, 100);
+            const Fit fit = goodness_of_fit(counts, truncated_softmax(row, params), 20);
+            std::printf("%s, top_k %d, temperature %.1f: chi-square %.2f, critical %.2f\n",
+                        prompt.name.c_str(), params.top_k, params.temperature, fit.chi2,
+                        fit.critical);
+            EXPECT_EQ(fit.impossible, 0);
+            EXPECT_LT(fit.chi2, fit.critical);
+        }
+    }
+}
+
+TEST(Sample, TopKKeepsEveryTokenTiedWithTheKthLargest) {
+    const int64_t vocab = 1000;
+    auto row = engine::test::random_bf16(size_t(vocab), 9, -4, 2);
+    row[10] = to_bf16(5);
+    row[500] = to_bf16(4);
+    for (const int i : {3, 777, 999}) row[size_t(i)] = to_bf16(3);
+    Batch batch(repeat_rows(row, 1000), vocab);
+    EXPECT_EQ(drawn(batch, vocab, {1.0f, 7, 3}, 10), (std::set<int32_t>{3, 10, 500, 777, 999}));
+    EXPECT_EQ(drawn(batch, vocab, {1.0f, 7, 4}, 10), (std::set<int32_t>{3, 10, 500, 777, 999}));
+    EXPECT_EQ(drawn(batch, vocab, {1.0f, 7, 2}, 10), (std::set<int32_t>{10, 500}));
+}
+
+TEST(Sample, TopKOrdersNegativeValuesAndBothZeros) {
+    Batch negative(repeat_rows(bf16_row({-10.0f, -9.5f, -100.0f, -9.0f, -50.0f}), 1000), 5);
+    EXPECT_EQ(drawn(negative, 5, {1.0f, 7, 2}, 4), (std::set<int32_t>{1, 3}));
+    Batch zeros(repeat_rows(bf16_row({-0.0f, 0.0f, -1.0f, -2.0f}), 1000), 4);
+    EXPECT_EQ(drawn(zeros, 4, {1.0f, 7, 1}, 4), (std::set<int32_t>{0, 1}));
+}
+
+TEST(Sample, TopKOneIsGreedy) {
+    const int64_t vocab = 32000;
+    const int64_t rows = 64;
+    auto logits = engine::test::random_bf16(size_t(rows * vocab), 3, -8, 4);
+    for (int64_t r = 0; r < rows; ++r)
+        logits[size_t(r * vocab + (r * 997) % vocab)] = to_bf16(4.5f);
+    Batch batch(logits, vocab);
+    const auto greedy = batch.greedy();
+    for (uint64_t step = 0; step < 4; ++step)
+        EXPECT_EQ(batch({1.5f, 1, 1}, step * uint64_t(rows)), greedy);
+}
+
+TEST(Sample, TopKOfZeroOrAtLeastTheVocabChangesNothing) {
+    const int64_t vocab = 32000;
+    Batch batch(engine::test::random_bf16(size_t(64 * vocab), 4, -4, 4), vocab);
+    const auto plain = batch({1.0f, 7, 0}, 0);
+    for (const int k : {32000, 32001, std::numeric_limits<int32_t>::max()})
+        EXPECT_EQ(batch({1.0f, 7, k}, 0), plain) << k;
+    EXPECT_NE(batch({1.0f, 7, 100}, 0), plain);
+}
+
+TEST(Sample, TopKNeverDrawsNegativeInfinity) {
+    Batch batch(repeat_rows(bf16_row({-INFINITY, 1.0f, -INFINITY, 0.0f, -INFINITY}), 1000), 5);
+    EXPECT_EQ(drawn(batch, 5, {1.0f, 7, 4}, 4), (std::set<int32_t>{1, 3}));
+    Batch none(std::vector<uint16_t>(3000, to_bf16(-INFINITY)), 3000);
+    EXPECT_EQ(none({1.0f, 0, 1}, 0), (std::vector<int32_t>{0}));
+}
+
 TEST(Sample, ARowOfNegativeInfinityPicksTheFirstIndex) {
     Batch batch(std::vector<uint16_t>(3000, to_bf16(-INFINITY)), 3000);
     EXPECT_EQ(batch({1.0f, 0}, 0), (std::vector<int32_t>{0}));
@@ -279,6 +405,9 @@ TEST(Sample, RejectsBadArguments) {
         bad[1].params.temperature = t;
         EXPECT_THROW(sampler(ids, logits, bad, stream), std::invalid_argument);
     }
+    auto negative_k = two;
+    negative_k[0].params.top_k = -1;
+    EXPECT_THROW(sampler(ids, logits, negative_k, stream), std::invalid_argument);
     EXPECT_THROW(sampler(ids, Tensor(p, DType::F32, {2, 10}), two, stream), std::invalid_argument);
     EXPECT_THROW(sampler(ids, Tensor(p, DType::BF16, {2, 0}), two, stream), std::invalid_argument);
     EXPECT_THROW(sampler(ids, Tensor(p, DType::BF16, {20}), two, stream), std::invalid_argument);
