@@ -52,13 +52,13 @@ void run(const Options& o) {
     TextStream text(tokenizer);
     const auto start = Clock::now();
     Clock::time_point first;
-    const auto out = generate_greedy(runner, prompt, int(context - prompt_len), w.config.eos_id,
-                                     [&](int32_t token) {
-                                         if (first == Clock::time_point{}) first = Clock::now();
-                                         const std::string piece = text.push(token);
-                                         std::fwrite(piece.data(), 1, piece.size(), stdout);
-                                         std::fflush(stdout);
-                                     });
+    const auto out = generate(runner, prompt, int(context - prompt_len), w.config.eos_id, {},
+                              [&](int32_t token) {
+                                  if (first == Clock::time_point{}) first = Clock::now();
+                                  const std::string piece = text.push(token);
+                                  std::fwrite(piece.data(), 1, piece.size(), stdout);
+                                  std::fflush(stdout);
+                              });
     const auto end = Clock::now();
     const double prefill = std::chrono::duration<double>(first - start).count();
     const double decode = std::chrono::duration<double>(end - first).count();

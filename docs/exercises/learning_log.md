@@ -808,3 +808,6 @@
 - **seeded determinism (the same seed and step give the same token)** => 
 - **chi-square goodness-of-fit test, degrees of freedom and the critical value** => 
 - **pooling rare outcomes into one bucket (expected count too small for chi-square)** => 
+### Sampled generation
+- **the token's position in the answer as the RNG step (why a sampled answer is reproducible from its seed)** => 
+- **`!(x >= 0)` to reject NaN along with negatives (every comparison with NaN is false)** => 
