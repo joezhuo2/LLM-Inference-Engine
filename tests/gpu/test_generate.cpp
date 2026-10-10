@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <span>
 #include <stdexcept>
 #include <vector>
@@ -13,7 +15,7 @@
 #include "support/reference.h"
 #include "support/safetensors_file.h"
 
-using engine::generate_greedy;
+using engine::generate;
 using engine::ModelRunner;
 
 namespace {
@@ -45,8 +47,8 @@ TEST_F(GenerateTest, FreeRunningGreedyMatchesHuggingFaceUpToNearTies) {
         SCOPED_TRACE(prompt.name);
         const engine::test::SafetensorsFile ref(prompt.file);
         const auto ids = ref.read<int32_t>("input_ids");
-        const auto out = generate_greedy(runner, std::span(ids).first(size_t(prompt.prompt_len)),
-                                         kMaxNewTokens, w().config.eos_id);
+        const auto out = generate(runner, std::span(ids).first(size_t(prompt.prompt_len)),
+                                  kMaxNewTokens, w().config.eos_id);
         if (out == prompt.generated_ids) {
             ++identical;
             std::printf("%-16s identical (%zu tokens)\n", prompt.name.c_str(), out.size());
@@ -72,26 +74,38 @@ TEST_F(GenerateTest, FreeRunningGreedyMatchesHuggingFaceUpToNearTies) {
 
 TEST_F(GenerateTest, StopsAtMaxNewTokensOrAfterEos) {
     ModelRunner runner(w().config, w().weights, 16, 64, stream);
-    const auto five = generate_greedy(runner, kPrompt, 5, -1);
+    const auto five = generate(runner, kPrompt, 5, -1);
     ASSERT_EQ(five.size(), 5u);
     EXPECT_EQ(runner.length(), int64_t(kPrompt.size()) + 4);
-    EXPECT_EQ(generate_greedy(runner, kPrompt, 5, five[2]),
+    EXPECT_EQ(generate(runner, kPrompt, 5, five[2]),
               std::vector<int32_t>(five.begin(), five.begin() + 3));
-    EXPECT_EQ(generate_greedy(runner, kPrompt, 1, -1), std::vector<int32_t>{five[0]});
+    EXPECT_EQ(generate(runner, kPrompt, 1, -1), std::vector<int32_t>{five[0]});
 }
 
 TEST_F(GenerateTest, ReportsEveryTokenInOrder) {
     ModelRunner runner(w().config, w().weights, 16, 64, stream);
     std::vector<int32_t> seen;
     const auto out =
-        generate_greedy(runner, kPrompt, 8, -1, [&](int32_t token) { seen.push_back(token); });
+        generate(runner, kPrompt, 8, -1, {}, [&](int32_t token) { seen.push_back(token); });
     EXPECT_EQ(seen, out);
 }
 
-TEST_F(GenerateTest, RejectsBadLimits) {
+TEST_F(GenerateTest, SamplingRepeatsWithTheSameSeedAndDrawsAnotherAnswerWithAnother) {
+    ModelRunner runner(w().config, w().weights, 16, 64, stream);
+    const auto greedy = generate(runner, kPrompt, 32, -1);
+    const auto first = generate(runner, kPrompt, 32, -1, {1.0f, 1});
+    EXPECT_EQ(generate(runner, kPrompt, 32, -1, {1.0f, 1}), first);
+    EXPECT_NE(generate(runner, kPrompt, 32, -1, {1.0f, 2}), first);
+    EXPECT_NE(first, greedy);
+    EXPECT_EQ(generate(runner, kPrompt, 32, -1, {0.0f, 1}), greedy);
+}
+
+TEST_F(GenerateTest, RejectsBadLimitsAndTemperatures) {
     ModelRunner runner(w().config, w().weights, 16, 16, stream);
-    EXPECT_THROW(generate_greedy(runner, kPrompt, 0, -1), std::invalid_argument);
-    EXPECT_THROW(generate_greedy(runner, kPrompt, 12, -1), std::invalid_argument);
-    EXPECT_EQ(generate_greedy(runner, kPrompt, 11, -1).size(), 11u);
+    EXPECT_THROW(generate(runner, kPrompt, 0, -1), std::invalid_argument);
+    EXPECT_THROW(generate(runner, kPrompt, 12, -1), std::invalid_argument);
+    for (const float t : {-1.0f, INFINITY, std::numeric_limits<float>::quiet_NaN()})
+        EXPECT_THROW(generate(runner, kPrompt, 4, -1, {t, 0}), std::invalid_argument);
+    EXPECT_EQ(generate(runner, kPrompt, 11, -1).size(), 11u);
     EXPECT_EQ(runner.length(), 16);
 }
