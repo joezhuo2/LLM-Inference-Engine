@@ -858,3 +858,18 @@
 - **randomized testing with a fixed seed (`std::mt19937`, reproducible failures)** => 
 - **unspecified evaluation order of function arguments (why `EXPECT_EQ(f(), g())` must not depend on f running first)** => 
 - **defaulted `operator==` (C++20) for comparing whole snapshots** => 
+## Paged Decode Attention (Branch 17)
+### Paged attention
+- **gathering K and V through a block table at read time (the scatter in `write_kv` is the other half)** => 
+- **context length (`context_lens[b]`, the tokens in the cache including the current one)** => 
+- **one query row per sequence in decode vs many in prefill** => 
+- **prefill as one decode row per prompt token (rows sharing one block table, context `pos + 1`)** => 
+- **two-pass softmax (scores stored, then max, sum and weights) vs one pass** => 
+- **online softmax (running max, running sum and a rescaled accumulator)** => 
+- **masking past the context and why `p = 0` does not cancel a NaN (`0 * NaN = NaN`)** => 
+- **`exp` overflow in FP32 (above about 88.7)** => 
+### Testing attention
+- **error bound relative to `sum p_j |v_j|` (why an absolute tolerance is wrong for long contexts)** => 
+- **floating-point non-associativity (why summation order changes the bits)** => 
+- **batch invariance (a row's output must not depend on the other rows in the batch)** => 
+- **exact scores from small integers (testing overflow without rounding noise)** => 
