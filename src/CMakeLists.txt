@@ -46,6 +46,7 @@ if(ENGINE_CUDA)
     runtime/kv_cache.cpp
     runtime/model_runner.cpp
     runtime/pinned_buffer.cpp
+    runtime/sampler.cpp
     runtime/weights.cpp
   )
   target_include_directories(engine_runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
