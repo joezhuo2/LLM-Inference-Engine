@@ -6,7 +6,7 @@ The goal is not to beat vLLM. It is a small engine in which every design decisio
 
 ## Goals
 
-1. **Correct:** with teacher forcing on 20 fixed prompts, the engine's argmax token matches HuggingFace (BF16, same weights) at 99%+ of positions with a mean absolute logit error under 0.05, and free-running greedy output matches HF exactly for the first 64 tokens on at least 18 of the 20 prompts.
+1. **Correct:** with teacher forcing on 20 fixed prompts, the engine's argmax token matches HuggingFace (BF16, same weights) at 99%+ of positions with a mean absolute logit error under 0.05, and free-running greedy output for the first 64 tokens either matches HF exactly or first differs where HF's own logits for the two tokens are at most 2 BF16 ulps apart, on all 20 prompts (an exact match on most prompts is out of reach in BF16: HF's own full forward pass agrees with its `generate()` on only 14 of the 20).
 2. **Fast at batch 1:** decode reaches at least 60% of the GPU's measured DRAM bandwidth.
 3. **Fast at batch N:** with 16 concurrent requests, total throughput is at least 5x the batch-1 throughput.
 4. **Explained:** every kernel has before and after Nsight Compute numbers, and a results page with plots explains them.

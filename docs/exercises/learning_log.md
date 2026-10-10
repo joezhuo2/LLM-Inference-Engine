@@ -814,3 +814,5 @@
 ### Sampling flags
 - **`std::random_device` as a source of a fresh seed (and printing it so the run can be repeated)** => 
 - **`std::optional` for an option that may be absent (`value_or`)** => 
+### M2 criterion
+- **a success criterion that the reference itself cannot meet (why to check self-consistency of the reference first)** => 
