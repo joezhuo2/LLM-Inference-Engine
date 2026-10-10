@@ -31,12 +31,19 @@ struct Options {
     std::string system;
     int max_new_tokens = 256;
     float temperature = 0.0f;
+    int top_k = 0;
+    float top_p = 1.0f;
     std::optional<uint64_t> seed;
 };
 
 #if ENGINE_HAS_CUDA
 void run(const Options& o) {
     using Clock = std::chrono::steady_clock;
+    std::random_device entropy;
+    const SamplingParams sampling{
+        o.temperature, o.seed.value_or(uint64_t(entropy()) << 32 | entropy()), o.top_k, o.top_p};
+    validate(sampling);
+
     const Tokenizer tokenizer(o.model / "tokenizer.model");
     std::vector<ChatMessage> messages;
     if (!o.system.empty()) messages.push_back({"system", o.system});
@@ -52,10 +59,6 @@ void run(const Options& o) {
                                  " tokens; the context is " +
                                  std::to_string(w.config.max_positions));
     ModelRunner runner(w.config, w.weights, prompt_len, context, nullptr);
-
-    std::random_device entropy;
-    const SamplingParams sampling{o.temperature,
-                                  o.seed.value_or(uint64_t(entropy()) << 32 | entropy())};
 
     TextStream text(tokenizer);
     const auto start = Clock::now();
@@ -73,7 +76,8 @@ void run(const Options& o) {
     std::printf("\n");
     std::fflush(stdout);
     if (sampling.temperature > 0)
-        std::fprintf(stderr, "temperature %g, seed %llu\n", double(sampling.temperature),
+        std::fprintf(stderr, "temperature %g, top-k %d, top-p %g, seed %llu\n",
+                     double(sampling.temperature), sampling.top_k, double(sampling.top_p),
                      static_cast<unsigned long long>(sampling.seed));
     std::fprintf(stderr,
                  "%lld prompt tokens, %zu generated; first token after %.1f ms, then %.1f "
@@ -106,6 +110,16 @@ void add_generate_command(CLI::App& app) {
                     "Sample from softmax(logits / temperature); 0 decodes greedily")
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
+    cmd->add_option("--top-k", opts->top_k,
+                    "When sampling, draw only from the k most likely tokens and ties with the "
+                    "k-th; 0 keeps every token")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
+    cmd->add_option("--top-p", opts->top_p,
+                    "When sampling, draw only from the most likely tokens whose probability "
+                    "reaches p, in (0, 1]; 1 keeps every token")
+        ->capture_default_str()
+        ->check(CLI::Range(0.0f, 1.0f));
     cmd->add_option("--seed", opts->seed,
                     "Seed for sampling; the same seed repeats the answer (default: random, "
                     "printed)");

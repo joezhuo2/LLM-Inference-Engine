@@ -92,7 +92,7 @@ The `cpu` preset builds and tests only the pure C++ parts, for machines without 
 ./build/release/bin/engine generate --model models/tinyllama --prompt "Write a haiku about GPUs."
 ```
 
-The answer streams to stdout as it decodes, followed on stderr by the prompt and generated token counts, the time to the first token and the decode rate. `--system` adds a system message and `--max-new-tokens` (default 256) caps the answer. Decoding is greedy by default; `--temperature 0.7` samples from `softmax(logits / 0.7)` on the GPU with the Gumbel-max trick, and `--seed N` makes the answer repeatable (without it the seed is random and printed on stderr). Generation runs at batch 1 on the naive kernels and a contiguous KV cache (milestone M2): about 110 tokens/s on the RTX 5060, greedy or sampled.
+The answer streams to stdout as it decodes, followed on stderr by the prompt and generated token counts, the time to the first token and the decode rate. `--system` adds a system message and `--max-new-tokens` (default 256) caps the answer. Decoding is greedy by default; `--temperature 0.7` samples from `softmax(logits / 0.7)` on the GPU with the Gumbel-max trick, `--top-k K` and `--top-p P` then restrict each draw to the K most likely tokens or to the most likely tokens whose probability reaches P (applied in that order after the temperature, as in Hugging Face), and `--seed N` makes the answer repeatable (without it the seed is random and printed on stderr). Generation runs at batch 1 on the naive kernels and a contiguous KV cache (milestone M2): 125 to 135 tokens/s on the RTX 5060, greedy or sampled, with or without top-k and top-p.
 
 ## Repository layout
 
