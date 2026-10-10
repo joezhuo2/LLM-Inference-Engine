@@ -3,8 +3,7 @@
 #include <stdexcept>
 
 #include "engine/runtime/device_buffer.h"
-#include "engine/sampling/greedy.h"
-#include "engine/sampling/sample.h"
+#include "engine/runtime/sampler.h"
 #include "kernels/cuda_check.h"
 
 namespace engine {
@@ -19,17 +18,15 @@ std::vector<int32_t> generate(ModelRunner& runner, std::span<const int32_t> prom
             "generate: the prompt plus max_new_tokens does not fit in the context");
     validate(sampling);
 
+    Sampler sampler(1);
     DeviceBuffer next(sizeof(int32_t));
     const Tensor next_id(next.data(), DType::I32, {1});
     std::vector<int32_t> out;
     runner.reset();
     Tensor logits = runner.forward(prompt);
     while (true) {
-        if (sampling.temperature == 0)
-            greedy(next_id, logits, runner.stream());
-        else
-            sample(next_id, logits, sampling.temperature, sampling.seed, out.size(),
-                   runner.stream());
+        const SampleRow row{sampling, out.size()};
+        sampler(next_id, logits, std::span(&row, 1), runner.stream());
         int32_t token = 0;
         CUDA_CHECK(cudaMemcpyAsync(&token, next.data(), sizeof(token), cudaMemcpyDeviceToHost,
                                    runner.stream()));

@@ -9,8 +9,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "engine/runtime/sampler.h"
 #include "engine/sampling/greedy.h"
-#include "engine/sampling/sample.h"
 #include "support/bf16.h"
 #include "support/device.h"
 #include "support/reference.h"
@@ -18,7 +18,9 @@
 
 using engine::DeviceBuffer;
 using engine::DType;
-using engine::sample;
+using engine::Sampler;
+using engine::SampleRow;
+using engine::SamplingParams;
 using engine::Tensor;
 using engine::test::CudaStream;
 using engine::test::download;
@@ -35,18 +37,25 @@ std::vector<uint16_t> repeat_rows(const std::vector<uint16_t>& row, int64_t rows
     return out;
 }
 
-class Sampler {
+class Batch {
 public:
-    Sampler(const std::vector<uint16_t>& logits, int64_t vocab)
+    Batch(const std::vector<uint16_t>& logits, int64_t vocab)
         : rows_(int64_t(logits.size()) / vocab),
           vocab_(vocab),
           logits_(upload(logits)),
-          ids_(size_t(rows_) * sizeof(int32_t)) {}
+          ids_(size_t(rows_) * sizeof(int32_t)),
+          sampler_(rows_) {}
 
-    std::vector<int32_t> operator()(float temperature, uint64_t seed, uint64_t step) {
-        sample(ids(), logits(), temperature, seed, step, stream_);
+    std::vector<int32_t> operator()(const std::vector<SampleRow>& rows) {
+        sampler_(ids(), logits(), rows, stream_);
         CUDA_CHECK(cudaStreamSynchronize(stream_));
         return download<int32_t>(ids_);
+    }
+
+    std::vector<int32_t> operator()(const SamplingParams& params, uint64_t first_step) {
+        std::vector<SampleRow> rows(static_cast<size_t>(rows_));
+        for (size_t r = 0; r < rows.size(); ++r) rows[r] = {params, first_step + r};
+        return (*this)(rows);
     }
 
     std::vector<int32_t> greedy() {
@@ -54,6 +63,8 @@ public:
         CUDA_CHECK(cudaStreamSynchronize(stream_));
         return download<int32_t>(ids_);
     }
+
+    int64_t rows() const { return rows_; }
 
 private:
     Tensor ids() { return Tensor(ids_.data(), DType::I32, {rows_}); }
@@ -64,6 +75,7 @@ private:
     CudaStream stream_;
     DeviceBuffer logits_;
     DeviceBuffer ids_;
+    Sampler sampler_;
 };
 
 std::vector<double> softmax(const std::vector<uint16_t>& row, float temperature) {
@@ -119,10 +131,11 @@ Fit goodness_of_fit(const std::vector<int64_t>& counts, const std::vector<double
     return fit;
 }
 
-std::vector<int64_t> histogram(Sampler& sampler, int64_t vocab, float temperature, int steps) {
+std::vector<int64_t> histogram(Batch& batch, int64_t vocab, const SamplingParams& params,
+                               int draws) {
     std::vector<int64_t> counts(size_t(vocab), 0);
-    for (int step = 0; step < steps; ++step)
-        for (const auto id : sampler(temperature, 7, uint64_t(step))) ++counts[size_t(id)];
+    for (int d = 0; d < draws; ++d)
+        for (const auto id : batch(params, uint64_t(d * batch.rows()))) ++counts[size_t(id)];
     return counts;
 }
 
@@ -133,10 +146,10 @@ TEST(Sample, MatchesSoftmaxOnASmallVocab) {
     for (const float v : {2.0f, 1.0f, 0.0f, -1.0f, 0.5f, -INFINITY, -3.0f})
         row.push_back(to_bf16(v));
     const auto vocab = int64_t(row.size());
-    Sampler sampler(repeat_rows(row, 50'000), vocab);
+    Batch batch(repeat_rows(row, 50'000), vocab);
     for (const float temperature : {0.25f, 0.5f, 1.0f, 2.0f}) {
         SCOPED_TRACE("temperature " + std::to_string(temperature));
-        const auto counts = histogram(sampler, vocab, temperature, 4);
+        const auto counts = histogram(batch, vocab, {temperature, 7}, 4);
         const Fit fit = goodness_of_fit(counts, softmax(row, temperature), 5);
         std::printf("temperature %.2f: chi-square %.2f, critical %.2f\n", temperature, fit.chi2,
                     fit.critical);
@@ -155,10 +168,10 @@ TEST(Sample, MatchesSoftmaxOnHuggingFaceLogits) {
         const auto logits = ref.read<uint16_t>("logits");
         const auto first = logits.begin() + (prompt.prompt_len - 1) * vocab;
         const std::vector<uint16_t> row(first, first + vocab);
-        Sampler sampler(repeat_rows(row, 1000), vocab);
+        Batch batch(repeat_rows(row, 1000), vocab);
         for (const float temperature : {0.7f, 1.0f, 1.5f}) {
             SCOPED_TRACE("temperature " + std::to_string(temperature));
-            const auto counts = histogram(sampler, vocab, temperature, 100);
+            const auto counts = histogram(batch, vocab, {temperature, 7}, 100);
             const Fit fit = goodness_of_fit(counts, softmax(row, temperature), 20);
             std::printf("%s, temperature %.1f: chi-square %.2f, critical %.2f\n",
                         prompt.name.c_str(), temperature, fit.chi2, fit.critical);
@@ -172,52 +185,103 @@ TEST(Sample, LowTemperatureIsGreedy) {
     const int64_t rows = 64;
     auto logits = engine::test::random_bf16(size_t(rows * vocab), 3, -8, 4);
     for (int64_t r = 0; r < rows; ++r) logits[size_t(r * vocab + (r * 997) % vocab)] = to_bf16(6);
-    Sampler sampler(logits, vocab);
-    const auto greedy = sampler.greedy();
-    for (uint64_t step = 0; step < 4; ++step) EXPECT_EQ(sampler(0.05f, 1, step), greedy);
+    Batch batch(logits, vocab);
+    const auto greedy = batch.greedy();
+    for (uint64_t step = 0; step < 4; ++step)
+        EXPECT_EQ(batch({0.05f, 1}, step * uint64_t(rows)), greedy);
 }
 
-TEST(Sample, TheSameSeedAndStepRepeatAndAnyChangeDraws) {
+TEST(Sample, TemperatureZeroIsTheGreedyKernelWhateverTheSeedAndStep) {
+    const int64_t vocab = 32000;
+    const int64_t rows = 64;
+    Batch batch(engine::test::random_bf16(size_t(rows * vocab), 11, -2, 2), vocab);
+    const auto greedy = batch.greedy();
+    EXPECT_EQ(batch({0.0f, 0}, 0), greedy);
+    EXPECT_EQ(batch({0.0f, 99}, 12345), greedy);
+}
+
+TEST(Sample, TheSameSeedAndStepRepeatAndAnyChangeRedraws) {
     const int64_t vocab = 32000;
     const int64_t rows = 256;
-    Sampler sampler(std::vector<uint16_t>(size_t(rows * vocab), to_bf16(0)), vocab);
-    const auto base = sampler(1, 42, 5);
-    EXPECT_EQ(sampler(1, 42, 5), base);
+    Batch batch(std::vector<uint16_t>(size_t(rows * vocab), to_bf16(0)), vocab);
+    const auto base = batch({1, 42}, 5);
+    EXPECT_EQ(batch({1, 42}, 5), base);
     const auto differences = [&](const std::vector<int32_t>& other) {
         int64_t n = 0;
         for (size_t r = 0; r < base.size(); ++r) n += base[r] != other[r];
         return n;
     };
-    EXPECT_GE(differences(sampler(1, 42, 6)), rows - 2);
-    EXPECT_GE(differences(sampler(1, 43, 5)), rows - 2);
+    EXPECT_GE(differences(batch({1, 42}, 5 + rows)), rows - 2);
+    EXPECT_GE(differences(batch({1, 43}, 5)), rows - 2);
     EXPECT_GE(int64_t(std::set<int32_t>(base.begin(), base.end()).size()), rows - 2);
 }
 
-TEST(Sample, ARowOfNegativeInfinityPicksTheFirstIndex) {
-    Sampler sampler(std::vector<uint16_t>(3000, to_bf16(-INFINITY)), 3000);
-    EXPECT_EQ(sampler(1, 0, 0), (std::vector<int32_t>{0}));
+TEST(Sample, ARowDependsOnlyOnItsLogitsAndParametersNotOnItsBatch) {
+    const int64_t vocab = 32000;
+    const int64_t rows = 8;
+    const auto logits = engine::test::random_bf16(size_t(rows * vocab), 5, -4, 4);
+    const std::vector<SampleRow> params = {
+        {{0.0f, 1}, 0},  {{1.0f, 1}, 0}, {{1.0f, 1}, 1},   {{1.0f, 2}, 0},
+        {{0.7f, 3}, 17}, {{1.5f, 4}, 9}, {{0.0f, 5}, 100}, {{1.0f, 1}, 0},
+    };
+    Batch all(logits, vocab);
+    const auto together = all(params);
+
+    for (int64_t r = 0; r < rows; ++r) {
+        SCOPED_TRACE("row " + std::to_string(r));
+        const auto first = logits.begin() + r * vocab;
+        Batch alone(std::vector<uint16_t>(first, first + vocab), vocab);
+        EXPECT_EQ(alone({params[size_t(r)]}), std::vector<int32_t>{together[size_t(r)]});
+    }
+
+    std::vector<uint16_t> reversed_logits;
+    for (int64_t r = rows - 1; r >= 0; --r)
+        reversed_logits.insert(reversed_logits.end(), logits.begin() + r * vocab,
+                               logits.begin() + (r + 1) * vocab);
+    Batch reversed(reversed_logits, vocab);
+    auto out = reversed(std::vector<SampleRow>(params.rbegin(), params.rend()));
+    std::reverse(out.begin(), out.end());
+    EXPECT_EQ(out, together);
 }
 
-TEST(Sample, ZeroTokensIsANoOp) {
+TEST(Sample, ARowOfNegativeInfinityPicksTheFirstIndex) {
+    Batch batch(std::vector<uint16_t>(3000, to_bf16(-INFINITY)), 3000);
+    EXPECT_EQ(batch({1.0f, 0}, 0), (std::vector<int32_t>{0}));
+    EXPECT_EQ(batch({0.0f, 0}, 0), (std::vector<int32_t>{0}));
+}
+
+TEST(Sample, ZeroRowsIsANoOp) {
     CudaStream stream;
-    EXPECT_NO_THROW(sample(Tensor(nullptr, DType::I32, {0}),
-                           Tensor(nullptr, DType::BF16, {0, 32000}), 1, 0, 0, stream));
+    Sampler sampler(1);
+    EXPECT_NO_THROW(sampler(Tensor(nullptr, DType::I32, {0}),
+                            Tensor(nullptr, DType::BF16, {0, 32000}), {}, stream));
 }
 
 TEST(Sample, RejectsBadArguments) {
+    EXPECT_THROW(Sampler(0), std::invalid_argument);
+    EXPECT_THROW(Sampler(-1), std::invalid_argument);
+
     CudaStream stream;
+    Sampler sampler(2);
     int dummy = 0;
     void* p = &dummy;
     const Tensor ids(p, DType::I32, {2});
     const Tensor logits(p, DType::BF16, {2, 10});
-    for (const float t : {0.0f, -1.0f, INFINITY, std::numeric_limits<float>::quiet_NaN()})
-        EXPECT_THROW(sample(ids, logits, t, 0, 0, stream), std::invalid_argument);
-    EXPECT_THROW(sample(ids, Tensor(p, DType::F32, {2, 10}), 1, 0, 0, stream),
-                 std::invalid_argument);
-    EXPECT_THROW(sample(ids, Tensor(p, DType::BF16, {2, 0}), 1, 0, 0, stream),
-                 std::invalid_argument);
-    EXPECT_THROW(sample(Tensor(p, DType::I32, {3}), logits, 1, 0, 0, stream),
-                 std::invalid_argument);
-    EXPECT_THROW(sample(Tensor(p, DType::I64, {2}), logits, 1, 0, 0, stream),
-                 std::invalid_argument);
+    const std::vector<SampleRow> two(2, SampleRow{{1.0f, 0}, 0});
+    const std::vector<SampleRow> three(3, SampleRow{{1.0f, 0}, 0});
+
+    EXPECT_THROW(sampler(ids, logits, std::vector<SampleRow>(1), stream), std::invalid_argument);
+    EXPECT_THROW(
+        sampler(Tensor(p, DType::I32, {3}), Tensor(p, DType::BF16, {3, 10}), three, stream),
+        std::invalid_argument);
+    for (const float t : {-1.0f, INFINITY, std::numeric_limits<float>::quiet_NaN()}) {
+        auto bad = two;
+        bad[1].params.temperature = t;
+        EXPECT_THROW(sampler(ids, logits, bad, stream), std::invalid_argument);
+    }
+    EXPECT_THROW(sampler(ids, Tensor(p, DType::F32, {2, 10}), two, stream), std::invalid_argument);
+    EXPECT_THROW(sampler(ids, Tensor(p, DType::BF16, {2, 0}), two, stream), std::invalid_argument);
+    EXPECT_THROW(sampler(ids, Tensor(p, DType::BF16, {20}), two, stream), std::invalid_argument);
+    EXPECT_THROW(sampler(Tensor(p, DType::I32, {3}), logits, two, stream), std::invalid_argument);
+    EXPECT_THROW(sampler(Tensor(p, DType::I64, {2}), logits, two, stream), std::invalid_argument);
 }

@@ -877,3 +877,10 @@
 ### Sampling parameters
 - **aggregate initialization (`{1.0f, 7}` fills fields in declaration order, so new fields go at the end)** => 
 - **validating once at the boundary instead of in every kernel call** => 
+### Per-row sampling
+- **per-row parameters as a device array of structs (one small upload per step)** => 
+- **a trivially copyable struct shared by host and device code (same layout on both sides)** => 
+- **stream ordering (why one device buffer can be overwritten every step by `cudaMemcpyAsync` on the same stream)** => 
+- **block-uniform branch vs warp divergence (every thread of a block takes the same side of `temperature == 0`)** => 
+- **noise keyed by (seed, step, token) instead of the batch row (the same request draws the same tokens in any batch)** => 
+- **`std::span<const T>` parameters and `size_bytes()`** => 
