@@ -10,6 +10,7 @@ add_executable(unit_tests
   unit/test_checksum.cpp
   unit/test_checksum_golden.cpp
   unit/test_config.cpp
+  unit/test_kv_cache_size.cpp
   unit/test_mapped_file.cpp
   unit/test_model_weights.cpp
   unit/test_reference_golden.cpp
@@ -48,6 +49,7 @@ if(ENGINE_CUDA)
     gpu/test_gemm.cpp
     gpu/test_generate.cpp
     gpu/test_greedy.cpp
+    gpu/test_kv_cache.cpp
     gpu/test_load_weights.cpp
     gpu/test_model_runner.cpp
     gpu/test_pinned_buffer.cpp
@@ -63,4 +65,12 @@ if(ENGINE_CUDA)
   target_compile_definitions(gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
   target_link_libraries(gpu_tests PRIVATE engine_runtime GTest::gtest_main)
   gtest_discover_tests(gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS gpu)
+
+  add_executable(todo_gpu_tests
+    todo/gpu/test_write_kv.cpp
+  )
+  target_include_directories(todo_gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
+  target_compile_definitions(todo_gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
+  target_link_libraries(todo_gpu_tests PRIVATE engine_runtime GTest::gtest_main)
+  gtest_discover_tests(todo_gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
 endif()

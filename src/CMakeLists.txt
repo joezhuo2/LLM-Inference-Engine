@@ -1,6 +1,7 @@
 add_library(engine_core
   core/tensor.cpp
   core/version.cpp
+  kv/cache_size.cpp
   kv/block_manager.cpp
   loader/checksum.cpp
   loader/mapped_file.cpp
@@ -28,6 +29,7 @@ if(ENGINE_CUDA)
     kernels/rmsnorm.cu
     kernels/rope.cu
     kernels/swiglu.cu
+    kernels/write_kv.cu
     kernels/smoke.cu
     sampling/greedy.cu
     sampling/sample.cu
@@ -39,6 +41,7 @@ if(ENGINE_CUDA)
     runtime/checksum.cpp
     runtime/device_buffer.cpp
     runtime/generate.cpp
+    runtime/kv_cache.cpp
     runtime/model_runner.cpp
     runtime/pinned_buffer.cpp
     runtime/weights.cpp
