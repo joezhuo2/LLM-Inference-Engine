@@ -1,6 +1,5 @@
 #include "engine/runtime/generate.h"
 
-#include <cmath>
 #include <stdexcept>
 
 #include "engine/runtime/device_buffer.h"
@@ -18,8 +17,7 @@ std::vector<int32_t> generate(ModelRunner& runner, std::span<const int32_t> prom
     if (int64_t(prompt.size()) + max_new_tokens - 1 > runner.max_context())
         throw std::invalid_argument(
             "generate: the prompt plus max_new_tokens does not fit in the context");
-    if (!(sampling.temperature >= 0) || !std::isfinite(sampling.temperature))
-        throw std::invalid_argument("generate: temperature must be zero or positive and finite");
+    validate(sampling);
 
     DeviceBuffer next(sizeof(int32_t));
     const Tensor next_id(next.data(), DType::I32, {1});

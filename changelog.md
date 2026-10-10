@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## sampling/batched
+
+- Move `SamplingParams { temperature, seed }` out of `generate.h` into `include/engine/sampling/params.h` (in `engine_core`, so the scheduler's requests can carry and check them without CUDA) and add `engine::validate(params)`, which throws `std::invalid_argument` for a negative, infinite or NaN temperature; `generate` now calls it instead of its own check, with the same behavior. CPU unit tests in `tests/unit/test_sampling_params.cpp`. (Part B)
+
 ## kernel/paged-decode-attention
 
 - Add the `engine::paged_attention_decode(out, qkv, k_cache, v_cache, block_tables, context_lens, stream)` Part C stub (`include/engine/kernels/paged_attention.h`, `src/kernels/paged_attention.cu`, in `engine_kernels`) with its TODO(JOE) spec, the read side of the paged KV cache that replaces `naive::attention` in M3: each of the `B` rows is one query (the Q columns of the fused `qkv`, heads derived from `out`'s width and the cache shape) that attends to the `context_lens[b]` tokens of its sequence through row `b` of `block_tables`, with GQA head mapping `h / (heads / kv_heads)`; a context length of 0 is padding and writes nothing. Scores must be rounded as in HF's eager attention (`bf16(bf16(q . k) * scale)`), while the probabilities may stay in FP32 (online softmax) or be rounded to BF16 as in `naive::attention`; nothing outside a row's context (NaN or huge values in unused slots, `-1` table entries) may change a bit of its output, and a row's output must be identical alone or in any batch. Bad dtypes or shapes throw `std::invalid_argument` before launching, and `B = 0` does nothing. The launcher prints `unimplemented: paged_attention_decode` and aborts. (Part C stub)

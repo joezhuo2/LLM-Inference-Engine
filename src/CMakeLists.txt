@@ -9,6 +9,7 @@ add_library(engine_core
   loader/weight_layout.cpp
   model/config.cpp
   model/weights.cpp
+  sampling/params.cpp
   tokenizer/chat.cpp
   tokenizer/text_stream.cpp
   tokenizer/tokenizer.cpp
