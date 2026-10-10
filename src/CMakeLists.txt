@@ -1,6 +1,7 @@
 add_library(engine_core
   core/tensor.cpp
   core/version.cpp
+  kv/block_manager.cpp
   loader/checksum.cpp
   loader/mapped_file.cpp
   loader/safetensors.cpp
