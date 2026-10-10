@@ -792,3 +792,8 @@
 ### engine generate
 - **time to first token vs decode tokens per second** => 
 - **stdout vs stderr buffering (why output order can interleave, and `fflush`)** => 
+
+## Sampling (Branch 14)
+### Shared argmax
+- **`__shared__` arrays declared inside a `__device__` function (one copy per block, shared by every call in that block)** => 
+- **passing a lambda to a templated `__device__` function (inlined at compile time, no function pointer)** => 

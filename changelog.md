@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## sampling/temperature
+
+- Move the greedy kernel's block argmax into `src/sampling/argmax.cuh`: `block_argmax(vocab, score)` scans a strided slice of `score(i)` per thread and reduces the (value, index) pairs in shared memory with the same rule as before (larger value wins, the lower index on equal values, `-inf` everywhere gives 0), so the temperature sampler can reuse it with a different score. `greedy` now passes `score(i) = float(logits[row, i])`; its results and tests are unchanged. (Part B)
+
 ## model/forward
 
 - Add `engine::greedy(ids, logits, stream)` (`include/engine/sampling/greedy.h`, `src/sampling/greedy.cu`, built into `engine_kernels`), greedy decoding on the GPU: for each row of BF16 `[T, vocab]` logits it writes the index of the largest value to I32 `ids` `[T]`. Ties go to the lowest index, as `torch.argmax` returns the first maximum, which HF's greedy `generate()` uses. One 1024-thread block per row: each thread scans a strided slice keeping its best (value, index), then a shared-memory tree reduction keeps the larger value or, on equal values, the smaller index. A row of `-inf` returns 0. Tests: it matches a CPU first-maximum argmax at vocab sizes 1 to 32,000 and on the stored HF logits of all 20 reference prompts, ties at indices in the same thread, different threads and the last thread all resolve to the lowest index, and it rejects bad dtypes and shapes. Breaking the tie rule fails the tests. (Part B)
