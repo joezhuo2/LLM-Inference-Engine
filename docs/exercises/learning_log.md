@@ -817,6 +817,28 @@
 ### M2 criterion
 - **a success criterion that the reference itself cannot meet (why to check self-consistency of the reference first)** => 
 
+## Paged KV Cache (Branch 16)
+### Cache sizing
+- **bytes per KV block (`2 x layers x kv_heads x head_dim x block_size x 2 bytes`: K and V, every layer, BF16)** => 
+- **sizing the KV cache from the memory left after the weights (instead of a fixed number of tokens)** => 
+- **headroom (why only 90% of the free memory goes to the cache)** => 
+- **narrowing `int64_t` to `int` and clamping with `std::min` before the cast** => 
+### KV cache memory
+- **`cudaMemGetInfo` (free and total device memory, and why free memory is only a snapshot)** => 
+- **per-layer cache layout `[num_blocks, kv_heads, block_size, head_dim]` (why one (block, head) tile is contiguous)** => 
+- **one big allocation carved into views vs many small `cudaMalloc` calls** => 
+- **poisoning fresh memory with NaN (`0xFF` bytes) to catch reads of slots nothing wrote** => 
+### write_kv
+- **slot mapping (the block manager decides on the CPU, the kernel only scatters)** => 
+- **scatter vs gather memory access** => 
+- **padding rows in a batch and the `-1` slot** => 
+- **why a kernel cannot validate device-side indices cheaply (a check would need a copy back to the host)** => 
+- **launching with an empty grid (`cudaErrorInvalidConfiguration`)** => 
+### Testing kernels
+- **guard bytes around a buffer to catch out-of-bounds writes** => 
+- **comparing the whole buffer, not just the expected cells (a write to a wrong place)** => 
+- **mutation testing (checking that a deliberately broken implementation fails the tests)** => 
+- **`std::abort` vs throwing in a stub (each ctest test runs in its own process)** => 
 ## KV Block Manager (Branch 15)
 ### Paged KV cache
 - **paged KV cache (fixed-size blocks instead of one contiguous buffer per sequence)** => 
