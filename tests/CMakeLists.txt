@@ -26,6 +26,14 @@ target_compile_definitions(unit_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
 target_link_libraries(unit_tests PRIVATE engine_core GTest::gtest_main)
 gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 
+add_executable(todo_unit_tests
+  todo/unit/test_block_manager.cpp
+)
+target_include_directories(todo_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(todo_unit_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
+target_link_libraries(todo_unit_tests PRIVATE engine_core GTest::gtest_main)
+gtest_discover_tests(todo_unit_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
+
 if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_add.cpp

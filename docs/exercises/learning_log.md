@@ -816,3 +816,23 @@
 - **`std::optional` for an option that may be absent (`value_or`)** => 
 ### M2 criterion
 - **a success criterion that the reference itself cannot meet (why to check self-consistency of the reference first)** => 
+
+## KV Block Manager (Branch 15)
+### Paged KV cache
+- **paged KV cache (fixed-size blocks instead of one contiguous buffer per sequence)** => 
+- **internal vs external fragmentation (why reserving the maximum context per sequence wastes memory)** => 
+- **block table (logical block index to physical block id, like a page table)** => 
+- **physical slot of a token (`table[pos / block_size] * block_size + pos % block_size`)** => 
+- **reserved null block (a safe target for padded batch entries)** => 
+- **free list as a stack of block ids** => 
+### Interface and errors
+- **`using` type alias (`using SeqId = int64_t`)** => 
+- **precondition and `std::invalid_argument` vs `std::logic_error` (why a stub's exception must not satisfy a rejection test)** => 
+- **strong exception guarantee (a failed call leaves the object unchanged)** => 
+- **reference invalidation (why `table()`'s reference is only valid until the next non-const call)** => 
+### Tests
+- **class invariants checked after every operation** => 
+- **shadow model (a simple model of the expected state the test keeps alongside the real object)** => 
+- **randomized testing with a fixed seed (`std::mt19937`, reproducible failures)** => 
+- **unspecified evaluation order of function arguments (why `EXPECT_EQ(f(), g())` must not depend on f running first)** => 
+- **defaulted `operator==` (C++20) for comparing whole snapshots** => 
