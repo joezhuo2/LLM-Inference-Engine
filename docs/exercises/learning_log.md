@@ -907,3 +907,7 @@
 - **a generic block reduction with an operator (`block_reduce(v, op)` for sum and max)** => 
 - **`fmaxf` (and why max is commutative, so the butterfly agrees in every lane)** => 
 - **chi-square test at a setting near a cut (why the tests assert a margin first)** => 
+### Command line
+- **CLI11 validators (`CLI::Range`, `CLI::NonNegativeNumber`) vs the library's own validation** => 
+- **failing fast before expensive work (checking parameters before loading 2.2 GB of weights)** => 
+- **FP64 throughput on GeForce GPUs (why 64,000 double logs per token show up in nsys)** => 
