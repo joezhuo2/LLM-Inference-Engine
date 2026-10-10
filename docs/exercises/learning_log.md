@@ -797,3 +797,14 @@
 ### Shared argmax
 - **`__shared__` arrays declared inside a `__device__` function (one copy per block, shared by every call in that block)** => 
 - **passing a lambda to a templated `__device__` function (inlined at compile time, no function pointer)** => 
+### Temperature sampling
+- **temperature scaling (`softmax(logits / T)`: T < 1 sharpens, T > 1 flattens, T -> 0 is greedy)** => 
+- **the Gumbel distribution and `g = -log(-log(u))`** => 
+- **the Gumbel-max trick (`argmax(logits / T + g)` is a sample from `softmax(logits / T)`)** => 
+- **counter-based RNG (Philox4x32-10): random numbers as a function of (key, counter), no state to carry between steps** => 
+- **`curand_init(seed, subsequence, offset, &state)` and the cuRAND device API** => 
+- **an open interval (0, 1) for `u` (why `curand_uniform`'s (0, 1] would give `-log(0)`)** => 
+- **float vs double precision of `-log(u)` near u = 1 (the Gumbel tail that decides a 32,000-way argmax)** => 
+- **seeded determinism (the same seed and step give the same token)** => 
+- **chi-square goodness-of-fit test, degrees of freedom and the critical value** => 
+- **pooling rare outcomes into one bucket (expected count too small for chi-square)** => 
