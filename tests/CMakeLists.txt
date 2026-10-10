@@ -67,6 +67,7 @@ if(ENGINE_CUDA)
   gtest_discover_tests(gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS gpu)
 
   add_executable(todo_gpu_tests
+    todo/gpu/test_paged_attention.cpp
     todo/gpu/test_write_kv.cpp
   )
   target_include_directories(todo_gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})

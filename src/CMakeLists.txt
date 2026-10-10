@@ -26,6 +26,7 @@ if(ENGINE_CUDA)
     kernels/attention.cu
     kernels/embedding.cu
     kernels/gemm.cpp
+    kernels/paged_attention.cu
     kernels/rmsnorm.cu
     kernels/rope.cu
     kernels/swiglu.cu
