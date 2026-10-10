@@ -873,3 +873,7 @@
 - **floating-point non-associativity (why summation order changes the bits)** => 
 - **batch invariance (a row's output must not depend on the other rows in the batch)** => 
 - **exact scores from small integers (testing overflow without rounding noise)** => 
+## Batched Sampling (Branch 18)
+### Sampling parameters
+- **aggregate initialization (`{1.0f, 7}` fills fields in declaration order, so new fields go at the end)** => 
+- **validating once at the boundary instead of in every kernel call** => 

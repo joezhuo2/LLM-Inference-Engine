@@ -15,6 +15,7 @@ add_executable(unit_tests
   unit/test_model_weights.cpp
   unit/test_reference_golden.cpp
   unit/test_safetensors.cpp
+  unit/test_sampling_params.cpp
   unit/test_tensor.cpp
   unit/test_text_stream.cpp
   unit/test_tokenizer.cpp
