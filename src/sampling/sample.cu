@@ -25,17 +25,24 @@ __device__ uint32_t order_key(float x) {
     return bits >> 31 ? ~bits : bits | 0x80000000u;
 }
 
-template <typename T>
-__device__ T block_sum(T v) {
+template <typename T, typename Op>
+__device__ T block_reduce(T v, Op op) {
     static_assert(kArgmaxThreads == 32 * 32);
     __shared__ T partial[32];
-    for (int offset = 16; offset > 0; offset /= 2) v += __shfl_xor_sync(0xffffffffu, v, offset);
+    for (int offset = 16; offset > 0; offset /= 2)
+        v = op(v, __shfl_xor_sync(0xffffffffu, v, offset));
     __syncthreads();
     if (threadIdx.x % 32 == 0) partial[threadIdx.x / 32] = v;
     __syncthreads();
     v = partial[threadIdx.x % 32];
-    for (int offset = 16; offset > 0; offset /= 2) v += __shfl_xor_sync(0xffffffffu, v, offset);
+    for (int offset = 16; offset > 0; offset /= 2)
+        v = op(v, __shfl_xor_sync(0xffffffffu, v, offset));
     return v;
+}
+
+template <typename T>
+__device__ T block_sum(T v) {
+    return block_reduce(v, [](T a, T b) { return a + b; });
 }
 
 template <typename Score>
@@ -55,6 +62,32 @@ __device__ uint32_t top_k_threshold(int vocab, int k, Score score) {
     return lo;
 }
 
+template <typename Score>
+__device__ uint32_t top_p_threshold(int vocab, float p, uint32_t lo, Score score) {
+    float top = -INFINITY;
+    for (int i = threadIdx.x; i < vocab; i += kArgmaxThreads) top = fmaxf(top, score(i));
+    top = block_reduce(top, [](float a, float b) { return fmaxf(a, b); });
+    if (top == -INFINITY) return lo;
+    const auto mass = [&](uint32_t cut) {
+        float sum = 0;
+        for (int i = threadIdx.x; i < vocab; i += kArgmaxThreads) {
+            const float s = score(i);
+            if (order_key(s) >= cut) sum += expf(s - top);
+        }
+        return block_sum(sum);
+    };
+    const float target = p * mass(lo);
+    uint32_t hi = order_key(top);
+    while (lo < hi) {
+        const uint32_t mid = lo + (hi - lo) / 2;
+        if (mass(mid + 1) < target)
+            hi = mid;
+        else
+            lo = mid + 1;
+    }
+    return lo;
+}
+
 __global__ void sample_kernel(int32_t* ids, const __nv_bfloat16* logits, int vocab,
                               const SampleRow* rows) {
     const __nv_bfloat16* row = logits + int64_t(blockIdx.x) * vocab;
@@ -65,6 +98,8 @@ __global__ void sample_kernel(int32_t* ids, const __nv_bfloat16* logits, int voc
     uint32_t threshold = 0;
     if (temperature > 0 && r.params.top_k > 0 && r.params.top_k < vocab)
         threshold = top_k_threshold(vocab, r.params.top_k, scaled);
+    if (temperature > 0 && r.params.top_p < 1)
+        threshold = top_p_threshold(vocab, r.params.top_p, threshold, scaled);
     const int arg = block_argmax(vocab, [&](int i) {
         if (temperature == 0) return __bfloat162float(row[i]);
         const float s = scaled(i);

@@ -30,3 +30,11 @@ TEST(SamplingParams, TopKIsOffAtZeroAndRejectsNegatives) {
     for (const int k : {0, 1, 50, 32000, 1 << 30}) EXPECT_NO_THROW(validate({1.0f, 0, k})) << k;
     for (const int k : {-1, -50}) EXPECT_THROW(validate({1.0f, 0, k}), std::invalid_argument) << k;
 }
+
+TEST(SamplingParams, TopPIsOffAtOneAndMustBeInZeroToOne) {
+    EXPECT_EQ(SamplingParams{}.top_p, 1.0f);
+    for (const float p : {1e-6f, 0.5f, 0.9f, 1.0f}) EXPECT_NO_THROW(validate({1.0f, 0, 0, p})) << p;
+    for (const float p :
+         {0.0f, -0.0f, -0.1f, 1.0001f, INFINITY, std::numeric_limits<float>::quiet_NaN()})
+        EXPECT_THROW(validate({1.0f, 0, 0, p}), std::invalid_argument) << p;
+}
