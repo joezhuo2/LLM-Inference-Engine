@@ -811,3 +811,6 @@
 ### Sampled generation
 - **the token's position in the answer as the RNG step (why a sampled answer is reproducible from its seed)** => 
 - **`!(x >= 0)` to reject NaN along with negatives (every comparison with NaN is false)** => 
+### Sampling flags
+- **`std::random_device` as a source of a fresh seed (and printing it so the run can be repeated)** => 
+- **`std::optional` for an option that may be absent (`value_or`)** => 

@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <filesystem>
 #include <memory>
+#include <optional>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -28,6 +30,8 @@ struct Options {
     std::string prompt;
     std::string system;
     int max_new_tokens = 256;
+    float temperature = 0.0f;
+    std::optional<uint64_t> seed;
 };
 
 #if ENGINE_HAS_CUDA
@@ -49,10 +53,14 @@ void run(const Options& o) {
                                  std::to_string(w.config.max_positions));
     ModelRunner runner(w.config, w.weights, prompt_len, context, nullptr);
 
+    std::random_device entropy;
+    const SamplingParams sampling{o.temperature,
+                                  o.seed.value_or(uint64_t(entropy()) << 32 | entropy())};
+
     TextStream text(tokenizer);
     const auto start = Clock::now();
     Clock::time_point first;
-    const auto out = generate(runner, prompt, int(context - prompt_len), w.config.eos_id, {},
+    const auto out = generate(runner, prompt, int(context - prompt_len), w.config.eos_id, sampling,
                               [&](int32_t token) {
                                   if (first == Clock::time_point{}) first = Clock::now();
                                   const std::string piece = text.push(token);
@@ -64,6 +72,9 @@ void run(const Options& o) {
     const double decode = std::chrono::duration<double>(end - first).count();
     std::printf("\n");
     std::fflush(stdout);
+    if (sampling.temperature > 0)
+        std::fprintf(stderr, "temperature %g, seed %llu\n", double(sampling.temperature),
+                     static_cast<unsigned long long>(sampling.seed));
     std::fprintf(stderr,
                  "%lld prompt tokens, %zu generated; first token after %.1f ms, then %.1f "
                  "tokens/s\n",
@@ -80,7 +91,7 @@ void run(const Options&) {
 
 void add_generate_command(CLI::App& app) {
     auto opts = std::make_shared<Options>();
-    CLI::App* cmd = app.add_subcommand("generate", "Answer one chat message with greedy decoding");
+    CLI::App* cmd = app.add_subcommand("generate", "Answer one chat message");
     cmd->add_option("--model", opts->model,
                     "Model directory with config.json, model.safetensors and tokenizer.model")
         ->required()
@@ -91,6 +102,13 @@ void add_generate_command(CLI::App& app) {
                     "Stop after this many tokens unless EOS comes first")
         ->capture_default_str()
         ->check(CLI::PositiveNumber);
+    cmd->add_option("--temperature", opts->temperature,
+                    "Sample from softmax(logits / temperature); 0 decodes greedily")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
+    cmd->add_option("--seed", opts->seed,
+                    "Seed for sampling; the same seed repeats the answer (default: random, "
+                    "printed)");
     cmd->callback([opts] { run(*opts); });
 }
 
