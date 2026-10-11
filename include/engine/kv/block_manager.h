@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace engine {
@@ -21,6 +22,23 @@ public:
     const std::vector<int>& table(SeqId seq) const;
     int length(SeqId seq) const;
     int num_free() const;
+
+private:
+    struct Sequence {
+        int length;
+        std::vector<int> table;
+    };
+
+    int num_blocks_;
+    int block_size_;
+    int free_count_;
+    std::vector<bool> free_blocks_;
+    std::unordered_map<SeqId, Sequence> sequences_;
+
+    int allocate_block();
+    void free_block(int block_id);
+    const Sequence& get_sequence(SeqId seq) const;
+    Sequence& get_sequence(SeqId seq);
 };
 
 }  // namespace engine
