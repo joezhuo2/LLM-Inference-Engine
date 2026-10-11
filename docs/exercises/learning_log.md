@@ -946,3 +946,7 @@
 ### Slots
 - **block id vs slot (physical block times block size plus the offset in the block)** => 
 - **logical position to physical slot through a block table (the same translation as a page table)** => 
+### Errors
+- **`std::logic_error` family (`invalid_argument`, `out_of_range`) vs `std::runtime_error` family** => 
+- **precondition violation (caller's bug) vs internal invariant violation (the class's bug)** => 
+- **strong exception guarantee (a failed call leaves the object exactly as it was)** => 
