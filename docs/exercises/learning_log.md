@@ -911,3 +911,12 @@
 - **CLI11 validators (`CLI::Range`, `CLI::NonNegativeNumber`) vs the library's own validation** => 
 - **failing fast before expensive work (checking parameters before loading 2.2 GB of weights)** => 
 - **FP64 throughput on GeForce GPUs (why 64,000 double logs per token show up in nsys)** => 
+## Scheduler (Branch 19)
+### Requests
+- **request lifecycle (waiting, running, finished)** => 
+- **`enum class` (scoped enumeration)** => 
+- **designated initializers (C++20, `Request{.id = 1, .prompt = {...}}`, fields in declaration order)** => 
+- **default member initializers (`std::vector<int32_t> prompt{};`) and GCC's `-Wmissing-field-initializers`** => 
+- **`std::chrono::steady_clock::time_point` (a monotonic timestamp, never adjusted like the wall clock)** => 
+- **TTFT, TPOT and end-to-end latency from per-request timestamps** => 
+- **why the last sampled token never needs a KV slot (`prompt + max_new_tokens - 1` fits the context)** => 
