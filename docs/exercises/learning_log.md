@@ -965,3 +965,11 @@
 - **why `std::uniform_int_distribution` is not reproducible across standard libraries** => 
 - **modulo bias and rejection sampling** => 
 - **`std::from_chars` (locale-free number parsing that reports where it stopped)** => 
+### Metrics and CSV
+- **TTFT, TPOT and end-to-end latency (what each one measures and which phase dominates it)** => 
+- **why TPOT divides by output tokens minus one** => 
+- **mean vs median vs tail percentiles (p90, p99) for latency** => 
+- **linear interpolation between ranks (numpy's default percentile)** => 
+- **request throughput vs output token throughput** => 
+- **CSV quoting rules (RFC 4180: quote fields with commas, quotes or line breaks, double the quotes)** => 
+- **pointer to data member (`double RequestMetrics::*`)** => 
