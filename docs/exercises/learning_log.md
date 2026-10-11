@@ -950,3 +950,8 @@
 - **`std::logic_error` family (`invalid_argument`, `out_of_range`) vs `std::runtime_error` family** => 
 - **precondition violation (caller's bug) vs internal invariant violation (the class's bug)** => 
 - **strong exception guarantee (a failed call leaves the object exactly as it was)** => 
+### Construction
+- **member initialization order (declaration order, before the constructor body runs)** => 
+- **validating constructor arguments in the member initializer list with a helper function** => 
+- **signed to unsigned conversion (`int` -3 becoming a huge `size_t`)** => 
+- **anonymous namespace (internal linkage for file-local helpers)** => 
