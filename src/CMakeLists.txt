@@ -1,4 +1,5 @@
 add_library(engine_core
+  bench/workload.cpp
   core/tensor.cpp
   core/version.cpp
   kv/cache_size.cpp

@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## tools/bench
+
+- Add synthetic bench workloads (`include/engine/bench/workload.h`, `src/bench/workload.cpp`, in `engine_core`): `make_workload(WorkloadConfig)` returns `num_requests` waiting `Request`s with ids `0..n-1` and their arrival times in seconds. Prompt and output lengths are drawn uniformly from a `LengthRange {min, max}` (a fixed length is `{n, n}`; `parse_length_range` reads `N` or `MIN:MAX` for the CLI); every prompt starts with `bos_id` and the other tokens are uniform over the vocab without `bos_id` and `eos_id`, so a prompt never ends early or restarts mid-sequence. Each request gets the workload's `SamplingParams` with seed `params.seed + id`, so sampled runs are repeatable and requests do not share noise. With `request_rate = 0` every request arrives at time 0 (an offline batch); with a rate `r` the first arrives at 0 and the gaps are exponential with mean `1 / r` (a Poisson process, for the latency-vs-load experiment later). The random numbers come from a hand-written SplitMix64 with rejection sampling instead of `std::uniform_int_distribution`, whose output differs between libstdc++ and libc++, so the same seed gives the same prompts on Linux and macOS; a test pins the first tokens. Bad configs throw `std::invalid_argument`. 11 CPU tests in `tests/unit/test_workload.cpp`: range parsing and rejection, exact fixed lengths, every length of a range drawn, BOS first and every other non-special token reachable for four BOS and EOS placements, ids and seeds, determinism, pinned tokens, arrivals at 0 without a rate, the mean gap and the share of gaps below `1 / r` (`1 - 1/e`) over 20,000 arrivals, and 14 rejected configs. (Part A)
+
 ## kv/block-manager-impl
 
 - Format `src/kv/block_manager.cpp` with clang-format (trailing whitespace, initializer list and long-line wrapping), so the format check passes. No behavior change. (Part C, fix by Claude)
