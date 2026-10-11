@@ -24,6 +24,7 @@ add_executable(unit_tests
   unit/test_tokenizer_golden.cpp
   unit/test_version.cpp
   unit/test_weight_layout.cpp
+  unit/test_workload.cpp
 )
 target_include_directories(unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(unit_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})

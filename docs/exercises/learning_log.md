@@ -955,3 +955,13 @@
 - **validating constructor arguments in the member initializer list with a helper function** => 
 - **signed to unsigned conversion (`int` -3 becoming a huge `size_t`)** => 
 - **anonymous namespace (internal linkage for file-local helpers)** => 
+
+## Bench Harness (Branch 21)
+### Synthetic workloads
+- **synthetic workload (random token prompts with chosen lengths) vs a real prompt dataset** => 
+- **offline batch (every request arrives at once) vs online load (requests arrive over time)** => 
+- **Poisson arrival process and exponential inter-arrival gaps (`-ln(1 - u) / rate`)** => 
+- **SplitMix64 (a tiny 64-bit pseudo-random generator)** => 
+- **why `std::uniform_int_distribution` is not reproducible across standard libraries** => 
+- **modulo bias and rejection sampling** => 
+- **`std::from_chars` (locale-free number parsing that reports where it stopped)** => 
