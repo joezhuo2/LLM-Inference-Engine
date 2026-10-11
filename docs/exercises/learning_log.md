@@ -973,3 +973,9 @@
 - **request throughput vs output token throughput** => 
 - **CSV quoting rules (RFC 4180: quote fields with commas, quotes or line breaks, double the quotes)** => 
 - **pointer to data member (`double RequestMetrics::*`)** => 
+### Running a workload
+- **queueing delay (time a request waits before it starts) and why it belongs in TTFT** => 
+- **`std::this_thread::sleep_until` with a `steady_clock` deadline** => 
+- **why the clock is read after `cudaStreamSynchronize` (host timing of asynchronous GPU work)** => 
+- **ignoring EOS to force a fixed output length in benchmarks** => 
+- **`std::chrono::duration_cast` from `duration<double>` seconds to the clock's ticks** => 

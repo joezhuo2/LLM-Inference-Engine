@@ -45,6 +45,7 @@ if(ENGINE_CUDA)
   target_link_libraries(engine_kernels PUBLIC engine_core CUDA::cudart CUDA::cublas)
 
   add_library(engine_runtime
+    runtime/bench.cpp
     runtime/checksum.cpp
     runtime/device_buffer.cpp
     runtime/generate.cpp
