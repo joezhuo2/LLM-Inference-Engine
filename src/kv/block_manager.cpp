@@ -118,9 +118,10 @@ int BlockManager::append_slot(SeqId seq) {
         seq_data.table.push_back(new_block);
     }
 
+    int pos = seq_data.length;
     seq_data.length++;
 
-    return seq_data.table.back();
+    return seq_data.table.back() * block_size_ + pos % block_size_;
 }
 
 void BlockManager::free(SeqId seq) {
@@ -142,8 +143,7 @@ int BlockManager::slot(SeqId seq, int pos) const {
                                 " of length " + std::to_string(seq_data.length));
     }
 
-    int block_index = pos / block_size_;
-    return seq_data.table[block_index];
+    return seq_data.table[pos / block_size_] * block_size_ + pos % block_size_;
 }
 
 const std::vector<int>& BlockManager::table(SeqId seq) const {

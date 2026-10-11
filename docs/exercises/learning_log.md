@@ -943,3 +943,6 @@
 - **variable shadowing (an inner `i` hiding an outer `i`) and GCC's `-Wshadow`** => 
 - **moving into a container (`map[key] = std::move(value)`) vs copying** => 
 - **include what you use (why relying on transitive includes breaks on another compiler or standard library)** => 
+### Slots
+- **block id vs slot (physical block times block size plus the offset in the block)** => 
+- **logical position to physical slot through a block table (the same translation as a page table)** => 

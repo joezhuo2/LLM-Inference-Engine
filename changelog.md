@@ -6,6 +6,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Format `src/kv/block_manager.cpp` with clang-format (trailing whitespace, initializer list and long-line wrapping), so the format check passes. No behavior change. (Part C, fix by Claude)
 - Take the blocks in `BlockManager::allocate` with one loop over `allocate_block()` instead of the leftover outer scan over `free_blocks_` (it ran once, and its `i` was shadowed by the inner loop), move the new `Sequence` into the map instead of copying it, and include `<string>` and `<utility>` for `std::to_string` and `std::move` instead of relying on other headers. (Part C, fix by Claude)
+- Return slots, not block ids: `slot(seq, pos)` is now `table[pos / block_size] * block_size + pos % block_size` as the spec says, and `append_slot` returns the slot of the new token (position old length), so `append_slot(seq) == slot(seq, length(seq) - 1)`. (Part C, fix by Claude)
 
 ## sched/scheduler
 
