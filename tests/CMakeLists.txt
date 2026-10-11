@@ -6,6 +6,7 @@ set(ENGINE_TEST_DEFINITIONS
 
 add_executable(unit_tests
   unit/test_bf16.cpp
+  unit/test_block_manager.cpp
   unit/test_chat.cpp
   unit/test_checksum.cpp
   unit/test_checksum_golden.cpp
@@ -30,7 +31,6 @@ target_link_libraries(unit_tests PRIVATE engine_core GTest::gtest_main)
 gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 
 add_executable(todo_unit_tests
-  todo/unit/test_block_manager.cpp
   todo/unit/test_scheduler.cpp
 )
 target_include_directories(todo_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
