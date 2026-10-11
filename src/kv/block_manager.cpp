@@ -43,6 +43,14 @@ const BlockManager::Sequence& BlockManager::get_sequence(SeqId seq) const {
     return it->second;
 }
 
+BlockManager::Sequence& BlockManager::get_sequence(SeqId seq) {
+    auto it = sequences_.find(seq);
+    if (it == sequences_.end()) {
+        throw std::invalid_argument("[BlockManager] Sequence id " + std::to_string(seq) + " is not registered.");
+    }
+    return it->second;
+}
+
 bool BlockManager::can_allocate(int num_tokens) const {
     if (num_tokens < 1) {
         throw std::invalid_argument("[BlockManager] num_tokens must be >= 1. Got num_tokens=" + std::to_string(num_tokens));
@@ -74,10 +82,8 @@ void BlockManager::allocate(SeqId seq, int num_tokens) {
     seq_data.length = num_tokens;
 
     for (size_t i = 0; i < free_blocks_.size() && seq_data.table.size() < static_cast<size_t>(blocks_needed); ++i) {
-        if (!free_blocks_[i]) {
-            free_blocks_[i] = true;
-            seq_data.table.push_back(static_cast<int>(i));
-            free_count_--;
+        for (int i = 0; i < blocks_needed; ++i) {
+            seq_data.table.push_back(allocate_block());
         }
     }
 
@@ -122,7 +128,7 @@ void BlockManager::free(SeqId seq) {
 int BlockManager::slot(SeqId seq, int pos) const {
     auto& seq_data = get_sequence(seq);
 
-    if (pos < 0 || pos > seq_data.length) {
+    if (pos < 0 || pos >= seq_data.length) {
         throw std::out_of_range(
             "[BlockManager] slot position out of bounds: " + std::to_string(pos) + 
             " for sequence " + std::to_string(seq) + " of length " + std::to_string(seq_data.length)
