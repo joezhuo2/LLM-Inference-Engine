@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
     CLI::App app{"Single-GPU LLM inference engine"};
     app.require_subcommand(0, 1);
     app.add_subcommand("version", "Print the engine version")->callback(print_version);
+    engine::app::add_bench_command(app);
     engine::app::add_checksum_command(app);
     engine::app::add_generate_command(app);
     try {

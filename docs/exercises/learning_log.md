@@ -979,3 +979,10 @@
 - **why the clock is read after `cudaStreamSynchronize` (host timing of asynchronous GPU work)** => 
 - **ignoring EOS to force a fixed output length in benchmarks** => 
 - **`std::chrono::duration_cast` from `duration<double>` seconds to the clock's ticks** => 
+### The bench command
+- **warmup runs (cuBLAS handles, lazy CUDA initialization and cold caches in the first request)** => 
+- **achieved bandwidth at batch 1 (weight bytes read per decode step divided by TPOT)** => 
+- **why a decode step reads one embedding row but every other weight** => 
+- **recording run metadata (date, GPU, build type, settings) next to every benchmark result** => 
+- **CMake compile definitions passing build information into the code (`ENGINE_BUILD_TYPE`)** => 
+- **why benchmarks must use a Release build** => 

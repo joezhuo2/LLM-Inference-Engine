@@ -22,8 +22,10 @@ add_library(engine_core
 target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(engine_core PUBLIC nlohmann_json::nlohmann_json PRIVATE engine_sentencepiece)
 
-add_executable(engine app/main.cpp app/checksum_command.cpp app/generate_command.cpp)
-target_compile_definitions(engine PRIVATE ENGINE_HAS_CUDA=$<BOOL:${ENGINE_CUDA}>)
+add_executable(engine app/main.cpp app/bench_command.cpp app/checksum_command.cpp
+  app/generate_command.cpp)
+target_compile_definitions(engine PRIVATE ENGINE_HAS_CUDA=$<BOOL:${ENGINE_CUDA}>
+  ENGINE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 target_link_libraries(engine PRIVATE engine_core CLI11::CLI11)
 
 if(ENGINE_CUDA)

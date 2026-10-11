@@ -94,11 +94,18 @@ The `cpu` preset builds and tests only the pure C++ parts, for machines without 
 
 The answer streams to stdout as it decodes, followed on stderr by the prompt and generated token counts, the time to the first token and the decode rate. `--system` adds a system message and `--max-new-tokens` (default 256) caps the answer. Decoding is greedy by default; `--temperature 0.7` samples from `softmax(logits / 0.7)` on the GPU with the Gumbel-max trick, `--top-k K` and `--top-p P` then restrict each draw to the K most likely tokens or to the most likely tokens whose probability reaches P (applied in that order after the temperature, as in Hugging Face), and `--seed N` makes the answer repeatable (without it the seed is random and printed on stderr). Generation runs at batch 1 on the naive kernels and a contiguous KV cache (milestone M2): 125 to 135 tokens/s on the RTX 5060, greedy or sampled, with or without top-k and top-p.
 
+```bash
+./build/release/bin/engine bench --model models/tinyllama --num-requests 64 --prompt-len 128 --output-len 256 --out results/laptop_b1.csv
+```
+
+`bench` serves a synthetic workload and writes two CSVs: one row per request (`--out`: prompt and output tokens, preemptions, arrival time, TTFT, TPOT and latency in seconds) and one summary row (`results/laptop_b1_summary.csv`, or `--summary`) with the run's settings, the GPU, the build type, throughput, the mean, p50, p90 and p99 of TTFT, TPOT and latency, and the achieved bandwidth (the 2.07 GB of weights a decode step reads, divided by the median TPOT). Prompts are random token ids after BOS; `--prompt-len` and `--output-len` take a length `N` or a range `MIN:MAX` drawn per request, `--seed` fixes the prompts, and `--request-rate R` spreads arrivals as a Poisson process at R requests per second instead of submitting all of them at once. Every request generates its full output length unless `--stop-at-eos` is given, and `--warmup` (default 3) untimed requests run first. Sampling takes the same `--temperature`, `--top-k` and `--top-p` as `generate`, with seed `seed + i` for request `i`. Until the paged runner and the scheduler land, requests run one at a time (batch 1), so with every request submitted at once the TTFT includes the time spent waiting for the earlier requests. Benchmark only the `release` preset (the command warns otherwise), plugged in and in maximum performance mode; on the RTX 5060, 8 requests of 128 prompt and 128 output tokens decoded at 96 tokens/s (200 GB/s of weights) in a run where `generate` reached 103, below the 125 to 135 above because the laptop was not in its fastest state, which is why every summary records its date and settings.
+
 ## Repository layout
 
 ```
-include/engine/   public headers (core, kernels, loader, model, runtime, kv, sched, sampling, tokenizer)
+include/engine/   public headers (bench, core, kernels, loader, model, runtime, kv, sched, sampling, tokenizer)
 src/              the engine_core (pure C++), engine_kernels (CUDA, cuBLAS) and engine_runtime libraries, and the CLI
+results/          benchmark CSVs
 tests/            unit tests, GPU tests, test helpers and generated golden data
 scripts/          Python reference and golden scripts
 docs/             hardware notes, ownership, and learning exercises
