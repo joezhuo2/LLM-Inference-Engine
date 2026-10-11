@@ -1,6 +1,8 @@
 #include "engine/kv/block_manager.h"
 
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace engine {
 
@@ -88,15 +90,11 @@ void BlockManager::allocate(SeqId seq, int num_tokens) {
     Sequence seq_data;
     seq_data.length = num_tokens;
 
-    for (size_t i = 0;
-         i < free_blocks_.size() && seq_data.table.size() < static_cast<size_t>(blocks_needed);
-         ++i) {
-        for (int i = 0; i < blocks_needed; ++i) {
-            seq_data.table.push_back(allocate_block());
-        }
+    for (int i = 0; i < blocks_needed; ++i) {
+        seq_data.table.push_back(allocate_block());
     }
 
-    sequences_[seq] = seq_data;
+    sequences_[seq] = std::move(seq_data);
 }
 
 bool BlockManager::can_append(SeqId seq) const {

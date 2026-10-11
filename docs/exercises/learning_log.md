@@ -937,3 +937,9 @@
 - **concurrent vs solo equivalence as the batching correctness criterion** => 
 - **`std::ranges::find` and `std::erase` (C++20 container helpers)** => 
 - **`-Wdangling-else` and why a gtest `ASSERT_*` after a bare `if` needs braces** => 
+
+## Block Manager Implementation (kv/block-manager-impl)
+### Allocation
+- **variable shadowing (an inner `i` hiding an outer `i`) and GCC's `-Wshadow`** => 
+- **moving into a container (`map[key] = std::move(value)`) vs copying** => 
+- **include what you use (why relying on transitive includes breaks on another compiler or standard library)** => 
