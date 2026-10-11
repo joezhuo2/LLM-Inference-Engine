@@ -31,6 +31,7 @@ gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 
 add_executable(todo_unit_tests
   todo/unit/test_block_manager.cpp
+  todo/unit/test_scheduler.cpp
 )
 target_include_directories(todo_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(todo_unit_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})

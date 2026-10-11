@@ -930,3 +930,10 @@
 - **why preempt the most recently admitted sequence (it has the least work to redo)** => 
 - **liveness: why a cache that holds one `max_context` sequence guarantees the scheduler never stalls** => 
 - **a scheduler that owns its block manager and exposes it read-only (`const BlockManager&`)** => 
+### Testing the scheduler
+- **testing a policy with a fake model (a deterministic next-token hash instead of the real network)** => 
+- **FNV-1a hashing (xor then multiply by a prime per input)** => 
+- **a fake KV cache that catches a scheduler feeding the wrong slots or skipping a recompute** => 
+- **concurrent vs solo equivalence as the batching correctness criterion** => 
+- **`std::ranges::find` and `std::erase` (C++20 container helpers)** => 
+- **`-Wdangling-else` and why a gtest `ASSERT_*` after a bare `if` needs braces** => 
