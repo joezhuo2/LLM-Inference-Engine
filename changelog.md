@@ -9,6 +9,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Return slots, not block ids: `slot(seq, pos)` is now `table[pos / block_size] * block_size + pos % block_size` as the spec says, and `append_slot` returns the slot of the new token (position old length), so `append_slot(seq) == slot(seq, length(seq) - 1)`. (Part C, fix by Claude)
 - Throw `std::invalid_argument` for every violated precondition, as the spec requires: `allocate` without enough free blocks and `append_slot` when `can_append` is false threw `std::runtime_error`, and `slot` with a position outside `[0, length)` threw `std::out_of_range`. `allocate_block` keeps `std::runtime_error`, since it is only reached after a capacity check and failing there is a bug, not a caller error. (Part C, fix by Claude)
 - Validate `num_blocks` and `block_size` before any member is built: the check ran in the constructor body, after `free_blocks_(num_blocks, true)` had already converted a negative `num_blocks` to a huge `size_t`, so the right exception depended on that allocation failing first. A helper in the member initializer list now throws before `free_blocks_` exists. (Part C, fix by Claude)
+- Move the 15 block manager tests from `tests/todo/unit/` to `tests/unit/test_block_manager.cpp` in `unit_tests`, as the spec asks once they pass, so they lose the `todo_joe` label and run in every `ctest`. `todo_unit_tests` stays for the scheduler tests. (Part C, fix by Claude)
 
 ## sched/scheduler
 
