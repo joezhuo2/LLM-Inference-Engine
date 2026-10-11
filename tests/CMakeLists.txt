@@ -14,6 +14,7 @@ add_executable(unit_tests
   unit/test_mapped_file.cpp
   unit/test_model_weights.cpp
   unit/test_reference_golden.cpp
+  unit/test_request.cpp
   unit/test_safetensors.cpp
   unit/test_sampling_params.cpp
   unit/test_tensor.cpp

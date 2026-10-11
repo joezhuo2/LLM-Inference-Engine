@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## sched/scheduler
+
+- Add `engine::Request` (`include/engine/sched/request.h`, `src/sched/request.cpp`, in `engine_core`), the request abstraction the scheduler queues: a caller-chosen `SeqId id` (the same id the block manager uses), the `prompt`, `max_new_tokens`, the `SamplingParams`, the generated `output`, a `RequestState` (`Waiting`, `Running`, `Finished`), a `preemptions` count, and `steady_clock` timestamps `arrived`, `first_token` and `finished` for TTFT, TPOT and latency in the bench. The build plan's sketch put `max_new_tokens` inside `SamplingParams`; it stays on the request, since the sampler never needs it. `length()` is `prompt.size() + output.size()` and `token(pos)` reads position `pos` across the prompt and then the output, which is what a recompute-style preemption re-prefills and what the runner will feed. `validate(request, max_context)` throws `std::invalid_argument` naming the request when the prompt is empty, `max_new_tokens < 1`, `prompt + max_new_tokens - 1` exceeds `max_context` (the last token is sampled but never fed, as in `generate`), the output is not empty, or the sampling parameters are invalid. CPU tests in `tests/unit/test_request.cpp`. (Part A)
+
 ## sampling/batched
 
 - Move `SamplingParams { temperature, seed }` out of `generate.h` into `include/engine/sampling/params.h` (in `engine_core`, so the scheduler's requests can carry and check them without CUDA) and add `engine::validate(params)`, which throws `std::invalid_argument` for a negative, infinite or NaN temperature; `generate` now calls it instead of its own check, with the same behavior. CPU unit tests in `tests/unit/test_sampling_params.cpp`. (Part B)
