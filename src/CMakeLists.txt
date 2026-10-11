@@ -11,6 +11,7 @@ add_library(engine_core
   model/weights.cpp
   sampling/params.cpp
   sched/request.cpp
+  sched/scheduler.cpp
   tokenizer/chat.cpp
   tokenizer/text_stream.cpp
   tokenizer/tokenizer.cpp

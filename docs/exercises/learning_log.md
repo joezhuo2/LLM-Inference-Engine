@@ -920,3 +920,13 @@
 - **`std::chrono::steady_clock::time_point` (a monotonic timestamp, never adjusted like the wall clock)** => 
 - **TTFT, TPOT and end-to-end latency from per-request timestamps** => 
 - **why the last sampled token never needs a KV slot (`prompt + max_new_tokens - 1` fits the context)** => 
+### Continuous batching
+- **continuous (iteration-level) batching vs static batching** => 
+- **prefill step vs decode step (why the MVP never mixes them in one forward pass)** => 
+- **admission control by free KV blocks and a prefill token budget** => 
+- **first come, first served and head-of-line blocking (why admission never skips ahead to a smaller request)** => 
+- **starvation (a request that could wait forever) and how a FIFO queue prevents it** => 
+- **recompute-style preemption (free the blocks, prefill prompt plus output again later) vs swapping to host memory** => 
+- **why preempt the most recently admitted sequence (it has the least work to redo)** => 
+- **liveness: why a cache that holds one `max_context` sequence guarantees the scheduler never stalls** => 
+- **a scheduler that owns its block manager and exposes it read-only (`const BlockManager&`)** => 
