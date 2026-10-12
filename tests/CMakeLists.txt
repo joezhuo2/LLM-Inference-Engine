@@ -6,6 +6,7 @@ set(ENGINE_TEST_DEFINITIONS
 
 add_executable(unit_tests
   unit/test_bf16.cpp
+  unit/test_bench_metrics.cpp
   unit/test_block_manager.cpp
   unit/test_chat.cpp
   unit/test_checksum.cpp
@@ -24,6 +25,7 @@ add_executable(unit_tests
   unit/test_tokenizer_golden.cpp
   unit/test_version.cpp
   unit/test_weight_layout.cpp
+  unit/test_workload.cpp
 )
 target_include_directories(unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(unit_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
@@ -42,6 +44,7 @@ if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_add.cpp
     gpu/test_attention.cpp
+    gpu/test_bench.cpp
     gpu/test_bf16_cuda.cpp
     gpu/test_checksum_device.cpp
     gpu/test_checksum_golden.cpp

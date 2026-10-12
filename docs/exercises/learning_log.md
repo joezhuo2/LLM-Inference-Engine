@@ -970,3 +970,33 @@
 ### Testing
 - **guard bytes around a buffer to catch out-of-bounds writes** => 
 - **compute-sanitizer memcheck (what it detects and what it cannot)** => 
+## Bench Harness (Branch 21)
+### Synthetic workloads
+- **synthetic workload (random token prompts with chosen lengths) vs a real prompt dataset** => 
+- **offline batch (every request arrives at once) vs online load (requests arrive over time)** => 
+- **Poisson arrival process and exponential inter-arrival gaps (`-ln(1 - u) / rate`)** => 
+- **SplitMix64 (a tiny 64-bit pseudo-random generator)** => 
+- **why `std::uniform_int_distribution` is not reproducible across standard libraries** => 
+- **modulo bias and rejection sampling** => 
+- **`std::from_chars` (locale-free number parsing that reports where it stopped)** => 
+### Metrics and CSV
+- **TTFT, TPOT and end-to-end latency (what each one measures and which phase dominates it)** => 
+- **why TPOT divides by output tokens minus one** => 
+- **mean vs median vs tail percentiles (p90, p99) for latency** => 
+- **linear interpolation between ranks (numpy's default percentile)** => 
+- **request throughput vs output token throughput** => 
+- **CSV quoting rules (RFC 4180: quote fields with commas, quotes or line breaks, double the quotes)** => 
+- **pointer to data member (`double RequestMetrics::*`)** => 
+### Running a workload
+- **queueing delay (time a request waits before it starts) and why it belongs in TTFT** => 
+- **`std::this_thread::sleep_until` with a `steady_clock` deadline** => 
+- **why the clock is read after `cudaStreamSynchronize` (host timing of asynchronous GPU work)** => 
+- **ignoring EOS to force a fixed output length in benchmarks** => 
+- **`std::chrono::duration_cast` from `duration<double>` seconds to the clock's ticks** => 
+### The bench command
+- **warmup runs (cuBLAS handles, lazy CUDA initialization and cold caches in the first request)** => 
+- **achieved bandwidth at batch 1 (weight bytes read per decode step divided by TPOT)** => 
+- **why a decode step reads one embedding row but every other weight** => 
+- **recording run metadata (date, GPU, build type, settings) next to every benchmark result** => 
+- **CMake compile definitions passing build information into the code (`ENGINE_BUILD_TYPE`)** => 
+- **why benchmarks must use a Release build** => 
