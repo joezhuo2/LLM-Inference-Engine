@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/write-kv-impl
+
+- Move the 8 `write_kv` tests from `tests/todo/gpu/` to `tests/gpu/test_write_kv.cpp` in `gpu_tests`, as the spec asks once they pass, so they lose the `todo_joe` label and run in every `ctest` on a machine with a GPU. `todo_gpu_tests` stays for the paged attention tests. (Part C, move by Claude)
+
 ## kv/block-manager-impl
 
 - Format `src/kv/block_manager.cpp` with clang-format (trailing whitespace, initializer list and long-line wrapping), so the format check passes. No behavior change. (Part C, fix by Claude)
