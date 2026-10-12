@@ -66,6 +66,7 @@ if(ENGINE_CUDA)
     gpu/test_stream.cpp
     gpu/test_swiglu.cpp
     gpu/test_weight_upload.cpp
+    gpu/test_write_kv.cpp
   )
   target_include_directories(gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
@@ -74,7 +75,6 @@ if(ENGINE_CUDA)
 
   add_executable(todo_gpu_tests
     todo/gpu/test_paged_attention.cpp
-    todo/gpu/test_write_kv.cpp
   )
   target_include_directories(todo_gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(todo_gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
