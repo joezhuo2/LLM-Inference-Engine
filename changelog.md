@@ -4,6 +4,9 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## kernel/write-kv-impl
 
+- Implement `engine::write_kv` (`src/kernels/write_kv.cu`, Joe's Part C): one thread per (token, kv head, dimension) element reads the K and V values of its token from the fused `qkv` row (K starts at `width - 2 * kv_width`, V at `width - kv_width`) and copies them bit for bit to `((block * kv_heads + head) * block_size + offset) * head_dim + dim` in the two caches, with `block = slot / block_size` and `offset = slot % block_size`; a negative slot returns before touching anything, and every index is `int64_t`. The launcher throws `std::invalid_argument` for non-BF16 or non-4-dimensional caches, mismatched cache shapes, a non-BF16 or non-2-dimensional `qkv`, a non-I32 or non-1-dimensional `slot_mapping` and a `slot_mapping` length different from `T`, then returns without a launch when `T = 0`, and ends with `KERNEL_CHECK`. All 8 tests pass and compute-sanitizer memcheck reports no errors (Joe's run). (Part C)
+- Fix two spec violations in `write_kv` found by `WriteKv.RejectsBadArguments`: the width check accepted a `qkv` of exactly `2 * kv_width` columns, but the spec requires at least one query column in front of K and V, so it is now `width <= 2 * kv_width`; and the `T = 0` early return ran before the `slot_mapping` and width checks, so a bad call with no tokens was accepted, and it now runs after all validation. (Part C, fix by Claude)
+
 - Move the 8 `write_kv` tests from `tests/todo/gpu/` to `tests/gpu/test_write_kv.cpp` in `gpu_tests`, as the spec asks once they pass, so they lose the `todo_joe` label and run in every `ctest` on a machine with a GPU. `todo_gpu_tests` stays for the paged attention tests. (Part C, move by Claude)
 
 ## kv/block-manager-impl

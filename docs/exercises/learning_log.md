@@ -955,3 +955,18 @@
 - **validating constructor arguments in the member initializer list with a helper function** => 
 - **signed to unsigned conversion (`int` -3 becoming a huge `size_t`)** => 
 - **anonymous namespace (internal linkage for file-local helpers)** => 
+
+## write_kv Implementation (kernel/write-kv-impl)
+
+### Kernel indexing
+- **flat thread index to (token, head, dimension) with `/` and `%`** => 
+- **launch grid size by ceiling division (and why `T = 0` makes it 0, an invalid launch)** => 
+- **`int64_t` index arithmetic vs `int` overflow on large caches** => 
+- **`__restrict__` (what the promise of no aliasing lets the compiler assume)** => 
+### Paged cache writes
+- **padding slot `-1` (why the kernel skips instead of writing to a null block)** => 
+- **writes to distinct slots never race (why `write_kv` needs no atomics)** => 
+- **coalesced global memory access (consecutive threads on consecutive `head_dim` elements)** => 
+### Testing
+- **guard bytes around a buffer to catch out-of-bounds writes** => 
+- **compute-sanitizer memcheck (what it detects and what it cannot)** => 
