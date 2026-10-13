@@ -131,11 +131,11 @@ __global__ void paged_attention_decode_kernel(
 void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
                             const Tensor& v_cache, const Tensor& block_tables,
                             const Tensor& context_lens, Stream stream) {
-    if (out.ndim != 3) {
-        throw std::invalid_argument("paged_attention_decode: out tensor must have ndim == 3");
+    if (out.ndim != 2) {
+        throw std::invalid_argument("paged_attention_decode: out tensor must have ndim == 2");
     }
-    if (qkv.ndim != 2 && qkv.ndim != 3) {
-        throw std::invalid_argument("paged_attention_decode: qkv tensor must have ndim == 2 or 3");
+    if (qkv.ndim != 2) {
+        throw std::invalid_argument("paged_attention_decode: qkv tensor must have ndim == 2");
     }
     if (k_cache.ndim != 4 || v_cache.ndim != 4) {
         throw std::invalid_argument(
@@ -156,8 +156,11 @@ void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& 
         return;
     }
 
-    int heads = static_cast<int>(out.shape[1]);
-    int head_dim = static_cast<int>(out.shape[2]);
+    int head_dim = static_cast<int>(k_cache.shape[3]);
+    if (head_dim <= 0) {
+        throw std::invalid_argument("paged_attention_decode: head_dim must be positive");
+    }
+    int heads = static_cast<int>(out.shape[1]) / head_dim;
     int kv_heads = static_cast<int>(k_cache.shape[1]);
     int block_size = static_cast<int>(k_cache.shape[2]);
     int max_blocks = static_cast<int>(block_tables.shape[1]);
