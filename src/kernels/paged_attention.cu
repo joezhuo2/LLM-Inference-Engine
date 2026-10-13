@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <stdexcept>
 
@@ -10,6 +11,12 @@
 #include "kernels/cuda_check.h"
 
 namespace engine {
+
+namespace {
+
+constexpr int64_t kMaxContext = 2048;
+
+}  // namespace
 
 __device__ __inline__ nv_bfloat16 float_to_bf16(float val) {
     return __float2bfloat16(val);
@@ -131,36 +138,80 @@ __global__ void paged_attention_decode_kernel(
 void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
                             const Tensor& v_cache, const Tensor& block_tables,
                             const Tensor& context_lens, Stream stream) {
-    if (out.ndim != 2) {
-        throw std::invalid_argument("paged_attention_decode: out tensor must have ndim == 2");
-    }
-    if (qkv.ndim != 2) {
-        throw std::invalid_argument("paged_attention_decode: qkv tensor must have ndim == 2");
-    }
-    if (k_cache.ndim != 4 || v_cache.ndim != 4) {
+    if (k_cache.dtype != DType::BF16 || k_cache.ndim != 4) {
         throw std::invalid_argument(
-            "paged_attention_decode: k_cache and v_cache tensors must have ndim == 4");
+            "[paged_attention_decode] k_cache must be BF16 and 4-dimensional");
     }
-    if (block_tables.ndim != 2) {
+    if (v_cache.dtype != DType::BF16 || v_cache.ndim != 4) {
         throw std::invalid_argument(
-            "paged_attention_decode: block_tables tensor must have ndim == 2");
+            "[paged_attention_decode] v_cache must be BF16 and 4-dimensional");
     }
-    if (context_lens.ndim != 1) {
+    for (int i = 0; i < Tensor::kMaxDims; ++i) {
+        if (k_cache.shape[i] != v_cache.shape[i]) {
+            throw std::invalid_argument(
+                "[paged_attention_decode] k_cache and v_cache shapes must match");
+        }
+    }
+    if (out.dtype != DType::BF16 || out.ndim != 2) {
+        throw std::invalid_argument("[paged_attention_decode] out must be BF16 and 2-dimensional");
+    }
+    if (qkv.dtype != DType::BF16 || qkv.ndim != 2) {
+        throw std::invalid_argument("[paged_attention_decode] qkv must be BF16 and 2-dimensional");
+    }
+    if (block_tables.dtype != DType::I32 || block_tables.ndim != 2) {
         throw std::invalid_argument(
-            "paged_attention_decode: context_lens tensor must have ndim == 1");
+            "[paged_attention_decode] block_tables must be I32 and 2-dimensional");
+    }
+    if (context_lens.dtype != DType::I32 || context_lens.ndim != 1) {
+        throw std::invalid_argument(
+            "[paged_attention_decode] context_lens must be I32 and 1-dimensional");
     }
 
-    int batch_size = static_cast<int>(qkv.shape[0]);
+    int64_t rows = out.shape[0];
+    int64_t head_dim64 = k_cache.shape[3];
+    int64_t kv_heads64 = k_cache.shape[1];
+    int64_t block_size64 = k_cache.shape[2];
 
-    if (batch_size == 0) {
+    if (head_dim64 <= 0 || kv_heads64 <= 0 || block_size64 <= 0 || k_cache.shape[0] <= 0) {
+        throw std::invalid_argument("[paged_attention_decode] cache dimensions must be positive");
+    }
+    if (out.shape[1] <= 0 || out.shape[1] % head_dim64 != 0) {
+        throw std::invalid_argument(
+            "[paged_attention_decode] out width must be a positive multiple of head_dim");
+    }
+    int64_t heads64 = out.shape[1] / head_dim64;
+    if (heads64 % kv_heads64 != 0) {
+        throw std::invalid_argument(
+            "[paged_attention_decode] heads must be a multiple of kv_heads");
+    }
+    if (qkv.shape[0] != rows) {
+        throw std::invalid_argument("[paged_attention_decode] qkv rows must match out rows");
+    }
+    if (qkv.shape[1] != (heads64 + 2 * kv_heads64) * head_dim64) {
+        throw std::invalid_argument(
+            "[paged_attention_decode] qkv width must be (heads + 2 * kv_heads) * head_dim");
+    }
+    if (block_tables.shape[0] != rows || block_tables.shape[1] <= 0) {
+        throw std::invalid_argument(
+            "[paged_attention_decode] block_tables must have one row per batch row and at least "
+            "one column");
+    }
+    if (context_lens.shape[0] != rows) {
+        throw std::invalid_argument(
+            "[paged_attention_decode] context_lens length must match the batch size");
+    }
+    if (block_tables.shape[1] * block_size64 > kMaxContext) {
+        throw std::invalid_argument(
+            "[paged_attention_decode] block table capacity exceeds the 2048 token context cap");
+    }
+
+    if (rows == 0) {
         return;
     }
 
-    int head_dim = static_cast<int>(k_cache.shape[3]);
-    if (head_dim <= 0) {
-        throw std::invalid_argument("paged_attention_decode: head_dim must be positive");
-    }
-    int heads = static_cast<int>(out.shape[1]) / head_dim;
+    int batch_size = static_cast<int>(rows);
+    int head_dim = static_cast<int>(head_dim64);
+    int heads = static_cast<int>(heads64);
     int kv_heads = static_cast<int>(k_cache.shape[1]);
     int block_size = static_cast<int>(k_cache.shape[2]);
     int max_blocks = static_cast<int>(block_tables.shape[1]);
