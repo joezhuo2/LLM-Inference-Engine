@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## kernel/paged-attention-impl
 
 - Add Joe's first draft of `engine::paged_attention_decode` (`src/kernels/paged_attention.cu`, Part C): one block per (head, batch row), the query staged in shared memory, scores rounded as `bf16(bf16(q . k) * scale)`, a block-wide max and sum reduction for the softmax, and the output accumulated in FP32 and rounded to BF16 once. It does not pass the tests yet. (Part C)
+- Format `src/kernels/paged_attention.cu` with clang-format (long `throw` lines, trailing whitespace and blank lines), so the format check passes. No behavior change. (Part C, fix by Claude)
 
 ## kernel/write-kv-impl
 

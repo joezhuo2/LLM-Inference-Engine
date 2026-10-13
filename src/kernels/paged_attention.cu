@@ -131,8 +131,6 @@ __global__ void paged_attention_decode_kernel(
 void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
                             const Tensor& v_cache, const Tensor& block_tables,
                             const Tensor& context_lens, Stream stream) {
-
-
     if (out.ndim != 3) {
         throw std::invalid_argument("paged_attention_decode: out tensor must have ndim == 3");
     }
@@ -140,13 +138,16 @@ void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& 
         throw std::invalid_argument("paged_attention_decode: qkv tensor must have ndim == 2 or 3");
     }
     if (k_cache.ndim != 4 || v_cache.ndim != 4) {
-        throw std::invalid_argument("paged_attention_decode: k_cache and v_cache tensors must have ndim == 4");
+        throw std::invalid_argument(
+            "paged_attention_decode: k_cache and v_cache tensors must have ndim == 4");
     }
     if (block_tables.ndim != 2) {
-        throw std::invalid_argument("paged_attention_decode: block_tables tensor must have ndim == 2");
+        throw std::invalid_argument(
+            "paged_attention_decode: block_tables tensor must have ndim == 2");
     }
     if (context_lens.ndim != 1) {
-        throw std::invalid_argument("paged_attention_decode: context_lens tensor must have ndim == 1");
+        throw std::invalid_argument(
+            "paged_attention_decode: context_lens tensor must have ndim == 1");
     }
 
     int batch_size = static_cast<int>(qkv.shape[0]);
@@ -154,7 +155,7 @@ void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& 
     if (batch_size == 0) {
         return;
     }
-    
+
     int heads = static_cast<int>(out.shape[1]);
     int head_dim = static_cast<int>(out.shape[2]);
     int kv_heads = static_cast<int>(k_cache.shape[1]);
@@ -181,13 +182,13 @@ void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& 
     dim3 grid_dim(heads, batch_size);
     dim3 block_dim(thread_block_size);
 
-    size_t shared_mem_bytes = (max_context_length * sizeof(float)) +
-                              (head_dim * sizeof(nv_bfloat16));
+    size_t shared_mem_bytes =
+        (max_context_length * sizeof(float)) + (head_dim * sizeof(nv_bfloat16));
 
     paged_attention_decode_kernel<<<grid_dim, block_dim, shared_mem_bytes, stream>>>(
         d_out, d_qkv, d_k_cache, d_v_cache, d_block_tables, d_context_lens, batch_size, heads,
         kv_heads, head_dim, block_size, max_blocks, num_blocks);
-    
+
     KERNEL_CHECK(stream);
 }
 
