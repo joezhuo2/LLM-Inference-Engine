@@ -1000,3 +1000,34 @@
 - **recording run metadata (date, GPU, build type, settings) next to every benchmark result** => 
 - **CMake compile definitions passing build information into the code (`ENGINE_BUILD_TYPE`)** => 
 - **why benchmarks must use a Release build** => 
+
+## paged_attention_decode Implementation (kernel/paged-attention-impl)
+
+### Kernel structure
+- **one thread block per (head, batch row) with a 2-D grid (`blockIdx.x`, `blockIdx.y`)** => 
+- **grouped-query attention mapping from a query head to its kv head (`h / (heads / kv_heads)`)** => 
+- **following a block table (logical position to physical block and offset)** => 
+- **strided loop over tokens (`for (i = threadIdx.x; i < n; i += blockDim.x)`)** => 
+- **padding row with context length 0 (why the kernel returns before writing)** => 
+### Shared memory
+- **carving several arrays out of one `extern __shared__` allocation (order and alignment)** => 
+- **two arrays aliased at the same offset (the scores overwriting the query)** => 
+- **sizing dynamic shared memory from values the host knows (why `context_lens` cannot be read there)** => 
+- **the 48 KB default limit on dynamic shared memory per block** => 
+### Softmax and reductions
+- **numerically stable softmax (subtracting the row maximum before `exp`)** => 
+- **tree reduction in shared memory with a halving stride** => 
+- **barrier between reading a reduction result and reusing the buffer (the read-after-write race)** => 
+- **`__expf` vs `expf` (fast hardware exponential and its accuracy)** => 
+- **fixed reduction order and why a row's output does not depend on the batch** => 
+### Numerics
+- **rounding the score to BF16 twice (the dot product, then the scaled value) to match Hugging Face eager attention** => 
+- **accumulating in FP32 and rounding to BF16 once at the end** => 
+### Host side
+- **device pointer vs host pointer (why dereferencing a device pointer on the CPU segfaults)** => 
+- **validating every argument before the early return for an empty batch** => 
+- **deriving `heads` from the output width and `head_dim` instead of storing it in the tensor shape** => 
+### Testing
+- **filling unused cache blocks with NaN (a correct kernel never reads them)** => 
+- **a shuffled block table (why an identity mapping hides indexing bugs)** => 
+- **segfault before any kernel error (what compute-sanitizer can and cannot see in host code)** => 
