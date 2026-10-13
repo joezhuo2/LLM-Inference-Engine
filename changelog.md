@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/paged-attention-impl
+
+- Add Joe's first draft of `engine::paged_attention_decode` (`src/kernels/paged_attention.cu`, Part C): one block per (head, batch row), the query staged in shared memory, scores rounded as `bf16(bf16(q . k) * scale)`, a block-wide max and sum reduction for the softmax, and the output accumulated in FP32 and rounded to BF16 once. It does not pass the tests yet. (Part C)
+
 ## kernel/write-kv-impl
 
 - Implement `engine::write_kv` (`src/kernels/write_kv.cu`, Joe's Part C): one thread per (token, kv head, dimension) element reads the K and V values of its token from the fused `qkv` row (K starts at `width - 2 * kv_width`, V at `width - kv_width`) and copies them bit for bit to `((block * kv_heads + head) * block_size + offset) * head_dim + dim` in the two caches, with `block = slot / block_size` and `offset = slot % block_size`; a negative slot returns before touching anything, and every index is `int64_t`. The launcher throws `std::invalid_argument` for non-BF16 or non-4-dimensional caches, mismatched cache shapes, a non-BF16 or non-2-dimensional `qkv`, a non-I32 or non-1-dimensional `slot_mapping` and a `slot_mapping` length different from `T`, then returns without a launch when `T = 0`, and ends with `KERNEL_CHECK`. All 8 tests pass and compute-sanitizer memcheck reports no errors (Joe's run). (Part C)
