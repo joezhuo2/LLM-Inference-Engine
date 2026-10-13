@@ -19,7 +19,7 @@ __global__ void paged_attention_decode_kernel(
     nv_bfloat16* __restrict__ out, const nv_bfloat16* __restrict__ qkv,
     const nv_bfloat16* __restrict__ k_cache, const nv_bfloat16* __restrict__ v_cache,
     const int* __restrict__ block_tables, const int* __restrict__ context_lens, int batch_size,
-    int heads, int kv_heads, int head_dim, int block_size, int max_blocks, int num_blocks) {
+    int heads, int kv_heads, int head_dim, int block_size, int max_blocks, int score_capacity) {
     int attention_head_index = blockIdx.x;
     int batch_row_index = blockIdx.y;
 
@@ -35,7 +35,10 @@ __global__ void paged_attention_decode_kernel(
         qkv + (batch_row_index * qkv_total_width) + (attention_head_index * head_dim);
 
     extern __shared__ char dynamic_shared_memory[];
-    nv_bfloat16* shared_query = reinterpret_cast<nv_bfloat16*>(dynamic_shared_memory);
+    float* shared_scores = reinterpret_cast<float*>(dynamic_shared_memory);
+    float* shared_reduction_buffer = shared_scores + score_capacity;
+    nv_bfloat16* shared_query =
+        reinterpret_cast<nv_bfloat16*>(shared_reduction_buffer + blockDim.x);
 
     for (int dim_idx = threadIdx.x; dim_idx < head_dim; dim_idx += blockDim.x) {
         shared_query[dim_idx] = query_pointer[dim_idx];
@@ -44,8 +47,6 @@ __global__ void paged_attention_decode_kernel(
     __syncthreads();
 
     float attention_scale = 1.0f / sqrtf(static_cast<float>(head_dim));
-
-    float* shared_scores = reinterpret_cast<float*>(dynamic_shared_memory);
 
     const int* sequence_block_table = block_tables + batch_row_index * max_blocks;
 
@@ -72,7 +73,6 @@ __global__ void paged_attention_decode_kernel(
         max_attention_score = fmaxf(max_attention_score, shared_scores[token_idx]);
     }
 
-    float* shared_reduction_buffer = reinterpret_cast<float*>(shared_scores + context_length);
     shared_reduction_buffer[threadIdx.x] = max_attention_score;
     __syncthreads();
 
@@ -161,7 +161,7 @@ void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& 
     int kv_heads = static_cast<int>(k_cache.shape[1]);
     int block_size = static_cast<int>(k_cache.shape[2]);
     int max_blocks = static_cast<int>(block_tables.shape[1]);
-    int num_blocks = static_cast<int>(k_cache.shape[0]);
+    int score_capacity = max_blocks * block_size;
 
     auto* d_out = static_cast<nv_bfloat16*>(out.data);
     auto* d_qkv = static_cast<const nv_bfloat16*>(qkv.data);
@@ -170,24 +170,18 @@ void paged_attention_decode(const Tensor& out, const Tensor& qkv, const Tensor& 
     auto* d_block_tables = static_cast<const int*>(block_tables.data);
     auto* d_context_lens = static_cast<const int*>(context_lens.data);
 
-    int max_context_length = 0;
-    const int* h_context_lens = static_cast<const int*>(context_lens.data);
-    int num_batch_rows = static_cast<int>(context_lens.shape[0]);
-    for (int i = 0; i < num_batch_rows; ++i) {
-        max_context_length = std::max(max_context_length, h_context_lens[i]);
-    }
-
     int thread_block_size = 256;
 
     dim3 grid_dim(heads, batch_size);
     dim3 block_dim(thread_block_size);
 
     size_t shared_mem_bytes =
-        (max_context_length * sizeof(float)) + (head_dim * sizeof(nv_bfloat16));
+        (static_cast<size_t>(score_capacity) + thread_block_size) * sizeof(float) +
+        static_cast<size_t>(head_dim) * sizeof(nv_bfloat16);
 
     paged_attention_decode_kernel<<<grid_dim, block_dim, shared_mem_bytes, stream>>>(
         d_out, d_qkv, d_k_cache, d_v_cache, d_block_tables, d_context_lens, batch_size, heads,
-        kv_heads, head_dim, block_size, max_blocks, num_blocks);
+        kv_heads, head_dim, block_size, max_blocks, score_capacity);
 
     KERNEL_CHECK(stream);
 }
