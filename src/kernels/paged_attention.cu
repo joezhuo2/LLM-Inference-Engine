@@ -1,10 +1,8 @@
 #include <cuda_bf16.h>
 #include <cuda_runtime.h>
 
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
 #include <stdexcept>
 
 #include "engine/kernels/paged_attention.h"
@@ -17,10 +15,6 @@ namespace {
 constexpr int64_t kMaxContext = 2048;
 
 }  // namespace
-
-__device__ __inline__ nv_bfloat16 float_to_bf16(float val) {
-    return __float2bfloat16(val);
-}
 
 __global__ void paged_attention_decode_kernel(
     nv_bfloat16* __restrict__ out, const nv_bfloat16* __restrict__ qkv,
