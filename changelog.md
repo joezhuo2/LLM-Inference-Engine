@@ -11,6 +11,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Validate every argument of `paged_attention_decode` before any launch, with `std::invalid_argument` messages naming it: BF16 and 4-dimensional caches of equal shape, BF16 and 2-dimensional `out` and `qkv`, an `out` width that is a multiple of `head_dim`, `heads` a multiple of `kv_heads`, `qkv` with the same row count as `out` and width `(heads + 2 * kv_heads) * head_dim`, an I32 2-dimensional `block_tables` with one row per batch row and at least one column, an I32 1-dimensional `context_lens` of length `B`, and a table capacity `max_blocks * block_size` of at most 2,048 tokens. The `B = 0` early return now runs after all of them. (Part C, fix by Claude)
 - Remove the unused `float_to_bf16` helper and the `<algorithm>` and `<cstdio>` includes from `src/kernels/paged_attention.cu`. No behavior change. (Part C, fix by Claude)
 - Move the 19 paged attention tests (13 `PagedAttentionDecode` cases and 6 odd layouts) from `tests/todo/gpu/` to `tests/gpu/test_paged_attention.cpp` in `gpu_tests`, as the spec asks once they pass, so they lose the `todo_joe` label and run in every `ctest` on a machine with a GPU, and delete the empty `todo_gpu_tests` target. compute-sanitizer memcheck with leak check reports 0 errors and 0 bytes leaked on them. (Part C, move by Claude)
+- Add blank learning-log entries for the concepts `paged_attention_decode` relies on (`docs/exercises/learning_log.md`, section `paged_attention_decode Implementation`). (Part A)
 
 ## kernel/write-kv-impl
 
