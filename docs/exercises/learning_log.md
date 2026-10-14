@@ -1031,3 +1031,26 @@
 - **filling unused cache blocks with NaN (a correct kernel never reads them)** => 
 - **a shuffled block table (why an identity mapping hides indexing bugs)** => 
 - **segfault before any kernel error (what compute-sanitizer can and cannot see in host code)** => 
+
+## Scheduler Implementation (sched/scheduler-impl)
+
+### Structure
+- **`std::deque` as a FIFO queue with `push_front` for preempted requests** => 
+- **`std::unordered_map` keyed by sequence id as the owner of every held request** => 
+- **why `requests_[id] = request` silently overwrites and `emplace` or a `count` check does not** => 
+- **the two-phase step protocol (`schedule()` then `update()`) and the pending-step flag** => 
+- **initializing a member from a constructor argument before the constructor body checks it** => 
+### Admission and preemption
+- **the admission loop conditions in order (batch size, free blocks, prefill token budget)** => 
+- **`break` at the first request that does not fit (head-of-line blocking by design)** => 
+- **preempting until `can_append` holds, then appending the slot** => 
+- **a sequence preempting itself when it is the last running one** => 
+- **why preempted sequences keep their output and `preemptions` count across the recompute** => 
+### Retiring
+- **retiring on EOS or `max_new_tokens` and freeing blocks in the same `update`** => 
+- **why `first_token` is stamped once and survives a preemption** => 
+- **`std::move` of a member vector followed by `clear()` (moved-from state)** => 
+- **erasing from the running list with `std::find` and `erase`** => 
+### Errors
+- **strong exception guarantee (a rejected call changes nothing)** => 
+- **validating the whole input before mutating any member** => 
