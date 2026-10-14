@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <deque>
 #include <span>
 #include <vector>
 
@@ -37,6 +38,16 @@ public:
     const BlockManager& blocks() const;
     int num_waiting() const;
     int num_running() const;
+
+private:
+    SchedulerConfig config_;
+    BlockManager block_manager_;
+    std::deque<SeqId> waiting_queue_;
+    std::vector<SeqId> running_list_;
+    std::vector<Request> finished_list_;
+    std::unordered_map<SeqId, Request> requests_;
+    bool pending_step_ = false;
+    Step pending_step_obj_;
 };
 
 }  // namespace engine
