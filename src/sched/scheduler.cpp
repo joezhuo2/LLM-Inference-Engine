@@ -12,6 +12,14 @@ namespace engine {
 
 Scheduler::Scheduler(const SchedulerConfig& config)
     : config_(config), block_manager_(config.num_blocks, config.block_size) {
+    if (config.max_batch < 1) {
+        throw std::invalid_argument("[SchedulerConfig] max_batch must be >= 1");
+    }
+
+    if (config.max_context < 1) {
+        throw std::invalid_argument("[SchedulerConfig] max_context must be >= 1");
+    }
+
     if (config.max_prefill_tokens < config.max_context) {
         throw std::invalid_argument("[SchedulerConfig] max_prefill_tokens must be >= max_context");
     }
@@ -192,7 +200,7 @@ std::vector<Request> Scheduler::take_finished() {
 
 const Request& Scheduler::request(SeqId id) const {
     auto it = requests_.find(id);
-    
+
     if (it == requests_.end()) {
         throw std::invalid_argument("[Scheduler] request id not held");
     }
