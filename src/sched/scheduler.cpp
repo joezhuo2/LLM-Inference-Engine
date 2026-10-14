@@ -34,7 +34,7 @@ Scheduler::Scheduler(const SchedulerConfig& config)
 
 void Scheduler::submit(Request request) {
     validate(request, config_.max_context);
-    
+
     if (requests_.count(request.id)) {
         throw std::invalid_argument("[Scheduler] request id already held");
     }
