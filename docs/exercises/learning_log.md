@@ -1136,3 +1136,7 @@
 - **RAII guard object (constructor pushes, destructor pops)** => 
 - **a callable passed as a template parameter and forwarded with `std::forward`** => 
 - **why a profiler range on the host does not time the GPU work inside it** => 
+
+## Profiler Capture Range (Branch 28)
+- **cudaProfilerStart and cudaProfilerStop (limiting what the profiler records)** => 
+- **why the first iterations of a GPU program are excluded from a profile (lazy module load, cuBLAS heuristics, clocks)** => 

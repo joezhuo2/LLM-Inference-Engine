@@ -21,6 +21,7 @@
 #include "engine/model/config.h"
 
 #if ENGINE_HAS_CUDA
+#include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 
 #include "engine/runtime/bench.h"
@@ -49,6 +50,7 @@ struct Options {
     int top_k = 0;
     float top_p = 1.0f;
     bool stop_at_eos = false;
+    bool profile = false;
     std::filesystem::path out;
     std::filesystem::path summary;
 };
@@ -155,8 +157,13 @@ void run(const Options& o) {
         drive(warmup, Clock::now());
     }
 
+    if (o.profile) cudaProfilerStart();
     const auto start = Clock::now();
     stats = drive(workload, start);
+    if (o.profile) {
+        cudaDeviceSynchronize();
+        cudaProfilerStop();
+    }
     Clock::time_point end = start;
     std::vector<RequestMetrics> metrics;
     int64_t preemptions = 0;
@@ -276,6 +283,9 @@ void add_bench_command(CLI::App& app) {
         ->check(CLI::Range(0.0f, 1.0f));
     cmd->add_flag("--stop-at-eos", opts->stop_at_eos,
                   "End a request at EOS instead of always generating its full output length");
+    cmd->add_flag("--profile", opts->profile,
+                  "Call cudaProfilerStart and cudaProfilerStop around the timed run, for nsys "
+                  "--capture-range=cudaProfilerApi and ncu --profile-from-start off");
     cmd->add_option("--out", opts->out, "Per-request CSV to write, for example results/b1.csv")
         ->required();
     cmd->add_option("--summary", opts->summary,
