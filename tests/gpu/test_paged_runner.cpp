@@ -258,3 +258,44 @@ TEST_F(PagedRunnerTest, ConcurrentSequencesMatchHuggingFaceTeacherForced) {
     EXPECT_GE(match_rate, kArgmaxMatch);
     EXPECT_LT(mean_abs, kMeanAbsLogitError);
 }
+
+TEST_F(PagedRunnerTest, StagingAndRunningADecodeBatchIsBitIdenticalToForward) {
+    constexpr int kSeqs = 3;
+    KvCache cache(w().config, 64, kBlockSize);
+    PagedRunner runner(w().config, w().weights, cache, 64, 8, kMaxContext, stream);
+    Scheduler scheduler(SchedulerConfig{.num_blocks = 64,
+                                        .block_size = kBlockSize,
+                                        .max_batch = 8,
+                                        .max_prefill_tokens = kMaxContext,
+                                        .max_context = kMaxContext});
+    for (int i = 0; i < kSeqs; ++i) {
+        Request r{.id = i, .max_new_tokens = 4};
+        r.prompt = prompt_of(i, 5 + 3 * i, int(vocab()));
+        scheduler.submit(r);
+    }
+    const auto prefill = scheduler.schedule();
+    const auto logits = to_host(
+        runner.forward(engine::build_paged_batch(prefill, scheduler, int(runner.max_blocks()))));
+    scheduler.update(argmax_rows(logits, vocab()));
+
+    const auto step = scheduler.schedule();
+    ASSERT_FALSE(step.prefill);
+    const auto batch = engine::build_paged_batch(step, scheduler, int(runner.max_blocks()));
+    const auto eager = to_host(runner.forward(batch));
+    runner.stage(batch);
+    const auto staged = to_host(runner.run_staged(kSeqs, kSeqs));
+    EXPECT_EQ(staged, eager);
+}
+
+TEST_F(PagedRunnerTest, RunStagedRejectsInconsistentCounts) {
+    KvCache cache(w().config, 16, kBlockSize);
+    PagedRunner runner(w().config, w().weights, cache, 16, 4, kMaxContext, stream);
+    EXPECT_THROW(runner.run_staged(0, 0), std::invalid_argument);
+    EXPECT_THROW(runner.run_staged(17, 4), std::invalid_argument);
+    EXPECT_THROW(runner.run_staged(4, 5), std::invalid_argument);
+    EXPECT_THROW(runner.run_staged(4, 2), std::invalid_argument);
+    const std::vector<int32_t> rows = {0, 3};
+    EXPECT_THROW(runner.run_staged(4, 3, rows), std::invalid_argument);
+    const std::vector<int32_t> outside = {0, 4};
+    EXPECT_THROW(runner.run_staged(4, 2, outside), std::invalid_argument);
+}

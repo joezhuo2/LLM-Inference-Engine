@@ -1,5 +1,6 @@
 #include "engine/runtime/paged_runner.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -44,6 +45,7 @@ PagedRunner::PagedRunner(const ModelConfig& config, const ModelWeights& weights,
       stream_(stream),
       workspace_(kWorkspaceBytes),
       blas_(stream, workspace_.data(), workspace_.size()) {
+    CUDA_CHECK(cudaEventCreateWithFlags(&staged_, cudaEventDisableTiming));
     require(cache.layers() == config.layers, "the cache must have one K and V plane per layer");
     require(max_seqs > 0 && max_seqs <= max_tokens,
             "max_seqs must be positive and at most max_tokens");
@@ -52,6 +54,7 @@ PagedRunner::PagedRunner(const ModelConfig& config, const ModelWeights& weights,
     max_blocks_ = (max_context + cache.block_size() - 1) / cache.block_size();
     const int64_t h = config.hidden;
     ints_ = buffer(1, 4 * max_tokens + max_tokens * max_blocks_, DType::I32);
+    staging_ = PinnedBuffer(ints_.size());
     x_ = buffer(max_tokens, h, DType::BF16);
     norm_ = buffer(max_tokens, h, DType::BF16);
     qkv_ = buffer(max_tokens, config.qkv_dim(), DType::BF16);
@@ -62,7 +65,16 @@ PagedRunner::PagedRunner(const ModelConfig& config, const ModelWeights& weights,
     logits_ = buffer(max_seqs, config.vocab, DType::BF16);
 }
 
+PagedRunner::~PagedRunner() {
+    if (staged_ != nullptr) cudaEventDestroy(staged_);
+}
+
 Tensor PagedRunner::forward(const PagedBatch& batch) {
+    stage(batch);
+    return run_staged(batch.num_tokens(), batch.num_seqs, batch.logit_rows);
+}
+
+void PagedRunner::stage(const PagedBatch& batch) {
     const int64_t t = batch.num_tokens();
     const int64_t s = batch.num_seqs;
     require(t > 0 && t <= max_tokens_, "the number of tokens must be between 1 and max_tokens");
@@ -77,15 +89,30 @@ Tensor PagedRunner::forward(const PagedBatch& batch) {
     for (const int32_t row : batch.logit_rows)
         require(row >= 0 && row < t, "a logit row is outside the batch");
 
-    std::vector<int32_t> host;
-    host.reserve(size_t(4 * t + t * max_blocks_));
-    host.insert(host.end(), batch.token_ids.begin(), batch.token_ids.end());
-    host.insert(host.end(), batch.positions.begin(), batch.positions.end());
-    host.insert(host.end(), batch.slot_mapping.begin(), batch.slot_mapping.end());
-    host.insert(host.end(), batch.context_lens.begin(), batch.context_lens.end());
-    host.insert(host.end(), batch.block_tables.begin(), batch.block_tables.end());
-    CUDA_CHECK(cudaMemcpyAsync(ints_.data(), host.data(), host.size() * sizeof(int32_t),
-                               cudaMemcpyHostToDevice, stream_));
+    CUDA_CHECK(cudaEventSynchronize(staged_));
+    auto* host = static_cast<int32_t*>(staging_.data());
+    size_t at = 0;
+    for (const std::vector<int32_t>* part :
+         {&batch.token_ids, &batch.positions, &batch.slot_mapping, &batch.context_lens,
+          &batch.block_tables}) {
+        std::copy(part->begin(), part->end(), host + at);
+        at += part->size();
+    }
+    CUDA_CHECK(
+        cudaMemcpyAsync(ints_.data(), host, at * sizeof(int32_t), cudaMemcpyHostToDevice, stream_));
+    CUDA_CHECK(cudaEventRecord(staged_, stream_));
+}
+
+Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> logit_rows) {
+    require(t > 0 && t <= max_tokens_, "the number of tokens must be between 1 and max_tokens");
+    require(s > 0 && s <= max_seqs_, "the number of sequences must be between 1 and max_seqs");
+    const bool identity = logit_rows.empty();
+    require(!identity || t == s, "without logit_rows every token must be its own sequence");
+    require(identity || int64_t(logit_rows.size()) == s,
+            "logit_rows must have one entry per sequence");
+    for (const int32_t row : logit_rows)
+        require(row >= 0 && row < t, "a logit row is outside the batch");
+
     auto* ints = static_cast<int32_t*>(ints_.data());
     const Tensor input_ids(ints, DType::I32, {t});
     const Tensor positions(ints + t, DType::I32, {t});
@@ -121,14 +148,17 @@ Tensor PagedRunner::forward(const PagedBatch& batch) {
         naive::add(x, x, proj, stream_);
     }
 
-    const size_t row_bytes = size_t(c.hidden) * dtype_size(DType::BF16);
-    for (int64_t i = 0; i < s; ++i) {
-        CUDA_CHECK(cudaMemcpyAsync(
-            static_cast<std::byte*>(attn_.data()) + size_t(i) * row_bytes,
-            static_cast<std::byte*>(x_.data()) + size_t(batch.logit_rows[size_t(i)]) * row_bytes,
-            row_bytes, cudaMemcpyDeviceToDevice, stream_));
+    Tensor last(x_.data(), DType::BF16, {s, c.hidden});
+    if (!identity) {
+        const size_t row_bytes = size_t(c.hidden) * dtype_size(DType::BF16);
+        for (int64_t i = 0; i < s; ++i) {
+            CUDA_CHECK(cudaMemcpyAsync(
+                static_cast<std::byte*>(attn_.data()) + size_t(i) * row_bytes,
+                static_cast<std::byte*>(x_.data()) + size_t(logit_rows[size_t(i)]) * row_bytes,
+                row_bytes, cudaMemcpyDeviceToDevice, stream_));
+        }
+        last = Tensor(attn_.data(), DType::BF16, {s, c.hidden});
     }
-    const Tensor last(attn_.data(), DType::BF16, {s, c.hidden});
     const Tensor last_norm(norm_.data(), DType::BF16, {s, c.hidden});
     naive::rmsnorm(last_norm, last, weights_.final_norm, eps, stream_);
     const Tensor logits = view(logits_, s, c.vocab);
