@@ -82,3 +82,10 @@ if(ENGINE_CUDA)
   target_link_libraries(todo_gpu_tests PRIVATE engine_runtime GTest::gtest_main)
   gtest_discover_tests(todo_gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
 endif()
+
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME PythonScripts.ProfileReport
+    COMMAND ${Python3_EXECUTABLE} -I -m unittest discover -s ${CMAKE_CURRENT_SOURCE_DIR}/python -p "test_*.py")
+  set_tests_properties(PythonScripts.ProfileReport PROPERTIES LABELS python)
+endif()
