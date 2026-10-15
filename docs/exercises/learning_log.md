@@ -1054,3 +1054,12 @@
 ### Errors
 - **strong exception guarantee (a rejected call changes nothing)** => 
 - **validating the whole input before mutating any member** => 
+
+## Paged Batch (Branch 20)
+- **slot mapping (token to physical slot)** => 
+- **block table padded with the null block** => 
+- **context length per query row (causal mask as a length)** => 
+- **prefill as one decode row per prompt token** => 
+- **logit rows (which row of the batch is each sequence's last token)** => 
+- **flat row-major layout of a 2-D table in one vector** => 
+- **recomputing a preempted sequence from prompt plus output** => 
