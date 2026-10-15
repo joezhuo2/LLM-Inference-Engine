@@ -1,31 +1,126 @@
-#include <cstdio>
-#include <cstdlib>
+#include <cuda_bf16.h>
+#include <cuda_runtime.h>
 
+#include <stdexcept>
+
+#include "cuda_check.h"
 #include "engine/kernels/add_rmsnorm.h"
 
 namespace engine::fast {
 
-/*
-TODO(JOE): add_rmsnorm
+constexpr int kWarpSize = 32;
 
-Purpose. add_rmsnorm fuses the residual add and the RMSNorm that follows it in every decoder layer. Today PagedRunner runs naive::add (x = x + proj) and then naive::rmsnorm (norm = rmsnorm(x)) as two kernels, so the new hidden state is written to global memory by the first kernel and read back by the second. A decode step at batch 1 is memory bound (it streams the 2.2 GB of weights, and the activations are 4 KB per row), but the two extra launches and the round trip sit on the critical path of 22 layers times 2 norms, and they are what the nsys timeline shows as gaps once CUDA Graphs remove the launch latency. The fused kernel reads x and residual once, writes the sum and the normalized row once, and is one launch instead of two. The model runner will call it twice per layer (after the attention output projection with ln2, after the MLP down projection with the next layer's ln1 or the final norm), so its output must be usable as the next residual stream.
+__device__ __forceinline__ float warpReduceSum(float val) {
+    for (int mask = kWarpSize / 2; mask > 0; mask /= 2) {
+        val += __shfl_down_sync(0xffffffff, val, mask);
+    }
 
-Interface. All tensors are BF16 and 2-dimensional [T, hidden] except weight, which is BF16 [hidden]. sum, norm, x and residual have the same shape. x is the residual stream, residual is the branch output being added to it (proj in the runner), weight is the RMSNorm scale of the norm that follows, eps its epsilon. stream is the stream to run on. For every row t: sum[t] = x[t] + residual[t] elementwise, and norm[t] = rmsnorm(sum[t]) with the definition of naive::rmsnorm (see src/kernels/rmsnorm.cu): rstd = rsqrt(mean(sum[t]^2) + eps) with the mean over the BF16-rounded sum values accumulated in FP32, and norm[t][i] = bf16(weight[i] * bf16(sum[t][i] * rstd)). Both outputs are fully written; x, residual and weight are not modified, except that sum may be the very same tensor (same data pointer) as x or as residual, which is how the runner uses it (sum = x). norm must not overlap sum, x or residual.
-
-Numerics. sum is bit-identical to naive::add: float(x) + float(residual) rounded once to BF16. The norm is computed from the rounded sum, not from the unrounded FP32 sum, exactly as the unfused pair does, so fusing changes no rounding step. The only permitted difference from naive::rmsnorm is the summation order of the FP32 sum of squares (at most 2 BF16 ulps on at most 0.1% of the elements, the close_up_to_reduction_order criterion the naive kernel itself is tested with). A given row must produce bit-identical output whatever T is and wherever the row sits in the batch (batch invariance: a sequence decoded alone and in a batch of 16 must not differ because of this kernel), and two runs on the same input must be bit-identical (no atomics in the reduction).
-
-Errors and preconditions. Before launching anything, throw std::invalid_argument with a message naming add_rmsnorm when: any of sum, norm, x, residual or weight is not BF16; x is not 2-dimensional; residual, sum or norm does not have exactly x's shape; weight is not 1-dimensional of length hidden. Overlap other than the exact aliasing of sum with x or with residual is the caller's bug and is not checked. The launch is asynchronous on stream with the usual KERNEL_CHECK after it.
-
-Edge cases and boundaries. T = 0 is a valid call that does nothing, with no launch of an empty grid, and the tensors' data pointers may be null. hidden is any positive integer up to at least 8192 (1, 2, 100, 2047 and 2049 included, not only multiples of 8): if you load 128 bits at a time you need a scalar path for the tail and for rows whose address is not 16-byte aligned, and the tests pass pointers offset by one element so the base pointer itself is not aligned. Rows of different T must not influence one another. An all-zero row gives sum 0 and norm 0 (no NaN from the normalization). The output must not depend on the contents of memory outside the tensors.
-
-What to compare against. A host reference in the test (round the sum to BF16, then the double-accumulated RMSNorm of the naive test), and the unfused naive::add followed by naive::rmsnorm on the GPU.
-
-Tests that prove it. tests/todo/gpu/test_add_rmsnorm.cpp: TinyLlama's hidden size 2048 at T = 1, 16 and 64, 5632 and 8192, the odd hidden sizes above, an unaligned base pointer for each, sum aliasing x and aliasing residual, guard bytes around every tensor proving nothing outside them is written and the inputs are unchanged, row results independent of T and of the row's position, determinism, T = 0, an all-zero row and every rejected argument. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them, then ncu the kernel at T = 1 and T = 16 against the naive pair and record the before and after in docs.
-*/
-void add_rmsnorm(const Tensor&, const Tensor&, const Tensor&, const Tensor&, const Tensor&, float,
-                 Stream) {
-    std::fprintf(stderr, "unimplemented: add_rmsnorm\n");
-    std::abort();
+    return val;
 }
 
+__device__ __forceinline__ float blockReduceSum(float val) {
+    static __shared__ float shared[32];
+    int lane = threadIdx.x % kWarpSize;
+    int warp_id = threadIdx.x / kWarpSize;
+
+    val = warpReduceSum(val);
+
+    if (lane == 0) {
+        shared[warp_id] = val;
+    }
+
+    __syncthreads();
+
+    int num_warps = blockDim.x / kWarpSize;
+    val = (threadIdx.x < num_warps) ? shared[lane] : 0.0f;
+
+    if (warp_id == 0) {
+        val = warpReduceSum(val);
+    }
+    return val;
+}
+
+__global__ void add_rmsnorm_kernel(__nv_bfloat16* __restrict__ sum,
+                                   __nv_bfloat16* __restrict__ norm,
+                                   const __nv_bfloat16* __restrict__ x,
+                                   const __nv_bfloat16* __restrict__ residual,
+                                   const __nv_bfloat16* __restrict__ weight, float eps,
+                                   int64_t total_batch_size, int64_t hidden) {
+    int row = blockIdx.x;
+
+    if (row >= total_batch_size) return;
+
+    const __nv_bfloat16* x_row = x + (row * hidden);
+    const __nv_bfloat16* res_row = residual + (row * hidden);
+    __nv_bfloat16* sum_row = sum + (row * hidden);
+    __nv_bfloat16* norm_row = norm + (row * hidden);
+
+    float local_sq_sum = 0.0f;
+
+    for (int i = threadIdx.x; i < hidden; i += blockDim.x) {
+        float xv = __bfloat162float(x_row[i]);
+        float rv = __bfloat162float(res_row[i]);
+
+        float s_val = xv + rv;
+
+        sum_row[i] = __float2bfloat16(s_val);
+        local_sq_sum += s_val * s_val;
+    }
+
+    float block_sq_sum = blockReduceSum(local_sq_sum);
+
+    __shared__ float s_rstd;
+
+    if (threadIdx.x == 0) {
+        s_rstd = rsqrt(block_sq_sum / static_cast<float>(hidden) + eps);
+    }
+
+    __syncthreads();
+
+    for (int i = threadIdx.x; i < hidden; i += blockDim.x) {
+        float s_val = __bfloat162float(sum_row[i]);
+        float w_val = __bfloat162float(weight[i]);
+        norm_row[i] = __float2bfloat16(s_val * s_rstd * w_val);
+    }
+}
+
+void add_rmsnorm(const Tensor& sum, const Tensor& norm, const Tensor& x, const Tensor& residual,
+                 const Tensor& weight, float eps, Stream stream) {
+    if (sum.dtype != DType::BF16 || norm.dtype != DType::BF16 || x.dtype != DType::BF16 ||
+        residual.dtype != DType::BF16 || weight.dtype != DType::BF16) {
+        throw std::invalid_argument("[add_rmsnorm] all tensors must be BF16");
+    }
+
+    if (x.ndim != 2) {
+        throw std::invalid_argument("[add_rmsnorm] x must be 2-dimensional");
+    }
+
+    if (residual.shape != x.shape || sum.shape != x.shape || norm.shape != x.shape) {
+        throw std::invalid_argument(
+            "[add_rmsnorm] sum, norm, and residual must have the same shape as x");
+    }
+
+    if (weight.ndim != 1) {
+        throw std::invalid_argument("[add_rmsnorm] weight must be 1-dimensional");
+    }
+
+    const int64_t seq_len = x.shape[0];
+    const int64_t hidden = x.shape[1];
+
+    if (weight.shape[0] != hidden) {
+        throw std::invalid_argument("[add_rmsnorm] weight length must equal hidden dimension");
+    }
+
+    if (seq_len == 0) return;
+
+    const int threads_per_block = 256;
+    const dim3 grid(static_cast<unsigned int>(seq_len));
+
+    add_rmsnorm_kernel<<<grid, threads_per_block, 0, stream>>>(
+        static_cast<__nv_bfloat16*>(sum.data), static_cast<__nv_bfloat16*>(norm.data),
+        static_cast<const __nv_bfloat16*>(x.data), static_cast<const __nv_bfloat16*>(residual.data),
+        static_cast<const __nv_bfloat16*>(weight.data), eps, seq_len, hidden);
+
+    KERNEL_CHECK(stream);
+}
 }  // namespace engine::fast
