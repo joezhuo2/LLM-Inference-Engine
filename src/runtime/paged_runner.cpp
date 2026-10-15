@@ -65,6 +65,11 @@ PagedRunner::PagedRunner(const ModelConfig& config, const ModelWeights& weights,
     logits_ = buffer(max_seqs, config.vocab, DType::BF16);
 }
 
+Tensor PagedRunner::logits(int64_t rows) {
+    require(rows > 0 && rows <= max_seqs_, "rows must be between 1 and max_seqs");
+    return view(logits_, rows, config_.vocab);
+}
+
 PagedRunner::~PagedRunner() {
     if (staged_ != nullptr) cudaEventDestroy(staged_);
 }
@@ -161,9 +166,9 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
     }
     const Tensor last_norm(norm_.data(), DType::BF16, {s, c.hidden});
     naive::rmsnorm(last_norm, last, weights_.final_norm, eps, stream_);
-    const Tensor logits = view(logits_, s, c.vocab);
-    gemm(blas_, logits, last_norm, weights_.lm_head);
-    return logits;
+    const Tensor out = logits(s);
+    gemm(blas_, out, last_norm, weights_.lm_head);
+    return out;
 }
 
 }  // namespace engine

@@ -31,6 +31,8 @@ public:
     void stage(const PagedBatch& batch);
     Tensor run_staged(int64_t tokens, int64_t seqs, std::span<const int32_t> logit_rows = {});
 
+    Tensor logits(int64_t rows);
+
     int64_t max_tokens() const { return max_tokens_; }
     int64_t max_seqs() const { return max_seqs_; }
     int64_t max_blocks() const { return max_blocks_; }

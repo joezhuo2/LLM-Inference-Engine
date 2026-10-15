@@ -1112,3 +1112,13 @@
 - **padding a batch to a fixed size (bucket) and why padded rows must be harmless** => 
 - **cudaEvent as a fence for a reused staging buffer** => 
 - **static input buffers (same device addresses on every replay)** => 
+
+## Decode CUDA Graphs (Branch 22)
+- **kernel launch overhead and why a decode step at batch 1 is launch-bound** => 
+- **CUDA Graph (capture, instantiate, launch)** => 
+- **stream capture modes (global, thread-local, relaxed)** => 
+- **why a warmup run is needed before capture** => 
+- **graph executable vs graph template** => 
+- **per-bucket graphs for varying batch sizes** => 
+- **what a replay bakes in (shapes and pointers) and what it re-reads (device memory contents)** => 
+- **nsys timeline and launch gaps** => 

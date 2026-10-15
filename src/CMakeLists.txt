@@ -53,6 +53,7 @@ if(ENGINE_CUDA)
   add_library(engine_runtime
     runtime/bench.cpp
     runtime/checksum.cpp
+    runtime/decode_graphs.cpp
     runtime/device_buffer.cpp
     runtime/generate.cpp
     runtime/kv_cache.cpp

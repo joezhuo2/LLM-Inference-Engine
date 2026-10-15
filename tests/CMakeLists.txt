@@ -72,6 +72,7 @@ if(ENGINE_CUDA)
 
   add_executable(todo_gpu_tests
     todo/gpu/test_add_rmsnorm.cpp
+    todo/gpu/test_decode_graphs.cpp
     todo/gpu/test_rope_fast.cpp
     todo/gpu/test_swiglu_fast.cpp
   )
