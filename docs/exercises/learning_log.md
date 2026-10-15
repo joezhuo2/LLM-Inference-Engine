@@ -1191,3 +1191,5 @@
 - **computing a value once per thread and reusing it across a loop (amortizing sincosf over heads)** => 
 - **latency bound serial loop versus parallel threads (why 36 dependent loads cost about 20 us)** => 
 - **block shape from the problem shape (threads = pairs times head groups)** => 
+- **compute-sanitizer memcheck and leak check (what 0 errors, 0 bytes leaked rules out)** => 
+- **launch-bound versus latency-bound at 1 token (why 6 us is the floor for a tiny kernel)** => 
