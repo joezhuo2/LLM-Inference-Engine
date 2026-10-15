@@ -1129,3 +1129,4 @@
 - **TTFT including queueing delay** => 
 - **throughput vs latency trade-off as max batch grows** => 
 - **KV cache high-water mark (peak blocks in use)** => 
+- **why batch-1 weight bandwidth stops being the right metric with several sequences per step** => 
