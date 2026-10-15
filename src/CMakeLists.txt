@@ -54,6 +54,7 @@ if(ENGINE_CUDA)
     runtime/generate.cpp
     runtime/kv_cache.cpp
     runtime/model_runner.cpp
+    runtime/paged_runner.cpp
     runtime/pinned_buffer.cpp
     runtime/sampler.cpp
     runtime/weights.cpp

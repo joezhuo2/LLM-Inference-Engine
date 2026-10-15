@@ -53,6 +53,7 @@ if(ENGINE_CUDA)
     gpu/test_load_weights.cpp
     gpu/test_model_runner.cpp
     gpu/test_paged_attention.cpp
+    gpu/test_paged_runner.cpp
     gpu/test_pinned_buffer.cpp
     gpu/test_rmsnorm.cpp
     gpu/test_rope.cpp
