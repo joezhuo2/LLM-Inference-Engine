@@ -59,6 +59,7 @@ if(ENGINE_CUDA)
     gpu/test_pinned_buffer.cpp
     gpu/test_rmsnorm.cpp
     gpu/test_rope.cpp
+    gpu/test_rope_fast.cpp
     gpu/test_sample.cpp
     gpu/test_serve.cpp
     gpu/test_smoke.cpp
@@ -74,7 +75,6 @@ if(ENGINE_CUDA)
 
   add_executable(todo_gpu_tests
     todo/gpu/test_decode_graphs.cpp
-    todo/gpu/test_rope_fast.cpp
     todo/gpu/test_swiglu_fast.cpp
   )
   target_include_directories(todo_gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
