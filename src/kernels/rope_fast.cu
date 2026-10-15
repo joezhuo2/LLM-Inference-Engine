@@ -1,30 +1,149 @@
+#include <cuda_bf16.h>
+#include <cuda_runtime.h>
+
+#include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <stdexcept>
 
+#include "cuda_check.h"
 #include "engine/kernels/rope.h"
 
 namespace engine::fast {
 
-/*
-TODO(JOE): rope (fast)
+template <int kHeadDim>
 
-Purpose. fast::rope is the optimized replacement of naive::rope (src/kernels/rope.cu) in the decode and prefill path of PagedRunner. RoPE rotates the Q and K slices of every row of the fused QKV GEMM output in place, by an angle that depends on the token's position; it is pure elementwise work with a transcendental per element, so on a memory-bound decode step its cost is the launch plus the uncoalesced 2-byte accesses of the naive loop (one thread per pair, two scattered BF16 loads and stores) and the per-pair cosf and sinf. The fast kernel must do the same rotation with 128-bit accesses and without recomputing what can be shared, and give exactly the same bits.
+__global__ void rope_kernel(nv_bfloat16* __restrict__ qkv_data,
+                            const int* __restrict__ positions_data, int num_query_heads,
+                            int num_kv_heads, int head_dim, float theta_base) {
+    int token_idx = blockIdx.x;
+    int token_pos = positions_data[token_idx];
 
-Interface. Same as naive::rope. qkv is BF16 [T, (heads + 2 * kv_heads) * head_dim] and is modified in place: within each row, the first heads * head_dim columns are the query heads and the next kv_heads * head_dim the key heads; the last kv_heads * head_dim columns (V) are not touched. positions is I32 [T] in device memory, one position per row. head_dim is derived as width / (heads + 2 * kv_heads) and must be even. theta is the RoPE base (10000 for TinyLlama). stream is the stream to run on. The rotation is HF rotate_half style: for head h and index i in [0, head_dim / 2), with angle = position * theta^(-2i / head_dim), x[i] and x[i + head_dim / 2] of the head become x[i] * cos - x[i + half] * sin and x[i + half] * cos + x[i] * sin. Everything outside the Q and K columns of qkv, and positions, is unchanged.
+    int half_head_dim = head_dim / 2;
+    int total_rounded_heads = num_query_heads + num_kv_heads;
 
-Numerics. Bit-identical to naive::rope for every input, which is the only reference: cos and sin are computed with the accurate cosf and sinf in FP32 from the angle position * inv_freq[i] (inv_freq[i] = 1 / pow(theta, 2i / head_dim) as the naive launcher computes it on the host), each rounded to BF16; every product (lo * cos, hi * cos, lo * sin, -hi * sin) is rounded to BF16 on its own and the two terms of each output are added in FP32 and rounded once more. The fast-math intrinsics (__sinf, __cosf, --use_fast_math) change the bits and are not allowed; if you use sincosf, the tests must still show bit identity. This rounding sequence is what the HF reference does, so any shortcut that fuses a multiply and an add (fmaf) is a mismatch.
+    int row_stride_elements = (num_query_heads + (2 * num_kv_heads)) * head_dim;
+    nv_bfloat16* row_qkv_ptr = qkv_data + (static_cast<int64_t>(token_idx) * row_stride_elements);
 
-Errors and preconditions. Before launching anything, throw std::invalid_argument with a message naming rope when: heads or kv_heads is not positive; qkv is not BF16 or not 2-dimensional; positions is not I32, not 1-dimensional or its length is not T; the width is not a multiple of heads + 2 * kv_heads, or the head_dim it gives is odd or larger than 256. Positions are the caller's responsibility (non-negative and below the model's max positions). The launch is asynchronous on stream with the usual KERNEL_CHECK after it.
+    for (int head_idx = threadIdx.x; head_idx < total_rounded_heads; head_idx += blockDim.x) {
+        nv_bfloat16* head_ptr = row_qkv_ptr + static_cast<int64_t>(head_idx) * head_dim;
 
-Edge cases and boundaries. T = 0 is a valid call that does nothing (no launch of an empty grid; the data pointers may be null). head_dim is any even value from 2 to 256, not only 64: 128-bit accesses need head_dim / 2 to be a multiple of 8, so the other cases (2, 6, 10, 50 and so on) need a scalar path, and the base pointer of qkv and the row stride (width * 2 bytes) are not always multiples of 16 (the tests offset the pointer by one element). Rows are independent, so the result of a row must not depend on T or on the row's place in the batch. Positions up to 2047 and an arbitrary order of positions within a batch (a decode batch is 16 unrelated sequences) must work, and the same position in two rows must give identical rotations. When the number of query heads differs from the key heads (GQA, 32 and 4 in TinyLlama) both are rotated with the same angles.
+        if constexpr (kHeadDim > 0 && kHeadDim % 16 == 0) {
+            constexpr int kVectorizedPairs = kHeadDim / 2;
 
-What to compare against. naive::rope on the same input (it is itself checked against HF on all 22 layers), and an untouched-V check in the test.
+            for (int i_pair = 0; i_pair < kVectorizedPairs; i_pair += 8) {
+                float angle_vals[8];
+                float cos_vals[8];
+                float sin_vals[8];
+                nv_bfloat16 lo_bf16[8];
+                nv_bfloat16 hi_bf16[8];
+            }
+        }
 
-Tests that prove it. tests/todo/gpu/test_rope_fast.cpp: bit identity with naive::rope on TinyLlama's layout (32, 4, 64) at T = 1, 16 and 2048 with consecutive and random positions, other head layouts (heads, kv_heads, head_dim) including head_dim 2, 6, 50, 128 and 256 and one kv head, theta 10000 and 500000, an unaligned base pointer, guard bytes around qkv, V columns and positions unchanged, determinism, T = 0 and every rejected argument. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them and ncu before and after.
-*/
-void rope(const Tensor&, const Tensor&, int, int, float, Stream) {
-    std::fprintf(stderr, "unimplemented: fast::rope\n");
-    std::abort();
+        for (int i = 0; i < half_head_dim; ++i) {
+            float inv_freq = 1.0f / __powf(theta_base, (2.0f * static_cast<float>(i)) /
+                                                           static_cast<float>(head_dim));
+            float rot_ang = static_cast<float>(token_pos) * inv_freq;
+
+            float comp_cos = cosf(rot_ang);
+            float comp_sin = sinf(rot_ang);
+
+            nv_bfloat16 cos_bf16 = __float2bfloat16(comp_cos);
+            nv_bfloat16 sin_bf16 = __float2bfloat16(comp_sin);
+
+            nv_bfloat16 low_bf16 = head_ptr[i];
+            nv_bfloat16 high_bf16 = head_ptr[i + half_head_dim];
+
+            float lo_float = __bfloat162float(low_bf16);
+            float hi_float = __bfloat162float(high_bf16);
+            float cos_float = __bfloat162float(cos_bf16);
+            float sin_float = __bfloat162float(sin_bf16);
+
+            float prod_lo_cos = lo_float * cos_float;
+            float prod_hi_sin = hi_float * sin_float;
+            float prod_hi_cos = hi_float * cos_float;
+            float prod_lo_sin = lo_float * sin_float;
+
+            nv_bfloat16 term1_bf16 = __float2bfloat16(prod_lo_cos);
+            nv_bfloat16 term2_bf16 = __float2bfloat16(prod_hi_sin);
+            nv_bfloat16 term3_bf16 = __float2bfloat16(prod_hi_cos);
+            nv_bfloat16 term4_bf16 = __float2bfloat16(prod_lo_sin);
+
+            float t1 = __bfloat162float(term1_bf16);
+            float t2 = __bfloat162float(term2_bf16);
+            float t3 = __bfloat162float(term3_bf16);
+            float t4 = __bfloat162float(term4_bf16);
+
+            float rotated_lo_fp32 = t1 - t2;
+            float rotated_hi_fp32 = t3 + t4;
+
+            head_ptr[i] = __float2bfloat16(rotated_lo_fp32);
+            head_ptr[i + half_head_dim] = __float2bfloat16(rotated_hi_fp32);
+        }
+    }
+}
+
+void rope(const Tensor& qkv, const Tensor& positions, int heads, int kv_heads, float theta,
+          Stream stream) {
+    if (heads <= 0) {
+        throw std::invalid_argument("[rope] number of query heads must be positive");
+    }
+
+    if (kv_heads <= 0) {
+        throw std::invalid_argument("[rope] number of key/value heads must be positive");
+    }
+
+    if (qkv.dtype != DType::BF16) {
+        throw std::invalid_argument("[rope] qkv tensor must have BF16 data type");
+    }
+
+    if (qkv.ndim != 2) {
+        throw std::invalid_argument("[rope] qkv tensor must be 2-dimensional");
+    }
+
+    if (positions.dtype != DType::I32) {
+        throw std::invalid_argument("[rope] positions tensor must have I32 data type");
+    }
+
+    if (positions.ndim != 1) {
+        throw std::invalid_argument("[rope] positions tensor must be 1-dimensional");
+    }
+
+    int64_t num_tokens = qkv.shape[0];
+
+    if (positions.shape[0] != num_tokens) {
+        throw std::invalid_argument("[rope] positions tensor length must match token count T");
+    }
+
+    int64_t row_width_elements = qkv.shape[1];
+    int total_heads_layout = heads + (2 * kv_heads);
+
+    if (row_width_elements % total_heads_layout != 0) {
+        throw std::invalid_argument(
+            "[rope] qkv row width is not a multiple of heads + 2 * kv_heads");
+    }
+
+    int derived_head_dim = static_cast<int>(row_width_elements / total_heads_layout);
+
+    if (derived_head_dim % 2 != 0 || derived_head_dim > 256) {
+        throw std::invalid_argument("[rope] head_dim must be even and no greater than 256");
+    }
+
+    if (num_tokens == 0) {
+        return;
+    }
+
+    auto* qkv_device_ptr = static_cast<nv_bfloat16*>(qkv.data);
+    auto* positions_device_ptr = static_cast<const int*>(positions.data);
+
+    int threads_per_block = 128;
+    int num_blocks = static_cast<int>(num_tokens);
+
+    rope_kernel<0><<<num_blocks, threads_per_block, 0, stream>>>(
+        qkv_device_ptr, positions_device_ptr, heads, kv_heads, derived_head_dim, theta);
+
+    KERNEL_CHECK(stream);
 }
 
 }  // namespace engine::fast
