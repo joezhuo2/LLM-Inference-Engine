@@ -10,6 +10,33 @@
 
 namespace engine {
 
+std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
+                                DeviceBuffer& next, ServeStats* stats) {
+    const Step step = scheduler.schedule();
+    if (step.seqs.empty())
+        throw std::logic_error("serve: the scheduler returned an empty step with work left");
+    if (stats) {
+        ++stats->steps;
+        stats->prefill_steps += step.prefill;
+        const int free_blocks = scheduler.blocks().num_free();
+        if (stats->min_free_blocks < 0 || free_blocks < stats->min_free_blocks)
+            stats->min_free_blocks = free_blocks;
+    }
+
+    const PagedBatch batch = build_paged_batch(step, scheduler, int(runner.max_blocks()));
+    const Tensor logits = runner.forward(batch);
+    const std::vector<SampleRow> rows = sample_rows(step, scheduler);
+    const Tensor ids(next.data(), DType::I32, {batch.num_seqs});
+    sampler(ids, logits, rows, runner.stream());
+
+    std::vector<int32_t> tokens(size_t(batch.num_seqs));
+    CUDA_CHECK(cudaMemcpyAsync(tokens.data(), next.data(), tokens.size() * sizeof(int32_t),
+                               cudaMemcpyDeviceToHost, runner.stream()));
+    CUDA_CHECK(cudaStreamSynchronize(runner.stream()));
+    scheduler.update(tokens);
+    return scheduler.take_finished();
+}
+
 std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler) {
     if (sampler.max_rows() < runner.max_seqs())
         throw std::invalid_argument("serve: the sampler must take at least max_seqs rows");
@@ -17,23 +44,7 @@ std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& s
     DeviceBuffer next(size_t(runner.max_seqs()) * sizeof(int32_t));
     std::vector<Request> done;
     while (scheduler.num_waiting() + scheduler.num_running() > 0) {
-        const Step step = scheduler.schedule();
-        if (step.seqs.empty())
-            throw std::logic_error("serve: the scheduler returned an empty step with work left");
-
-        const PagedBatch batch = build_paged_batch(step, scheduler, int(runner.max_blocks()));
-        const Tensor logits = runner.forward(batch);
-        const std::vector<SampleRow> rows = sample_rows(step, scheduler);
-        const Tensor ids(next.data(), DType::I32, {batch.num_seqs});
-        sampler(ids, logits, rows, runner.stream());
-
-        std::vector<int32_t> tokens(size_t(batch.num_seqs));
-        CUDA_CHECK(cudaMemcpyAsync(tokens.data(), next.data(), tokens.size() * sizeof(int32_t),
-                                   cudaMemcpyDeviceToHost, runner.stream()));
-        CUDA_CHECK(cudaStreamSynchronize(runner.stream()));
-        scheduler.update(tokens);
-
-        std::vector<Request> finished = scheduler.take_finished();
+        std::vector<Request> finished = serve_step(scheduler, runner, sampler, next);
         done.insert(done.end(), std::make_move_iterator(finished.begin()),
                     std::make_move_iterator(finished.end()));
     }

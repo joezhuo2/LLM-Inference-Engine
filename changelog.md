@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/batched
+
+- Extract one serving step out of `serve` as `serve_step(scheduler, runner, sampler, next, stats)` (`include/engine/runtime/serve.h`, `src/runtime/serve.cpp`) and add `ServeStats` (steps, prefill steps, fewest free KV blocks seen after a `schedule`). `serve` is a loop over it with unchanged behaviour, so a timed driver can run the same step while submitting requests at their arrival times. (Part B)
+
 ## kernel/m4-stubs
 
 - Add the `engine::fast::add_rmsnorm` Part C stub (`include/engine/kernels/add_rmsnorm.h`, `src/kernels/add_rmsnorm.cu`) with its TODO(JOE) spec: the residual add and the RMSNorm that follows it fused into one kernel, `sum = x + residual` bit-identical to `naive::add` and `norm = rmsnorm(sum)` from the BF16-rounded sum, equal to `naive::rmsnorm` up to the FP32 summation order, batch invariant per row, any hidden size and any pointer alignment, `sum` allowed to alias `x` or `residual`. It aborts until implemented. (Part C stub, by Claude)
