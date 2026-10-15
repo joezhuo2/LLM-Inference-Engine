@@ -85,7 +85,7 @@ endif()
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
-  add_test(NAME PythonScripts.ProfileReport
+  add_test(NAME PythonScripts.Unittest
     COMMAND ${Python3_EXECUTABLE} -I -m unittest discover -s ${CMAKE_CURRENT_SOURCE_DIR}/python -p "test_*.py")
-  set_tests_properties(PythonScripts.ProfileReport PROPERTIES LABELS python)
+  set_tests_properties(PythonScripts.Unittest PROPERTIES LABELS python)
 endif()

@@ -1156,3 +1156,9 @@
 - **stall reasons** => 
 - **DRAM throughput as a percentage of peak** => 
 - **sampling clocks and thermal throttling as a source of run-to-run variance** => 
+
+## Baselines (Branch 29)
+- **why a baseline must serve the identical prompts (same tokens, same lengths)** => 
+- **SplitMix64 and rejection sampling to avoid modulo bias** => 
+- **linear-interpolation percentiles** => 
+- **TTFT versus TPOT definitions and why every system must use the same ones** => 
