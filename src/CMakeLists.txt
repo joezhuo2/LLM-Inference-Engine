@@ -39,6 +39,7 @@ if(ENGINE_CUDA)
     kernels/paged_attention.cu
     kernels/rmsnorm.cu
     kernels/rope.cu
+    kernels/rope_fast.cu
     kernels/swiglu.cu
     kernels/write_kv.cu
     kernels/smoke.cu
