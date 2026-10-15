@@ -37,6 +37,7 @@ gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_add.cpp
+    gpu/test_add_rmsnorm.cpp
     gpu/test_attention.cpp
     gpu/test_bench.cpp
     gpu/test_bench_batched.cpp
@@ -72,7 +73,6 @@ if(ENGINE_CUDA)
   gtest_discover_tests(gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS gpu)
 
   add_executable(todo_gpu_tests
-    todo/gpu/test_add_rmsnorm.cpp
     todo/gpu/test_decode_graphs.cpp
     todo/gpu/test_rope_fast.cpp
     todo/gpu/test_swiglu_fast.cpp
