@@ -37,3 +37,17 @@ scripts/profile.sh ncu attn paged_attention --num-requests 1 --prompt-len 32 --o
 - Run each configuration several times and quote the median: the laptop GPU's clocks move between runs (the same batch-1 decode measured 8.4 to 10.4 ms per token on different runs).
 - The bench's TPOT includes the host side of a step (scheduling, batch building, the token read-back). The report's busy time does not. Compare like with like.
 - Only the capture window is profiled; changing `--warmup` or the prompt lengths changes what the window contains.
+
+## Fused add_rmsnorm (Branch 30)
+
+Measured with Nsight Compute on the RTX 5060 Laptop GPU (release build, hidden 2048 as in TinyLlama, all values constant so only the timing matters, default clock control, first three launches after a warm-up of three each). `naive` is `naive::add` plus `naive::rmsnorm` (two kernels), `fast` is `fast::add_rmsnorm` (one kernel).
+
+| tokens | naive add (us) | naive rmsnorm (us) | naive total (us) | fast (us) | time ratio | naive DRAM (KB) | fast DRAM (KB) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 3.9 | 8.1 | 12.0 | 11.8 | 0.98 | 29.2 | 23.6 |
+| 16 | 4.3 | 7.6 | 11.9 | 11.4 | 0.96 | 213.5 | 142.3 |
+| 64 | 6.6 | 7.9 | 14.5 | 11.5 | 0.79 | 803.6 | 535.6 |
+
+Reading it. The fused kernel writes the sum and the norm once and reads the sum back from L2 instead of DRAM, so it moves about 2/3 of the DRAM bytes. In GPU time it only wins by 2% to 21%, because both versions are latency bound, not bandwidth bound: at 1 to 64 rows the kernel takes about 11.5 us regardless of rows, while 64 rows of 4 KB are 0.5 MB, which is under 2 us of DRAM time at 323.6 GB/s. The time goes to the two dependent passes over the row, the block reduction and its barriers, with eight scalar 2-byte loads per thread. The real saving in a decode step is one launch less per norm (44 launches per step with 22 layers), which these per-kernel numbers do not show; that shows in the nsys launch-gap table once the kernel is wired into `PagedRunner` (branch 23). Correctness is the part of this kernel that is finished; the measured headroom is in the load width and the number of passes, not in the arithmetic.
+
+To reproduce, launch each kernel in a small throwaway program (the three calls in a loop, same tensors) and run `ncu --kernel-name regex:"add_kernel|rmsnorm_kernel|add_rmsnorm_kernel" --launch-skip 6 --launch-count 3 --metrics gpu__time_duration.sum,dram__bytes.sum <program> <tokens>`.

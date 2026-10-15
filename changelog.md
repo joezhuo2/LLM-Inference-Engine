@@ -8,6 +8,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Fix the numerics of the first draft so it matches `naive::add` followed by `naive::rmsnorm`: the norm is rounded to BF16 before the weight is applied (it was one rounding of `sum * rstd * weight`), the sum of squares uses the BF16-rounded sum (it used the unrounded FP32 sum while the second pass read the rounded one), the reduction guard is `lane < num_warps`, and `rsqrt` became `rsqrtf` as in the naive kernel. (Part C, fix by Joe)
 - Format `src/kernels/add_rmsnorm.cu` with clang-format (the kernel signature), so the format check passes. No behavior change. (Part C, fix by Claude)
 - Move `test_add_rmsnorm.cpp` from `todo_gpu_tests` to `gpu_tests` (`tests/gpu/`): all 25 tests pass (18 shapes with aligned and one-element-offset pointers, the unfused naive pair, `sum` aliasing `x` and `residual`, batch invariance, determinism, zero rows, zero tokens, argument rejection) and `compute-sanitizer --tool memcheck --leak-check full` reports 0 errors and 0 leaked bytes. (Part C)
+- Record the Nsight Compute comparison of the fused kernel against the naive `add` plus `rmsnorm` pair at 1, 16 and 64 tokens (`docs/profiling.md`, "Fused add_rmsnorm"): the fused kernel moves about 2/3 of the DRAM bytes and is 2% to 21% faster in GPU time, but is latency bound at about 11.5 us whatever the token count. Not wired into `PagedRunner` yet. (Part C)
 - Add blank learning-log entries (`docs/exercises/learning_log.md`, section `Fused Add RMSNorm (Branch 30)`). (Part A)
 
 ## tools/baselines
