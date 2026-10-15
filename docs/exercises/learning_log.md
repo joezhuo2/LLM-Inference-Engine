@@ -1088,3 +1088,12 @@
 - **scalar tail and head for rows that are not a multiple of the vector width** => 
 - **batch invariance of a reduction (same row, same bits, any batch size)** => 
 - **why the sum is rounded to BF16 before the norm to match the unfused pair** => 
+
+## Fast RoPE (Branch 22)
+- **vectorized access to the two halves of a head (rotate_half layout)** => 
+- **bit-identical vs close as a contract for an optimized kernel** => 
+- **fast-math intrinsics (__sinf, __cosf) vs accurate sinf and cosf** => 
+- **fused multiply-add and why it changes rounding** => 
+- **sincosf (one call for both)** => 
+- **angle table (precomputing cos and sin per position) vs computing them in the kernel** => 
+- **handling a width that is not a multiple of the vector width** => 

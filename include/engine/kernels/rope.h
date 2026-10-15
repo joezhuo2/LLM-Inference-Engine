@@ -9,3 +9,10 @@ void rope(const Tensor& qkv, const Tensor& positions, int heads, int kv_heads, f
           Stream stream);
 
 }  // namespace engine::naive
+
+namespace engine::fast {
+
+void rope(const Tensor& qkv, const Tensor& positions, int heads, int kv_heads, float theta,
+          Stream stream);
+
+}  // namespace engine::fast
