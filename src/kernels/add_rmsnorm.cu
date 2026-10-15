@@ -40,10 +40,8 @@ __device__ __forceinline__ float blockReduceSum(float val) {
     return val;
 }
 
-__global__ void add_rmsnorm_kernel(__nv_bfloat16* sum,
-                                   __nv_bfloat16* __restrict__ norm,
-                                   const __nv_bfloat16* x,
-                                   const __nv_bfloat16* residual,
+__global__ void add_rmsnorm_kernel(__nv_bfloat16* sum, __nv_bfloat16* __restrict__ norm,
+                                   const __nv_bfloat16* x, const __nv_bfloat16* residual,
                                    const __nv_bfloat16* __restrict__ weight, float eps,
                                    int64_t total_batch_size, int64_t hidden) {
     int row = blockIdx.x;
