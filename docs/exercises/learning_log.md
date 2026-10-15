@@ -1148,3 +1148,11 @@
 - **achieved bandwidth = bytes read per token / time per token** => 
 - **kernel busy time versus wall time per token** => 
 - **why batch 1 decode is limited by DRAM bandwidth and not by arithmetic** => 
+
+## Profiling Workflow (Branch 28)
+- **Nsight Systems (timeline) versus Nsight Compute (one kernel in depth)** => 
+- **counter replay (why a kernel is run several times and the program is slow under ncu)** => 
+- **achieved occupancy** => 
+- **stall reasons** => 
+- **DRAM throughput as a percentage of peak** => 
+- **sampling clocks and thermal throttling as a source of run-to-run variance** => 
