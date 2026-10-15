@@ -1188,3 +1188,6 @@
 - **why a one-ulp change in a rounded sine changes many BF16 outputs after a subtraction** => 
 - **`if constexpr` (a discarded branch is not instantiated in a template)** => 
 - **nvcc warning #177-D (declared but never referenced)** => 
+- **computing a value once per thread and reusing it across a loop (amortizing sincosf over heads)** => 
+- **latency bound serial loop versus parallel threads (why 36 dependent loads cost about 20 us)** => 
+- **block shape from the problem shape (threads = pairs times head groups)** => 

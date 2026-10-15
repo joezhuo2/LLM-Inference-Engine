@@ -1,6 +1,7 @@
 #include <cuda_bf16.h>
 #include <cuda_runtime.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
@@ -21,58 +22,32 @@ struct InvFreq {
 }  // namespace
 
 __global__ void rope_kernel(nv_bfloat16* __restrict__ qkv_data,
-                            const int* __restrict__ positions_data, int num_query_heads,
-                            int num_kv_heads, int head_dim, InvFreq inv_freq_table) {
-    int token_idx = blockIdx.x;
-    int token_pos = positions_data[token_idx];
+                            const int* __restrict__ positions_data, int rotated_heads, int width,
+                            int head_dim, InvFreq inv_freq_table) {
+    const int half_head_dim = head_dim / 2;
+    const int pair = threadIdx.x % half_head_dim;
+    const int first_head = threadIdx.x / half_head_dim;
+    const int head_stride = blockDim.x / half_head_dim;
 
-    int half_head_dim = head_dim / 2;
-    int total_rounded_heads = num_query_heads + num_kv_heads;
+    const float angle = static_cast<float>(positions_data[blockIdx.x]) * inv_freq_table.v[pair];
+    const float cos_val = __bfloat162float(__float2bfloat16(cosf(angle)));
+    const float sin_val = __bfloat162float(__float2bfloat16(sinf(angle)));
 
-    int row_stride_elements = (num_query_heads + (2 * num_kv_heads)) * head_dim;
-    nv_bfloat16* row_qkv_ptr = qkv_data + (static_cast<int64_t>(token_idx) * row_stride_elements);
+    nv_bfloat16* row = qkv_data + static_cast<int64_t>(blockIdx.x) * width;
 
-    for (int head_idx = threadIdx.x; head_idx < total_rounded_heads; head_idx += blockDim.x) {
-        nv_bfloat16* head_ptr = row_qkv_ptr + static_cast<int64_t>(head_idx) * head_dim;
+    for (int head = first_head; head < rotated_heads; head += head_stride) {
+        nv_bfloat16* head_ptr = row + static_cast<int64_t>(head) * head_dim;
 
-        for (int i = 0; i < half_head_dim; ++i) {
-            float rot_ang = static_cast<float>(token_pos) * inv_freq_table.v[i];
+        const float lo = __bfloat162float(head_ptr[pair]);
+        const float hi = __bfloat162float(head_ptr[pair + half_head_dim]);
 
-            float comp_cos = cosf(rot_ang);
-            float comp_sin = sinf(rot_ang);
+        const float lo_cos = __bfloat162float(__float2bfloat16(lo * cos_val));
+        const float hi_cos = __bfloat162float(__float2bfloat16(hi * cos_val));
+        const float lo_sin = __bfloat162float(__float2bfloat16(lo * sin_val));
+        const float hi_sin = __bfloat162float(__float2bfloat16(-hi * sin_val));
 
-            nv_bfloat16 cos_bf16 = __float2bfloat16(comp_cos);
-            nv_bfloat16 sin_bf16 = __float2bfloat16(comp_sin);
-
-            nv_bfloat16 low_bf16 = head_ptr[i];
-            nv_bfloat16 high_bf16 = head_ptr[i + half_head_dim];
-
-            float lo_float = __bfloat162float(low_bf16);
-            float hi_float = __bfloat162float(high_bf16);
-            float cos_float = __bfloat162float(cos_bf16);
-            float sin_float = __bfloat162float(sin_bf16);
-
-            float prod_lo_cos = lo_float * cos_float;
-            float prod_hi_sin = hi_float * sin_float;
-            float prod_hi_cos = hi_float * cos_float;
-            float prod_lo_sin = lo_float * sin_float;
-
-            nv_bfloat16 term1_bf16 = __float2bfloat16(prod_lo_cos);
-            nv_bfloat16 term2_bf16 = __float2bfloat16(prod_hi_sin);
-            nv_bfloat16 term3_bf16 = __float2bfloat16(prod_hi_cos);
-            nv_bfloat16 term4_bf16 = __float2bfloat16(prod_lo_sin);
-
-            float t1 = __bfloat162float(term1_bf16);
-            float t2 = __bfloat162float(term2_bf16);
-            float t3 = __bfloat162float(term3_bf16);
-            float t4 = __bfloat162float(term4_bf16);
-
-            float rotated_lo_fp32 = t1 - t2;
-            float rotated_hi_fp32 = t3 + t4;
-
-            head_ptr[i] = __float2bfloat16(rotated_lo_fp32);
-            head_ptr[i + half_head_dim] = __float2bfloat16(rotated_hi_fp32);
-        }
+        head_ptr[pair] = __float2bfloat16(lo_cos + hi_sin);
+        head_ptr[pair + half_head_dim] = __float2bfloat16(hi_cos + lo_sin);
     }
 }
 
@@ -135,11 +110,13 @@ void rope(const Tensor& qkv, const Tensor& positions, int heads, int kv_heads, f
                                                    static_cast<float>(derived_head_dim));
     }
 
-    int threads_per_block = 128;
+    int head_groups = std::min(heads + kv_heads, 256 / (derived_head_dim / 2));
+    int threads_per_block = (derived_head_dim / 2) * std::max(head_groups, 1);
     int num_blocks = static_cast<int>(num_tokens);
 
     rope_kernel<<<num_blocks, threads_per_block, 0, stream>>>(
-        qkv_device_ptr, positions_device_ptr, heads, kv_heads, derived_head_dim, inv_freq);
+        qkv_device_ptr, positions_device_ptr, heads + kv_heads,
+        static_cast<int>(row_width_elements), derived_head_dim, inv_freq);
 
     KERNEL_CHECK(stream);
 }
