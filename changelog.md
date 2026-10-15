@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## tools/profiling
+
+- Add NVTX ranges to the paged forward pass and the serving loop (`include/engine/runtime/nvtx.h`, `src/runtime/paged_runner.cpp`, `src/runtime/serve.cpp`): `NvtxRange` and `ranged(name, body)` wrap `nvtxRangePushA` and `nvtxRangePop` (the header-only NVTX3 that ships with the CUDA toolkit, no link dependency, a no-op when no profiler is attached). `PagedRunner::run_staged` has one `embedding` range, one `layer N` range per layer with `norm1`, `qkv`, `rope`, `write_kv`, `attention`, `o_proj`, `add1`, `norm2`, `gate_up`, `swiglu`, `down` and `add2` inside it, then `final_norm` and `lm_head`; `stage` has its own range; `serve_step` has `step` with `schedule`, `build_batch`, `forward`, `sample`, `read_tokens` and `update`. A kernel's name in nsys is now tied to the op that launched it. No behavior change. (Part A)
+
 ## bench/batched
 
 - Extract one serving step out of `serve` as `serve_step(scheduler, runner, sampler, next, stats)` (`include/engine/runtime/serve.h`, `src/runtime/serve.cpp`) and add `ServeStats` (steps, prefill steps, fewest free KV blocks seen after a `schedule`). `serve` is a loop over it with unchanged behaviour, so a timed driver can run the same step while submitting requests at their arrival times. (Part B)
