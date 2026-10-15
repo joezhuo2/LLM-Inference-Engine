@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/add-rmsnorm-impl
+
+- Implement `engine::fast::add_rmsnorm` (`src/kernels/add_rmsnorm.cu`, Joe's Part C): one block of 256 threads per row; each thread adds `x` and `residual` in FP32, writes the BF16-rounded sum, and accumulates the square of that rounded value; the sum of squares is reduced with a warp shuffle reduction and a shared-memory pass over the warp totals, thread 0 computes `rsqrtf(mean + eps)`, and a second pass over the row reads the rounded sum back and writes `bf16(weight * bf16(sum * rstd))`. The launcher validates dtypes and shapes with `std::invalid_argument` before any launch and returns early for zero rows. (Part C)
+- Fix the numerics of the first draft so it matches `naive::add` followed by `naive::rmsnorm`: the norm is rounded to BF16 before the weight is applied (it was one rounding of `sum * rstd * weight`), the sum of squares uses the BF16-rounded sum (it used the unrounded FP32 sum while the second pass read the rounded one), the reduction guard is `lane < num_warps`, and `rsqrt` became `rsqrtf` as in the naive kernel. (Part C, fix by Joe)
+- Format `src/kernels/add_rmsnorm.cu` with clang-format (the kernel signature), so the format check passes. No behavior change. (Part C, fix by Claude)
+
 ## tools/baselines
 
 - Add `scripts/bench_workload.py`, a Python port of `make_workload` (SplitMix64, per-request output length, prompt length and tokens in the same order, Poisson arrivals), so the baselines serve exactly the prompts `engine bench` serves for the same `--seed`, `--prompt-len`, `--output-len` and `--request-rate`. A test pins the same four prompt tokens and two output lengths as `Workload.PinnedTokensKeepWorkloadsComparableAcrossMachines`. (Part A)
