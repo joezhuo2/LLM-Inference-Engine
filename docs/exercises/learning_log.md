@@ -1166,3 +1166,6 @@
 - **left padding with an attention mask and explicit position ids** => 
 - **Python and launch overhead as the limit of an eager framework at batch 1** => 
 - **sdpa versus eager attention in transformers** => 
+- **prompt processing (prefill) throughput versus token generation (decode) throughput** => 
+- **GGUF and quantization types (why the baseline model must be BF16 to be comparable)** => 
+- **offloading layers to the GPU (-ngl)** => 
