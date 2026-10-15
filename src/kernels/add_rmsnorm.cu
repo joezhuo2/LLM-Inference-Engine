@@ -72,7 +72,7 @@ __global__ void add_rmsnorm_kernel(__nv_bfloat16* sum,
     __shared__ float s_rstd;
 
     if (threadIdx.x == 0) {
-        s_rstd = rsqrt(block_sq_sum / static_cast<float>(hidden) + eps);
+        s_rstd = rsqrtf(block_sq_sum / static_cast<float>(hidden) + eps);
     }
 
     __syncthreads();
