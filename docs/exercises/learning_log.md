@@ -1070,3 +1070,11 @@
 - **why a batched GEMM can round differently from a single-row GEMM** => 
 - **teacher forcing against a reference with several sequences in one batch** => 
 - **bit-identical vs close (what is expected when only attention differs)** => 
+
+## Serving Loop (Branch 20)
+- **continuous batching (a new request joins the running batch at any step)** => 
+- **schedule, forward, sample, update as one step** => 
+- **forced preemption by shrinking the cache** => 
+- **why batch size can change BF16 results (GEMM algorithm and accumulation order)** => 
+- **batch invariance** => 
+- **common prefix as a divergence measure** => 

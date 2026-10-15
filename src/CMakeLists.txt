@@ -57,6 +57,7 @@ if(ENGINE_CUDA)
     runtime/paged_runner.cpp
     runtime/pinned_buffer.cpp
     runtime/sampler.cpp
+    runtime/serve.cpp
     runtime/weights.cpp
   )
   target_include_directories(engine_runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

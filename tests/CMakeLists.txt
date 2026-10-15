@@ -58,6 +58,7 @@ if(ENGINE_CUDA)
     gpu/test_rmsnorm.cpp
     gpu/test_rope.cpp
     gpu/test_sample.cpp
+    gpu/test_serve.cpp
     gpu/test_smoke.cpp
     gpu/test_stream.cpp
     gpu/test_swiglu.cpp
