@@ -51,3 +51,18 @@ Measured with Nsight Compute on the RTX 5060 Laptop GPU (release build, hidden 2
 Reading it. The fused kernel writes the sum and the norm once and reads the sum back from L2 instead of DRAM, so it moves about 2/3 of the DRAM bytes. In GPU time it only wins by 2% to 21%, because both versions are latency bound, not bandwidth bound: at 1 to 64 rows the kernel takes about 11.5 us regardless of rows, while 64 rows of 4 KB are 0.5 MB, which is under 2 us of DRAM time at 323.6 GB/s. The time goes to the two dependent passes over the row, the block reduction and its barriers, with eight scalar 2-byte loads per thread. The real saving in a decode step is one launch less per norm (44 launches per step with 22 layers), which these per-kernel numbers do not show; that shows in the nsys launch-gap table once the kernel is wired into `PagedRunner` (branch 23). Correctness is the part of this kernel that is finished; the measured headroom is in the load width and the number of passes, not in the arithmetic.
 
 To reproduce, launch each kernel in a small throwaway program (the three calls in a loop, same tensors) and run `ncu --kernel-name regex:"add_kernel|rmsnorm_kernel|add_rmsnorm_kernel" --launch-skip 6 --launch-count 3 --metrics gpu__time_duration.sum,dram__bytes.sum <program> <tokens>`.
+
+## Fast RoPE (Branch 31)
+
+Measured with Nsight Compute on the RTX 5060 Laptop GPU (release build, TinyLlama's layout of 32 query heads, 4 key/value heads and head_dim 64, positions `3 * i`, default clock control, one launch after a warm-up of ten). `naive` is `naive::rope`. `first draft` is the commit before the parallelization, with one thread per head and a serial loop over the 32 pairs; `fast` is the final kernel, one block per token with threads over pairs and head groups. All three are bit-identical (`FastRope.*`, 9 tests).
+
+| tokens | naive (us) | first draft (us) | fast (us) | fast / naive | DRAM, fast (KB) |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 9.0 | 21.6 | 6.5 | 0.72 | 15.4 |
+| 16 | 9.0 | 22.0 | 7.0 | 0.78 | 84.5 |
+| 64 | 10.5 | 21.1 | 6.9 | 0.66 | 306.2 |
+| 512 | 36.1 | 21.5 | 17.9 | 0.50 | 2,370 |
+
+Reading it. RoPE reads and writes only the Q and K slices of each row, so at 512 tokens the DRAM traffic is about 2.4 MB and the kernel is nowhere near the bandwidth limit: below 64 tokens it is latency bound at 6 to 7 us, which is mostly launch and one dependent chain of loads, sincos and stores. The first draft was a flat 21 us at every size because each thread walked all 36 heads one after another, a dependent global round trip each; it only beat naive once there were 512 tokens to hide it. The final kernel computes `cosf` and `sinf` once per `(token, pair)` and spreads the heads over 8 thread groups, which is 1.4x to 1.5x faster than naive at decode sizes and 2x at 512 tokens. In a decode step it saves about 2 to 3 us of the roughly 9 ms step, so the benefit is small in absolute terms; the point of the exercise is that it is no longer slower than the kernel it replaces.
+
+To reproduce, launch `naive::rope` and `fast::rope` in a small throwaway program (same `qkv` and positions, 10 warm-up launches each, one program run per token count) linked against `libengine_kernels.a` and `libengine_core.a`, and run `ncu --kernel-name regex:rope_kernel --launch-skip <n> --launch-count 1 --metrics gpu__time_duration.sum,dram__bytes.sum <program>`.
