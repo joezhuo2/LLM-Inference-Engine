@@ -5,6 +5,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## bench/batched
 
 - Extract one serving step out of `serve` as `serve_step(scheduler, runner, sampler, next, stats)` (`include/engine/runtime/serve.h`, `src/runtime/serve.cpp`) and add `ServeStats` (steps, prefill steps, fewest free KV blocks seen after a `schedule`). `serve` is a loop over it with unchanged behaviour, so a timed driver can run the same step while submitting requests at their arrival times. (Part B)
+- Add `run_batched(scheduler, runner, sampler, workload, start)` (`include/engine/runtime/bench.h`, `src/runtime/bench.cpp`): the batched bench driver. It submits each request when its arrival time passes (sleeping when the engine is idle), runs `serve_step` until every request has finished, writes the outputs, preemption counts and timestamps back into the workload, records `arrived` as the scheduled arrival rather than the submit time (so TTFT matches `run_one_at_a_time`), and returns the `ServeStats`. (Part A)
+- Add 6 GPU tests in `tests/gpu/test_bench_batched.cpp`: full output lengths and ordered timestamps, outputs identical to `serve` on the same requests, a batch limit of 1 taking one step per token, the fewest-free-blocks statistic bounds, arrival times honoured, and rejected mismatched arrivals and duplicate ids. (Part A)
 
 ## kernel/m4-stubs
 
