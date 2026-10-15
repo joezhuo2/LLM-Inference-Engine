@@ -1130,3 +1130,9 @@
 - **throughput vs latency trade-off as max batch grows** => 
 - **KV cache high-water mark (peak blocks in use)** => 
 - **why batch-1 weight bandwidth stops being the right metric with several sequences per step** => 
+
+## NVTX Ranges (Branch 28)
+- **NVTX range (push and pop on the host thread, drawn over the GPU work it launched)** => 
+- **RAII guard object (constructor pushes, destructor pops)** => 
+- **a callable passed as a template parameter and forwarded with `std::forward`** => 
+- **why a profiler range on the host does not time the GPU work inside it** => 

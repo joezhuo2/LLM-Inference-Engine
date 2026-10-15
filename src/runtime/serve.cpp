@@ -6,13 +6,16 @@
 #include <utility>
 
 #include "engine/runtime/device_buffer.h"
+#include "engine/runtime/nvtx.h"
 #include "kernels/cuda_check.h"
 
 namespace engine {
 
 std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
                                 DeviceBuffer& next, ServeStats* stats) {
-    const Step step = scheduler.schedule();
+    const NvtxRange step_range("step");
+    Step step;
+    ranged("schedule", [&] { step = scheduler.schedule(); });
     if (step.seqs.empty())
         throw std::logic_error("serve: the scheduler returned an empty step with work left");
     if (stats) {
@@ -23,17 +26,22 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
             stats->min_free_blocks = free_blocks;
     }
 
-    const PagedBatch batch = build_paged_batch(step, scheduler, int(runner.max_blocks()));
-    const Tensor logits = runner.forward(batch);
+    PagedBatch batch;
+    ranged("build_batch",
+           [&] { batch = build_paged_batch(step, scheduler, int(runner.max_blocks())); });
+    Tensor logits;
+    ranged("forward", [&] { logits = runner.forward(batch); });
     const std::vector<SampleRow> rows = sample_rows(step, scheduler);
     const Tensor ids(next.data(), DType::I32, {batch.num_seqs});
-    sampler(ids, logits, rows, runner.stream());
+    ranged("sample", [&] { sampler(ids, logits, rows, runner.stream()); });
 
     std::vector<int32_t> tokens(size_t(batch.num_seqs));
-    CUDA_CHECK(cudaMemcpyAsync(tokens.data(), next.data(), tokens.size() * sizeof(int32_t),
-                               cudaMemcpyDeviceToHost, runner.stream()));
-    CUDA_CHECK(cudaStreamSynchronize(runner.stream()));
-    scheduler.update(tokens);
+    ranged("read_tokens", [&] {
+        CUDA_CHECK(cudaMemcpyAsync(tokens.data(), next.data(), tokens.size() * sizeof(int32_t),
+                                   cudaMemcpyDeviceToHost, runner.stream()));
+        CUDA_CHECK(cudaStreamSynchronize(runner.stream()));
+    });
+    ranged("update", [&] { scheduler.update(tokens); });
     return scheduler.take_finished();
 }
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -13,6 +14,7 @@
 #include "engine/kernels/rope.h"
 #include "engine/kernels/swiglu.h"
 #include "engine/kernels/write_kv.h"
+#include "engine/runtime/nvtx.h"
 #include "kernels/cuda_check.h"
 
 namespace engine {
@@ -80,6 +82,7 @@ Tensor PagedRunner::forward(const PagedBatch& batch) {
 }
 
 void PagedRunner::stage(const PagedBatch& batch) {
+    const NvtxRange range("stage");
     const int64_t t = batch.num_tokens();
     const int64_t s = batch.num_seqs;
     require(t > 0 && t <= max_tokens_, "the number of tokens must be between 1 and max_tokens");
@@ -135,22 +138,29 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
     const Tensor gate_up = view(gate_up_, t, 2 * int64_t(c.intermediate));
     const Tensor act = view(act_, t, c.intermediate);
 
-    naive::embedding(x, input_ids, weights_.embed, stream_);
+    ranged("embedding", [&] { naive::embedding(x, input_ids, weights_.embed, stream_); });
     for (int i = 0; i < c.layers; ++i) {
+        char name[24];
+        std::snprintf(name, sizeof name, "layer %d", i);
+        const NvtxRange layer_range(name);
         const LayerWeights& w = weights_.layers[size_t(i)];
-        naive::rmsnorm(norm, x, w.ln1, eps, stream_);
-        gemm(blas_, qkv, norm, w.wqkv);
-        naive::rope(qkv, positions, c.heads, c.kv_heads, float(c.rope_theta), stream_);
-        write_kv(cache_->k(i), cache_->v(i), qkv, slots, stream_);
-        paged_attention_decode(attn, qkv, cache_->k(i), cache_->v(i), block_tables, context_lens,
-                               stream_);
-        gemm(blas_, proj, attn, w.wo);
-        naive::add(x, x, proj, stream_);
-        naive::rmsnorm(norm, x, w.ln2, eps, stream_);
-        gemm(blas_, gate_up, norm, w.wgu);
-        naive::swiglu(act, gate_up, stream_);
-        gemm(blas_, proj, act, w.wdown);
-        naive::add(x, x, proj, stream_);
+        ranged("norm1", [&] { naive::rmsnorm(norm, x, w.ln1, eps, stream_); });
+        ranged("qkv", [&] { gemm(blas_, qkv, norm, w.wqkv); });
+        ranged("rope", [&] {
+            naive::rope(qkv, positions, c.heads, c.kv_heads, float(c.rope_theta), stream_);
+        });
+        ranged("write_kv", [&] { write_kv(cache_->k(i), cache_->v(i), qkv, slots, stream_); });
+        ranged("attention", [&] {
+            paged_attention_decode(attn, qkv, cache_->k(i), cache_->v(i), block_tables,
+                                   context_lens, stream_);
+        });
+        ranged("o_proj", [&] { gemm(blas_, proj, attn, w.wo); });
+        ranged("add1", [&] { naive::add(x, x, proj, stream_); });
+        ranged("norm2", [&] { naive::rmsnorm(norm, x, w.ln2, eps, stream_); });
+        ranged("gate_up", [&] { gemm(blas_, gate_up, norm, w.wgu); });
+        ranged("swiglu", [&] { naive::swiglu(act, gate_up, stream_); });
+        ranged("down", [&] { gemm(blas_, proj, act, w.wdown); });
+        ranged("add2", [&] { naive::add(x, x, proj, stream_); });
     }
 
     Tensor last(x_.data(), DType::BF16, {s, c.hidden});
@@ -165,9 +175,10 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
         last = Tensor(attn_.data(), DType::BF16, {s, c.hidden});
     }
     const Tensor last_norm(norm_.data(), DType::BF16, {s, c.hidden});
-    naive::rmsnorm(last_norm, last, weights_.final_norm, eps, stream_);
+    ranged("final_norm",
+           [&] { naive::rmsnorm(last_norm, last, weights_.final_norm, eps, stream_); });
     const Tensor out = logits(s);
-    gemm(blas_, out, last_norm, weights_.lm_head);
+    ranged("lm_head", [&] { gemm(blas_, out, last_norm, weights_.lm_head); });
     return out;
 }
 
