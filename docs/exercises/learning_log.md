@@ -1182,3 +1182,7 @@
 - **`dram__bytes.sum` and `gpu__time_duration.sum` in Nsight Compute** => 
 - **why a fused kernel's gain shows in launch gaps and not in its own duration** => 
 
+## Fast RoPE (Branch 31)
+- **`__powf` versus `powf` versus host `std::pow` (why the same formula gives different last bits)** => 
+- **passing a lookup table to a kernel by value (kernel parameter space limit)** => 
+- **why a one-ulp change in a rounded sine changes many BF16 outputs after a subtraction** => 

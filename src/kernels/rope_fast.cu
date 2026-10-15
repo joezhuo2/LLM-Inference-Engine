@@ -12,11 +12,21 @@
 
 namespace engine::fast {
 
+namespace {
+
+constexpr int kMaxHeadDim = 256;
+
+struct InvFreq {
+    float v[kMaxHeadDim / 2];
+};
+
+}  // namespace
+
 template <int kHeadDim>
 
 __global__ void rope_kernel(nv_bfloat16* __restrict__ qkv_data,
                             const int* __restrict__ positions_data, int num_query_heads,
-                            int num_kv_heads, int head_dim, float theta_base) {
+                            int num_kv_heads, int head_dim, InvFreq inv_freq_table) {
     int token_idx = blockIdx.x;
     int token_pos = positions_data[token_idx];
 
@@ -42,9 +52,7 @@ __global__ void rope_kernel(nv_bfloat16* __restrict__ qkv_data,
         }
 
         for (int i = 0; i < half_head_dim; ++i) {
-            float inv_freq = 1.0f / __powf(theta_base, (2.0f * static_cast<float>(i)) /
-                                                           static_cast<float>(head_dim));
-            float rot_ang = static_cast<float>(token_pos) * inv_freq;
+            float rot_ang = static_cast<float>(token_pos) * inv_freq_table.v[i];
 
             float comp_cos = cosf(rot_ang);
             float comp_sin = sinf(rot_ang);
@@ -126,7 +134,7 @@ void rope(const Tensor& qkv, const Tensor& positions, int heads, int kv_heads, f
 
     int derived_head_dim = static_cast<int>(row_width_elements / total_heads_layout);
 
-    if (derived_head_dim % 2 != 0 || derived_head_dim > 256) {
+    if (derived_head_dim % 2 != 0 || derived_head_dim > kMaxHeadDim) {
         throw std::invalid_argument("[rope] head_dim must be even and no greater than 256");
     }
 
@@ -137,11 +145,17 @@ void rope(const Tensor& qkv, const Tensor& positions, int heads, int kv_heads, f
     auto* qkv_device_ptr = static_cast<nv_bfloat16*>(qkv.data);
     auto* positions_device_ptr = static_cast<const int*>(positions.data);
 
+    InvFreq inv_freq{};
+    for (int i = 0; i < derived_head_dim / 2; ++i) {
+        inv_freq.v[i] = 1.0f / std::pow(theta, static_cast<float>(2 * i) /
+                                                   static_cast<float>(derived_head_dim));
+    }
+
     int threads_per_block = 128;
     int num_blocks = static_cast<int>(num_tokens);
 
     rope_kernel<0><<<num_blocks, threads_per_block, 0, stream>>>(
-        qkv_device_ptr, positions_device_ptr, heads, kv_heads, derived_head_dim, theta);
+        qkv_device_ptr, positions_device_ptr, heads, kv_heads, derived_head_dim, inv_freq);
 
     KERNEL_CHECK(stream);
 }
