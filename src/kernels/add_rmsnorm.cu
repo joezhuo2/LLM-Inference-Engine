@@ -80,7 +80,9 @@ __global__ void add_rmsnorm_kernel(__nv_bfloat16* __restrict__ sum,
     for (int i = threadIdx.x; i < hidden; i += blockDim.x) {
         float s_val = __bfloat162float(sum_row[i]);
         float w_val = __bfloat162float(weight[i]);
-        norm_row[i] = __float2bfloat16(s_val * s_rstd * w_val);
+        
+        const __nv_bfloat16 normed = __float2bfloat16(s_val * s_rstd);
+        norm_row[i] = __float2bfloat16(w_val * __bfloat162float(normed));
     }
 }
 
