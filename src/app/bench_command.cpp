@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -23,8 +24,12 @@
 #include <cuda_runtime.h>
 
 #include "engine/runtime/bench.h"
+#include "engine/runtime/kv_cache.h"
 #include "engine/runtime/model_runner.h"
+#include "engine/runtime/paged_runner.h"
+#include "engine/runtime/sampler.h"
 #include "engine/runtime/weights.h"
+#include "engine/sched/scheduler.h"
 #endif
 
 namespace engine::app {
@@ -37,6 +42,7 @@ struct Options {
     std::string prompt_len = "128";
     std::string output_len = "256";
     double request_rate = 0.0;
+    int max_batch = 0;
     int warmup = 3;
     uint64_t seed = 0;
     float temperature = 0.0f;
@@ -106,23 +112,57 @@ void run(const Options& o) {
     std::ofstream summary_out = open_csv(summary_path);
 
     const DeviceWeights w = load_weights(o.model, nullptr);
-    ModelRunner runner(w.config, w.weights, wc.prompt_len.max, context, nullptr);
     const int32_t eos_id = o.stop_at_eos ? w.config.eos_id : -1;
+    const bool batched = o.max_batch > 0;
+
+    int num_blocks = 0;
+    ServeStats stats;
+    std::optional<ModelRunner> one_runner;
+    std::optional<KvCache> cache;
+    std::optional<PagedRunner> paged_runner;
+    std::optional<Sampler> sampler;
+    SchedulerConfig sc;
+    if (batched) {
+        num_blocks = kv_cache_blocks(w.config, kKvBlockSize, device_free_bytes());
+        const int64_t max_prefill = std::max<int64_t>(wc.prompt_len.max, 2048);
+        sc = {.num_blocks = num_blocks,
+              .block_size = kKvBlockSize,
+              .max_batch = o.max_batch,
+              .max_prefill_tokens = int(max_prefill),
+              .max_context = int(context),
+              .eos_id = eos_id};
+        cache.emplace(w.config, num_blocks, kKvBlockSize);
+        paged_runner.emplace(w.config, w.weights, *cache, max_prefill, o.max_batch, context,
+                             nullptr);
+        sampler.emplace(o.max_batch);
+    } else {
+        one_runner.emplace(w.config, w.weights, wc.prompt_len.max, context, nullptr);
+    }
+    const auto drive = [&](Workload& load, Clock::time_point start) {
+        if (!batched) {
+            run_one_at_a_time(*one_runner, load, eos_id, start);
+            return ServeStats{};
+        }
+        Scheduler scheduler(sc);
+        return run_batched(scheduler, *paged_runner, *sampler, load, start);
+    };
     if (o.warmup > 0) {
         WorkloadConfig warm = wc;
         warm.num_requests = o.warmup;
         warm.request_rate = 0.0;
         warm.seed = o.seed + 1;
         Workload warmup = make_workload(warm);
-        run_one_at_a_time(runner, warmup, eos_id, Clock::now());
+        drive(warmup, Clock::now());
     }
 
     const auto start = Clock::now();
-    run_one_at_a_time(runner, workload, eos_id, start);
+    stats = drive(workload, start);
     Clock::time_point end = start;
     std::vector<RequestMetrics> metrics;
+    int64_t preemptions = 0;
     for (const auto& r : workload.requests) {
         metrics.push_back(request_metrics(r, start));
+        preemptions += r.preemptions;
         end = std::max(end, r.finished);
     }
     const Summary s = summarize(metrics, std::chrono::duration<double>(end - start).count());
@@ -138,8 +178,8 @@ void run(const Options& o) {
         {"build", ENGINE_BUILD_TYPE},
         {"model", o.model.filename().empty() ? o.model.parent_path().filename().string()
                                              : o.model.filename().string()},
-        {"driver", "one_at_a_time"},
-        {"max_batch", "1"},
+        {"driver", batched ? "batched" : "one_at_a_time"},
+        {"max_batch", std::to_string(batched ? o.max_batch : 1)},
         {"num_requests", std::to_string(o.num_requests)},
         {"prompt_len", format_range(wc.prompt_len)},
         {"output_len", format_range(wc.output_len)},
@@ -152,8 +192,16 @@ void run(const Options& o) {
         {"stop_at_eos", o.stop_at_eos ? "1" : "0"},
     };
     for (auto& field : summary_fields(s)) fields.push_back(std::move(field));
-    fields.emplace_back("decode_weight_bytes", std::to_string(weight_bytes));
-    fields.emplace_back("bandwidth_gb_s", csv_number(bandwidth));
+    if (batched) {
+        fields.emplace_back("kv_blocks", std::to_string(num_blocks));
+        fields.emplace_back("peak_kv_blocks", std::to_string(num_blocks - stats.min_free_blocks));
+        fields.emplace_back("steps", std::to_string(stats.steps));
+        fields.emplace_back("prefill_steps", std::to_string(stats.prefill_steps));
+        fields.emplace_back("preemptions", std::to_string(preemptions));
+    } else {
+        fields.emplace_back("decode_weight_bytes", std::to_string(weight_bytes));
+        fields.emplace_back("bandwidth_gb_s", csv_number(bandwidth));
+    }
     write_csv_row(summary_out, fields);
     out.close();
     summary_out.close();
@@ -161,12 +209,17 @@ void run(const Options& o) {
 
     std::fprintf(stderr,
                  "%lld requests, %lld output tokens in %.2f s: %.1f tokens/s\n"
-                 "TTFT p50 %.1f ms, p90 %.1f ms; TPOT p50 %.2f ms (%.1f tokens/s, %.1f GB/s of "
-                 "weights)\nwrote %s and %s\n",
+                 "TTFT p50 %.1f ms, p90 %.1f ms; TPOT p50 %.2f ms (%.1f tokens/s per request)\n",
                  static_cast<long long>(s.requests), static_cast<long long>(s.output_tokens),
                  s.wall_s, s.output_throughput, s.ttft_s.p50 * 1e3, s.ttft_s.p90 * 1e3,
-                 s.tpot_s.p50 * 1e3, 1.0 / s.tpot_s.p50, bandwidth, o.out.c_str(),
-                 summary_path.c_str());
+                 s.tpot_s.p50 * 1e3, 1.0 / s.tpot_s.p50);
+    if (batched)
+        std::fprintf(stderr, "peak KV blocks %d of %d, %lld preemptions\n",
+                     num_blocks - stats.min_free_blocks, num_blocks,
+                     static_cast<long long>(preemptions));
+    else
+        std::fprintf(stderr, "%.1f GB/s of weights\n", bandwidth);
+    std::fprintf(stderr, "wrote %s and %s\n", o.out.c_str(), summary_path.c_str());
 }
 #else
 void run(const Options&) {
@@ -184,6 +237,11 @@ void add_bench_command(CLI::App& app) {
                     "Model directory with config.json, model.safetensors and tokenizer.model")
         ->required()
         ->check(CLI::ExistingDirectory);
+    cmd->add_option("--max-batch", opts->max_batch,
+                    "Serve through the paged runner with at most this many concurrent sequences; "
+                    "0 runs requests one at a time on the contiguous runner")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
     cmd->add_option("--num-requests", opts->num_requests, "Requests to time")
         ->capture_default_str()
         ->check(CLI::PositiveNumber);
