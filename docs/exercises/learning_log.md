@@ -1162,3 +1162,7 @@
 - **SplitMix64 and rejection sampling to avoid modulo bias** => 
 - **linear-interpolation percentiles** => 
 - **TTFT versus TPOT definitions and why every system must use the same ones** => 
+- **static batching (the batch runs until its longest request finishes) versus continuous batching** => 
+- **left padding with an attention mask and explicit position ids** => 
+- **Python and launch overhead as the limit of an eager framework at batch 1** => 
+- **sdpa versus eager attention in transformers** => 
