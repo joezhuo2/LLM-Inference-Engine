@@ -8,3 +8,9 @@ namespace engine::naive {
 void swiglu(const Tensor& out, const Tensor& gate_up, Stream stream);
 
 }  // namespace engine::naive
+
+namespace engine::fast {
+
+void swiglu(const Tensor& out, const Tensor& gate_up, Stream stream);
+
+}  // namespace engine::fast

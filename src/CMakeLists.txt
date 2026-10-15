@@ -41,6 +41,7 @@ if(ENGINE_CUDA)
     kernels/rope.cu
     kernels/rope_fast.cu
     kernels/swiglu.cu
+    kernels/swiglu_fast.cu
     kernels/write_kv.cu
     kernels/smoke.cu
     sampling/greedy.cu
