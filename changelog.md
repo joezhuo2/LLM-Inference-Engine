@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## tools/profiling
 
 - Add NVTX ranges to the paged forward pass and the serving loop (`include/engine/runtime/nvtx.h`, `src/runtime/paged_runner.cpp`, `src/runtime/serve.cpp`): `NvtxRange` and `ranged(name, body)` wrap `nvtxRangePushA` and `nvtxRangePop` (the header-only NVTX3 that ships with the CUDA toolkit, no link dependency, a no-op when no profiler is attached). `PagedRunner::run_staged` has one `embedding` range, one `layer N` range per layer with `norm1`, `qkv`, `rope`, `write_kv`, `attention`, `o_proj`, `add1`, `norm2`, `gate_up`, `swiglu`, `down` and `add2` inside it, then `final_norm` and `lm_head`; `stage` has its own range; `serve_step` has `step` with `schedule`, `build_batch`, `forward`, `sample`, `read_tokens` and `update`. A kernel's name in nsys is now tied to the op that launched it. No behavior change. (Part A)
+- Add `engine bench --profile` (`src/app/bench_command.cpp`): calls `cudaProfilerStart` just before the timed run and `cudaDeviceSynchronize` plus `cudaProfilerStop` right after it, so `nsys profile --capture-range=cudaProfilerApi` and `ncu --profile-from-start off` record only the timed requests and not the weight upload, the cuBLAS warm-up or the untimed `--warmup` requests. No effect on the timings or the CSVs when the flag is off. (Part A)
 
 ## bench/batched
 
