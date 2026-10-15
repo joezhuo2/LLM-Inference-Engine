@@ -1107,4 +1107,8 @@
 - **rounding an intermediate to BF16 to match a framework's op boundaries** => 
 
 ## Graph-Ready Runner (Branch 22)
+- **pinned (page-locked) host memory and why async copies need it** => 
+- **what can and cannot be recorded in a CUDA Graph (host reads, allocations, synchronization)** => 
 - **padding a batch to a fixed size (bucket) and why padded rows must be harmless** => 
+- **cudaEvent as a fence for a reused staging buffer** => 
+- **static input buffers (same device addresses on every replay)** => 
