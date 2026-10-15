@@ -1169,3 +1169,7 @@
 - **prompt processing (prefill) throughput versus token generation (decode) throughput** => 
 - **GGUF and quantization types (why the baseline model must be BF16 to be comparable)** => 
 - **offloading layers to the GPU (-ngl)** => 
+- **categorical color slots assigned in a fixed order (color follows the entity)** => 
+- **direct labels plus a legend (identity not by color alone)** => 
+- **median over repeated runs (why not the mean for noisy timings)** => 
+- **log2 axis for batch sizes** => 
