@@ -1105,3 +1105,6 @@
 - **signed zero and infinity in BF16** => 
 - **comparing NaN results (payload vs NaN-ness)** => 
 - **rounding an intermediate to BF16 to match a framework's op boundaries** => 
+
+## Graph-Ready Runner (Branch 22)
+- **padding a batch to a fixed size (bucket) and why padded rows must be harmless** => 

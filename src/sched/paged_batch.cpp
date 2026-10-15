@@ -50,6 +50,29 @@ PagedBatch build_paged_batch(const Step& step, const Scheduler& scheduler, int m
     return batch;
 }
 
+PagedBatch pad_decode_batch(const PagedBatch& batch, int64_t rows) {
+    const auto reject = [](const std::string& what) {
+        throw std::invalid_argument("[pad_decode_batch] " + what);
+    };
+    if (batch.prefill) reject("the batch is a prefill batch");
+    if (batch.num_seqs < 1 || batch.num_tokens() != batch.num_seqs)
+        reject("a decode batch has one row per sequence");
+    if (rows < batch.num_seqs) reject("rows must be at least the number of sequences");
+    for (int64_t i = 0; i < batch.num_seqs; ++i)
+        if (batch.logit_rows[size_t(i)] != i) reject("logit_rows must be the identity");
+
+    PagedBatch padded = batch;
+    padded.num_seqs = rows;
+    padded.token_ids.resize(size_t(rows), 0);
+    padded.positions.resize(size_t(rows), 0);
+    padded.slot_mapping.resize(size_t(rows), -1);
+    padded.context_lens.resize(size_t(rows), 0);
+    padded.block_tables.resize(size_t(rows * batch.max_blocks), 0);
+    padded.logit_rows.resize(size_t(rows));
+    for (int64_t i = batch.num_seqs; i < rows; ++i) padded.logit_rows[size_t(i)] = int32_t(i);
+    return padded;
+}
+
 std::vector<SampleRow> sample_rows(const Step& step, const Scheduler& scheduler) {
     std::vector<SampleRow> rows;
     rows.reserve(step.seqs.size());
