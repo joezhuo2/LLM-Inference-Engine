@@ -1063,3 +1063,10 @@
 - **logit rows (which row of the batch is each sequence's last token)** => 
 - **flat row-major layout of a 2-D table in one vector** => 
 - **recomputing a preempted sequence from prompt plus output** => 
+
+## Paged Runner (Branch 20)
+- **one host-to-device copy of a packed int buffer for all batch inputs** => 
+- **gathering the last hidden row of each sequence before the LM head** => 
+- **why a batched GEMM can round differently from a single-row GEMM** => 
+- **teacher forcing against a reference with several sequences in one batch** => 
+- **bit-identical vs close (what is expected when only attention differs)** => 
