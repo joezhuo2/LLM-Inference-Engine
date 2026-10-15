@@ -3,8 +3,6 @@
 
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <stdexcept>
 
 #include "cuda_check.h"
@@ -22,8 +20,6 @@ struct InvFreq {
 
 }  // namespace
 
-template <int kHeadDim>
-
 __global__ void rope_kernel(nv_bfloat16* __restrict__ qkv_data,
                             const int* __restrict__ positions_data, int num_query_heads,
                             int num_kv_heads, int head_dim, InvFreq inv_freq_table) {
@@ -38,18 +34,6 @@ __global__ void rope_kernel(nv_bfloat16* __restrict__ qkv_data,
 
     for (int head_idx = threadIdx.x; head_idx < total_rounded_heads; head_idx += blockDim.x) {
         nv_bfloat16* head_ptr = row_qkv_ptr + static_cast<int64_t>(head_idx) * head_dim;
-
-        if constexpr (kHeadDim > 0 && kHeadDim % 16 == 0) {
-            constexpr int kVectorizedPairs = kHeadDim / 2;
-
-            for (int i_pair = 0; i_pair < kVectorizedPairs; i_pair += 8) {
-                float angle_vals[8];
-                float cos_vals[8];
-                float sin_vals[8];
-                nv_bfloat16 lo_bf16[8];
-                nv_bfloat16 hi_bf16[8];
-            }
-        }
 
         for (int i = 0; i < half_head_dim; ++i) {
             float rot_ang = static_cast<float>(token_pos) * inv_freq_table.v[i];
@@ -154,7 +138,7 @@ void rope(const Tensor& qkv, const Tensor& positions, int heads, int kv_heads, f
     int threads_per_block = 128;
     int num_blocks = static_cast<int>(num_tokens);
 
-    rope_kernel<0><<<num_blocks, threads_per_block, 0, stream>>>(
+    rope_kernel<<<num_blocks, threads_per_block, 0, stream>>>(
         qkv_device_ptr, positions_device_ptr, heads, kv_heads, derived_head_dim, inv_freq);
 
     KERNEL_CHECK(stream);

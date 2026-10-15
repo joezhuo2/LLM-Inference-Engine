@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## kernel/rope-vec-impl
 
 - Fix `engine::fast::rope` (`src/kernels/rope_fast.cu`) so it is bit-identical to `naive::rope`: the first draft computed `inv_freq` on the device with `__powf`, which differs from the host `std::pow` in the last bit for some frequencies, and a one-ulp change in a rounded cosine or sine moves many outputs at large positions (3 of the 9 `FastRope` tests failed with a few mismatched elements each; device `powf` instead of `__powf` still failed). The launcher now computes `inv_freq = 1 / theta^(2i / head_dim)` on the host exactly as the naive launcher does and passes the table to the kernel by value (`head_dim` at most 256). All 9 `FastRope` tests pass. (Part C, fix by Claude)
+- Remove the empty `if constexpr` vectorized block, the unused `kHeadDim` template parameter and two unused includes from `src/kernels/rope_fast.cu`: the block declared arrays it never used (six nvcc `#177-D` warnings, which the verify gate treats as failures) and only `rope_kernel<0>` was ever instantiated. No behavior change. (Part C, fix by Claude)
 
 ## kernel/add-rmsnorm-impl
 

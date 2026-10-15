@@ -1186,3 +1186,5 @@
 - **`__powf` versus `powf` versus host `std::pow` (why the same formula gives different last bits)** => 
 - **passing a lookup table to a kernel by value (kernel parameter space limit)** => 
 - **why a one-ulp change in a rounded sine changes many BF16 outputs after a subtraction** => 
+- **`if constexpr` (a discarded branch is not instantiated in a template)** => 
+- **nvcc warning #177-D (declared but never referenced)** => 
