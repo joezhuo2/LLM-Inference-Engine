@@ -61,10 +61,10 @@ __global__ void add_rmsnorm_kernel(__nv_bfloat16* __restrict__ sum,
         float xv = __bfloat162float(x_row[i]);
         float rv = __bfloat162float(res_row[i]);
 
-        float s_val = xv + rv;
-
-        sum_row[i] = __float2bfloat16(s_val);
-        local_sq_sum += s_val * s_val;
+        const __nv_bfloat16 s_bf = __float2bfloat16(xv + rv);
+        sum_row[i] = s_bf;
+        const float s = __bfloat162float(s_bf);
+        local_sq_sum += s * s;
     }
 
     float block_sq_sum = blockReduceSum(local_sq_sum);
@@ -80,7 +80,7 @@ __global__ void add_rmsnorm_kernel(__nv_bfloat16* __restrict__ sum,
     for (int i = threadIdx.x; i < hidden; i += blockDim.x) {
         float s_val = __bfloat162float(sum_row[i]);
         float w_val = __bfloat162float(weight[i]);
-        
+
         const __nv_bfloat16 normed = __float2bfloat16(s_val * s_rstd);
         norm_row[i] = __float2bfloat16(w_val * __bfloat162float(normed));
     }
