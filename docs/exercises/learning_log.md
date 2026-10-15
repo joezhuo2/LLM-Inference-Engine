@@ -1173,3 +1173,12 @@
 - **direct labels plus a legend (identity not by color alone)** => 
 - **median over repeated runs (why not the mean for noisy timings)** => 
 - **log2 axis for batch sizes** => 
+
+## Fused Add RMSNorm (Branch 30)
+- **kernel fusion (what it saves: one launch and one round trip through global memory)** => 
+- **rounding an intermediate to BF16 on purpose (why the fused kernel must round the sum before squaring it)** => 
+- **latency bound versus bandwidth bound (how to tell from time that does not scale with bytes)** => 
+- **L2 reuse (why the sum read back in the second pass costs no DRAM traffic)** => 
+- **`dram__bytes.sum` and `gpu__time_duration.sum` in Nsight Compute** => 
+- **why a fused kernel's gain shows in launch gaps and not in its own duration** => 
+
