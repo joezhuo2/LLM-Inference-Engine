@@ -2,6 +2,13 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## tools/baselines
+
+- Add `scripts/bench_workload.py`, a Python port of `make_workload` (SplitMix64, per-request output length, prompt length and tokens in the same order, Poisson arrivals), so the baselines serve exactly the prompts `engine bench` serves for the same `--seed`, `--prompt-len`, `--output-len` and `--request-rate`. A test pins the same four prompt tokens and two output lengths as `Workload.PinnedTokensKeepWorkloadsComparableAcrossMachines`. (Part A)
+- Add `scripts/bench_csv.py`: request metrics (TTFT from arrival to the first token, TPOT as finish minus first token over output tokens minus one, as in `request_metrics`), percentiles by linear interpolation (the same as `engine::percentile`), the summary statistics, `decode_weight_bytes` and `bandwidth_gb_s`, and writers for the per-request CSV and the summary CSV with the engine's column names, so a baseline's files plot together with the engine's. (Part A)
+- Add `tests/python/test_bench_workload.py` (8 tests) and rename the Python ctest to `PythonScripts.Unittest`, since it now runs every `tests/python/test_*.py`. (Part A)
+- Add blank learning-log entries (`docs/exercises/learning_log.md`, section `Baselines (Branch 29)`). (Part A)
+
 ## tools/profiling
 
 - Add NVTX ranges to the paged forward pass and the serving loop (`include/engine/runtime/nvtx.h`, `src/runtime/paged_runner.cpp`, `src/runtime/serve.cpp`): `NvtxRange` and `ranged(name, body)` wrap `nvtxRangePushA` and `nvtxRangePop` (the header-only NVTX3 that ships with the CUDA toolkit, no link dependency, a no-op when no profiler is attached). `PagedRunner::run_staged` has one `embedding` range, one `layer N` range per layer with `norm1`, `qkv`, `rope`, `write_kv`, `attention`, `o_proj`, `add1`, `norm2`, `gate_up`, `swiglu`, `down` and `add2` inside it, then `final_norm` and `lm_head`; `stage` has its own range; `serve_step` has `step` with `schedule`, `build_batch`, `forward_prefill` or `forward_decode` (named after the step kind), `sample`, `read_tokens` and `update`. A kernel's name in nsys is now tied to the op that launched it. No behavior change. (Part A)
