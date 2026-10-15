@@ -1140,3 +1140,11 @@
 ## Profiler Capture Range (Branch 28)
 - **cudaProfilerStart and cudaProfilerStop (limiting what the profiler records)** => 
 - **why the first iterations of a GPU program are excluded from a profile (lazy module load, cuBLAS heuristics, clocks)** => 
+
+## Reading an nsys Capture (Branch 28)
+- **launch gap (GPU idle time between two kernels because the host has not enqueued the next one yet)** => 
+- **busy time as the union of kernel intervals (kernels that overlap count once)** => 
+- **attributing a kernel to a host range through its launch correlation id** => 
+- **achieved bandwidth = bytes read per token / time per token** => 
+- **kernel busy time versus wall time per token** => 
+- **why batch 1 decode is limited by DRAM bandwidth and not by arithmetic** => 
