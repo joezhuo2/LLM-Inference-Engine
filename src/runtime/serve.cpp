@@ -30,7 +30,8 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
     ranged("build_batch",
            [&] { batch = build_paged_batch(step, scheduler, int(runner.max_blocks())); });
     Tensor logits;
-    ranged("forward", [&] { logits = runner.forward(batch); });
+    ranged(step.prefill ? "forward_prefill" : "forward_decode",
+           [&] { logits = runner.forward(batch); });
     const std::vector<SampleRow> rows = sample_rows(step, scheduler);
     const Tensor ids(next.data(), DType::I32, {batch.num_seqs});
     ranged("sample", [&] { sampler(ids, logits, rows, runner.stream()); });
