@@ -15,6 +15,7 @@ add_executable(unit_tests
   unit/test_kv_cache_size.cpp
   unit/test_mapped_file.cpp
   unit/test_model_weights.cpp
+  unit/test_paged_batch.cpp
   unit/test_reference_golden.cpp
   unit/test_request.cpp
   unit/test_safetensors.cpp
