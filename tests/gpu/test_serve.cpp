@@ -1,0 +1,136 @@
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <cstdint>
+#include <cstdio>
+#include <map>
+#include <vector>
+
+#include "engine/runtime/generate.h"
+#include "engine/runtime/kv_cache.h"
+#include "engine/runtime/model_runner.h"
+#include "engine/runtime/paged_runner.h"
+#include "engine/runtime/sampler.h"
+#include "engine/runtime/serve.h"
+#include "support/device.h"
+#include "support/model.h"
+#include "support/reference.h"
+#include "support/safetensors_file.h"
+
+using engine::KvCache;
+using engine::PagedRunner;
+using engine::Request;
+using engine::Sampler;
+using engine::SamplingParams;
+using engine::Scheduler;
+using engine::SchedulerConfig;
+
+namespace {
+
+constexpr int kRequests = 16;
+constexpr int kNewTokens = 48;
+constexpr int kBlockSize = 16;
+constexpr int kContext = 2048;
+constexpr int kMinCommonPrefix = 16;
+
+class ServeTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        if (const auto why = engine::test::reference_skip_reason(); !why.empty())
+            GTEST_SKIP() << why;
+        for (const auto& prompt : engine::test::load_reference_manifest()) {
+            if (int(prompts.size()) == kRequests) break;
+            const engine::test::SafetensorsFile ref(prompt.file);
+            const auto ids = ref.read<int32_t>("input_ids");
+            prompts.emplace_back(ids.begin(), ids.begin() + prompt.prompt_len);
+        }
+        ASSERT_EQ(int(prompts.size()), kRequests);
+    }
+
+    const engine::DeviceWeights& w() const { return engine::test::tinyllama(); }
+
+    std::vector<Request> requests(const SamplingParams& base) const {
+        std::vector<Request> out;
+        for (int i = 0; i < kRequests; ++i) {
+            Request r{.id = i, .max_new_tokens = kNewTokens, .params = base};
+            r.params.seed = base.seed + uint64_t(i);
+            r.prompt = prompts[size_t(i)];
+            out.push_back(r);
+        }
+        return out;
+    }
+
+    std::map<int64_t, std::vector<int32_t>> run(const std::vector<Request>& reqs, int num_blocks,
+                                                int max_batch, int context = kContext,
+                                                int* preemptions = nullptr) {
+        KvCache cache(w().config, num_blocks, kBlockSize);
+        PagedRunner runner(w().config, w().weights, cache, context, max_batch, context, stream);
+        Scheduler scheduler(SchedulerConfig{.num_blocks = num_blocks,
+                                            .block_size = kBlockSize,
+                                            .max_batch = max_batch,
+                                            .max_prefill_tokens = context,
+                                            .max_context = context});
+        Sampler sampler(max_batch);
+        for (const Request& r : reqs) scheduler.submit(r);
+        std::map<int64_t, std::vector<int32_t>> out;
+        if (preemptions) *preemptions = 0;
+        for (const Request& r : engine::serve(scheduler, runner, sampler)) {
+            out[r.id] = r.output;
+            if (preemptions) *preemptions += r.preemptions;
+        }
+        return out;
+    }
+
+    std::vector<std::vector<int32_t>> prompts;
+    engine::test::CudaStream stream;
+};
+
+}  // namespace
+
+TEST_F(ServeTest, SixteenConcurrentGreedyRequestsMatchSixteenSoloRuns) {
+    const auto reqs = requests(SamplingParams{0.0f, 0});
+    const auto together = run(reqs, 1024, kRequests);
+    ASSERT_EQ(together.size(), size_t(kRequests));
+    for (const Request& r : reqs) {
+        SCOPED_TRACE("request " + std::to_string(r.id));
+        EXPECT_EQ(together.at(r.id).size(), size_t(kNewTokens));
+        EXPECT_EQ(together.at(r.id), run({r}, 256, 1).at(r.id));
+    }
+}
+
+TEST_F(ServeTest, SixteenConcurrentSampledRequestsAgreeWithSoloRunsUntilNearTies) {
+    const auto reqs = requests(SamplingParams{0.8f, 1234, 40, 0.9f});
+    const auto together = run(reqs, 1024, kRequests);
+    ASSERT_EQ(together.size(), size_t(kRequests));
+    size_t identical = 0, shortest_prefix = kNewTokens;
+    for (const Request& r : reqs) {
+        const auto& a = together.at(r.id);
+        const auto b = run({r}, 256, 1).at(r.id);
+        ASSERT_EQ(a.size(), b.size());
+        const size_t prefix =
+            size_t(std::mismatch(a.begin(), a.end(), b.begin()).first - a.begin());
+        identical += prefix == a.size();
+        shortest_prefix = std::min(shortest_prefix, prefix);
+    }
+    std::printf("%zu of %d identical to a solo run, shortest common prefix %zu of %d tokens\n",
+                identical, kRequests, shortest_prefix, kNewTokens);
+    EXPECT_GE(shortest_prefix, size_t(kMinCommonPrefix));
+}
+
+TEST_F(ServeTest, ForcedPreemptionKeepsTheOutputsOfEveryRequest) {
+    for (const SamplingParams& params :
+         {SamplingParams{0.0f, 0}, SamplingParams{0.8f, 99, 40, 0.9f}}) {
+        const auto reqs = requests(params);
+        const auto roomy = run(reqs, 1024, kRequests, 512);
+        int preemptions = 0;
+        const auto tight = run(reqs, 56, kRequests, 512, &preemptions);
+        EXPECT_GT(preemptions, 0);
+        ASSERT_EQ(tight.size(), size_t(kRequests));
+        for (const Request& r : reqs) {
+            SCOPED_TRACE("request " + std::to_string(r.id));
+            EXPECT_EQ(tight.at(r.id), roomy.at(r.id));
+        }
+        std::printf("temperature %.1f: %d preemptions, outputs identical\n", params.temperature,
+                    preemptions);
+    }
+}
