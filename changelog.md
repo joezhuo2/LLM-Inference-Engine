@@ -2,6 +2,13 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/m4-stubs
+
+- Add the `engine::fast::add_rmsnorm` Part C stub (`include/engine/kernels/add_rmsnorm.h`, `src/kernels/add_rmsnorm.cu`) with its TODO(JOE) spec: the residual add and the RMSNorm that follows it fused into one kernel, `sum = x + residual` bit-identical to `naive::add` and `norm = rmsnorm(sum)` from the BF16-rounded sum, equal to `naive::rmsnorm` up to the FP32 summation order, batch invariant per row, any hidden size and any pointer alignment, `sum` allowed to alias `x` or `residual`. It aborts until implemented. (Part C stub, by Claude)
+- Add 25 `todo_joe` GPU tests in `tests/todo/gpu/test_add_rmsnorm.cpp` (`todo_gpu_tests` target, label `todo_joe`): 18 shapes including odd hidden sizes and unaligned base pointers, the unfused naive pair, both aliasing modes, batch independence of every row, determinism, an all-zero row, `T = 0` and every rejected argument, with guard bytes proving nothing outside the outputs is written and the inputs are unchanged. Validated against a throwaway implementation (naive add then naive rmsnorm, all pass). (Part A)
+- Add `tests/support/guarded.h`, a BF16 device buffer with sentinel guard regions and an optional shift that makes the tensor's base pointer unaligned. (Part A)
+- Add blank learning-log entries for the concepts the fused kernel relies on (`docs/exercises/learning_log.md`, section `Fused Add and RMSNorm (Branch 22)`). (Part A)
+
 ## model/paged-runner
 
 - Add `engine::PagedBatch` and `build_paged_batch(step, scheduler, max_blocks)` (`include/engine/sched/paged_batch.h`, `src/sched/paged_batch.cpp`, in `engine_core`): the host-side inputs of one paged forward step built from a scheduler `Step` and its block manager, as flat I32 vectors `token_ids`, `positions`, `slot_mapping`, `context_lens`, `logit_rows` and a row-major `block_tables` padded with the null block. A prefill step has one row per prompt token (prompt plus output for a recomputed sequence) with `context_lens[t] = position + 1`, so the paged decode kernel can serve prefill one query row at a time; a decode step has one row per sequence at position `length - 1`. `logit_rows` names each sequence's last row. A step whose sequences are not running, hold a different number of slots than tokens, or need more than `max_blocks` blocks throws `std::invalid_argument`. (Part B)

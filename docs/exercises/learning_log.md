@@ -1078,3 +1078,13 @@
 - **why batch size can change BF16 results (GEMM algorithm and accumulation order)** => 
 - **batch invariance** => 
 - **common prefix as a divergence measure** => 
+
+## Fused Add and RMSNorm (Branch 22)
+- **kernel fusion (one launch and one trip through global memory instead of two)** => 
+- **memory-bound vs launch-bound at batch 1** => 
+- **residual stream** => 
+- **in-place operation and aliasing (same pointer for input and output)** => 
+- **128-bit vectorized loads and the 16-byte alignment they need** => 
+- **scalar tail and head for rows that are not a multiple of the vector width** => 
+- **batch invariance of a reduction (same row, same bits, any batch size)** => 
+- **why the sum is rounded to BF16 before the norm to match the unfused pair** => 
