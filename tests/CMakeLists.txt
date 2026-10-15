@@ -39,6 +39,7 @@ if(ENGINE_CUDA)
     gpu/test_add.cpp
     gpu/test_attention.cpp
     gpu/test_bench.cpp
+    gpu/test_bench_batched.cpp
     gpu/test_bf16_cuda.cpp
     gpu/test_checksum_device.cpp
     gpu/test_checksum_golden.cpp

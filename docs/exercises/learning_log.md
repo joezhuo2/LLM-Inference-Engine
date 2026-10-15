@@ -1122,3 +1122,10 @@
 - **per-bucket graphs for varying batch sizes** => 
 - **what a replay bakes in (shapes and pointers) and what it re-reads (device memory contents)** => 
 - **nsys timeline and launch gaps** => 
+
+## Batched Benchmarking (Branch 23)
+- **open-loop vs closed-loop load generation (Poisson arrivals)** => 
+- **offline batch vs online serving metrics** => 
+- **TTFT including queueing delay** => 
+- **throughput vs latency trade-off as max batch grows** => 
+- **KV cache high-water mark (peak blocks in use)** => 
