@@ -73,6 +73,7 @@ if(ENGINE_CUDA)
   add_executable(todo_gpu_tests
     todo/gpu/test_add_rmsnorm.cpp
     todo/gpu/test_rope_fast.cpp
+    todo/gpu/test_swiglu_fast.cpp
   )
   target_include_directories(todo_gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(todo_gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})

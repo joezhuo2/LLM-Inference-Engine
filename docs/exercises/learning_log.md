@@ -1097,3 +1097,11 @@
 - **sincosf (one call for both)** => 
 - **angle table (precomputing cos and sin per position) vs computing them in the kernel** => 
 - **handling a width that is not a multiple of the vector width** => 
+
+## Fast SwiGLU (Branch 22)
+- **SiLU (x * sigmoid(x)) and gating with a second projection** => 
+- **fused gate/up layout (two halves of one row) and why the up half may be misaligned** => 
+- **expf overflow and what it does to g / (1 + exp(-g))** => 
+- **signed zero and infinity in BF16** => 
+- **comparing NaN results (payload vs NaN-ness)** => 
+- **rounding an intermediate to BF16 to match a framework's op boundaries** => 
