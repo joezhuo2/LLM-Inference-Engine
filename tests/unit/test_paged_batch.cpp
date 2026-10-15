@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
@@ -7,6 +8,7 @@
 #include "engine/sched/paged_batch.h"
 
 using engine::build_paged_batch;
+using engine::pad_decode_batch;
 using engine::PagedBatch;
 using engine::Request;
 using engine::sample_rows;
@@ -151,4 +153,44 @@ TEST(PagedBatch, RejectsBadArgumentsWithInvalidArgument) {
     EXPECT_THROW(build_paged_batch(step, s, 1), std::invalid_argument);
     EXPECT_THROW(build_paged_batch(Step{true, {}}, s, kMaxBlocks), std::invalid_argument);
     EXPECT_THROW(build_paged_batch(Step{true, {99}}, s, kMaxBlocks), std::invalid_argument);
+}
+
+TEST(PagedBatch, PaddingADecodeBatchAddsRowsThatWriteNothingAndAttendToNothing) {
+    Scheduler s(config());
+    s.submit(make(1, 4, 5));
+    s.submit(make(2, 5, 5));
+    ASSERT_TRUE(s.schedule().prefill);
+    s.update(std::vector<int32_t>{901, 902});
+    const Step step = s.schedule();
+    const PagedBatch b = build_paged_batch(step, s, kMaxBlocks);
+    const PagedBatch p = pad_decode_batch(b, 4);
+
+    EXPECT_FALSE(p.prefill);
+    EXPECT_EQ(p.num_seqs, 4);
+    EXPECT_EQ(p.max_blocks, kMaxBlocks);
+    EXPECT_EQ(p.token_ids, (std::vector<int32_t>{901, 902, 0, 0}));
+    EXPECT_EQ(p.positions, (std::vector<int32_t>{4, 5, 0, 0}));
+    EXPECT_EQ(p.slot_mapping, (std::vector<int32_t>{b.slot_mapping[0], b.slot_mapping[1], -1, -1}));
+    EXPECT_EQ(p.context_lens, (std::vector<int32_t>{5, 6, 0, 0}));
+    EXPECT_EQ(p.logit_rows, (std::vector<int32_t>{0, 1, 2, 3}));
+    ASSERT_EQ(p.block_tables.size(), size_t(4 * kMaxBlocks));
+    EXPECT_TRUE(std::equal(b.block_tables.begin(), b.block_tables.end(), p.block_tables.begin()));
+    for (size_t i = b.block_tables.size(); i < p.block_tables.size(); ++i)
+        EXPECT_EQ(p.block_tables[i], 0);
+    EXPECT_EQ(pad_decode_batch(b, 2).token_ids, b.token_ids);
+}
+
+TEST(PagedBatch, PaddingRejectsPrefillBatchesAndTooFewRows) {
+    Scheduler s(config());
+    s.submit(make(1, 6, 4));
+    const Step prefill = s.schedule();
+    const PagedBatch pre = build_paged_batch(prefill, s, kMaxBlocks);
+    EXPECT_THROW(pad_decode_batch(pre, 8), std::invalid_argument);
+    s.update(std::vector<int32_t>{901});
+    const PagedBatch dec = build_paged_batch(s.schedule(), s, kMaxBlocks);
+    EXPECT_THROW(pad_decode_batch(dec, 0), std::invalid_argument);
+    PagedBatch odd = dec;
+    odd.logit_rows[0] = 0;
+    odd.token_ids.push_back(5);
+    EXPECT_THROW(pad_decode_batch(odd, 4), std::invalid_argument);
 }

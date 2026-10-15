@@ -24,6 +24,8 @@ struct PagedBatch {
 
 PagedBatch build_paged_batch(const Step& step, const Scheduler& scheduler, int max_blocks);
 
+PagedBatch pad_decode_batch(const PagedBatch& batch, int64_t rows);
+
 std::vector<SampleRow> sample_rows(const Step& step, const Scheduler& scheduler);
 
 }  // namespace engine
