@@ -32,7 +32,7 @@ __device__ __forceinline__ float blockReduceSum(float val) {
     __syncthreads();
 
     int num_warps = blockDim.x / kWarpSize;
-    val = (threadIdx.x < num_warps) ? shared[lane] : 0.0f;
+    val = (lane < num_warps) ? shared[lane] : 0.0f;
 
     if (warp_id == 0) {
         val = warpReduceSum(val);
@@ -40,10 +40,10 @@ __device__ __forceinline__ float blockReduceSum(float val) {
     return val;
 }
 
-__global__ void add_rmsnorm_kernel(__nv_bfloat16* __restrict__ sum,
+__global__ void add_rmsnorm_kernel(__nv_bfloat16* sum,
                                    __nv_bfloat16* __restrict__ norm,
-                                   const __nv_bfloat16* __restrict__ x,
-                                   const __nv_bfloat16* __restrict__ residual,
+                                   const __nv_bfloat16* x,
+                                   const __nv_bfloat16* residual,
                                    const __nv_bfloat16* __restrict__ weight, float eps,
                                    int64_t total_batch_size, int64_t hidden) {
     int row = blockIdx.x;
