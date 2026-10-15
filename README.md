@@ -107,7 +107,7 @@ include/engine/   public headers (bench, core, kernels, loader, model, runtime, 
 src/              the engine_core (pure C++), engine_kernels (CUDA, cuBLAS) and engine_runtime libraries, and the CLI
 results/          benchmark CSVs
 tests/            unit tests, GPU tests, test helpers and generated golden data
-scripts/          Python reference and golden scripts
+scripts/          Python reference and golden scripts, profiling (docs/profiling.md)
 docs/             hardware notes, ownership, and learning exercises
 ```
 
