@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## docs/results
+
+- Add `scripts/make_results.py`: refreshes the measured blocks of `docs/results.md` from the files `scripts/reproduce.sh` writes into `results/`. It replaces the text between `<!-- auto:NAME -->` and `<!-- /auto:NAME -->` markers (`environment` from `results/environment.txt`, `scoreboard`, `table`) and leaves the prose around them alone. The scoreboard computes each MVP criterion from the data and prints "met" or "not met" against its target: teacher-forced argmax and logit error and the free-running exact-match count parsed from `results/correctness.txt` (criterion 1), batch-1 weight bandwidth as a share of the measured peak (2), and the batch-16 over batch-1 throughput ratio (3); a missing input prints "not recorded" instead of a guess. The table is `plot.table_markdown` over every `*_summary.csv`. (Part A)
+- Add `tests/python/test_make_results.py` (8 tests: log parsing, environment parsing, verdicts against the targets, missing data, block replacement, missing markers, an end-to-end update). (Part A)
+- Add blank learning-log entries (`docs/exercises/learning_log.md`, section `Results Page (Branch 30)`). (Part A)
+
 ## kernel/rope-vec-impl
 
 - Fix `engine::fast::rope` (`src/kernels/rope_fast.cu`) so it is bit-identical to `naive::rope`: the first draft computed `inv_freq` on the device with `__powf`, which differs from the host `std::pow` in the last bit for some frequencies, and a one-ulp change in a rounded cosine or sine moves many outputs at large positions (3 of the 9 `FastRope` tests failed with a few mismatched elements each; device `powf` instead of `__powf` still failed). The launcher now computes `inv_freq = 1 / theta^(2i / head_dim)` on the host exactly as the naive launcher does and passes the table to the kernel by value (`head_dim` at most 256). All 9 `FastRope` tests pass. (Part C, fix by Claude)
