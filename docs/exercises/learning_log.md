@@ -1202,3 +1202,6 @@
 - **`gridDim.y` and `gridDim.z` limit of 65535 versus `gridDim.x` limit of 2^31 - 1** => 
 - **flattening a 2D (row, column) launch into a 1D index with `/` and `%`** => 
 - **compute-sanitizer memcheck and leak check on a kernel with vector loads (what 0 errors rules out for 16-byte accesses)** => 
+- **memory bound versus latency bound (why 4096 tokens reaches the bandwidth peak and 1 token does not)** => 
+- **achieved DRAM bandwidth (bytes moved divided by kernel time, compared with the measured peak)** => 
+- **occupancy and block count at small sizes (3 blocks on 26 SMs)** => 

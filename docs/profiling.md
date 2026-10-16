@@ -66,3 +66,19 @@ Measured with Nsight Compute on the RTX 5060 Laptop GPU (release build, TinyLlam
 Reading it. RoPE reads and writes only the Q and K slices of each row, so at 512 tokens the DRAM traffic is about 2.4 MB and the kernel is nowhere near the bandwidth limit: below 64 tokens it is latency bound at 6 to 7 us, which is mostly launch and one dependent chain of loads, sincos and stores. The first draft was a flat 21 us at every size because each thread walked all 36 heads one after another, a dependent global round trip each; it only beat naive once there were 512 tokens to hide it. The final kernel computes `cosf` and `sinf` once per `(token, pair)` and spreads the heads over 8 thread groups, which is 1.4x to 1.5x faster than naive at decode sizes and 2x at 512 tokens. In a decode step it saves about 2 to 3 us of the roughly 9 ms step, so the benefit is small in absolute terms; the point of the exercise is that it is no longer slower than the kernel it replaces.
 
 To reproduce, launch `naive::rope` and `fast::rope` in a small throwaway program (same `qkv` and positions, 10 warm-up launches each, one program run per token count) linked against `libengine_kernels.a` and `libengine_core.a`, and run `ncu --kernel-name regex:rope_kernel --launch-skip <n> --launch-count 1 --metrics gpu__time_duration.sum,dram__bytes.sum <program>`.
+
+## Fast SwiGLU (Branch 32)
+
+Measured with Nsight Compute on the RTX 5060 Laptop GPU (release build, TinyLlama's `ff` of 5632, bf16 input of shape `[tokens, 11264]`, default clock control, median of three runs of one launch after a warm-up of thirty). `naive` is `naive::swiglu`. `first draft` is the commit before the vectorization, with one thread per output element on a 2D grid; `fast` is the final kernel, which loads 8 gate and 8 up values per thread with 16-byte loads (the scalar kernel is the fallback for odd `ff` or misaligned pointers and is not measured here). All three are bit-identical (`FastSwiglu.*` and `SwigluShapeTest.*`, 25 tests).
+
+| tokens | naive (us) | first draft (us) | fast (us) | fast / naive | DRAM, fast (KB) |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 3.8 | 3.1 | 3.8 | 1.00 | 32 |
+| 16 | 6.1 | 5.1 | 4.8 | 0.78 | 362 |
+| 64 | 12.9 | 11.1 | 8.1 | 0.62 | 1,418 |
+| 512 | 78.4 | 68.3 | 38.1 | 0.49 | 11,274 |
+| 4096 | 650.5 | 576.4 | 358.2 | 0.55 | 115,963 |
+
+Reading it. SwiGLU reads two values and writes one per output element and does a few dozen FLOPs on them, so it is memory bound once there is enough work to fill the GPU: at 4096 tokens the fast kernel moves about 119 MB in 358 us, roughly 330 GB/s, which is the measured peak of 323.6 GB/s used in the bandwidth numbers above, while naive reaches about 200 GB/s. From 64 tokens up the vectorized kernel is 1.6x to 2x faster than naive. At 1 token (the decode case) there is no gain: 5632 outputs make only 704 vectors, which is 3 blocks of 256 threads on a GPU with 26 SMs, and each thread runs 8 dependent `expf` and divide chains, so the kernel is latency bound at about 3.8 us, 0.7 us slower than the first draft, whose 22 blocks spread the same chains wider. A decode step runs the kernel 22 times, so the difference is about 15 us of a roughly 9 ms step. Not wired into `PagedRunner` yet.
+
+To reproduce, launch `naive::swiglu`, the first draft (the `swiglu_fast.cu` of the first implementation commit, renamed to another namespace) and `fast::swiglu` in a small throwaway program (same `gate_up`, 10 warm-up launches each, one program run per token count) linked against `libengine_kernels.a` and `libengine_core.a`, and run `ncu --kernel-name regex:swiglu_ --launch-skip 30 --launch-count 3 --metrics gpu__time_duration.sum,dram__bytes.sum <program> <tokens>`.
