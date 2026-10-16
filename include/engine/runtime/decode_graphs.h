@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cuda_runtime.h>
-
 #include <cstdint>
 #include <map>
 #include <vector>
@@ -9,6 +7,8 @@
 #include "engine/core/tensor.h"
 #include "engine/runtime/paged_runner.h"
 #include "engine/sched/paged_batch.h"
+
+struct CUgraphExec_st;
 
 namespace engine {
 
@@ -29,7 +29,7 @@ public:
 private:
     PagedRunner* runner_;
     std::vector<int64_t> buckets_;
-    std::map<int64_t, cudaGraphExec_t> graphs_;
+    std::map<int64_t, CUgraphExec_st*> graphs_;
 };
 
 }  // namespace engine
