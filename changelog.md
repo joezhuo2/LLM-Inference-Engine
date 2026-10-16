@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## kernel/swiglu-small-batch
 
 - Make `engine::fast::swiglu` use the scalar kernel for small launches: the vector path is taken only when the pointers are aligned, `ff % 8 == 0` and the launch has at least `sm_count * 256 / 2` vectors (5 tokens or more at TinyLlama's `ff` of 5632 on the 26-SM RTX 5060); below that, the 704 vectors of a decode row cover only 3 blocks and each thread runs 8 dependent `expf` and divide chains, which left the first vector version no faster than `naive::swiglu` at 1 token. The scalar kernel spreads the same work over 22 blocks. Bit identity is unchanged (both kernels share `swiglu_value`), the vector path above 4 tokens is untouched. Added `SwigluShapeTest` cases at 4, 5 and 9 tokens around the switch; all 28 `FastSwiglu` and `SwigluShape` tests pass and `compute-sanitizer --tool memcheck --leak-check full` reports 0 errors and 0 bytes leaked. (Part C, fix by Claude)
+- Record the small-batch comparison of `fast::swiglu` in `docs/profiling.md` ("Small batches"): at 1 and 4 tokens the dispatching kernel is 0.86x and 0.84x of `naive::swiglu` time against 1.0x for the vector-only kernel, unchanged from 5 tokens up. Not wired into `PagedRunner` yet, so `docs/results.md` numbers are unchanged. (Part A)
 
 ## kernel/swiglu-vec-impl
 

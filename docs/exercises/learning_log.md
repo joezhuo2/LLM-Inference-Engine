@@ -1215,3 +1215,4 @@
 - **choosing a kernel by launch size (why the best kernel at 1 token is not the best at 512)** => 
 - **`cudaDeviceGetAttribute` and `cudaDevAttrMultiProcessorCount` (querying the SM count at run time)** => 
 - **work per thread versus number of blocks (8 dependent `expf` chains in few threads versus 1 in many)** => 
+- **comparing ncu timings across sessions (why laptop clocks make absolute times drift and ratios within a run stay valid)** => 
