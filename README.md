@@ -12,6 +12,8 @@ The goal is not to beat vLLM. It is a small engine in which every design decisio
 4. **Explained:** every kernel has before and after Nsight Compute numbers, and a results page with plots explains them.
 5. **Reproducible:** a build plus one script reproduces every number in this README from a clean clone.
 
+The measured state against these five criteria, with plots and the per-kernel table, is `docs/results.md`; `scripts/reproduce.sh` regenerates it.
+
 Correct comes first: nothing is optimized until the naive engine produces the same text as HuggingFace, and the naive kernels stay in the repo as the oracles the optimized kernels are tested against.
 
 ## Architecture

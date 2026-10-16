@@ -1,0 +1,8 @@
+date=2026-10-16T01:42:30Z
+commit=d5debf7
+gpu=NVIDIA GeForce RTX 5060 Laptop GPU
+driver=616.92
+cuda=13.3
+build=Release
+peak_gb_s=323.6
+workload=32 requests, 64 prompt tokens, 64 output tokens, greedy, seed 0, median of 3 run(s)

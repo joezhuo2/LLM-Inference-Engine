@@ -1205,3 +1205,8 @@
 - **memory bound versus latency bound (why 4096 tokens reaches the bandwidth peak and 1 token does not)** => 
 - **achieved DRAM bandwidth (bytes moved divided by kernel time, compared with the measured peak)** => 
 - **occupancy and block count at small sizes (3 blocks on 26 SMs)** => 
+## Results Page (Branch 30)
+- **near tie (two tokens whose logits differ by a BF16 ulp or two, so either may win)** => 
+- **why exact match on 64 free-running tokens is a stricter test than teacher-forced argmax** => 
+- **generated documentation blocks between markers (keeping numbers from going stale)** => 
+- **reproducibility record (commit, driver, CUDA version, GPU, date next to every number)** => 
