@@ -82,3 +82,17 @@ Measured with Nsight Compute on the RTX 5060 Laptop GPU (release build, TinyLlam
 Reading it. SwiGLU reads two values and writes one per output element and does a few dozen FLOPs on them, so it is memory bound once there is enough work to fill the GPU: at 4096 tokens the fast kernel moves about 119 MB in 358 us, roughly 330 GB/s, which is the measured peak of 323.6 GB/s used in the bandwidth numbers above, while naive reaches about 200 GB/s. From 64 tokens up the vectorized kernel is 1.6x to 2x faster than naive. At 1 token (the decode case) there is no gain: 5632 outputs make only 704 vectors, which is 3 blocks of 256 threads on a GPU with 26 SMs, and each thread runs 8 dependent `expf` and divide chains, so the kernel is latency bound at about 3.8 us, 0.7 us slower than the first draft, whose 22 blocks spread the same chains wider. A decode step runs the kernel 22 times, so the difference is about 15 us of a roughly 9 ms step. Not wired into `PagedRunner` yet.
 
 To reproduce, launch `naive::swiglu`, the first draft (the `swiglu_fast.cu` of the first implementation commit, renamed to another namespace) and `fast::swiglu` in a small throwaway program (same `gate_up`, 10 warm-up launches each, one program run per token count) linked against `libengine_kernels.a` and `libengine_core.a`, and run `ncu --kernel-name regex:swiglu_ --launch-skip 30 --launch-count 3 --metrics gpu__time_duration.sum,dram__bytes.sum <program> <tokens>`.
+
+### Small batches (Branch 33)
+
+The 1-token row above showed the vector kernel no faster than naive, so `fast::swiglu` now takes the scalar kernel (256 threads, one element each) when a launch has fewer than `sm_count * 256 / 2` vectors, which is 4 tokens or fewer at `ff` 5632 on this 26-SM GPU, and the vector kernel from 5 tokens up. Same method as above, five runs per row, `previous` is the vector-only kernel of Branch 32 and `fast` the dispatching kernel. The laptop clocks differ between sessions (naive at 1 token read 3.8 us here and 2.8 us in an earlier session), so compare the ratios within a row, not the absolute times with the table above.
+
+| tokens | naive (us) | previous (us) | fast (us) | fast / naive | kernel used |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 3.78 | 3.87 | 3.26 | 0.86 | scalar |
+| 4 | 4.03 | 3.94 | 3.39 | 0.84 | scalar |
+| 5 | 4.03 | 3.94 | 3.94 | 0.98 | vector |
+| 8 | 5.06 | 4.16 | 4.13 | 0.82 | vector |
+| 512 | 78.6 | 37.8 | 37.8 | 0.48 | vector |
+
+Reading it. At decode sizes the work is a few thousand elements, so what matters is how many blocks and threads share it: 22 blocks of scalar threads each do one `expf` chain, while the vector kernel puts 8 chains in each of 704 threads (3 blocks). Below 5 tokens the scalar kernel is 14% to 16% faster than the vector kernel in the same run and 14% to 16% faster than naive; the two kernels are equal around 5 to 8 tokens and the vector kernel wins from there. An earlier session also measured the first draft (the same scalar kernel on a 2D grid) at 2.14 us against 2.82 us for naive at 1 token, so about 0.75x of naive is the floor this size can reach. In a decode step that is about 0.5 us per layer, roughly 11 us of a 9 ms step: real but small, and the fused GEMM epilogue (not in this branch) is where the kernel would disappear altogether.
