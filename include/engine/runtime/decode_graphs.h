@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cuda_runtime.h>
+
 #include <cstdint>
+#include <map>
 #include <vector>
 
 #include "engine/core/tensor.h"
@@ -26,6 +29,7 @@ public:
 private:
     PagedRunner* runner_;
     std::vector<int64_t> buckets_;
+    std::map<int64_t, std::pair<cudaGraph_t, cudaGraphExec_t>> graphs_;
 };
 
 }  // namespace engine
