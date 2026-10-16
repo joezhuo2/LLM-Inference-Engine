@@ -1201,3 +1201,4 @@
 - **scalar fallback path (why the odd-ff and shifted-pointer tests exist)** => 
 - **`gridDim.y` and `gridDim.z` limit of 65535 versus `gridDim.x` limit of 2^31 - 1** => 
 - **flattening a 2D (row, column) launch into a 1D index with `/` and `%`** => 
+- **compute-sanitizer memcheck and leak check on a kernel with vector loads (what 0 errors rules out for 16-byte accesses)** => 
