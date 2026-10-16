@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/swiglu-small-batch
+
+- Make `engine::fast::swiglu` use the scalar kernel for small launches: the vector path is taken only when the pointers are aligned, `ff % 8 == 0` and the launch has at least `sm_count * 256 / 2` vectors (5 tokens or more at TinyLlama's `ff` of 5632 on the 26-SM RTX 5060); below that, the 704 vectors of a decode row cover only 3 blocks and each thread runs 8 dependent `expf` and divide chains, which left the first vector version no faster than `naive::swiglu` at 1 token. The scalar kernel spreads the same work over 22 blocks. Bit identity is unchanged (both kernels share `swiglu_value`), the vector path above 4 tokens is untouched. Added `SwigluShapeTest` cases at 4, 5 and 9 tokens around the switch; all 28 `FastSwiglu` and `SwigluShape` tests pass and `compute-sanitizer --tool memcheck --leak-check full` reports 0 errors and 0 bytes leaked. (Part C, fix by Claude)
+
 ## kernel/swiglu-vec-impl
 
 - Vectorize `engine::fast::swiglu` (`src/kernels/swiglu_fast.cu`): when `ff % 8 == 0` and both base pointers are 16-byte aligned, each thread loads 8 gate and 8 up values with two 16-byte `uint4` loads, applies the same per-element math and writes 8 outputs with one 16-byte store; every other case (odd `ff`, a misaligned pointer) runs the scalar kernel unchanged. Both kernels share one `__device__` helper, so the rounding steps (silu rounded to BF16 before the multiply, `expf` and a true divide) cannot drift apart and the output stays bit-identical to `naive::swiglu`. The launch uses `blockIdx.y` for the row (the unused `blockDim.y` is gone) and drops the unused `cstdio` and `cstdlib` includes. All 23 `FastSwiglu` and `SwigluShape` tests pass, the verify gate passes. (Part C, vectorization by Claude)

@@ -1210,3 +1210,8 @@
 - **why exact match on 64 free-running tokens is a stricter test than teacher-forced argmax** => 
 - **generated documentation blocks between markers (keeping numbers from going stale)** => 
 - **reproducibility record (commit, driver, CUDA version, GPU, date next to every number)** => 
+
+## Fast SwiGLU small batch (Branch 33)
+- **choosing a kernel by launch size (why the best kernel at 1 token is not the best at 512)** => 
+- **`cudaDeviceGetAttribute` and `cudaDevAttrMultiProcessorCount` (querying the SM count at run time)** => 
+- **work per thread versus number of blocks (8 dependent `expf` chains in few threads versus 1 in many)** => 

@@ -14,6 +14,14 @@ namespace {
 constexpr int kThreads = 256;
 constexpr int kVecWidth = 8;
 
+int sm_count_of_current_device() {
+    int device = 0;
+    CUDA_CHECK(cudaGetDevice(&device));
+    int sm_count = 1;
+    CUDA_CHECK(cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, device));
+    return sm_count;
+}
+
 __device__ __forceinline__ __nv_bfloat16 swiglu_value(__nv_bfloat16 gate_bf16,
                                                       __nv_bfloat16 up_bf16) {
     float gate_float = __bfloat162float(gate_bf16);
@@ -110,9 +118,12 @@ void swiglu(const Tensor& out, const Tensor& gate_up, Stream stream) {
     __nv_bfloat16* output_device_ptr = reinterpret_cast<__nv_bfloat16*>(out.data);
     const __nv_bfloat16* gate_up_device_ptr = reinterpret_cast<const __nv_bfloat16*>(gate_up.data);
 
-    bool vectorizable = hidden_dim_ff % kVecWidth == 0 &&
-                        reinterpret_cast<uintptr_t>(output_device_ptr) % sizeof(uint4) == 0 &&
-                        reinterpret_cast<uintptr_t>(gate_up_device_ptr) % sizeof(uint4) == 0;
+    bool aligned = hidden_dim_ff % kVecWidth == 0 &&
+                   reinterpret_cast<uintptr_t>(output_device_ptr) % sizeof(uint4) == 0 &&
+                   reinterpret_cast<uintptr_t>(gate_up_device_ptr) % sizeof(uint4) == 0;
+
+    int64_t half_gpu_vectors = static_cast<int64_t>(sm_count_of_current_device()) * kThreads / 2;
+    bool vectorizable = aligned && batch_size_t * (hidden_dim_ff / kVecWidth) >= half_gpu_vectors;
 
     int64_t work_per_row = vectorizable ? hidden_dim_ff / kVecWidth : hidden_dim_ff;
     int64_t total_work = batch_size_t * work_per_row;
