@@ -56,7 +56,7 @@ echo "== environment"
 {
     echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     dirty=""
-    git diff --quiet HEAD -- . ':!results' || dirty=" (uncommitted changes)"
+    git diff --quiet HEAD -- . ':!results' ':!docs/results.md' || dirty=" (uncommitted changes)"
     echo "commit=$(git rev-parse --short HEAD)$dirty"
     echo "gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
     echo "driver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1)"
@@ -79,15 +79,26 @@ fi
 echo "== correctness against HuggingFace"
 build/release/bin/gpu_tests --gtest_filter='ForwardGolden.*:GenerateTest.FreeRunning*' | tee "$out/correctness.txt"
 
+quiet() {
+    local log
+    if ! log=$("$@" 2>&1); then
+        echo "$log" >&2
+        echo "failed: $*" >&2
+        exit 1
+    fi
+    echo "$log" | grep -E "tokens/s" | head -1 || true
+}
+
 bench() {
-    "build/release/bin/engine" bench --model "$model" --num-requests "$requests" --prompt-len "$prompt" \
-        --output-len "$output" --max-batch "$1" --out "$out/engine_b$1_r$2.csv"
+    quiet "build/release/bin/engine" bench --model "$model" --num-requests "$requests" \
+        --prompt-len "$prompt" --output-len "$output" --max-batch "$1" --out "$out/engine_b$1_r$2.csv"
 }
 
 echo "== engine bench"
 for r in $(seq 1 "$repeats"); do
     for b in 1 2 4 8 16; do
-        bench "$b" "$r" | grep -E "tokens/s|GB/s"
+        echo -n "batch $b run $r: "
+        bench "$b" "$r"
     done
 done
 
@@ -95,8 +106,10 @@ if [ "$skip_hf" = 0 ]; then
     echo "== HuggingFace baseline"
     for r in $(seq 1 "$hf_repeats"); do
         for b in 1 4 16; do
-            "$python" scripts/baseline_hf.py --model "$model" --max-batch "$b" --num-requests "$requests" \
-                --prompt-len "$prompt" --output-len "$output" --out "$out/hf_b${b}_r$r.csv" | grep -E "tokens/s"
+            echo -n "hf batch $b run $r: "
+            quiet "$python" scripts/baseline_hf.py --model "$model" --max-batch "$b" \
+                --num-requests "$requests" --prompt-len "$prompt" --output-len "$output" \
+                --out "$out/hf_b${b}_r$r.csv"
         done
     done
 fi
