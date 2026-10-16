@@ -29,7 +29,7 @@ public:
 private:
     PagedRunner* runner_;
     std::vector<int64_t> buckets_;
-    std::map<int64_t, std::pair<cudaGraph_t, cudaGraphExec_t>> graphs_;
+    std::map<int64_t, cudaGraphExec_t> graphs_;
 };
 
 }  // namespace engine

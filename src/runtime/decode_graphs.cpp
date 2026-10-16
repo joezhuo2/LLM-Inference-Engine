@@ -3,10 +3,7 @@
 #include <cuda_runtime.h>
 
 #include <cstddef>
-#include <cstdio>
-#include <cstdlib>
 #include <stdexcept>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -20,8 +17,6 @@ void validate_buckets(const std::vector<int64_t>& buckets, const PagedRunner& ru
         throw std::invalid_argument("[DecodeGraphs] bucket list cannot be empty");
     }
 
-    int prev = 0;
-
     for (size_t i = 0; i < buckets.size(); ++i) {
         int64_t b = buckets[i];
 
@@ -29,7 +24,7 @@ void validate_buckets(const std::vector<int64_t>& buckets, const PagedRunner& ru
             throw std::invalid_argument("[DecodeGraphs] bucket must be positive");
         }
 
-        if (i > 0 && b <= prev) {
+        if (i > 0 && b <= buckets[i - 1]) {
             throw std::invalid_argument("[DecodeGraphs] buckets must be strictly increasing");
         }
 
@@ -37,8 +32,6 @@ void validate_buckets(const std::vector<int64_t>& buckets, const PagedRunner& ru
             throw std::invalid_argument(
                 "[DecodeGraphs] bucket exceeds runner max_seqs or max_tokens");
         }
-
-        prev = b;
     }
 }
 }  // namespace
@@ -72,9 +65,11 @@ DecodeGraphs::DecodeGraphs(PagedRunner& runner, std::vector<int64_t> buckets)
         CUDA_CHECK(cudaStreamEndCapture(runner_->stream(), &graph));
 
         cudaGraphExec_t exec = nullptr;
-        CUDA_CHECK(cudaGraphInstantiate(&exec, graph, nullptr, nullptr, 0));
+        const cudaError_t status = cudaGraphInstantiate(&exec, graph, 0);
+        cudaGraphDestroy(graph);
+        CUDA_CHECK(status);
 
-        graphs_[b] = {graph, exec};
+        graphs_[b] = exec;
     }
 }
 
@@ -83,13 +78,8 @@ DecodeGraphs::~DecodeGraphs() {
         cudaStreamSynchronize(runner_->stream());
     }
 
-    for (auto& [b, pair] : graphs_) {
-        if (pair.second) {
-            cudaGraphExecDestroy(pair.second);
-        }
-        if (pair.first) {
-            cudaGraphDestroy(pair.first);
-        }
+    for (auto& [b, exec] : graphs_) {
+        cudaGraphExecDestroy(exec);
     }
 }
 
@@ -137,13 +127,7 @@ Tensor DecodeGraphs::forward(const PagedBatch& batch) {
 
     runner_->stage(padded);
 
-    auto it = graphs_.find(b);
-    if (it == graphs_.end()) {
-        throw std::runtime_error("[DecodeGraphs] no captured graph for bucket " +
-                                 std::to_string(b));
-    }
-
-    CUDA_CHECK(cudaGraphLaunch(it->second.second, runner_->stream()));
+    CUDA_CHECK(cudaGraphLaunch(graphs_.at(b), runner_->stream()));
 
     return runner_->logits(batch.num_seqs);
 }
