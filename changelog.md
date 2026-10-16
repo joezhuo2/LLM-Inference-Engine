@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/swiglu-vec-impl
+
+- Vectorize `engine::fast::swiglu` (`src/kernels/swiglu_fast.cu`): when `ff % 8 == 0` and both base pointers are 16-byte aligned, each thread loads 8 gate and 8 up values with two 16-byte `uint4` loads, applies the same per-element math and writes 8 outputs with one 16-byte store; every other case (odd `ff`, a misaligned pointer) runs the scalar kernel unchanged. Both kernels share one `__device__` helper, so the rounding steps (silu rounded to BF16 before the multiply, `expf` and a true divide) cannot drift apart and the output stays bit-identical to `naive::swiglu`. The launch uses `blockIdx.y` for the row (the unused `blockDim.y` is gone) and drops the unused `cstdio` and `cstdlib` includes. All 23 `FastSwiglu` and `SwigluShape` tests pass, the verify gate passes. (Part C, vectorization by Claude)
+
 ## kernel/rope-vec-impl
 
 - Fix `engine::fast::rope` (`src/kernels/rope_fast.cu`) so it is bit-identical to `naive::rope`: the first draft computed `inv_freq` on the device with `__powf`, which differs from the host `std::pow` in the last bit for some frequencies, and a one-ulp change in a rounded cosine or sine moves many outputs at large positions (3 of the 9 `FastRope` tests failed with a few mismatched elements each; device `powf` instead of `__powf` still failed). The launcher now computes `inv_freq = 1 / theta^(2i / head_dim)` on the host exactly as the naive launcher does and passes the table to the kernel by value (`head_dim` at most 256). All 9 `FastRope` tests pass. (Part C, fix by Claude)

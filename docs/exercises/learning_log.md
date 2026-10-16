@@ -1193,3 +1193,9 @@
 - **block shape from the problem shape (threads = pairs times head groups)** => 
 - **compute-sanitizer memcheck and leak check (what 0 errors, 0 bytes leaked rules out)** => 
 - **launch-bound versus latency-bound at 1 token (why 6 us is the floor for a tiny kernel)** => 
+
+## Fast SwiGLU (Branch 32)
+- **vectorized global loads (`uint4`, 16 bytes per thread) versus 2-byte loads** => 
+- **alignment requirement for a vector load (why `ff % 8 == 0` and a 16-byte aligned base pointer)** => 
+- **`reinterpret_cast` between `uint4` and `__nv_bfloat16[8]` (type punning in registers)** => 
+- **scalar fallback path (why the odd-ff and shifted-pointer tests exist)** => 

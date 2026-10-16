@@ -1,8 +1,7 @@
 #include <cuda_bf16.h>
 #include <cuda_runtime.h>
 
-#include <cstdio>
-#include <cstdlib>
+#include <cstdint>
 #include <stdexcept>
 
 #include "cuda_check.h"
@@ -10,39 +9,59 @@
 
 namespace engine::fast {
 
+namespace {
+
+constexpr int kThreads = 256;
+constexpr int kVecWidth = 8;
+
+__device__ __forceinline__ __nv_bfloat16 swiglu_value(__nv_bfloat16 gate_bf16,
+                                                      __nv_bfloat16 up_bf16) {
+    float gate_float = __bfloat162float(gate_bf16);
+    float up_float = __bfloat162float(up_bf16);
+
+    float silu_float = gate_float / (1.0f + expf(-gate_float));
+    float silu_rounded_float = __bfloat162float(__float2bfloat16(silu_float));
+
+    return __float2bfloat16(silu_rounded_float * up_float);
+}
+
+}  // namespace
+
 __global__ void swiglu_kernel(__nv_bfloat16* __restrict__ output_data,
                               const __nv_bfloat16* __restrict__ gate_up_data, int64_t num_rows,
                               int64_t hidden_dim) {
     int64_t col_idx = (static_cast<int64_t>(blockIdx.x) * blockDim.x) + threadIdx.x;
-    int64_t row_idx = (static_cast<int64_t>(blockIdx.y) * blockDim.y) + threadIdx.y;
+    int64_t row_idx = blockIdx.y;
 
     if (row_idx < num_rows && col_idx < hidden_dim) {
-        int64_t gate_up_row_offset = row_idx * (2 * hidden_dim);
+        const __nv_bfloat16* gate_ptr = gate_up_data + row_idx * (2 * hidden_dim) + col_idx;
+        output_data[row_idx * hidden_dim + col_idx] = swiglu_value(*gate_ptr, gate_ptr[hidden_dim]);
+    }
+}
 
-        const __nv_bfloat16* gate_ptr = gate_up_data + gate_up_row_offset + col_idx;
-        const __nv_bfloat16* up_ptr = gate_up_data + gate_up_row_offset + col_idx + hidden_dim;
+__global__ void swiglu_vec_kernel(__nv_bfloat16* __restrict__ output_data,
+                                  const __nv_bfloat16* __restrict__ gate_up_data, int64_t num_rows,
+                                  int64_t vecs_per_row) {
+    int64_t vec_idx = (static_cast<int64_t>(blockIdx.x) * blockDim.x) + threadIdx.x;
+    int64_t row_idx = blockIdx.y;
 
-        int64_t output_row_offset = row_idx * hidden_dim;
-        __nv_bfloat16* output_ptr = output_data + output_row_offset + col_idx;
+    if (row_idx < num_rows && vec_idx < vecs_per_row) {
+        const uint4* gate_ptr =
+            reinterpret_cast<const uint4*>(gate_up_data) + row_idx * (2 * vecs_per_row) + vec_idx;
+        uint4 gate_vec = gate_ptr[0];
+        uint4 up_vec = gate_ptr[vecs_per_row];
 
-        __nv_bfloat16 gate_bf16 = *gate_ptr;
-        __nv_bfloat16 up_bf16 = *up_ptr;
+        const __nv_bfloat16* gate_values = reinterpret_cast<const __nv_bfloat16*>(&gate_vec);
+        const __nv_bfloat16* up_values = reinterpret_cast<const __nv_bfloat16*>(&up_vec);
 
-        float gate_float = __bfloat162float(gate_bf16);
-        float up_float = __bfloat162float(up_bf16);
+        uint4 out_vec;
+        __nv_bfloat16* out_values = reinterpret_cast<__nv_bfloat16*>(&out_vec);
+#pragma unroll
+        for (int i = 0; i < kVecWidth; ++i) {
+            out_values[i] = swiglu_value(gate_values[i], up_values[i]);
+        }
 
-        float neg_gate_float = -gate_float;
-        float exp_val = expf(neg_gate_float);
-        float denom_val = 1.0f + exp_val;
-
-        float silu_float = gate_float / denom_val;
-        __nv_bfloat16 silu_bf16 = __float2bfloat16(silu_float);
-        float silu_rounded_float = __bfloat162float(silu_bf16);
-
-        float final_product_float = silu_rounded_float * up_float;
-        __nv_bfloat16 final_output_bf16 = __float2bfloat16(final_product_float);
-
-        *output_ptr = final_output_bf16;
+        reinterpret_cast<uint4*>(output_data)[row_idx * vecs_per_row + vec_idx] = out_vec;
     }
 }
 
@@ -89,14 +108,21 @@ void swiglu(const Tensor& out, const Tensor& gate_up, Stream stream) {
     __nv_bfloat16* output_device_ptr = reinterpret_cast<__nv_bfloat16*>(out.data);
     const __nv_bfloat16* gate_up_device_ptr = reinterpret_cast<const __nv_bfloat16*>(gate_up.data);
 
-    dim3 block_threads(256, 1);
+    bool vectorizable = hidden_dim_ff % kVecWidth == 0 &&
+                        reinterpret_cast<uintptr_t>(output_device_ptr) % sizeof(uint4) == 0 &&
+                        reinterpret_cast<uintptr_t>(gate_up_device_ptr) % sizeof(uint4) == 0;
 
-    dim3 grid_blocks(
-        static_cast<unsigned int>((hidden_dim_ff + block_threads.x - 1) / block_threads.x),
-        static_cast<unsigned int>((batch_size_t + block_threads.y - 1) / block_threads.y));
+    int64_t work_per_row = vectorizable ? hidden_dim_ff / kVecWidth : hidden_dim_ff;
+    dim3 grid_blocks(static_cast<unsigned int>((work_per_row + kThreads - 1) / kThreads),
+                     static_cast<unsigned int>(batch_size_t));
 
-    swiglu_kernel<<<grid_blocks, block_threads, 0, stream>>>(output_device_ptr, gate_up_device_ptr,
-                                                             batch_size_t, hidden_dim_ff);
+    if (vectorizable) {
+        swiglu_vec_kernel<<<grid_blocks, kThreads, 0, stream>>>(
+            output_device_ptr, gate_up_device_ptr, batch_size_t, work_per_row);
+    } else {
+        swiglu_kernel<<<grid_blocks, kThreads, 0, stream>>>(output_device_ptr, gate_up_device_ptr,
+                                                            batch_size_t, hidden_dim_ff);
+    }
 
     KERNEL_CHECK(stream);
 }
