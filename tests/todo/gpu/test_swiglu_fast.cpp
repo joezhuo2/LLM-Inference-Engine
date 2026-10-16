@@ -76,7 +76,8 @@ INSTANTIATE_TEST_SUITE_P(Shapes, SwigluShapeTest,
                                            Shape{7, 300, 0}, Shape{1, 5631, 0}, Shape{1, 5632, 0},
                                            Shape{16, 5632, 0}, Shape{64, 5632, 0}, Shape{1, 1, 1},
                                            Shape{3, 100, 1}, Shape{1, 5632, 1}, Shape{16, 5632, 1},
-                                           Shape{4, 5631, 1}, Shape{4, 5632, 3}),
+                                           Shape{4, 5631, 1}, Shape{4, 5632, 3}, Shape{70000, 8, 0},
+                                           Shape{70000, 3, 0}),
                          [](const auto& info) {
                              return "T" + std::to_string(info.param.tokens) + "_ff" +
                                     std::to_string(info.param.ff) + "_shift" +

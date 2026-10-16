@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## kernel/swiglu-vec-impl
 
 - Vectorize `engine::fast::swiglu` (`src/kernels/swiglu_fast.cu`): when `ff % 8 == 0` and both base pointers are 16-byte aligned, each thread loads 8 gate and 8 up values with two 16-byte `uint4` loads, applies the same per-element math and writes 8 outputs with one 16-byte store; every other case (odd `ff`, a misaligned pointer) runs the scalar kernel unchanged. Both kernels share one `__device__` helper, so the rounding steps (silu rounded to BF16 before the multiply, `expf` and a true divide) cannot drift apart and the output stays bit-identical to `naive::swiglu`. The launch uses `blockIdx.y` for the row (the unused `blockDim.y` is gone) and drops the unused `cstdio` and `cstdlib` includes. All 23 `FastSwiglu` and `SwigluShape` tests pass, the verify gate passes. (Part C, vectorization by Claude)
+- Launch `engine::fast::swiglu` on a flat 1D grid over `tokens * ff` elements (`tokens * ff / 8` vectors on the vector path) instead of putting the row on `blockIdx.y`: `gridDim.y` is capped at 65535, so a batch of more than 65535 rows failed to launch. The kernels now derive the row and column from the flat index. Added `SwigluShapeTest` cases with 70000 rows (`ff` 8 on the vector path, `ff` 3 on the scalar path); all 25 tests pass. (Part C, fix by Claude)
 
 ## kernel/rope-vec-impl
 

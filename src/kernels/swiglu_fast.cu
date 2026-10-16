@@ -28,24 +28,26 @@ __device__ __forceinline__ __nv_bfloat16 swiglu_value(__nv_bfloat16 gate_bf16,
 }  // namespace
 
 __global__ void swiglu_kernel(__nv_bfloat16* __restrict__ output_data,
-                              const __nv_bfloat16* __restrict__ gate_up_data, int64_t num_rows,
+                              const __nv_bfloat16* __restrict__ gate_up_data, int64_t total,
                               int64_t hidden_dim) {
-    int64_t col_idx = (static_cast<int64_t>(blockIdx.x) * blockDim.x) + threadIdx.x;
-    int64_t row_idx = blockIdx.y;
+    int64_t idx = (static_cast<int64_t>(blockIdx.x) * blockDim.x) + threadIdx.x;
 
-    if (row_idx < num_rows && col_idx < hidden_dim) {
+    if (idx < total) {
+        int64_t row_idx = idx / hidden_dim;
+        int64_t col_idx = idx % hidden_dim;
         const __nv_bfloat16* gate_ptr = gate_up_data + row_idx * (2 * hidden_dim) + col_idx;
-        output_data[row_idx * hidden_dim + col_idx] = swiglu_value(*gate_ptr, gate_ptr[hidden_dim]);
+        output_data[idx] = swiglu_value(*gate_ptr, gate_ptr[hidden_dim]);
     }
 }
 
 __global__ void swiglu_vec_kernel(__nv_bfloat16* __restrict__ output_data,
-                                  const __nv_bfloat16* __restrict__ gate_up_data, int64_t num_rows,
+                                  const __nv_bfloat16* __restrict__ gate_up_data, int64_t total,
                                   int64_t vecs_per_row) {
-    int64_t vec_idx = (static_cast<int64_t>(blockIdx.x) * blockDim.x) + threadIdx.x;
-    int64_t row_idx = blockIdx.y;
+    int64_t idx = (static_cast<int64_t>(blockIdx.x) * blockDim.x) + threadIdx.x;
 
-    if (row_idx < num_rows && vec_idx < vecs_per_row) {
+    if (idx < total) {
+        int64_t row_idx = idx / vecs_per_row;
+        int64_t vec_idx = idx % vecs_per_row;
         const uint4* gate_ptr =
             reinterpret_cast<const uint4*>(gate_up_data) + row_idx * (2 * vecs_per_row) + vec_idx;
         uint4 gate_vec = gate_ptr[0];
@@ -61,7 +63,7 @@ __global__ void swiglu_vec_kernel(__nv_bfloat16* __restrict__ output_data,
             out_values[i] = swiglu_value(gate_values[i], up_values[i]);
         }
 
-        reinterpret_cast<uint4*>(output_data)[row_idx * vecs_per_row + vec_idx] = out_vec;
+        reinterpret_cast<uint4*>(output_data)[idx] = out_vec;
     }
 }
 
@@ -113,15 +115,15 @@ void swiglu(const Tensor& out, const Tensor& gate_up, Stream stream) {
                         reinterpret_cast<uintptr_t>(gate_up_device_ptr) % sizeof(uint4) == 0;
 
     int64_t work_per_row = vectorizable ? hidden_dim_ff / kVecWidth : hidden_dim_ff;
-    dim3 grid_blocks(static_cast<unsigned int>((work_per_row + kThreads - 1) / kThreads),
-                     static_cast<unsigned int>(batch_size_t));
+    int64_t total_work = batch_size_t * work_per_row;
+    unsigned int grid_blocks = static_cast<unsigned int>((total_work + kThreads - 1) / kThreads);
 
     if (vectorizable) {
         swiglu_vec_kernel<<<grid_blocks, kThreads, 0, stream>>>(
-            output_device_ptr, gate_up_device_ptr, batch_size_t, work_per_row);
+            output_device_ptr, gate_up_device_ptr, total_work, work_per_row);
     } else {
         swiglu_kernel<<<grid_blocks, kThreads, 0, stream>>>(output_device_ptr, gate_up_device_ptr,
-                                                            batch_size_t, hidden_dim_ff);
+                                                            total_work, work_per_row);
     }
 
     KERNEL_CHECK(stream);

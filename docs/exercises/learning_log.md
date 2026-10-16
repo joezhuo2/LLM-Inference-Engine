@@ -1199,3 +1199,5 @@
 - **alignment requirement for a vector load (why `ff % 8 == 0` and a 16-byte aligned base pointer)** => 
 - **`reinterpret_cast` between `uint4` and `__nv_bfloat16[8]` (type punning in registers)** => 
 - **scalar fallback path (why the odd-ff and shifted-pointer tests exist)** => 
+- **`gridDim.y` and `gridDim.z` limit of 65535 versus `gridDim.x` limit of 2^31 - 1** => 
+- **flattening a 2D (row, column) launch into a 1D index with `/` and `%`** => 
