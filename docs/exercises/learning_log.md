@@ -1193,3 +1193,9 @@
 - **block shape from the problem shape (threads = pairs times head groups)** => 
 - **compute-sanitizer memcheck and leak check (what 0 errors, 0 bytes leaked rules out)** => 
 - **launch-bound versus latency-bound at 1 token (why 6 us is the floor for a tiny kernel)** => 
+
+## Results Page (Branch 30)
+- **near tie (two tokens whose logits differ by a BF16 ulp or two, so either may win)** => 
+- **why exact match on 64 free-running tokens is a stricter test than teacher-forced argmax** => 
+- **generated documentation blocks between markers (keeping numbers from going stale)** => 
+- **reproducibility record (commit, driver, CUDA version, GPU, date next to every number)** => 
