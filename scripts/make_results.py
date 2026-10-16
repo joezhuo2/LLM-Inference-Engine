@@ -129,8 +129,13 @@ def main(argv=None):
     env_path = args.results_dir / "environment.txt"
     env = parse_environment(env_path.read_text()) if env_path.exists() else {}
 
+    profile_path = args.results_dir / "decode_step.md"
+    profile = ("No profile recorded.\n" if not profile_path.exists()
+               else profile_path.read_text().replace("\n## ", "\n### ").replace("## ", "### ", 1))
+
     text = args.doc.read_text()
     text = replace_block(text, "environment", environment_block(env))
+    text = replace_block(text, "profile", profile)
     text = replace_block(text, "scoreboard", scoreboard(rows, correctness, args.peak_gb_s))
     text = replace_block(text, "table", plot.table_markdown(rows) if rows else "No summaries found.\n")
     args.doc.write_text(text)

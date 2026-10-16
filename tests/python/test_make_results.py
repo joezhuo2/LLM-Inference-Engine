@@ -75,14 +75,16 @@ class Blocks(unittest.TestCase):
             (d / "results" / "correctness.txt").write_text(LOG)
             (d / "results" / "engine_b1_summary.csv").write_text(
                 "driver,max_batch,output_throughput,tpot_s_p50,ttft_s_p50,gpu\nbatched,1,100,0.01,0.1,GPU X\n")
+            (d / "results" / "decode_step.md").write_text("## Launch gaps\n\n- decode: 1 steps\n")
             doc = d / "results.md"
             doc.write_text("".join(f"<!-- auto:{n} -->\n<!-- /auto:{n} -->\n"
-                                   for n in ("environment", "scoreboard", "table")))
+                                   for n in ("environment", "profile", "scoreboard", "table")))
             self.assertEqual(mr.main(["--results-dir", str(d / "results"), "--doc", str(doc)]), 0)
             out = doc.read_text()
             self.assertIn("- GPU: GPU X", out)
             self.assertIn("| engine | 1 | 100.0 |", out)
             self.assertIn("| 2 | Batch-1 decode bandwidth", out)
+            self.assertIn("### Launch gaps", out)
 
 
 if __name__ == "__main__":
