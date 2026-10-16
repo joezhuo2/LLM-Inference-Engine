@@ -1,0 +1,59 @@
+Running main() from ./googletest/src/gtest_main.cc
+Note: Google Test filter = ForwardGolden.*:GenerateTest.FreeRunning*
+[==========] Running 2 tests from 2 test suites.
+[----------] Global test environment set-up.
+[----------] 1 test from ForwardGolden
+[ RUN      ] ForwardGolden.TeacherForcedMatchesHuggingFaceOnEveryPrompt
+kv_cache           99 tokens  argmax   99/99    mean |dlogit| 0.0294  worst layer 21 (0.0168)
+capital            31 tokens  argmax   30/31    mean |dlogit| 0.0537  worst layer 21 (0.0264)
+haiku              56 tokens  argmax   56/56    mean |dlogit| 0.0297  worst layer 21 (0.0175)
+fibonacci          95 tokens  argmax   95/95    mean |dlogit| 0.0279  worst layer 21 (0.0156)
+arithmetic         95 tokens  argmax   95/95    mean |dlogit| 0.0284  worst layer 21 (0.0160)
+photosynthesis    109 tokens  argmax  108/109   mean |dlogit| 0.0332  worst layer 21 (0.0199)
+pirate            119 tokens  argmax  118/119   mean |dlogit| 0.0288  worst layer 21 (0.0169)
+list               89 tokens  argmax   89/89    mean |dlogit| 0.0250  worst layer 21 (0.0143)
+translate          61 tokens  argmax   61/61    mean |dlogit| 0.0332  worst layer 21 (0.0193)
+story              94 tokens  argmax   93/94    mean |dlogit| 0.0243  worst layer 21 (0.0139)
+cpp_raii           93 tokens  argmax   93/93    mean |dlogit| 0.0264  worst layer 21 (0.0146)
+bandwidth          98 tokens  argmax   98/98    mean |dlogit| 0.0288  worst layer 21 (0.0163)
+summary            87 tokens  argmax   87/87    mean |dlogit| 0.0273  worst layer 21 (0.0155)
+email             112 tokens  argmax  111/112   mean |dlogit| 0.0285  worst layer 21 (0.0173)
+compare            90 tokens  argmax   90/90    mean |dlogit| 0.0251  worst layer 21 (0.0138)
+recipe             91 tokens  argmax   91/91    mean |dlogit| 0.0290  worst layer 21 (0.0168)
+multi_turn        139 tokens  argmax  138/139   mean |dlogit| 0.0279  worst layer 21 (0.0164)
+definition         86 tokens  argmax   86/86    mean |dlogit| 0.0264  worst layer 21 (0.0150)
+sql                95 tokens  argmax   94/95    mean |dlogit| 0.0252  worst layer 21 (0.0145)
+unicode           103 tokens  argmax  102/103   mean |dlogit| 0.0293  worst layer 21 (0.0163)
+teacher-forced argmax 1834/1842 (99.57%), mean |dlogit| 0.0285
+[       OK ] ForwardGolden.TeacherForcedMatchesHuggingFaceOnEveryPrompt (3120 ms)
+[----------] 1 test from ForwardGolden (3120 ms total)
+
+[----------] 1 test from GenerateTest
+[ RUN      ] GenerateTest.FreeRunningGreedyMatchesHuggingFaceUpToNearTies
+kv_cache         identical (64 tokens)
+capital          identical (9 tokens)
+haiku            identical (29 tokens)
+fibonacci        identical (64 tokens)
+arithmetic       differs at step 47: ours 29945, HF 29947, 2 BF16 ulps apart in HF's logits
+photosynthesis   differs at step 2: ours 1207, HF 671, 0 BF16 ulps apart in HF's logits
+pirate           identical (64 tokens)
+list             identical (64 tokens)
+translate        identical (32 tokens)
+story            differs at step 21: ours 21159, HF 4280, 1 BF16 ulps apart in HF's logits
+cpp_raii         identical (64 tokens)
+bandwidth        differs at step 53: ours 5706, HF 1889, 1 BF16 ulps apart in HF's logits
+summary          identical (57 tokens)
+email            identical (64 tokens)
+compare          identical (64 tokens)
+recipe           identical (64 tokens)
+multi_turn       identical (64 tokens)
+definition       differs at step 28: ours 304, HF 363, 0 BF16 ulps apart in HF's logits
+sql              identical (64 tokens)
+unicode          identical (64 tokens)
+free-running greedy identical to HF on 15 of 20 prompts
+[       OK ] GenerateTest.FreeRunningGreedyMatchesHuggingFaceUpToNearTies (10219 ms)
+[----------] 1 test from GenerateTest (10219 ms total)
+
+[----------] Global test environment tear-down
+[==========] 2 tests from 2 test suites ran. (13339 ms total)
+[  PASSED  ] 2 tests.
