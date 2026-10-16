@@ -1194,6 +1194,17 @@
 - **compute-sanitizer memcheck and leak check (what 0 errors, 0 bytes leaked rules out)** => 
 - **launch-bound versus latency-bound at 1 token (why 6 us is the floor for a tiny kernel)** => 
 
+## Fast SwiGLU (Branch 32)
+- **vectorized global loads (`uint4`, 16 bytes per thread) versus 2-byte loads** => 
+- **alignment requirement for a vector load (why `ff % 8 == 0` and a 16-byte aligned base pointer)** => 
+- **`reinterpret_cast` between `uint4` and `__nv_bfloat16[8]` (type punning in registers)** => 
+- **scalar fallback path (why the odd-ff and shifted-pointer tests exist)** => 
+- **`gridDim.y` and `gridDim.z` limit of 65535 versus `gridDim.x` limit of 2^31 - 1** => 
+- **flattening a 2D (row, column) launch into a 1D index with `/` and `%`** => 
+- **compute-sanitizer memcheck and leak check on a kernel with vector loads (what 0 errors rules out for 16-byte accesses)** => 
+- **memory bound versus latency bound (why 4096 tokens reaches the bandwidth peak and 1 token does not)** => 
+- **achieved DRAM bandwidth (bytes moved divided by kernel time, compared with the measured peak)** => 
+- **occupancy and block count at small sizes (3 blocks on 26 SMs)** => 
 ## Results Page (Branch 30)
 - **near tie (two tokens whose logits differ by a BF16 ulp or two, so either may win)** => 
 - **why exact match on 64 free-running tokens is a stricter test than teacher-forced argmax** => 
