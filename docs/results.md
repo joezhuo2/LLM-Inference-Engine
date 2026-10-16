@@ -10,12 +10,28 @@ scripts/reproduce.sh            # about 10 minutes; --quick for a smoke run
 
 ## Environment
 
+The commit is the code the numbers were measured on; the `results/` files and this page are committed right after it.
+
 <!-- auto:environment -->
+- Date: 2026-10-16T01:42:30Z
+- Commit: d5debf7
+- GPU: NVIDIA GeForce RTX 5060 Laptop GPU
+- Driver: 616.92
+- CUDA: 13.3
+- Build: Release
+- Measured DRAM bandwidth (GB/s): 323.6
+- Workload: 32 requests, 64 prompt tokens, 64 output tokens, greedy, seed 0, median of 3 run(s)
 <!-- /auto:environment -->
 
 ## MVP scoreboard
 
 <!-- auto:scoreboard -->
+| # | Criterion | Target | Measured | |
+|---|---|---|---|---|
+| 1a | Teacher-forced vs HuggingFace | at least 99% argmax, error under 0.05 | 99.57% argmax over 1842 positions, mean abs logit error 0.0285 | met |
+| 1b | Free-running greedy, first 64 tokens | exact on at least 18 of 20 | exact on 15 of 20; the other 5 diverge at a near tie (at most 2 BF16 ulps apart in HF's logits) | not met |
+| 2 | Batch-1 decode bandwidth | at least 60% of 323.6 GB/s | 225 GB/s = 69% | met |
+| 3 | Throughput at 16 concurrent requests | at least 5x batch 1 | 1014 vs 108 tokens/s = 9.4x | met |
 <!-- /auto:scoreboard -->
 
 Criterion 4 (each kernel has a before and after Nsight Compute number) and criterion 5 (reproducible from a clean clone) are tracked by the kernel table and `scripts/reproduce.sh` below rather than computed.
@@ -27,6 +43,16 @@ Criterion 4 (each kernel has a before and after Nsight Compute number) and crite
 ![Median time per output token against concurrency](../results/plots/tpot_vs_batch.png)
 
 <!-- auto:table -->
+| system | max batch | output tok/s | TPOT p50 ms | TTFT p50 ms | weights GB/s | runs |
+|---|---|---|---|---|---|---|
+| engine | 1 | 107.6 | 9.21 | 9199.0 | 224.5 | 3 |
+| engine | 2 | 191.6 | 10.05 | 4602.6 |  | 3 |
+| engine | 4 | 399.4 | 9.57 | 2287.7 |  | 3 |
+| engine | 8 | 665.2 | 11.07 | 1228.5 |  | 3 |
+| engine | 16 | 1014.2 | 13.97 | 635.7 |  | 3 |
+| HF transformers | 1 | 33.7 | 28.80 | 28728.1 | 71.8 | 1 |
+| HF transformers | 4 | 115.6 | 32.73 | 7000.5 |  | 1 |
+| HF transformers | 16 | 427.7 | 36.51 | 1183.1 |  | 1 |
 <!-- /auto:table -->
 
 The engine batches continuously (new requests join a running batch at any step, preemption on a full cache); the HuggingFace baseline uses static batches that run to the longest request, so the curves differ in more than kernel speed. `docs/baselines.md` lists what is and is not comparable.
@@ -42,6 +68,54 @@ Decoding one token reads every weight except all but one row of the embedding ta
 From `scripts/profile.sh nsys` on a batch-1 run (see `docs/profiling.md` for how to read it):
 
 <!-- auto:profile -->
+### Launch gaps per forward step
+
+- decode: 252 steps, 267 kernels, median span 8703 us, median busy 7648 us, median idle 11.2% of the span, 17 gaps over 5 us per step
+- prefill: 4 steps, 267 kernels, median span 12997 us, median busy 11685 us, median idle 8.3% of the span, 50 gaps over 5 us per step
+
+### GPU time per op in a decode step
+
+| op | kernels/step | GPU us/step | % of kernel time |
+| --- | --- | --- | --- |
+| gate_up | 22.0 | 3057.6 | 39.9 |
+| down | 22.0 | 1686.4 | 22.0 |
+| attention | 22.0 | 868.5 | 11.3 |
+| qkv | 22.0 | 737.5 | 9.6 |
+| o_proj | 22.0 | 602.3 | 7.9 |
+| lm_head | 1.0 | 388.2 | 5.1 |
+| rope | 22.0 | 96.7 | 1.3 |
+| norm2 | 22.0 | 71.1 | 0.9 |
+| norm1 | 22.0 | 66.9 | 0.9 |
+| write_kv | 22.0 | 29.4 | 0.4 |
+| swiglu | 22.0 | 22.7 | 0.3 |
+| add1 | 22.0 | 19.3 | 0.3 |
+| add2 | 22.0 | 18.7 | 0.2 |
+| embedding | 1.0 | 3.0 | 0.0 |
+| final_norm | 1.0 | 3.0 | 0.0 |
+
+### Top 12 kernels
+
+| kernel | count | total ms | avg us | % |
+| --- | --- | --- | --- | --- |
+| std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, __nv_bfloat... | 22432 | 1632.6 | 72.8 | 82.4 |
+| engine::paged_attention_decode_kernel(__nv_bfloat16 *, const __nv_bfloat16 *,... | 5632 | 233.6 | 41.5 | 11.8 |
+| engine::naive::<unnamed>::rmsnorm_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 11520 | 36.4 | 3.2 | 1.8 |
+| engine::naive::<unnamed>::rope_kernel(__nv_bfloat16 *, const int *, int, int,... | 5632 | 24.9 | 4.4 | 1.3 |
+| void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_32x... | 176 | 20.6 | 117.2 | 1.0 |
+| engine::naive::<unnamed>::add_kernel(__nv_bfloat16 *, const __nv_bfloat16 *, ... | 11264 | 10.0 | 0.9 | 0.5 |
+| engine::write_kv_kernel(const __nv_bfloat16 *, const int *, __nv_bfloat16 *, ... | 5632 | 7.5 | 1.3 | 0.4 |
+| engine::naive::<unnamed>::swiglu_kernel(__nv_bfloat16 *, const __nv_bfloat16 ... | 5632 | 6.4 | 1.1 | 0.3 |
+| nvjet_sm120_tst_mma_80x64x64_5_80x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 3.4 | 38.4 | 0.2 |
+| nvjet_sm120_tst_mma_112x64x64_4_112x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 3.2 | 36.9 | 0.2 |
+| engine::<unnamed>::sample_kernel(int *, const __nv_bfloat16 *, int, const eng... | 256 | 2.5 | 9.6 | 0.1 |
+| engine::naive::<unnamed>::embedding_kernel(__nv_bfloat16 *, const int *, cons... | 256 | 0.8 | 3.1 | 0.0 |
+
+### Decode bandwidth
+
+- max_batch 1, median TPOT 9.37 ms
+- weights read per token / TPOT: 220.9 GB/s = 68.3% of the 323.6 GB/s peak (target 60%)
+- GPU kernel busy time in a decode step: 7.65 ms (82% of TPOT)
+- weights / kernel busy time: 270.5 GB/s (what the kernels would reach with no launch gaps)
 <!-- /auto:profile -->
 
 ## Kernels
