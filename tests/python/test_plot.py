@@ -39,6 +39,7 @@ class Plot(unittest.TestCase):
     def test_system_names(self):
         self.assertEqual(plot.system_of("one_at_a_time"), "engine")
         self.assertEqual(plot.system_of("batched"), "engine")
+        self.assertEqual(plot.system_of("batched_graphs"), "engine + graphs")
         self.assertEqual(plot.system_of("hf_sequential"), "HF transformers")
         self.assertEqual(plot.system_of("llamacpp_bench"), "llama.cpp")
 

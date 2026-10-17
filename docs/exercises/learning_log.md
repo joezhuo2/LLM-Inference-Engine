@@ -1216,3 +1216,11 @@
 - **`cudaDeviceGetAttribute` and `cudaDevAttrMultiProcessorCount` (querying the SM count at run time)** => 
 - **work per thread versus number of blocks (8 dependent `expf` chains in few threads versus 1 in many)** => 
 - **comparing ncu timings across sessions (why laptop clocks make absolute times drift and ratios within a run stay valid)** => 
+
+## Serving with Decode CUDA Graphs (Branch 34)
+- **mixing eager prefill steps with graph replays on one stream (shared buffers, ordering)** => 
+- **choosing buckets (powers of two up to max batch) and the cost of padded rows** => 
+- **why the executable graph is enough for replay (destroying the `cudaGraph_t` after instantiate)** => 
+- **opaque CUDA handle types in plain C++ headers (`CUgraphExec_st` forward declaration)** => 
+- **compute-sanitizer memcheck on captured graphs** => 
+- **nsys `--cuda-graph-trace=node` (seeing kernels inside a graph launch)** => 
