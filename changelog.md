@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/paged-attention-v2-stub
+
+- Move the harness of `tests/gpu/test_paged_attention.cpp` (`Layout`, `Batch`, `make_batch`, `make_prefill`, `run_kernel`, `reference`, `expect_close`, `check_kernel`, `outside_value_scale`) into `tests/support/paged_attention_harness.h`, parameterized by the kernel function, so that a second kernel version can run the same suite. The 40 v1 tests are unchanged and still pass. (Part A)
+- Add a blank learning-log entry (`docs/exercises/learning_log.md`, section `Paged Attention v2 (Branch 35)`). (Part A)
+
 ## runtime/cuda-graphs-impl
 
 - Implement `engine::DecodeGraphs` (`src/runtime/decode_graphs.cpp`, Joe's Part C): the constructor validates the buckets, then for each one stages an all-padding batch, runs `run_staged` once eagerly (cuBLAS picks its algorithm and loads its kernels on the first call, neither can be captured), captures a second `run_staged` on the runner's stream with `cudaStreamCaptureModeGlobal` and instantiates it; `forward` pads the batch to its bucket, stages it outside the graph and launches the bucket's executable graph; `covers` and `bucket_for` pick the smallest bucket that fits; the destructor synchronizes the stream before destroying the graphs. (Part C)

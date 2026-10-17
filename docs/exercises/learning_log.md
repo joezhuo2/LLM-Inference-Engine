@@ -1224,3 +1224,6 @@
 - **opaque CUDA handle types in plain C++ headers (`CUgraphExec_st` forward declaration)** => 
 - **compute-sanitizer memcheck on captured graphs** => 
 - **nsys `--cuda-graph-trace=node` (seeing kernels inside a graph launch)** => 
+
+## Paged Attention v2 (Branch 35)
+- **sharing one test suite between two implementations of the same function (a function-pointer test harness)** => 
