@@ -12,6 +12,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Fix `engine bench --graphs` aborting with `cudaErrorStreamCaptureUnsupported` in release: the bench built the `PagedRunner` on the legacy default stream (`nullptr`), which cannot be captured, and the tests never saw it because they use a created stream. A `--graphs` run now creates a non-blocking stream for the runner; runs without `--graphs` keep the default stream. (Part A)
 - Add the `engine + graphs` series to `scripts/plot.py` (driver `batched_graphs`) with a test of the system name. (Part A)
 - Add blank learning-log entries (`docs/exercises/learning_log.md`, section `Serving with Decode CUDA Graphs (Branch 34)`). (Part A)
+- Add the graphs series to the results tooling: `scripts/reproduce.sh` runs `engine bench --graphs` at max batch 1, 4 and 16 (`results/engine_graphs_b*_r*.csv`) and profiles a graph-replayed decode step into `results/decode_step_graphs.md`; `scripts/make_results.py` fills an optional `auto:profile_graphs` block from that file and scores criteria 2 and 3 on the better of the `engine` and `engine + graphs` series (`best` now takes a tuple of systems). Two new tests in `tests/python/test_make_results.py` (the better series wins, the graphs block is filled when its markers exist). (Part A)
 
 ## kernel/swiglu-small-batch
 

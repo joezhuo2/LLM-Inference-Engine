@@ -44,13 +44,20 @@ def parse_environment(text):
     return env
 
 
-def best(rows, system, batch, key):
-    values = [r[key] for r in rows if r["system"] == system and r["max_batch"] == batch
-              and r[key] == r[key]]
-    if not values:
-        return None
-    values.sort()
-    return values[len(values) // 2]
+ENGINE = ("engine", "engine + graphs")
+
+
+def median_of(rows, system, batch, key):
+    values = sorted(r[key] for r in rows if r["system"] == system and r["max_batch"] == batch
+                    and r[key] == r[key])
+    return values[len(values) // 2] if values else None
+
+
+def best(rows, systems, batch, key):
+    if isinstance(systems, str):
+        systems = (systems,)
+    medians = [m for m in (median_of(rows, s, batch, key) for s in systems) if m is not None]
+    return max(medians) if medians else None
 
 
 def verdict(ok):
@@ -79,7 +86,7 @@ def scoreboard(rows, correctness, peak=PEAK_GB_S):
     else:
         lines.append("| 1b | Free-running greedy | | not recorded | |")
 
-    bw = best(rows, "engine", 1, "bandwidth_gb_s")
+    bw = best(rows, ENGINE, 1, "bandwidth_gb_s")
     if bw is not None:
         ok = 100.0 * bw / peak >= TARGET_BANDWIDTH_PCT
         lines.append(f"| 2 | Batch-1 decode bandwidth | at least {TARGET_BANDWIDTH_PCT:g}% of {peak:g} GB/s | "
@@ -87,8 +94,8 @@ def scoreboard(rows, correctness, peak=PEAK_GB_S):
     else:
         lines.append("| 2 | Batch-1 decode bandwidth | | not recorded | |")
 
-    t1 = best(rows, "engine", 1, "output_throughput")
-    t16 = best(rows, "engine", 16, "output_throughput")
+    t1 = best(rows, ENGINE, 1, "output_throughput")
+    t16 = best(rows, ENGINE, 16, "output_throughput")
     if t1 and t16:
         ok = t16 / t1 >= TARGET_SPEEDUP
         lines.append(f"| 3 | Throughput at 16 concurrent requests | at least {TARGET_SPEEDUP:g}x batch 1 | "
@@ -133,9 +140,15 @@ def main(argv=None):
     profile = ("No profile recorded.\n" if not profile_path.exists()
                else profile_path.read_text().replace("\n## ", "\n### ").replace("## ", "### ", 1))
 
+    graphs_path = args.results_dir / "decode_step_graphs.md"
+    graphs_profile = ("No profile recorded.\n" if not graphs_path.exists()
+                      else graphs_path.read_text().replace("\n## ", "\n### ").replace("## ", "### ", 1))
+
     text = args.doc.read_text()
     text = replace_block(text, "environment", environment_block(env))
     text = replace_block(text, "profile", profile)
+    if "<!-- auto:profile_graphs -->" in text:
+        text = replace_block(text, "profile_graphs", graphs_profile)
     text = replace_block(text, "scoreboard", scoreboard(rows, correctness, args.peak_gb_s))
     text = replace_block(text, "table", plot.table_markdown(rows) if rows else "No summaries found.\n")
     args.doc.write_text(text)
