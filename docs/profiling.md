@@ -38,6 +38,30 @@ scripts/profile.sh ncu attn paged_attention --num-requests 1 --prompt-len 32 --o
 - The bench's TPOT includes the host side of a step (scheduling, batch building, the token read-back). The report's busy time does not. Compare like with like.
 - Only the capture window is profiled; changing `--warmup` or the prompt lengths changes what the window contains.
 
+## Decode CUDA Graphs (Branch 34)
+
+Measured on the RTX 5060 Laptop GPU, release build, `scripts/profile.sh nsys` on a batch-1 run of 4 requests with 64 prompt and 64 output tokens, with and without `--graphs`, plus `engine bench` on 32 requests of the same shape (median of 3 runs, plugged in).
+
+| decode step at batch 1 | eager | graph replay |
+| --- | --- | --- |
+| kernels per step | 267 | 267 |
+| median span | 9046 us | 7913 us |
+| median busy | 7938 us | 7844 us |
+| median idle | 11.3% | 0.9% |
+| gaps over 5 us per step | 17 | 0 |
+| median TPOT | 9.49 ms | 8.51 ms |
+| weights bandwidth | 218 GB/s (67%) | 243 GB/s (75%) |
+
+| `engine bench`, output tokens/s | eager | graphs | gain |
+| --- | --- | --- | --- |
+| max batch 1 | 105.1 | 116.8 | +11% |
+| max batch 4 | 391.3 | 418.3 | +7% |
+| max batch 16 | 997.5 | 1057.4 | +6% |
+
+Reading it. The kernels are the same and take the same time (busy 7.9 ms against 7.8 ms), so the whole gain is the host side: the 267 launches of an eager step leave the GPU idle for 11% of the step, and one `cudaGraphLaunch` removes it. The gain shrinks with the batch because a larger batch makes the kernels longer, so the CPU launches stay ahead of the GPU and the gaps were already smaller. Prefill steps are not graphed and keep their gaps (about 9% idle).
+
+The profile needs `--cuda-graph-trace=node` (already in `profile.sh`) so the kernels inside a graph launch show up in the timeline; without it the whole replay is one box. Compute-sanitizer memcheck on all 8 `DecodeGraphsTest` tests reports 0 errors and 0 bytes leaked. Reproduce with `scripts/profile.sh nsys decode_eager --max-batch 1 --num-requests 4 --prompt-len 64 --output-len 64` and the same with `--graphs`.
+
 ## Fused add_rmsnorm (Branch 30)
 
 Measured with Nsight Compute on the RTX 5060 Laptop GPU (release build, hidden 2048 as in TinyLlama, all values constant so only the timing matters, default clock control, first three launches after a warm-up of three each). `naive` is `naive::add` plus `naive::rmsnorm` (two kernels), `fast` is `fast::add_rmsnorm` (one kernel).
