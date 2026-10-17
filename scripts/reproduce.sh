@@ -10,9 +10,11 @@ Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/environment.txt   commit, GPU, driver, CUDA, date, workload
   results/correctness.txt   teacher-forced and free-running comparison with HuggingFace
   results/engine_b*_r*.csv  engine bench at max batch 1 2 4 8 16, REPEATS runs each
+  results/engine_graphs_b*_r*.csv   the same with --graphs (CUDA Graph decode), max batch 1 4 16
   results/hf_b*_r*.csv      HuggingFace baseline at max batch 1 4 16, HF_REPEATS runs each
   results/llamacpp_b1_summary.csv   only when LLAMA_BENCH and LLAMA_GGUF are set
   results/decode_step.md    nsys launch gaps, GPU time per op and bandwidth of a batch-1 decode step
+  results/decode_step_graphs.md   the same decode step replayed from a CUDA Graph
   results/plots/            the plots and summary_table.md
 and then refreshes the measured blocks of docs/results.md.
 
@@ -102,6 +104,20 @@ for r in $(seq 1 "$repeats"); do
     done
 done
 
+graph_bench() {
+    quiet "build/release/bin/engine" bench --model "$model" --num-requests "$requests" \
+        --prompt-len "$prompt" --output-len "$output" --max-batch "$1" --graphs \
+        --out "$out/engine_graphs_b$1_r$2.csv"
+}
+
+echo "== engine bench with CUDA Graphs"
+for r in $(seq 1 "$repeats"); do
+    for b in 1 4 16; do
+        echo -n "graphs batch $b run $r: "
+        graph_bench "$b" "$r"
+    done
+done
+
 if [ "$skip_hf" = 0 ]; then
     echo "== HuggingFace baseline"
     for r in $(seq 1 "$hf_repeats"); do
@@ -125,6 +141,9 @@ if command -v nsys > /dev/null; then
     MODEL=$model PEAK_GB_S=$peak scripts/profile.sh nsys decode_step --max-batch 1 \
         --num-requests 4 --prompt-len "$prompt" --output-len "$output" > /dev/null
     cp results/profile/decode_step.md "$out/decode_step.md"
+    MODEL=$model PEAK_GB_S=$peak scripts/profile.sh nsys decode_step_graphs --max-batch 1 --graphs \
+        --num-requests 4 --prompt-len "$prompt" --output-len "$output" > /dev/null
+    cp results/profile/decode_step_graphs.md "$out/decode_step_graphs.md"
 fi
 
 echo "== plots and results page"

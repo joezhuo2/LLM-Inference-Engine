@@ -67,6 +67,29 @@ class Blocks(unittest.TestCase):
         with self.assertRaises(ValueError):
             mr.replace_block("nothing", "x", "y")
 
+    def test_scoreboard_takes_the_better_engine_series(self):
+        rows = [
+            {"system": "engine", "max_batch": 1, "output_throughput": 100.0, "bandwidth_gb_s": 200.0},
+            {"system": "engine + graphs", "max_batch": 1, "output_throughput": 116.0, "bandwidth_gb_s": 240.0},
+            {"system": "engine", "max_batch": 16, "output_throughput": 1000.0, "bandwidth_gb_s": float("nan")},
+            {"system": "engine + graphs", "max_batch": 16, "output_throughput": 1050.0, "bandwidth_gb_s": float("nan")},
+        ]
+        board = mr.scoreboard(rows, {})
+        self.assertIn("240 GB/s", board)
+        self.assertIn("1050 vs 116 tokens/s", board)
+        self.assertEqual(mr.best(rows, "engine", 1, "output_throughput"), 100.0)
+
+    def test_graphs_profile_block_is_filled_when_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "results").mkdir()
+            (d / "results" / "decode_step_graphs.md").write_text("## Launch gaps\n\n- decode: graphs\n")
+            doc = d / "results.md"
+            doc.write_text("".join(f"<!-- auto:{n} -->\n<!-- /auto:{n} -->\n"
+                                   for n in ("environment", "profile", "profile_graphs", "scoreboard", "table")))
+            self.assertEqual(mr.main(["--results-dir", str(d / "results"), "--doc", str(doc)]), 0)
+            self.assertIn("- decode: graphs", doc.read_text())
+
     def test_main_updates_a_document(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
