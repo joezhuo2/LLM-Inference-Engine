@@ -7,16 +7,16 @@ import sys
 from pathlib import Path
 
 DECODE_WEIGHT_BYTES = 2_069_024_768
-SYSTEMS = ["engine", "HF transformers", "llama.cpp"]
+SYSTEMS = ["engine", "engine + graphs", "HF transformers", "llama.cpp"]
 
 THEMES = {
     "light": {
         "surface": "#fcfcfb", "text": "#0b0b0b", "muted": "#52514e", "grid": "#e4e3df",
-        "series": {"engine": "#2a78d6", "HF transformers": "#eb6834", "llama.cpp": "#1baf7a"},
+        "series": {"engine": "#2a78d6", "engine + graphs": "#7b4fd1", "HF transformers": "#eb6834", "llama.cpp": "#1baf7a"},
     },
     "dark": {
         "surface": "#1a1a19", "text": "#ffffff", "muted": "#c3c2b7", "grid": "#33332f",
-        "series": {"engine": "#3987e5", "HF transformers": "#d95926", "llama.cpp": "#199e70"},
+        "series": {"engine": "#3987e5", "engine + graphs": "#9a78e6", "HF transformers": "#d95926", "llama.cpp": "#199e70"},
     },
 }
 
@@ -29,6 +29,8 @@ def system_of(driver: str) -> str:
         return "HF transformers"
     if driver.startswith("llamacpp"):
         return "llama.cpp"
+    if driver == "batched_graphs":
+        return "engine + graphs"
     return "engine"
 
 

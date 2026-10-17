@@ -12,7 +12,7 @@
 namespace engine {
 
 std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
-                                DeviceBuffer& next, ServeStats* stats) {
+                                DeviceBuffer& next, ServeStats* stats, DecodeGraphs* graphs) {
     const NvtxRange step_range("step");
     Step step;
     ranged("schedule", [&] { step = scheduler.schedule(); });
@@ -30,8 +30,9 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
     ranged("build_batch",
            [&] { batch = build_paged_batch(step, scheduler, int(runner.max_blocks())); });
     Tensor logits;
-    ranged(step.prefill ? "forward_prefill" : "forward_decode",
-           [&] { logits = runner.forward(batch); });
+    ranged(step.prefill ? "forward_prefill" : "forward_decode", [&] {
+        logits = graphs && graphs->covers(batch) ? graphs->forward(batch) : runner.forward(batch);
+    });
     const std::vector<SampleRow> rows = sample_rows(step, scheduler);
     const Tensor ids(next.data(), DType::I32, {batch.num_seqs});
     ranged("sample", [&] { sampler(ids, logits, rows, runner.stream()); });
@@ -46,14 +47,16 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
     return scheduler.take_finished();
 }
 
-std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler) {
+std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
+                           DecodeGraphs* graphs) {
     if (sampler.max_rows() < runner.max_seqs())
         throw std::invalid_argument("serve: the sampler must take at least max_seqs rows");
 
     DeviceBuffer next(size_t(runner.max_seqs()) * sizeof(int32_t));
     std::vector<Request> done;
     while (scheduler.num_waiting() + scheduler.num_running() > 0) {
-        std::vector<Request> finished = serve_step(scheduler, runner, sampler, next);
+        std::vector<Request> finished =
+            serve_step(scheduler, runner, sampler, next, nullptr, graphs);
         done.insert(done.end(), std::make_move_iterator(finished.begin()),
                     std::make_move_iterator(finished.end()));
     }

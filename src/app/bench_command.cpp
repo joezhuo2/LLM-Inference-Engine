@@ -25,6 +25,7 @@
 #include <cuda_runtime.h>
 
 #include "engine/runtime/bench.h"
+#include "engine/runtime/decode_graphs.h"
 #include "engine/runtime/kv_cache.h"
 #include "engine/runtime/model_runner.h"
 #include "engine/runtime/paged_runner.h"
@@ -44,6 +45,7 @@ struct Options {
     std::string output_len = "256";
     double request_rate = 0.0;
     int max_batch = 0;
+    bool graphs = false;
     int warmup = 3;
     uint64_t seed = 0;
     float temperature = 0.0f;
@@ -59,6 +61,13 @@ struct Options {
 std::string format_range(LengthRange r) {
     return r.min == r.max ? std::to_string(r.min)
                           : std::to_string(r.min) + ":" + std::to_string(r.max);
+}
+
+std::vector<int64_t> graph_buckets(int max_batch) {
+    std::vector<int64_t> buckets;
+    for (int64_t b = 1; b < max_batch; b *= 2) buckets.push_back(b);
+    buckets.push_back(max_batch);
+    return buckets;
 }
 
 std::string utc_now() {
@@ -116,6 +125,8 @@ void run(const Options& o) {
     const DeviceWeights w = load_weights(o.model, nullptr);
     const int32_t eos_id = o.stop_at_eos ? w.config.eos_id : -1;
     const bool batched = o.max_batch > 0;
+    if (o.graphs && !batched)
+        throw std::invalid_argument("--graphs needs --max-batch of at least 1");
 
     int num_blocks = 0;
     ServeStats stats;
@@ -123,6 +134,7 @@ void run(const Options& o) {
     std::optional<KvCache> cache;
     std::optional<PagedRunner> paged_runner;
     std::optional<Sampler> sampler;
+    std::optional<DecodeGraphs> graphs;
     SchedulerConfig sc;
     if (batched) {
         num_blocks = kv_cache_blocks(w.config, kKvBlockSize, device_free_bytes());
@@ -137,6 +149,7 @@ void run(const Options& o) {
         paged_runner.emplace(w.config, w.weights, *cache, max_prefill, o.max_batch, context,
                              nullptr);
         sampler.emplace(o.max_batch);
+        if (o.graphs) graphs.emplace(*paged_runner, graph_buckets(o.max_batch));
     } else {
         one_runner.emplace(w.config, w.weights, wc.prompt_len.max, context, nullptr);
     }
@@ -146,7 +159,8 @@ void run(const Options& o) {
             return ServeStats{};
         }
         Scheduler scheduler(sc);
-        return run_batched(scheduler, *paged_runner, *sampler, load, start);
+        return run_batched(scheduler, *paged_runner, *sampler, load, start,
+                           graphs ? &*graphs : nullptr);
     };
     if (o.warmup > 0) {
         WorkloadConfig warm = wc;
@@ -185,7 +199,9 @@ void run(const Options& o) {
         {"build", ENGINE_BUILD_TYPE},
         {"model", o.model.filename().empty() ? o.model.parent_path().filename().string()
                                              : o.model.filename().string()},
-        {"driver", batched ? "batched" : "one_at_a_time"},
+        {"driver", !batched   ? "one_at_a_time"
+                   : o.graphs ? "batched_graphs"
+                              : "batched"},
         {"max_batch", std::to_string(batched ? o.max_batch : 1)},
         {"num_requests", std::to_string(o.num_requests)},
         {"prompt_len", format_range(wc.prompt_len)},
@@ -249,6 +265,9 @@ void add_bench_command(CLI::App& app) {
                     "0 runs requests one at a time on the contiguous runner")
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
+    cmd->add_flag("--graphs", opts->graphs,
+                  "Replay CUDA Graphs of the decode step (one per power-of-two batch size up to "
+                  "--max-batch); needs --max-batch");
     cmd->add_option("--num-requests", opts->num_requests, "Requests to time")
         ->capture_default_str()
         ->check(CLI::PositiveNumber);
