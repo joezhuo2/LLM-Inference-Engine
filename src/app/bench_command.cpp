@@ -63,6 +63,18 @@ std::string format_range(LengthRange r) {
                           : std::to_string(r.min) + ":" + std::to_string(r.max);
 }
 
+struct OwnedStream {
+    cudaStream_t stream = nullptr;
+
+    OwnedStream() {
+        if (cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking) != cudaSuccess)
+            throw std::runtime_error("cannot create a CUDA stream");
+    }
+    ~OwnedStream() { cudaStreamDestroy(stream); }
+    OwnedStream(const OwnedStream&) = delete;
+    OwnedStream& operator=(const OwnedStream&) = delete;
+};
+
 std::vector<int64_t> graph_buckets(int max_batch) {
     std::vector<int64_t> buckets;
     for (int64_t b = 1; b < max_batch; b *= 2) buckets.push_back(b);
@@ -131,6 +143,7 @@ void run(const Options& o) {
     int num_blocks = 0;
     ServeStats stats;
     std::optional<ModelRunner> one_runner;
+    std::optional<OwnedStream> owned_stream;
     std::optional<KvCache> cache;
     std::optional<PagedRunner> paged_runner;
     std::optional<Sampler> sampler;
@@ -145,9 +158,10 @@ void run(const Options& o) {
               .max_prefill_tokens = int(max_prefill),
               .max_context = int(context),
               .eos_id = eos_id};
+        if (o.graphs) owned_stream.emplace();
         cache.emplace(w.config, num_blocks, kKvBlockSize);
         paged_runner.emplace(w.config, w.weights, *cache, max_prefill, o.max_batch, context,
-                             nullptr);
+                             o.graphs ? owned_stream->stream : nullptr);
         sampler.emplace(o.max_batch);
         if (o.graphs) graphs.emplace(*paged_runner, graph_buckets(o.max_batch));
     } else {
