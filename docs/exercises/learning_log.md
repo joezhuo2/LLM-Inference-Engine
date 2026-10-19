@@ -1224,3 +1224,6 @@
 - **opaque CUDA handle types in plain C++ headers (`CUgraphExec_st` forward declaration)** => 
 - **compute-sanitizer memcheck on captured graphs** => 
 - **nsys `--cuda-graph-trace=node` (seeing kernels inside a graph launch)** => 
+
+## Wiring Fast Kernels (Branch 36)
+- **exact ties in BF16 logits and why greedy decoding is not batch-invariant across cuBLAS batch sizes** => 

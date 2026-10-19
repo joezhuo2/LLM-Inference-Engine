@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## runtime/wire-fast-kernels
+
+- Make `tests/gpu/test_serve.cpp` tolerate exact ties: `SixteenConcurrentGreedyRequestsMatchSixteenSoloRunsUpToTies` (renamed) accepts a difference between a concurrent and a solo run only at the first diverging token and only when the contiguous `ModelRunner` oracle, teacher-forced on the prompt plus the shared prefix, puts both tokens within 2 BF16 ulps of its best logit; the sampled test requires at least 10 of 16 requests identical instead of a shortest common prefix of 16 tokens (12 of 16 were identical before this branch too, so the old threshold only held by where the first flip happened to fall). The batch-16 and batch-1 GEMMs round differently, so a token where two logits tie in BF16 can go either way, and any change of numerics moves which request hits one. (Part A)
+- Add a blank learning-log entry (`docs/exercises/learning_log.md`, section `Wiring Fast Kernels (Branch 36)`). (Part A)
+
 ## runtime/cuda-graphs-impl
 
 - Implement `engine::DecodeGraphs` (`src/runtime/decode_graphs.cpp`, Joe's Part C): the constructor validates the buckets, then for each one stages an all-padding batch, runs `run_staged` once eagerly (cuBLAS picks its algorithm and loads its kernels on the first call, neither can be captured), captures a second `run_staged` on the runner's stream with `cudaStreamCaptureModeGlobal` and instantiates it; `forward` pads the batch to its bucket, stages it outside the graph and launches the bucket's executable graph; `covers` and `bucket_for` pick the smallest bucket that fits; the destructor synchronizes the stream before destroying the graphs. (Part C)
