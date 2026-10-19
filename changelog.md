@@ -4,8 +4,10 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## kernel/paged-attention-v2-stub
 
-- Move the harness of `tests/gpu/test_paged_attention.cpp` (`Layout`, `Batch`, `make_batch`, `make_prefill`, `run_kernel`, `reference`, `expect_close`, `check_kernel`, `outside_value_scale`) into `tests/support/paged_attention_harness.h`, parameterized by the kernel function, so that a second kernel version can run the same suite. The 40 v1 tests are unchanged and still pass. (Part A)
-- Add a blank learning-log entry (`docs/exercises/learning_log.md`, section `Paged Attention v2 (Branch 35)`). (Part A)
+- Add the `engine::paged_attention_decode_v2` Part C stub (`include/engine/kernels/paged_attention_v2.h`, `src/kernels/paged_attention_v2.cu`) with its TODO(JOE) spec: the same arguments and semantics as `paged_attention_decode`, written as a single-pass online softmax so the shared memory does not grow with the context; the BF16 score rounding of v1 is kept, there is no cap on the table capacity, and the speed comparison with v1 (ncu at 1 and 16 rows, contexts 128, 512 and 2,048) is recorded in `docs/profiling.md` rather than tested. The launcher aborts with `unimplemented: paged_attention_decode_v2`. (Part C stub)
+- Add 18 todo_joe tests in `tests/todo/gpu/test_paged_attention_v2.cpp`: every test of `tests/gpu/test_paged_attention.cpp` against v2, plus contexts of 4,096 and 8,192 tokens, contexts around 256, 512 and 1,024, a running maximum that rises on every token, falls on every token or has one spike, and a batch of an 8,192-token row, short rows and a padding row whose rows each equal the same row computed alone. They were validated against a throwaway online-softmax implementation (all pass) and deliberate mutants of it (see the notes in `docs/claude/`). `todo_gpu_tests` is back as a target. (Part C stub)
+- Move the harness of `tests/gpu/test_paged_attention.cpp` (`Layout`, `Batch`, `make_batch`, `make_prefill`, `run_kernel`, `reference`, `expect_close`, `check_kernel`, `outside_value_scale`) into `tests/support/paged_attention_harness.h`, parameterized by the kernel function, so v1 and v2 run the same suite. The 40 v1 tests are unchanged and still pass. (Part A)
+- Add blank learning-log entries (`docs/exercises/learning_log.md`, section `Paged Attention v2 (Branch 35)`). (Part A)
 
 ## runtime/cuda-graphs-impl
 

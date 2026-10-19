@@ -74,6 +74,14 @@ if(ENGINE_CUDA)
   target_compile_definitions(gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
   target_link_libraries(gpu_tests PRIVATE engine_runtime GTest::gtest_main)
   gtest_discover_tests(gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS gpu)
+
+  add_executable(todo_gpu_tests
+    todo/gpu/test_paged_attention_v2.cpp
+  )
+  target_include_directories(todo_gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
+  target_compile_definitions(todo_gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
+  target_link_libraries(todo_gpu_tests PRIVATE engine_runtime GTest::gtest_main)
+  gtest_discover_tests(todo_gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
 endif()
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
