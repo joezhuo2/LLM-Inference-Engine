@@ -11,7 +11,8 @@ from pathlib import Path
 
 OPS = (
     "embedding", "norm1", "qkv", "rope", "write_kv", "attention", "o_proj", "add1",
-    "norm2", "gate_up", "swiglu", "down", "add2", "final_norm", "lm_head",
+    "norm2", "add1_norm2", "gate_up", "swiglu", "down", "add2", "add2_norm1", "final_norm",
+    "lm_head",
 )
 STEP_KINDS = ("forward_decode", "forward_prefill")
 LAUNCH_GAP_US = 5.0

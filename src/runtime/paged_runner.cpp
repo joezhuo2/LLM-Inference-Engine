@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "engine/kernels/add.h"
+#include "engine/kernels/add_rmsnorm.h"
 #include "engine/kernels/embedding.h"
 #include "engine/kernels/paged_attention.h"
 #include "engine/kernels/rmsnorm.h"
@@ -144,10 +145,10 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
         std::snprintf(name, sizeof name, "layer %d", i);
         const NvtxRange layer_range(name);
         const LayerWeights& w = weights_.layers[size_t(i)];
-        ranged("norm1", [&] { naive::rmsnorm(norm, x, w.ln1, eps, stream_); });
+        if (i == 0) ranged("norm1", [&] { naive::rmsnorm(norm, x, w.ln1, eps, stream_); });
         ranged("qkv", [&] { gemm(blas_, qkv, norm, w.wqkv); });
         ranged("rope", [&] {
-            naive::rope(qkv, positions, c.heads, c.kv_heads, float(c.rope_theta), stream_);
+            fast::rope(qkv, positions, c.heads, c.kv_heads, float(c.rope_theta), stream_);
         });
         ranged("write_kv", [&] { write_kv(cache_->k(i), cache_->v(i), qkv, slots, stream_); });
         ranged("attention", [&] {
@@ -155,12 +156,17 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
                                    context_lens, stream_);
         });
         ranged("o_proj", [&] { gemm(blas_, proj, attn, w.wo); });
-        ranged("add1", [&] { naive::add(x, x, proj, stream_); });
-        ranged("norm2", [&] { naive::rmsnorm(norm, x, w.ln2, eps, stream_); });
+        ranged("add1_norm2", [&] { fast::add_rmsnorm(x, norm, x, proj, w.ln2, eps, stream_); });
         ranged("gate_up", [&] { gemm(blas_, gate_up, norm, w.wgu); });
-        ranged("swiglu", [&] { naive::swiglu(act, gate_up, stream_); });
+        ranged("swiglu", [&] { fast::swiglu(act, gate_up, stream_); });
         ranged("down", [&] { gemm(blas_, proj, act, w.wdown); });
-        ranged("add2", [&] { naive::add(x, x, proj, stream_); });
+        if (i + 1 < c.layers) {
+            const Tensor& next_ln1 = weights_.layers[size_t(i) + 1].ln1;
+            ranged("add2_norm1",
+                   [&] { fast::add_rmsnorm(x, norm, x, proj, next_ln1, eps, stream_); });
+        } else {
+            ranged("add2", [&] { naive::add(x, x, proj, stream_); });
+        }
     }
 
     Tensor last(x_.data(), DType::BF16, {s, c.hidden});

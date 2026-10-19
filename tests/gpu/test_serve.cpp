@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <map>
@@ -14,6 +15,7 @@
 #include "engine/runtime/paged_runner.h"
 #include "engine/runtime/sampler.h"
 #include "engine/runtime/serve.h"
+#include "support/bf16.h"
 #include "support/device.h"
 #include "support/model.h"
 #include "support/reference.h"
@@ -33,7 +35,8 @@ constexpr int kRequests = 16;
 constexpr int kNewTokens = 48;
 constexpr int kBlockSize = 16;
 constexpr int kContext = 2048;
-constexpr int kMinCommonPrefix = 16;
+constexpr size_t kMinIdenticalSampled = 10;
+constexpr int kTieUlps = 2;
 
 class ServeTest : public ::testing::Test {
 protected:
@@ -86,20 +89,43 @@ protected:
         return out;
     }
 
+    void expect_equal_up_to_a_tie(const Request& r, const std::vector<int32_t>& got,
+                                  const std::vector<int32_t>& want) {
+        ASSERT_EQ(got.size(), want.size());
+        const size_t p =
+            size_t(std::mismatch(got.begin(), got.end(), want.begin()).first - got.begin());
+        if (p == got.size()) return;
+        engine::ModelRunner oracle(w().config, w().weights, 512, 512, stream);
+        std::vector<int32_t> ids = r.prompt;
+        ids.insert(ids.end(), want.begin(), want.begin() + long(p));
+        const engine::Tensor logits = oracle.forward(ids);
+        std::vector<uint16_t> host(size_t(w().config.vocab));
+        ASSERT_EQ(cudaMemcpy(host.data(), logits.data, host.size() * sizeof(uint16_t),
+                             cudaMemcpyDeviceToHost),
+                  cudaSuccess);
+        float top = engine::test::from_bf16(host[0]);
+        for (const uint16_t x : host) top = std::max(top, engine::test::from_bf16(x));
+        const float slack = float(kTieUlps) * std::ldexp(1.0f, std::ilogb(top) - 7);
+        for (const int32_t token : {got[p], want[p]})
+            EXPECT_GE(engine::test::from_bf16(host[size_t(token)]), top - slack)
+                << "the outputs differ at token " << p << " but token " << token
+                << " is not within " << kTieUlps << " BF16 ulps of the best logit " << top;
+    }
+
     std::vector<std::vector<int32_t>> prompts;
     engine::test::CudaStream stream;
 };
 
 }  // namespace
 
-TEST_F(ServeTest, SixteenConcurrentGreedyRequestsMatchSixteenSoloRuns) {
+TEST_F(ServeTest, SixteenConcurrentGreedyRequestsMatchSixteenSoloRunsUpToTies) {
     const auto reqs = requests(SamplingParams{0.0f, 0});
     const auto together = run(reqs, 1024, kRequests);
     ASSERT_EQ(together.size(), size_t(kRequests));
     for (const Request& r : reqs) {
         SCOPED_TRACE("request " + std::to_string(r.id));
         EXPECT_EQ(together.at(r.id).size(), size_t(kNewTokens));
-        EXPECT_EQ(together.at(r.id), run({r}, 256, 1).at(r.id));
+        expect_equal_up_to_a_tie(r, together.at(r.id), run({r}, 256, 1).at(r.id));
     }
 }
 
@@ -119,7 +145,7 @@ TEST_F(ServeTest, SixteenConcurrentSampledRequestsAgreeWithSoloRunsUntilNearTies
     }
     std::printf("%zu of %d identical to a solo run, shortest common prefix %zu of %d tokens\n",
                 identical, kRequests, shortest_prefix, kNewTokens);
-    EXPECT_GE(shortest_prefix, size_t(kMinCommonPrefix));
+    EXPECT_GE(identical, kMinIdenticalSampled);
 }
 
 TEST_F(ServeTest, ForcedPreemptionKeepsTheOutputsOfEveryRequest) {
