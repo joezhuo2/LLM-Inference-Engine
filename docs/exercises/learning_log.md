@@ -1227,3 +1227,9 @@
 
 ## Wiring Fast Kernels (Branch 36)
 - **exact ties in BF16 logits and why greedy decoding is not batch-invariant across cuBLAS batch sizes** => 
+## Paged Attention v2 (Branch 35)
+- **rescaling a partial result when the running maximum changes (`exp(m_old - m_new)`)** => 
+- **combining partial softmax results (max, sum, weighted sum) from several threads in a fixed order for determinism** => 
+- **why per-row shared memory that grows with the context caps the context length** => 
+- **attention cost grows linearly with the context while the weight GEMVs do not (where attention overtakes them)** => 
+- **sharing one test suite between two implementations of the same function (a function-pointer test harness)** => 
