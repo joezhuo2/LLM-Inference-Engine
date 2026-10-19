@@ -62,6 +62,28 @@ Reading it. The kernels are the same and take the same time (busy 7.9 ms against
 
 The profile needs `--cuda-graph-trace=node` (already in `profile.sh`) so the kernels inside a graph launch show up in the timeline; without it the whole replay is one box. Compute-sanitizer memcheck on all 8 `DecodeGraphsTest` tests reports 0 errors and 0 bytes leaked. Reproduce with `scripts/profile.sh nsys decode_eager --max-batch 1 --num-requests 4 --prompt-len 64 --output-len 64` and the same with `--graphs`.
 
+## Fast kernels in the forward pass (Branch 36)
+
+`PagedRunner` now runs `fast::rope`, `fast::swiglu` and `fast::add_rmsnorm`: each residual add is fused with the norm after it (`add1_norm2` in every layer, `add2_norm1` into the next layer's input norm), which takes a decode step from 267 to 224 kernels. Measured with `scripts/reproduce.sh` on the RTX 5060 Laptop GPU, release build, a batch-1 run of 4 requests with 64 prompt and 64 output tokens for the profile and 32 requests of the same shape (median of 3) for the throughput, before (commit 6b170a5) and after (commit e07c022).
+
+| decode step at batch 1 | naive kernels, eager | fast kernels, eager | naive kernels, graphs | fast kernels, graphs |
+| --- | --- | --- | --- | --- |
+| kernels per step | 267 | 224 | 267 | 224 |
+| median busy | 7725 us | 7635 us | 7854 us | 7587 us |
+| median idle | 11.4% | 10.0% | 0.9% | 0.7% |
+| gaps over 5 us per step | 18 | 15 | 0 | 0 |
+| median TPOT | 9.53 ms | 9.30 ms | 8.49 ms | 8.37 ms |
+
+| `engine bench`, output tokens/s | naive eager | fast eager | naive graphs | fast graphs |
+| --- | --- | --- | --- | --- |
+| max batch 1 | 107.3 | 107.6 | 117.0 | 117.9 |
+| max batch 4 | 389.9 | 396.0 | 422.4 | 426.5 |
+| max batch 16 | 992.7 | 1011.9 | 1059.6 | 1074.8 |
+
+Reading it. The gain is small, 1% to 2% of throughput, which is about the run-to-run spread of the laptop's clocks, so treat the direction as real and the size as approximate. Per op in the eager profile, `rope` is the clear win (96.7 us to 56.1 us per step) and `swiglu` is unchanged (it was already 23 us); the fused add and norm is not faster than the pair it replaces in place: `add1_norm2` takes 4.8 us per launch (106.3 us over 22 launches) against 4.1 us for the naive `add1` plus `norm2` (19.3 us and 71.6 us over 22 launches), and `add2_norm1` takes 4.5 us per launch against 4.1. The Nsight Compute comparison in "Fused add_rmsnorm" measured 11.4 to 11.8 us for the fused kernel against 11.9 to 14.5 us for the naive pair at 1 to 64 rows, from isolated launches; inside the decode step the naive pair takes 4.1 us per layer, so the fusion saves launches (43 per step, worth about 0.2 ms of eager TPOT) and DRAM bytes but not kernel time. Each of these kernels is under 2% of a step; the step is 62% gate/up and down GEMVs, so the fast kernels cannot move the total by more than a few percent whatever they do.
+
+The logits move by rounding because `fast::add_rmsnorm` sums the squares in another order than `naive::rmsnorm`: the paged HF teacher-forced check reads 1166 of 1171 (99.57%, mean absolute logit error 0.0247) against 99.66% and 0.025 before. In the 16-request greedy test one request now leaves its solo run at token 27, where two logits tie exactly in BF16 (15.625 each, the third best is 14.56), so the serve tests accept a divergence at an exact or two-ulp tie and nowhere else.
+
 ## Fused add_rmsnorm (Branch 30)
 
 Measured with Nsight Compute on the RTX 5060 Laptop GPU (release build, hidden 2048 as in TinyLlama, all values constant so only the timing matters, default clock control, first three launches after a warm-up of three each). `naive` is `naive::add` plus `naive::rmsnorm` (two kernels), `fast` is `fast::add_rmsnorm` (one kernel).
