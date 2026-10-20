@@ -1239,3 +1239,5 @@
 - **coalesced global memory loads (consecutive lanes reading consecutive addresses)** => 
 - **warp shuffle reductions (`__shfl_xor_sync`) and why the lanes of a group must all reach the call** => 
 - **splitting a reduction over idle threads into slices and combining the partials in a fixed order** => 
+- **splitting the context of one query across several blocks and merging the partial softmax results (flash-decoding)** => 
+- **latency-bound versus bandwidth-bound kernels (low DRAM throughput and low warps active)** => 

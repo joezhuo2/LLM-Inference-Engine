@@ -142,3 +142,31 @@ The 1-token row above showed the vector kernel no faster than naive, so `fast::s
 | 512 | 78.6 | 37.8 | 37.8 | 0.48 | vector |
 
 Reading it. At decode sizes the work is a few thousand elements, so what matters is how many blocks and threads share it: 22 blocks of scalar threads each do one `expf` chain, while the vector kernel puts 8 chains in each of 704 threads (3 blocks). Below 5 tokens the scalar kernel is 14% to 16% faster than the vector kernel in the same run and 14% to 16% faster than naive; the two kernels are equal around 5 to 8 tokens and the vector kernel wins from there. An earlier session also measured the first draft (the same scalar kernel on a 2D grid) at 2.14 us against 2.82 us for naive at 1 token, so about 0.75x of naive is the floor this size can reach. In a decode step that is about 0.5 us per layer, roughly 11 us of a 9 ms step: real but small, and the fused GEMM epilogue (not in this branch) is where the kernel would disappear altogether.
+
+## Paged attention v2 (Branch 37)
+
+`paged_attention_decode_v2` against v1 (`paged_attention_decode`), RTX 5060 Laptop GPU, release build, 32 heads, 4 KV heads, head_dim 64, block size 16, every row at the full context. Time per launch in us from a loop of 50 launches after 3 warm-up launches (`scripts/paged_attention_bench.cu`); v1 cannot run a context of 8,192 because its scores live in shared memory (shown as n/a).
+
+| rows | context | v1 (us) | v2 (us) | v1 / v2 |
+| --- | --- | --- | --- | --- |
+| 1 | 128 | 41.7 | 30.1 | 1.4 |
+| 1 | 512 | 154.1 | 43.1 | 3.6 |
+| 1 | 2,048 | 600.2 | 165.0 | 3.6 |
+| 1 | 8,192 | n/a | 582.7 | n/a |
+| 16 | 128 | 180.3 | 56.6 | 3.2 |
+| 16 | 512 | 564.5 | 193.1 | 2.9 |
+| 16 | 2,048 | 2,453.6 | 775.9 | 3.2 |
+| 16 | 8,192 | n/a | 4,383.6 | n/a |
+
+Nsight Compute on one launch each (`--launch-skip 3 --launch-count 1`, so clocks are locked and caches are cold, which makes the times longer than the loop above):
+
+| rows x context | kernel | duration (us) | grid | SM throughput | DRAM throughput | warps active |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 x 2,048 | v1 | 1,310 | 32 | 3.8% | 0.5% | 6.6% |
+| 1 x 2,048 | v2 | 383 | 32 | 15.5% | 1.6% | 20.6% |
+| 16 x 512 | v1 | 1,220 | 512 | 16.1% | 2.0% | 45.2% |
+| 16 x 512 | v2 | 383 | 512 | 57.3% | 6.4% | 84.6% |
+
+Reading it. Both kernels are far from memory bound (DRAM at 6% or less), so the time is latency and occupancy, not bandwidth. v2 wins by about 3x because 8 lanes share each key (the key loads coalesce), all threads accumulate the values instead of `head_dim` of 256, and the shared memory no longer grows with the context. With one row there are only 32 blocks (one per head) on a GPU with far more SMs, which is why 1 row at context 8,192 still takes 583 us; splitting the context across blocks would be the next step and needs a scratch buffer the current signature does not have. Two things that did not help: replacing the shared-memory tree reductions with warp shuffles made the kernel 15 to 20% slower, so it was dropped. In the decode profile at 32 prompt and 32 output tokens (`scripts/profile.sh nsys b1`, 224 kernels per step) attention is 485 us of 7.3 ms (6.5%) because the context is at most 64 and the GEMVs take 85%; v2 is not wired into `PagedRunner`, so that profile is unchanged by this branch.
+
+To reproduce: `nvcc -std=c++20 -arch=sm_120 -Iinclude -Isrc scripts/paged_attention_bench.cu build/release/src/libengine_kernels.a build/release/src/libengine_core.a -o /tmp/pa_bench && /tmp/pa_bench`, and for one launch under Nsight Compute `ncu --kernel-name "regex:^paged_attention_decode_v2_kernel" --launch-skip 3 --launch-count 1 /tmp/pa_bench 1 2048` (rows and context as arguments, kernel `paged_attention_decode_kernel` for v1).
