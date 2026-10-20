@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## runtime/wire-attention-v2
+
+- Let the sampled half of `ForcedPreemptionKeepsTheOutputsOfEveryRequest` (`tests/gpu/test_serve.cpp`) accept 14 of 16 requests identical between the roomy and the tight cache, and keep the greedy half exact: after a preemption a request is recomputed in a batch of a different size, the GEMMs round differently, and a sampled token whose perturbed logits are within a BF16 ulp can flip. Found while wiring `paged_attention_decode_v2`: request 15 left its roomy run at token 44 of 48, the other 15 requests and the whole greedy run stayed identical. (Part A)
+
 ## kernel/paged-attention-v2-impl
 
 - Let 8 lanes share each key's dot product in `paged_attention_decode_v2` (`src/kernels/paged_attention_v2.cu`): the lanes read consecutive elements of one key row instead of one thread walking a whole row, so the key loads coalesce, and the partial sums are combined with `__shfl_xor_sync`. The score rounding to BF16 is unchanged. Measured with a standalone timing loop (50 launches, RTX 5060, 32 heads, 4 KV heads, head_dim 64, block 16): 1 row at context 128 / 2,048 / 8,192 went from 29.1 / 352.2 / 1,385.5 us to 21.1 / 249.2 / 912.7 us, and 16 rows at context 128 / 2,048 from 134.0 / 1,946.6 us to 76.4 / 1,080.6 us. A first attempt that replaced the two shared-memory tree reductions with warp shuffles was 15 to 20% slower (29.1 to 35 to 40 us at 1 row, context 128) and was dropped. (Part C, optimization drafted by Claude)
