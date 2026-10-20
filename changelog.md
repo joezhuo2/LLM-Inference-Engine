@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## runtime/wire-attention-v2
 
 - Let the sampled half of `ForcedPreemptionKeepsTheOutputsOfEveryRequest` (`tests/gpu/test_serve.cpp`) accept 14 of 16 requests identical between the roomy and the tight cache, and keep the greedy half exact: after a preemption a request is recomputed in a batch of a different size, the GEMMs round differently, and a sampled token whose perturbed logits are within a BF16 ulp can flip. Found while wiring `paged_attention_decode_v2`: request 15 left its roomy run at token 44 of 48, the other 15 requests and the whole greedy run stayed identical. (Part A)
+- Run `PagedRunner` on `paged_attention_decode_v2` (`src/runtime/paged_runner.cpp`): the forward pass no longer caps the context at the shared-memory limit of v1 and uses the online softmax kernel with the coalesced key loads. The BF16 score rounding is the same as v1, so the 16-request greedy serve test, the CUDA Graph test and the forced-preemption test pass unchanged. (Part B)
 
 ## kernel/paged-attention-v2-impl
 
