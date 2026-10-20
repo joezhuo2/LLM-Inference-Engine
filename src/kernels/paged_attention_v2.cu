@@ -33,7 +33,8 @@ __global__ void paged_attention_decode_v2_kernel(
     extern __shared__ char dynamic_shared_memory[];
     float* shared_reduction = reinterpret_cast<float*>(dynamic_shared_memory);
     float* shared_probs = shared_reduction + blockDim.x;
-    float* shared_acc = shared_probs + blockDim.x;
+    float* shared_partial = shared_probs + blockDim.x;
+    float* shared_acc = shared_partial + blockDim.x;
     nv_bfloat16* shared_query = reinterpret_cast<nv_bfloat16*>(shared_acc + head_dim);
 
     for (int dim_idx = threadIdx.x; dim_idx < head_dim; dim_idx += blockDim.x) {
@@ -131,16 +132,33 @@ __global__ void paged_attention_decode_v2_kernel(
 
         running_sum += shared_reduction[0];
 
-        for (int d = threadIdx.x; d < head_dim; d += blockDim.x) {
-            float acc = shared_acc[d] * exp_old;
+        int slice_count = max(1, static_cast<int>(blockDim.x) / head_dim);
+        int active_threads = slice_count * head_dim;
 
-            for (int t = 0; t < chunk_tokens; ++t) {
+        if (static_cast<int>(threadIdx.x) < active_threads) {
+            int d = threadIdx.x % head_dim;
+            int slice = threadIdx.x / head_dim;
+            float partial = 0.0f;
+
+            for (int t = slice; t < chunk_tokens; t += slice_count) {
                 int token = chunk_start + t;
                 size_t v_cache_offset = static_cast<size_t>(seq_block_table[token / block_size]) *
                                             kv_heads * block_size * head_dim +
                                         static_cast<size_t>(kv_head_idx) * block_size * head_dim +
                                         static_cast<size_t>(token % block_size) * head_dim;
-                acc += shared_probs[t] * static_cast<float>(v_cache[v_cache_offset + d]);
+                partial += shared_probs[t] * static_cast<float>(v_cache[v_cache_offset + d]);
+            }
+
+            shared_partial[threadIdx.x] = partial;
+        }
+
+        __syncthreads();
+
+        for (int d = threadIdx.x; d < head_dim; d += blockDim.x) {
+            float acc = shared_acc[d] * exp_old;
+
+            for (int slice = 0; slice < slice_count; ++slice) {
+                acc += shared_partial[slice * head_dim + d];
             }
 
             shared_acc[d] = acc;
@@ -263,7 +281,7 @@ void paged_attention_decode_v2(const Tensor& out, const Tensor& qkv, const Tenso
     dim3 grid_dim(heads, batch_size);
     dim3 block_dim(thread_block_size);
 
-    size_t shared_mem_bytes = (static_cast<size_t>(2 * thread_block_size) * sizeof(float)) +
+    size_t shared_mem_bytes = (static_cast<size_t>(3 * thread_block_size) * sizeof(float)) +
                               (static_cast<size_t>(head_dim) * sizeof(float)) +
                               (static_cast<size_t>(head_dim) * sizeof(nv_bfloat16));
 

@@ -1238,3 +1238,4 @@
 ## Paged Attention v2 Optimization (Branch 37)
 - **coalesced global memory loads (consecutive lanes reading consecutive addresses)** => 
 - **warp shuffle reductions (`__shfl_xor_sync`) and why the lanes of a group must all reach the call** => 
+- **splitting a reduction over idle threads into slices and combining the partials in a fixed order** => 
