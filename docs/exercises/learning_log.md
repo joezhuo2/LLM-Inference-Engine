@@ -1258,3 +1258,4 @@
 - **merging two partial softmax results (m, l, acc) with the exp(m_a - M) rescale** => 
 - **a caller-owned scratch buffer for a multi-kernel operation and why its contents must not matter** => 
 - **why empty partitions need a neutral element in a merge (-inf maximum, 0 sum)** => 
+- **parameterized tests over two axes (`testing::Combine`)** => 
