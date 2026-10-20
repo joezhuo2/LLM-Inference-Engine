@@ -1234,3 +1234,7 @@
 - **why per-row shared memory that grows with the context caps the context length** => 
 - **attention cost grows linearly with the context while the weight GEMVs do not (where attention overtakes them)** => 
 - **sharing one test suite between two implementations of the same function (a function-pointer test harness)** => 
+
+## Paged Attention v2 Optimization (Branch 37)
+- **coalesced global memory loads (consecutive lanes reading consecutive addresses)** => 
+- **warp shuffle reductions (`__shfl_xor_sync`) and why the lanes of a group must all reach the call** => 
