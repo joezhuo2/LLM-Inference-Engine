@@ -193,6 +193,7 @@
 - **memory hierarchy** => 
 - **memory coalescing** => 
 - **host vs device memory** => 
+- **`cudaMalloc()`** => allocates free high speed memory from the GPU
 - **`cudaMalloc()`** => allocates free high speed GPU memory
 - **`cudaMallocManaged()`** => 
 - **managed memory page migration** => 
@@ -247,7 +248,7 @@
 - **`reductions`** => turning large collections of values into single value
 - **`naive atomics`** => unoptimized code that has many threads call the same function concurrently
 - **`shared memory`** => user managed on-chip SRAM that is shared across threads in the same block
-- **`warp shuffle`** => allows threads within the same warp to share data with each other without reading or writing
+- **`warp shuffle`** => allows threads within the same warp to exchange register values with each other using shared memory
 - **`warp reduction`** => computing result using all threads of a warp using warp shuffle
 - **warp / block / grid reduction hierarchy** => 
 - **atomic contention (serialization on one address)** => 
