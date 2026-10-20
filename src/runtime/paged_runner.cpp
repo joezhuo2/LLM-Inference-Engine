@@ -10,7 +10,7 @@
 #include "engine/kernels/add.h"
 #include "engine/kernels/add_rmsnorm.h"
 #include "engine/kernels/embedding.h"
-#include "engine/kernels/paged_attention.h"
+#include "engine/kernels/paged_attention_v2.h"
 #include "engine/kernels/rmsnorm.h"
 #include "engine/kernels/rope.h"
 #include "engine/kernels/swiglu.h"
@@ -152,8 +152,8 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
         });
         ranged("write_kv", [&] { write_kv(cache_->k(i), cache_->v(i), qkv, slots, stream_); });
         ranged("attention", [&] {
-            paged_attention_decode(attn, qkv, cache_->k(i), cache_->v(i), block_tables,
-                                   context_lens, stream_);
+            paged_attention_decode_v2(attn, qkv, cache_->k(i), cache_->v(i), block_tables,
+                                      context_lens, stream_);
         });
         ranged("o_proj", [&] { gemm(blas_, proj, attn, w.wo); });
         ranged("add1_norm2", [&] { fast::add_rmsnorm(x, norm, x, proj, w.ln2, eps, stream_); });

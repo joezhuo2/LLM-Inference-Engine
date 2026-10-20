@@ -1241,3 +1241,6 @@
 - **splitting a reduction over idle threads into slices and combining the partials in a fixed order** => 
 - **splitting the context of one query across several blocks and merging the partial softmax results (flash-decoding)** => 
 - **latency-bound versus bandwidth-bound kernels (low DRAM throughput and low warps active)** => 
+
+## Wiring Paged Attention v2 (Branch 38)
+- **why a sampled output can flip when only the batch composition changes (rounding of a different GEMM shape)** => 
