@@ -1244,3 +1244,9 @@
 
 ## Wiring Paged Attention v2 (Branch 38)
 - **why a sampled output can flip when only the batch composition changes (rounding of a different GEMM shape)** => 
+
+## Add RMSNorm Tuning (Branch 39)
+- **128-bit vector loads and stores (`uint4`) and the alignment they need** => 
+- **keeping a row in registers between two passes instead of re-reading it from memory** => 
+- **butterfly reduction with `__shfl_xor_sync` so every lane ends with the total** => 
+- **why changing the summation order changes the last bits of a float sum** => 

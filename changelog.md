@@ -2,11 +2,21 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/add-rmsnorm-tune
+
+- Tune `fast::add_rmsnorm` (`src/kernels/add_rmsnorm.cu`): when the hidden size is a multiple of 8, at most 8192 and all five pointers are 16-byte aligned, a new kernel `add_rmsnorm_vec_kernel` loads x and the residual with one 128-bit load per 8 elements, keeps the rounded sums in registers instead of reading them back from global memory, reduces the sum of squares with warp shuffles that leave the total in every thread (one `__syncthreads` instead of two and no shared `rstd`), and stores sum and norm with 128-bit stores. Every other shape (odd or large hidden sizes, misaligned pointers) keeps the old scalar kernel. The reduction order changes (8 consecutive elements per thread, then the warps in a fixed order), so results move by the same kind of rounding as before; the 25 existing tests plus 3 new vector-path shapes pass, memcheck reports 0 errors. Nsight Compute at hidden 2048, 1 / 16 / 64 tokens: 10.9 / 10.7 / 11.1 us to 4.0 / 4.3 / 5.3 us. (Part C, optimization drafted by Claude)
+- Add `scripts/add_rmsnorm_bench.cu`, the throwaway program of the Nsight Compute comparison as a script. (Part A)
+- Record the add_rmsnorm tuning (`docs/profiling.md`, "Tuning add_rmsnorm (Branch 39)"; `results/`, `results/plots/` and `docs/results.md` refreshed by `scripts/reproduce.sh --skip-tests --skip-hf` on commit 1aa5e88, so the HuggingFace rows are still from the previous run): the two fused ops go from 177 to 73 us per decode step, batch-1 TPOT with graphs from 7.96 to 7.83 ms (82% of the peak), bench throughput with graphs at max batch 16 from 1386.2 to 1405.8 tokens/s, within the run-to-run spread. (Part A)
+
 ## runtime/wire-attention-v2
 
 - Let the sampled half of `ForcedPreemptionKeepsTheOutputsOfEveryRequest` (`tests/gpu/test_serve.cpp`) accept 14 of 16 requests identical between the roomy and the tight cache, and keep the greedy half exact: after a preemption a request is recomputed in a batch of a different size, the GEMMs round differently, and a sampled token whose perturbed logits are within a BF16 ulp can flip. Found while wiring `paged_attention_decode_v2`: request 15 left its roomy run at token 44 of 48, the other 15 requests and the whole greedy run stayed identical. (Part A)
 - Run `PagedRunner` on `paged_attention_decode_v2` (`src/runtime/paged_runner.cpp`): the forward pass no longer caps the context at the shared-memory limit of v1 and uses the online softmax kernel with the coalesced key loads. The BF16 score rounding is the same as v1, so the 16-request greedy serve test, the CUDA Graph test and the forced-preemption test pass unchanged. (Part B)
 - Record the measurements of paged attention v2 in the forward pass (`docs/profiling.md`, "Paged attention v2 in the forward pass (Branch 38)"; `results/`, `results/plots/` and `docs/results.md` refreshed by `scripts/reproduce.sh --skip-tests` on commit 79c1f91): attention goes from 883 to 272 us per decode step (11.5% to 3.8% of kernel time), batch-1 TPOT with graphs from 8.43 to 7.96 ms (260 GB/s, 80% of the peak), and `engine bench` throughput at max batch 1, 4 and 16 from 117.9, 426.5 and 1074.8 to 124.4, 468.4 and 1386.2 tokens/s with graphs. The scoreboard reads 80% for criterion 2 and 11.1x for criterion 3. The eager profile of this run shows 24% idle time and the HuggingFace rows are slower than before, so the host was slower; the Kernels table now marks attention v2 as used by the forward pass. (Part A)
+
+## runtime/wire-attention-v2
+
+- Let the sampled half of `ForcedPreemptionKeepsTheOutputsOfEveryRequest` (`tests/gpu/test_serve.cpp`) accept 14 of 16 requests identical between the roomy and the tight cache, and keep the greedy half exact: after a preemption a request is recomputed in a batch of a different size, the GEMMs round differently, and a sampled token whose perturbed logits are within a BF16 ulp can flip. Found while wiring `paged_attention_decode_v2`: request 15 left its roomy run at token 44 of 48, the other 15 requests and the whole greedy run stayed identical. (Part A)
 
 ## kernel/paged-attention-v2-impl
 
