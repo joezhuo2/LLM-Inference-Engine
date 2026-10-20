@@ -1253,3 +1253,8 @@
 
 ## Split-Context Attention (Branch 40)
 - **a test harness that takes any callable (`std::function`) instead of a function pointer** => 
+- **flash decoding: splitting one row's context across thread blocks and merging the partial softmax results** => 
+- **why one block per (row, head) leaves the GPU idle at batch 1 (grid size against the SM count)** => 
+- **merging two partial softmax results (m, l, acc) with the exp(m_a - M) rescale** => 
+- **a caller-owned scratch buffer for a multi-kernel operation and why its contents must not matter** => 
+- **why empty partitions need a neutral element in a merge (-inf maximum, 0 sum)** => 

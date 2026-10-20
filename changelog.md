@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## kernel/paged-attention-split-stub
 
 - Let the shared paged attention test harness (`tests/support/paged_attention_harness.h`) take any callable as the kernel under test (`std::function` instead of a plain function pointer), so a kernel with extra arguments, like a scratch buffer, can be tested by wrapping it in a lambda; the v1 and v2 suites pass a function pointer as before. (Part A)
+- Add the `paged_attention_decode_split` Part C stub (`include/engine/kernels/paged_attention_split.h`, `src/kernels/paged_attention_split.cu`) with its TODO(JOE) spec: v2 plus a caller-owned F32 scratch tensor `[B, heads, num_splits, head_dim + 2]` (the split count is its third dimension) so the context of one row is cut into contiguous ranges that different blocks process, with a deterministic merge of (max, sum, weighted sum) partials in split order. The spec fixes the numerics of v2, the empty-split rule, the batch-invariance requirement, the scratch argument errors, what to compare against and the Nsight Compute table to record. The stub aborts. (Part C stub)
 
 ## kernel/add-rmsnorm-tune
 

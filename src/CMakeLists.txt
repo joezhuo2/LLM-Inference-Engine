@@ -38,6 +38,7 @@ if(ENGINE_CUDA)
     kernels/gemm.cpp
     kernels/paged_attention.cu
     kernels/paged_attention_v2.cu
+    kernels/paged_attention_split.cu
     kernels/rmsnorm.cu
     kernels/rope.cu
     kernels/rope_fast.cu
