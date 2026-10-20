@@ -54,25 +54,44 @@ __global__ void paged_attention_decode_v2_kernel(
         int token_idx = chunk_start + threadIdx.x;
         float local_score = -1e20f;
 
-        if (token_idx < context_len) {
-            int physical_block_idx = seq_block_table[token_idx / block_size];
-            int block_offset = token_idx % block_size;
+        int lane_in_group = threadIdx.x % 8;
+        int group_idx = threadIdx.x / 8;
+        int group_count = blockDim.x / 8;
+        int chunk_tokens = min(chunk_size, context_len - chunk_start);
 
-            size_t k_cache_offset =
-                static_cast<size_t>(physical_block_idx) * kv_heads * block_size * head_dim +
-                static_cast<size_t>(kv_head_idx) * block_size * head_dim +
-                static_cast<size_t>(block_offset) * head_dim;
-
+        for (int slot = group_idx; slot < chunk_size; slot += group_count) {
+            int slot_token = chunk_start + slot;
             float dot = 0.0f;
-            for (int d = 0; d < head_dim; ++d) {
-                dot += static_cast<float>(shared_query[d]) *
-                       static_cast<float>(k_cache[k_cache_offset + d]);
+
+            if (slot < chunk_tokens) {
+                size_t k_cache_offset =
+                    static_cast<size_t>(seq_block_table[slot_token / block_size]) * kv_heads *
+                        block_size * head_dim +
+                    static_cast<size_t>(kv_head_idx) * block_size * head_dim +
+                    static_cast<size_t>(slot_token % block_size) * head_dim;
+
+                for (int d = lane_in_group; d < head_dim; d += 8) {
+                    dot += static_cast<float>(shared_query[d]) *
+                           static_cast<float>(k_cache[k_cache_offset + d]);
+                }
             }
 
-            nv_bfloat16 dot_bf16 = __float2bfloat16(dot);
-            nv_bfloat16 scaled_bf16 =
-                __float2bfloat16(static_cast<float>(dot_bf16) * attention_scale);
-            local_score = static_cast<float>(scaled_bf16);
+            dot += __shfl_xor_sync(0xffffffffu, dot, 4);
+            dot += __shfl_xor_sync(0xffffffffu, dot, 2);
+            dot += __shfl_xor_sync(0xffffffffu, dot, 1);
+
+            if (lane_in_group == 0) {
+                nv_bfloat16 dot_bf16 = __float2bfloat16(dot);
+                nv_bfloat16 scaled_bf16 =
+                    __float2bfloat16(static_cast<float>(dot_bf16) * attention_scale);
+                shared_probs[slot] = static_cast<float>(scaled_bf16);
+            }
+        }
+
+        __syncthreads();
+
+        if (token_idx < context_len) {
+            local_score = shared_probs[threadIdx.x];
         }
 
         shared_reduction[threadIdx.x] = local_score;
@@ -112,18 +131,15 @@ __global__ void paged_attention_decode_v2_kernel(
 
         running_sum += shared_reduction[0];
 
-        int chunk_tokens = min(chunk_size, context_len - chunk_start);
-
         for (int d = threadIdx.x; d < head_dim; d += blockDim.x) {
             float acc = shared_acc[d] * exp_old;
 
             for (int t = 0; t < chunk_tokens; ++t) {
                 int token = chunk_start + t;
-                size_t v_cache_offset =
-                    static_cast<size_t>(seq_block_table[token / block_size]) * kv_heads *
-                        block_size * head_dim +
-                    static_cast<size_t>(kv_head_idx) * block_size * head_dim +
-                    static_cast<size_t>(token % block_size) * head_dim;
+                size_t v_cache_offset = static_cast<size_t>(seq_block_table[token / block_size]) *
+                                            kv_heads * block_size * head_dim +
+                                        static_cast<size_t>(kv_head_idx) * block_size * head_dim +
+                                        static_cast<size_t>(token % block_size) * head_dim;
                 acc += shared_probs[t] * static_cast<float>(v_cache[v_cache_offset + d]);
             }
 

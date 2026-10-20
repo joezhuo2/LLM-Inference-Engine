@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/paged-attention-v2-impl
+
+- Let 8 lanes share each key's dot product in `paged_attention_decode_v2` (`src/kernels/paged_attention_v2.cu`): the lanes read consecutive elements of one key row instead of one thread walking a whole row, so the key loads coalesce, and the partial sums are combined with `__shfl_xor_sync`. The score rounding to BF16 is unchanged. Measured with a standalone timing loop (50 launches, RTX 5060, 32 heads, 4 KV heads, head_dim 64, block 16): 1 row at context 128 / 2,048 / 8,192 went from 29.1 / 352.2 / 1,385.5 us to 21.1 / 249.2 / 912.7 us, and 16 rows at context 128 / 2,048 from 134.0 / 1,946.6 us to 76.4 / 1,080.6 us. A first attempt that replaced the two shared-memory tree reductions with warp shuffles was 15 to 20% slower (29.1 to 35 to 40 us at 1 row, context 128) and was dropped. (Part C, optimization drafted by Claude)
+- Add blank learning-log entries (`docs/exercises/learning_log.md`, section `Paged Attention v2 Optimization (Branch 37)`). (Part A)
+
 ## runtime/wire-fast-kernels
 
 - Make `tests/gpu/test_serve.cpp` tolerate exact ties: `SixteenConcurrentGreedyRequestsMatchSixteenSoloRunsUpToTies` (renamed) accepts a difference between a concurrent and a solo run only at the first diverging token and only when the contiguous `ModelRunner` oracle, teacher-forced on the prompt plus the shared prefix, puts both tokens within 2 BF16 ulps of its best logit; the sampled test requires at least 10 of 16 requests identical instead of a shortest common prefix of 16 tokens (12 of 16 were identical before this branch too, so the old threshold only held by where the first flip happened to fall). The batch-16 and batch-1 GEMMs round differently, so a token where two logits tie in BF16 can go either way, and any change of numerics moves which request hits one. (Part A)
