@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <functional>
 #include <numeric>
 #include <random>
 #include <vector>
@@ -22,8 +23,8 @@ using engine::DeviceBuffer;
 using engine::DType;
 using engine::Tensor;
 
-using Kernel = void (*)(const Tensor&, const Tensor&, const Tensor&, const Tensor&, const Tensor&,
-                        const Tensor&, engine::Stream);
+using Kernel = std::function<void(const Tensor&, const Tensor&, const Tensor&, const Tensor&,
+                                  const Tensor&, const Tensor&, engine::Stream)>;
 
 struct Layout {
     int heads, kv_heads, head_dim, block_size;
@@ -134,7 +135,7 @@ inline Batch single_row(const Batch& b, int64_t row) {
     return one;
 }
 
-inline std::vector<uint16_t> run_kernel(Kernel kernel, const Batch& b, uint32_t seed) {
+inline std::vector<uint16_t> run_kernel(const Kernel& kernel, const Batch& b, uint32_t seed) {
     const Layout& l = b.l;
     const int64_t n = b.rows() * l.q_width();
     const auto init = random_bf16(size_t(n + 2 * kGuard), seed);
@@ -251,7 +252,7 @@ inline void expect_close(const std::vector<uint16_t>& actual, const Expected& e)
                            << " times the allowed error, " << compare_bf16(actual, e.out);
 }
 
-inline void check_kernel(Kernel kernel, const Batch& b, uint32_t seed) {
+inline void check_kernel(const Kernel& kernel, const Batch& b, uint32_t seed) {
     expect_close(run_kernel(kernel, b, seed), reference(b));
 }
 
