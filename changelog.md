@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/add-rmsnorm-tune
+
+- Tune `fast::add_rmsnorm` (`src/kernels/add_rmsnorm.cu`): when the hidden size is a multiple of 8, at most 8192 and all five pointers are 16-byte aligned, a new kernel `add_rmsnorm_vec_kernel` loads x and the residual with one 128-bit load per 8 elements, keeps the rounded sums in registers instead of reading them back from global memory, reduces the sum of squares with warp shuffles that leave the total in every thread (one `__syncthreads` instead of two and no shared `rstd`), and stores sum and norm with 128-bit stores. Every other shape (odd or large hidden sizes, misaligned pointers) keeps the old scalar kernel. The reduction order changes (8 consecutive elements per thread, then the warps in a fixed order), so results move by the same kind of rounding as before; the 25 existing tests plus 3 new vector-path shapes pass, memcheck reports 0 errors. Nsight Compute at hidden 2048, 1 / 16 / 64 tokens: 10.9 / 10.7 / 11.1 us to 4.0 / 4.3 / 5.3 us. (Part C, optimization drafted by Claude)
+
 ## runtime/wire-attention-v2
 
 - Let the sampled half of `ForcedPreemptionKeepsTheOutputsOfEveryRequest` (`tests/gpu/test_serve.cpp`) accept 14 of 16 requests identical between the roomy and the tight cache, and keep the greedy half exact: after a preemption a request is recomputed in a batch of a different size, the GEMMs round differently, and a sampled token whose perturbed logits are within a BF16 ulp can flip. Found while wiring `paged_attention_decode_v2`: request 15 left its roomy run at token 44 of 48, the other 15 requests and the whole greedy run stayed identical. (Part A)
