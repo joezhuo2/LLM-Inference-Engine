@@ -1250,3 +1250,6 @@
 - **keeping a row in registers between two passes instead of re-reading it from memory** => 
 - **butterfly reduction with `__shfl_xor_sync` so every lane ends with the total** => 
 - **why changing the summation order changes the last bits of a float sum** => 
+
+## Split-Context Attention (Branch 40)
+- **a test harness that takes any callable (`std::function`) instead of a function pointer** => 
