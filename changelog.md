@@ -5,6 +5,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## kernel/add-rmsnorm-tune
 
 - Tune `fast::add_rmsnorm` (`src/kernels/add_rmsnorm.cu`): when the hidden size is a multiple of 8, at most 8192 and all five pointers are 16-byte aligned, a new kernel `add_rmsnorm_vec_kernel` loads x and the residual with one 128-bit load per 8 elements, keeps the rounded sums in registers instead of reading them back from global memory, reduces the sum of squares with warp shuffles that leave the total in every thread (one `__syncthreads` instead of two and no shared `rstd`), and stores sum and norm with 128-bit stores. Every other shape (odd or large hidden sizes, misaligned pointers) keeps the old scalar kernel. The reduction order changes (8 consecutive elements per thread, then the warps in a fixed order), so results move by the same kind of rounding as before; the 25 existing tests plus 3 new vector-path shapes pass, memcheck reports 0 errors. Nsight Compute at hidden 2048, 1 / 16 / 64 tokens: 10.9 / 10.7 / 11.1 us to 4.0 / 4.3 / 5.3 us. (Part C, optimization drafted by Claude)
+- Add `scripts/add_rmsnorm_bench.cu`, the throwaway program of the Nsight Compute comparison as a script. (Part A)
+- Record the add_rmsnorm tuning (`docs/profiling.md`, "Tuning add_rmsnorm (Branch 39)"; `results/`, `results/plots/` and `docs/results.md` refreshed by `scripts/reproduce.sh --skip-tests --skip-hf` on commit 1aa5e88, so the HuggingFace rows are still from the previous run): the two fused ops go from 177 to 73 us per decode step, batch-1 TPOT with graphs from 7.96 to 7.83 ms (82% of the peak), bench throughput with graphs at max batch 16 from 1386.2 to 1405.8 tokens/s, within the run-to-run spread. (Part A)
 
 ## runtime/wire-attention-v2
 

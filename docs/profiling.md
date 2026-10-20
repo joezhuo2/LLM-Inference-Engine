@@ -184,3 +184,15 @@ To reproduce: `nvcc -std=c++20 -arch=sm_120 -Iinclude -Isrc scripts/paged_attent
 | bench tokens/s at max batch 1 / 4 / 16 eager | 107.6 / 396.0 / 1011.9 | 114.3 / 426.4 / 1282.8 |
 
 Reading it. Batch 16 gains the most (29% with graphs, 27% eager) and batch 1 gains 5% to 6%, which matches the attention time saved at batch 1 (0.6 ms of 8.4 ms); the larger gain at batch 16 is consistent with attention work growing with the number of rows while the weight GEMVs do not, but I did not profile batch 16 to confirm where its time went. Part of the difference between the two columns can be clock noise (the HuggingFace rows of the same run were slower than in the previous one, so the machine was not faster), so the direction and the attention row are solid and the third digit is not. The next step for attention is the one named above, splitting the context across blocks.
+
+## Tuning add_rmsnorm (Branch 39)
+
+The first version of `fast::add_rmsnorm` was latency bound at about 11 us for 1 to 64 rows: eight scalar 2-byte loads per thread, a second pass that read the sums back from global memory, two barriers and a shared `rstd`. The tuned kernel (used when the hidden size is a multiple of 8, at most 8192, and every pointer is 16-byte aligned) loads x and the residual with 128-bit loads, keeps the rounded sums in registers for the second pass, reduces with `__shfl_xor_sync` so every thread holds the total after one barrier, and writes with 128-bit stores. Other shapes keep the old scalar kernel. Nsight Compute, hidden 2048, release build, same method as the first table (`scripts/add_rmsnorm_bench.cu`):
+
+| tokens | naive pair (us) | first fused (us) | tuned fused (us) | tuned / naive pair |
+| --- | --- | --- | --- | --- |
+| 1 | 11.8 (3.6 + 8.2) | 10.9 | 4.0 | 0.34 |
+| 16 | 11.6 (3.9 + 7.6) | 10.7 | 4.3 | 0.37 |
+| 64 | 14.2 (6.5 + 7.7) | 11.1 | 5.3 | 0.37 |
+
+In the decode step of `scripts/reproduce.sh` (commit 1aa5e88) the two fused ops go from 92.4 + 84.7 = 177 us to 38.0 + 34.5 = 73 us per step, about 105 us of a 7.3 ms step (1.4%). The end-to-end effect is therefore small and sits inside the run-to-run spread: batch-1 TPOT with graphs 7.96 to 7.83 ms (260 to 264 GB/s, 80% to 82%), bench tokens/s with graphs at max batch 1 / 4 / 16 124.4 / 468.4 / 1386.2 to 126.7 / 473.0 / 1405.8. The same run shows attention at 326 us per step against 272 us before, a kernel this branch did not touch, which is the size of the noise. The kernel is now below the launch cost of the pair it replaces, so the fusion finally saves time as well as launches. The reduction order changed (8 consecutive elements per thread, warps combined in a fixed order), so the logits move by rounding as they did when the kernel was first wired in; the serve tests, which accept exact ties, pass unchanged.
