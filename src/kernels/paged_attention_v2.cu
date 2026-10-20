@@ -1,31 +1,261 @@
-#include <cstdio>
-#include <cstdlib>
+#include <cuda_bf16.h>
+#include <cuda_runtime.h>
+
+#include <cmath>
+#include <cstdint>
+#include <stdexcept>
 
 #include "engine/kernels/paged_attention_v2.h"
+#include "kernels/cuda_check.h"
 
 namespace engine {
 
-/*
-TODO(JOE): paged_attention_decode_v2
+__global__ void paged_attention_decode_v2_kernel(
+    nv_bfloat16* __restrict__ out, const nv_bfloat16* __restrict__ qkv,
+    const nv_bfloat16* __restrict__ k_cache, const nv_bfloat16* __restrict__ v_cache,
+    const int* __restrict__ block_tables, const int* __restrict__ context_lens, int batch_size,
+    int heads, int kv_heads, int head_dim, int block_size, int max_blocks) {
+    int attention_head_idx = blockIdx.x;
+    int batch_row_idx = blockIdx.y;
 
-Purpose. paged_attention_decode_v2 is the second version of the paged decode attention: the same operation as paged_attention_decode (every row of the batch is one query token that attends to all the cached tokens of its sequence by following its block table), written so that it stays fast and correct as the context grows. Version 1 keeps one FP32 score per context token in shared memory and goes over the context three times (scores, then the maximum and the sum, then the weighted sum of V), so its shared memory grows with the table capacity and its cost per token of context stays high; the build plan's v2 is the single-pass online softmax, which never needs the scores of the whole row at once, keeps a running maximum and a running sum for the row, and so works for any context length. The decode step of PagedRunner is dominated by the weight GEMVs at short contexts, but attention grows linearly with the context and is the part this kernel improves; experiment E5 of the build plan plots v1 against v2 from 128 to 2,048 tokens. Version 1 stays in the tree as the reference and the "before" number.
+    if (batch_row_idx >= batch_size || attention_head_idx >= heads) return;
 
-Interface. Exactly the arguments, shapes, layouts and semantics of paged_attention_decode (include/engine/kernels/paged_attention.h): k_cache and v_cache are BF16 [num_blocks, kv_heads, block_size, head_dim] views of the paged cache, out is BF16 [B, heads * head_dim], qkv is the BF16 [B, (heads + 2 * kv_heads) * head_dim] output of the fused QKV GEMM after RoPE of which only the Q columns are read, block_tables is I32 [B, max_blocks], context_lens is I32 [B], and stream is the stream to run on. For row b with L = context_lens[b] > 0, token j < L is in physical block block_tables[b][j / block_size] at offset j % block_size, query head h reads kv head h / (heads / kv_heads), and out[b][h * head_dim + d] = sum over j < L of p_j * V_j[d] with p the softmax over j < L of s_j = scale * (q_h . K_j) and scale = 1 / sqrt(head_dim). A row with L = 0 is padding and nothing of out row b is written. qkv, both caches, block_tables and context_lens are not modified. It is a drop-in replacement: the model runner would call either function with the same tensors.
+    int context_len = context_lens[batch_row_idx];
 
-Numerics. The scores are rounded the way v1 and HF's eager BF16 attention round them: s_j = bf16(bf16(q_h . K_j) * scale), the dot product accumulated in FP32 before the first rounding; v1's spec records why (scores kept in FP32 put outputs of the traced reference prompt outside the HF bound in 4 of the 22 layers). Everything after the scores is free as long as the result stays within the tolerance below: the running sum and the weighted sum of V must accumulate in FP32, the probabilities may or may not be rounded, and the output is rounded to BF16 once. The order of the additions is not that of v1, so v2 is not required to be bit-identical to v1 or to naive::attention, only within the tolerance; what is required is that every row of the output is finite and correct when the maximum score changes on almost every token (a context whose scores rise steadily, or fall steadily, or have one spike in the middle), when scores are large enough that exp overflows in FP32 without the maximum subtracted (the tests reach 128), and for contexts of thousands of tokens, where a sum of probabilities accumulated carelessly loses precision. A row's output depends only on its query, the first ceil(L / block_size) entries of its block table and the L cached tokens they reach: the slots past position L - 1 in its last block, every other block and the table entries after the ones in use must not change a single bit of it, even when they hold NaN or huge values or the entry is -1. The result is deterministic, and a row's output is bit-identical whether it is computed alone or in any batch, with any other rows next to it, because the M3 criterion that 16 concurrent requests produce the same text as 16 sequential runs relies on it; a split of one row's work over several blocks or threads must therefore combine its parts in an order that does not depend on the other rows.
+    if (context_len <= 0) return;
 
-Errors and preconditions. Before launching anything, throw std::invalid_argument with a message naming paged_attention_decode_v2 for exactly the argument errors of v1: k_cache or v_cache not BF16 or not 4-dimensional or of different shapes; out not BF16 or not 2-dimensional, with a width that is not a multiple of head_dim, or heads not a positive multiple of kv_heads; qkv not BF16 or not 2-dimensional, with a row count different from out's or a width other than (heads + 2 * kv_heads) * head_dim; block_tables not I32 or not 2-dimensional, with a row count other than B or no columns; context_lens not I32 or not 1-dimensional or not of length B. Unlike v1 there is no cap on the table capacity: max_blocks * block_size may be any size, and the tests call it with 8,192 tokens. The caller guarantees, without checks, that 0 <= context_lens[b] <= max_blocks * block_size and that the first ceil(context_lens[b] / block_size) entries of row b of block_tables are between 0 and num_blocks - 1; later entries may hold anything, including -1. Several rows may read the same blocks. The launch is asynchronous on stream, with the usual KERNEL_CHECK after it.
+    int kv_head_idx = attention_head_idx / (heads / kv_heads);
+    int qkv_total_width = (heads + (2 * kv_heads)) * head_dim;
 
-Edge cases and boundaries. B = 0 is a valid call that does nothing and must not launch a kernel with an empty grid. A context of one token gives exactly V_0 for every head, bit for bit. Contexts of block_size - 1, block_size and block_size + 1 tokens, of one less than, exactly and one more than a power of two up to 1,025, and of 2,048, 4,096 and 8,192 tokens must all be right, and block 0 is read like any other. It must be correct for any positive block_size, kv_heads and head_dim, any heads that is a multiple of kv_heads (the tests use head dims 4 to 128 and block sizes 1 to 32), and every context length the table can hold. A row of 8,192 tokens next to a row of one token and a padding row in the same batch must all be right: the batch is not uniform.
+    const nv_bfloat16* query_ptr =
+        qkv + (batch_row_idx * qkv_total_width) + (attention_head_idx * head_dim);
 
-What to compare against. The same references as v1: naive::attention on a contiguous copy of the row's L cached tokens with start = L - 1, within 1/64 of (sum over j of p_j * |V_j[d]|) + |naive output| per element, where p is the exact softmax computed in double from the BF16 inputs; and HF's attn output of every layer on the traced reference prompt, within 2^-7 times the largest |V| of the visible tokens in that column. For speed, compare with paged_attention_decode under Nsight Compute on TinyLlama's layout (32 heads, 4 kv heads, head dim 64, block size 16) with 1 and 16 rows at contexts of 128, 512 and 2,048 tokens, and record the table in docs/profiling.md; report where v2 beats v1 and by how much. That comparison is the result of experiment E5 and is not a test.
+    extern __shared__ char dynamic_shared_memory[];
+    float* shared_reduction = reinterpret_cast<float*>(dynamic_shared_memory);
+    float* shared_probs = shared_reduction + blockDim.x;
+    float* shared_acc = shared_probs + blockDim.x;
+    nv_bfloat16* shared_query = reinterpret_cast<nv_bfloat16*>(shared_acc + head_dim);
 
-Tests that prove it. tests/todo/gpu/test_paged_attention_v2.cpp: every test of tests/gpu/test_paged_attention.cpp run against v2 (a 37-token sequence through a shuffled table, contexts around the block boundaries alone and as one batch, 2,048-token contexts, a 16-sequence batch with mixed lengths, padding rows with guard elements around out, scores up to 128, a one-token context equal to V bit for bit, NaN and huge values outside the contexts and -1 table entries leaving the output bit-identical, batch invariance and repeatability, rows sharing one table as a prefill, six odd head and block layouts, HF's attn on all 22 layers, B = 0 and every rejected argument), plus contexts of 4,096 and 8,192 tokens, contexts around 256, 512 and 1,024, a running maximum that rises on every token, falls on every token or has one spike, and a batch of an 8,192-token row, a 1-token row and a padding row whose rows each equal the same row computed alone. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them. Wiring v2 into PagedRunner and switching the end-to-end numbers is a separate branch once these pass.
-*/
-void paged_attention_decode_v2(const Tensor&, const Tensor&, const Tensor&, const Tensor&,
-                               const Tensor&, const Tensor&, Stream) {
-    std::fprintf(stderr, "unimplemented: paged_attention_decode_v2\n");
-    std::abort();
+    for (int dim_idx = threadIdx.x; dim_idx < head_dim; dim_idx += blockDim.x) {
+        shared_query[dim_idx] = query_ptr[dim_idx];
+        shared_acc[dim_idx] = 0.0f;
+    }
+
+    __syncthreads();
+
+    float attention_scale = 1.0f / sqrtf(static_cast<float>(head_dim));
+    const int* seq_block_table = block_tables + (batch_row_idx * max_blocks);
+
+    float running_max = -1e20f;
+    float running_sum = 0.0f;
+    int chunk_size = blockDim.x;
+
+    for (int chunk_start = 0; chunk_start < context_len; chunk_start += chunk_size) {
+        int token_idx = chunk_start + threadIdx.x;
+        float local_score = -1e20f;
+
+        if (token_idx < context_len) {
+            int physical_block_idx = seq_block_table[token_idx / block_size];
+            int block_offset = token_idx % block_size;
+
+            size_t k_cache_offset =
+                static_cast<size_t>(physical_block_idx) * kv_heads * block_size * head_dim +
+                static_cast<size_t>(kv_head_idx) * block_size * head_dim +
+                static_cast<size_t>(block_offset) * head_dim;
+
+            float dot = 0.0f;
+            for (int d = 0; d < head_dim; ++d) {
+                dot += static_cast<float>(shared_query[d]) *
+                       static_cast<float>(k_cache[k_cache_offset + d]);
+            }
+
+            nv_bfloat16 dot_bf16 = __float2bfloat16(dot);
+            nv_bfloat16 scaled_bf16 =
+                __float2bfloat16(static_cast<float>(dot_bf16) * attention_scale);
+            local_score = static_cast<float>(scaled_bf16);
+        }
+
+        shared_reduction[threadIdx.x] = local_score;
+
+        __syncthreads();
+
+        for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+            if (threadIdx.x < stride) {
+                shared_reduction[threadIdx.x] =
+                    fmaxf(shared_reduction[threadIdx.x], shared_reduction[threadIdx.x + stride]);
+            }
+
+            __syncthreads();
+        }
+
+        float chunk_max = shared_reduction[0];
+
+        __syncthreads();
+        float new_running_max = fmaxf(running_max, chunk_max);
+
+        float exp_old = __expf(running_max - new_running_max);
+        running_sum *= exp_old;
+
+        float thread_exp = (token_idx < context_len) ? __expf(local_score - new_running_max) : 0.0f;
+        shared_probs[threadIdx.x] = thread_exp;
+        shared_reduction[threadIdx.x] = thread_exp;
+
+        __syncthreads();
+
+        for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+            if (threadIdx.x < stride) {
+                shared_reduction[threadIdx.x] += shared_reduction[threadIdx.x + stride];
+            }
+
+            __syncthreads();
+        }
+
+        running_sum += shared_reduction[0];
+
+        int chunk_tokens = min(chunk_size, context_len - chunk_start);
+
+        for (int d = threadIdx.x; d < head_dim; d += blockDim.x) {
+            float acc = shared_acc[d] * exp_old;
+
+            for (int t = 0; t < chunk_tokens; ++t) {
+                int token = chunk_start + t;
+                size_t v_cache_offset =
+                    static_cast<size_t>(seq_block_table[token / block_size]) * kv_heads *
+                        block_size * head_dim +
+                    static_cast<size_t>(kv_head_idx) * block_size * head_dim +
+                    static_cast<size_t>(token % block_size) * head_dim;
+                acc += shared_probs[t] * static_cast<float>(v_cache[v_cache_offset + d]);
+            }
+
+            shared_acc[d] = acc;
+        }
+
+        __syncthreads();
+
+        running_max = new_running_max;
+    }
+
+    for (int d = threadIdx.x; d < head_dim; d += blockDim.x) {
+        float final_val = (running_sum > 0.0f) ? (shared_acc[d] / running_sum) : 0.0f;
+
+        out[batch_row_idx * (heads * head_dim) + (attention_head_idx * head_dim) + d] =
+            __float2bfloat16(final_val);
+    }
+}
+
+void paged_attention_decode_v2(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
+                               const Tensor& v_cache, const Tensor& block_tables,
+                               const Tensor& context_lens, Stream stream) {
+    if (k_cache.dtype != DType::BF16 || k_cache.ndim != 4) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] k_cache must be BF16 and 4-dimensional");
+    }
+
+    if (v_cache.dtype != DType::BF16 || v_cache.ndim != 4) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] v_cache must be BF16 and 4-dimensional");
+    }
+
+    for (int i = 0; i < Tensor::kMaxDims; ++i) {
+        if (k_cache.shape[i] != v_cache.shape[i]) {
+            throw std::invalid_argument(
+                "[paged_attention_decode_v2] k_cache and v_cache shapes must match");
+        }
+    }
+
+    if (out.dtype != DType::BF16 || out.ndim != 2) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] out must be BF16 and 2-dimensional");
+    }
+
+    if (qkv.dtype != DType::BF16 || qkv.ndim != 2) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] qkv must be BF16 and 2-dimensional");
+    }
+
+    if (block_tables.dtype != DType::I32 || block_tables.ndim != 2) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] block_tables must be I32 and 2-dimensional");
+    }
+
+    if (context_lens.dtype != DType::I32 || context_lens.ndim != 1) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] context_lens must be I32 and 1-dimensional");
+    }
+
+    int64_t rows = out.shape[0];
+    int64_t head_dim64 = k_cache.shape[3];
+    int64_t kv_heads64 = k_cache.shape[1];
+    int64_t block_size64 = k_cache.shape[2];
+
+    if (head_dim64 <= 0 || kv_heads64 <= 0 || block_size64 <= 0 || k_cache.shape[0] <= 0) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] cache dimensions must be positive");
+    }
+
+    if (out.shape[1] <= 0 || out.shape[1] % head_dim64 != 0) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] out width must be a positive multiple of head_dim");
+    }
+
+    int64_t heads64 = out.shape[1] / head_dim64;
+
+    if (heads64 % kv_heads64 != 0) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] heads must be a multiple of kv_heads");
+    }
+
+    if (qkv.shape[0] != rows) {
+        throw std::invalid_argument("[paged_attention_decode_v2] qkv rows must match out rows");
+    }
+
+    if (qkv.shape[1] != (heads64 + 2 * kv_heads64) * head_dim64) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] qkv width must be (heads + 2 * kv_heads) * head_dim");
+    }
+
+    if (block_tables.shape[0] != rows || block_tables.shape[1] <= 0) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] block_tables must have one row per batch row and at least "
+            "one column");
+    }
+
+    if (context_lens.shape[0] != rows) {
+        throw std::invalid_argument(
+            "[paged_attention_decode_v2] context_lens length must match the batch size");
+    }
+
+    if (rows == 0) {
+        return;
+    }
+
+    int batch_size = static_cast<int>(rows);
+    int head_dim = static_cast<int>(head_dim64);
+    int heads = static_cast<int>(heads64);
+    int kv_heads = static_cast<int>(kv_heads64);
+    int block_size = static_cast<int>(block_size64);
+    int max_blocks = static_cast<int>(block_tables.shape[1]);
+
+    auto* d_out = static_cast<nv_bfloat16*>(out.data);
+    auto* d_qkv = static_cast<const nv_bfloat16*>(qkv.data);
+    auto* d_k_cache = static_cast<const nv_bfloat16*>(k_cache.data);
+    auto* d_v_cache = static_cast<const nv_bfloat16*>(v_cache.data);
+    auto* d_block_tables = static_cast<const int*>(block_tables.data);
+    auto* d_context_lens = static_cast<const int*>(context_lens.data);
+
+    int thread_block_size = 256;
+    dim3 grid_dim(heads, batch_size);
+    dim3 block_dim(thread_block_size);
+
+    size_t shared_mem_bytes = (static_cast<size_t>(2 * thread_block_size) * sizeof(float)) +
+                              (static_cast<size_t>(head_dim) * sizeof(float)) +
+                              (static_cast<size_t>(head_dim) * sizeof(nv_bfloat16));
+
+    paged_attention_decode_v2_kernel<<<grid_dim, block_dim, shared_mem_bytes, stream>>>(
+        d_out, d_qkv, d_k_cache, d_v_cache, d_block_tables, d_context_lens, batch_size, heads,
+        kv_heads, head_dim, block_size, max_blocks);
+
+    KERNEL_CHECK(stream);
 }
 
 }  // namespace engine
