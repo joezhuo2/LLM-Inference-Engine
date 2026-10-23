@@ -196,3 +196,24 @@ The first version of `fast::add_rmsnorm` was latency bound at about 11 us for 1 
 | 64 | 14.2 (6.5 + 7.7) | 11.1 | 5.3 | 0.37 |
 
 In the decode step of `scripts/reproduce.sh` (commit 1aa5e88) the two fused ops go from 92.4 + 84.7 = 177 us to 38.0 + 34.5 = 73 us per step, about 105 us of a 7.3 ms step (1.4%). The end-to-end effect is therefore small and sits inside the run-to-run spread: batch-1 TPOT with graphs 7.96 to 7.83 ms (260 to 264 GB/s, 80% to 82%), bench tokens/s with graphs at max batch 1 / 4 / 16 124.4 / 468.4 / 1386.2 to 126.7 / 473.0 / 1405.8. The same run shows attention at 326 us per step against 272 us before, a kernel this branch did not touch, which is the size of the noise. The kernel is now below the launch cost of the pair it replaces, so the fusion finally saves time as well as launches. The reduction order changed (8 consecutive elements per thread, warps combined in a fixed order), so the logits move by rounding as they did when the kernel was first wired in; the serve tests, which accept exact ties, pass unchanged.
+
+## Split-context attention (Branch 40)
+
+`paged_attention_decode_split` against `paged_attention_decode_v2`, RTX 5060 Laptop GPU, release build, 32 heads, 4 KV heads, head_dim 64, block size 16, every row at the full context. Time per call in us from a loop of 50 calls after 3 warm-up calls (`scripts/paged_attention_bench.cu`), the split column includes the merge kernel, the second run of two agreed within noise:
+
+| rows | context | v2 | 1 split | 2 | 4 | 8 | 16 | best | v2 / best |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 128 | 27.1 | 37.2 | 37.9 | 39.7 | 47.6 | 41.0 | v2 | 1.0 |
+| 1 | 512 | 46.0 | 53.1 | 44.1 | 40.5 | 47.5 | 64.2 | 4 | 1.1 |
+| 1 | 2,048 | 167.6 | 166.2 | 92.8 | 64.7 | 60.7 | 67.5 | 8 | 2.8 |
+| 1 | 8,192 | 582.9 | 574.6 | 318.1 | 221.7 | 207.9 | 210.4 | 8 | 2.8 |
+| 16 | 128 | 59.8 | 61.6 | 76.1 | 99.5 | 153.0 | 165.1 | v2 | 1.0 |
+| 16 | 512 | 192.2 | 197.2 | 191.1 | 210.8 | 285.1 | 408.5 | 2 | 1.0 |
+| 16 | 2,048 | 789.0 | 792.8 | 827.6 | 842.9 | 860.1 | 968.2 | v2 | 1.0 |
+| 16 | 8,192 | 4,417.0 | 4,211.4 | 3,801.9 | 4,495.2 | 4,430.1 | 3,556.9 | 16 | 1.2 |
+
+Nsight Compute on one launch each (clocks locked, cold caches, so longer than the loop), 1 row at 2,048 tokens: v2 383 us with DRAM throughput at 1.6%; split with 1 split 361.6 us for the partial kernel plus 5.0 us for the merge (1.7%); with 2 splits 185.5 + 4.7 us (3.3%). The runs I took for more splits were not labelled with their split count, so they are not recorded here.
+
+Reading it. At batch 1 the grid of v2 is 32 blocks, fewer than the SMs can hold, and splitting the context into 4 to 8 pieces makes a 2,048-token context 2.8x faster and an 8,192-token context 2.8x faster, with 8 splits (256 blocks) the best or within 3% of the best from 2,048 tokens up. At 512 tokens the gain is 1.1x (4 splits) and at 128 tokens it loses, because a split holds too few tokens to pay for the second launch and the partial write. With 16 rows the grid is already 512 blocks, so splitting only adds work: it ties v2 at 2 splits, loses beyond that, and wins only at 8,192 tokens (1.2x at 16 splits, with a noisy 4-split point). One split costs 0 to 10 us over v2 (the extra merge launch), more at short contexts. A rule for the wiring branch: use `num_splits = 1` (or v2) when `batch * 32 >= 256` blocks already or the longest context is under 512 tokens, otherwise `num_splits` near `256 / (batch * 32)` rounded to a power of two, at most 8 to 16 and at least 256 tokens per split.
+
+To reproduce: `nvcc -std=c++20 -arch=sm_120 -Iinclude -Isrc scripts/paged_attention_bench.cu build/release/src/libengine_kernels.a build/release/src/libengine_core.a -o /tmp/pa_bench && /tmp/pa_bench`.
