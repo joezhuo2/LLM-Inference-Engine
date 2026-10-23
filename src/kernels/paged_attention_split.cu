@@ -1,33 +1,356 @@
-#include <cstdio>
-#include <cstdlib>
+#include <cuda_bf16.h>
+#include <cuda_runtime.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
 
 #include "engine/kernels/paged_attention_split.h"
+#include "kernels/cuda_check.h"
 
 namespace engine {
 
-/*
-TODO(JOE): paged_attention_decode_split
+__global__ void paged_attention_split_partial_kernel(
+    float* __restrict__ scratch, const nv_bfloat16* __restrict__ qkv,
+    const nv_bfloat16* __restrict__ k_cache, const nv_bfloat16* __restrict__ v_cache,
+    const int* __restrict__ block_tables, const int* __restrict__ context_lens, int batch_size,
+    int num_splits, int heads, int kv_heads, int head_dim, int block_size, int max_blocks) {
+    int split_idx = blockIdx.x;
+    int attention_head_idx = blockIdx.y;
+    int batch_row_idx = blockIdx.z;
 
-Purpose. paged_attention_decode_split is the third version of the paged decode attention: the same operation as paged_attention_decode_v2, with the context of every row cut into several pieces that different thread blocks work on at the same time, and the pieces combined afterwards. Version 2 launches one thread block per (row, query head), so a decode step with one row runs 32 blocks on a GPU with several dozen SMs and each block walks the whole context by itself; Nsight Compute shows DRAM throughput of 6% or less at contexts of 512 to 2,048 tokens, and the attention share of a decode step grows with the context while the weight GEMVs do not. Splitting the context (the "flash decoding" idea) gives a row of L tokens up to num_splits times more blocks, so the memory system is kept busy even at batch 1. The price is a scratch buffer for the partial results and a second kernel (or a second phase) that merges them; that is why this is a different function with an extra argument and not a change inside v2. v2 stays in the tree as the reference and the "before" number, and wiring this function into PagedRunner (which must own and size the scratch buffer) is a separate branch once the tests pass.
+    if (batch_row_idx >= batch_size || attention_head_idx >= heads) return;
 
-Interface. The arguments of paged_attention_decode_v2 (include/engine/kernels/paged_attention_v2.h) in the same order, plus scratch before stream. k_cache and v_cache are BF16 [num_blocks, kv_heads, block_size, head_dim] views of the paged cache, out is BF16 [B, heads * head_dim], qkv is the BF16 [B, (heads + 2 * kv_heads) * head_dim] output of the fused QKV GEMM after RoPE of which only the Q columns are read, block_tables is I32 [B, max_blocks], context_lens is I32 [B], and stream is the stream to run on. scratch is F32 [B, heads, num_splits, head_dim + 2] on the device, owned by the caller and used as workspace: num_splits is its third dimension, so the caller chooses the split count by the shape of the buffer it passes, and any num_splits >= 1 must work. For (row b, head h, split s) the vector scratch[b][h][s] holds the partial result of the tokens of split s: element 0 is the maximum score m, element 1 is the sum l of exp(score - m) and elements 2 to head_dim + 1 are the sum of exp(score - m) * V_j[d] over the tokens j of the split, in FP32 and not normalized. How the kernel uses that layout inside is yours as long as the shape is accepted; the contents of scratch before the call must not matter and after the call are unspecified. Semantics are those of v2: for row b with L = context_lens[b] > 0, token j < L is in physical block block_tables[b][j / block_size] at offset j % block_size, query head h reads kv head h / (heads / kv_heads), and out[b][h * head_dim + d] = sum over j < L of p_j * V_j[d] with p the softmax over j < L of s_j = scale * (q_h . K_j) and scale = 1 / sqrt(head_dim). A row with L = 0 is padding: nothing of out row b is written (scratch may be). qkv, both caches, block_tables and context_lens are not modified.
+    int context_len = context_lens[batch_row_idx];
 
-How the context is cut. Split s of a row with L tokens covers one contiguous range of token positions, the ranges of splits 0 to num_splits - 1 are in order and together cover [0, L) exactly once, and the boundaries are a function of L, num_splits and block_size only (cutting on block boundaries is allowed and probably wise, a split may be empty when L is small, for example L = 1 and num_splits = 64 leaves 63 empty splits). Empty splits must not influence the result: they contribute nothing, not a NaN from 0 / 0 or exp(-inf - -inf) and not a maximum of -1e20 that distorts the combination. The merge goes over the non-empty splits of a (row, head) in increasing split index with one running maximum M = max of the m_s, the total l = sum of exp(m_s - M) * l_s, the weighted sum acc[d] = sum of exp(m_s - M) * acc_s[d], and out = bf16(acc[d] / l). The order of the merge, like the order inside a split, may only depend on that row's own L and num_splits, never on the other rows of the batch, on the contents of the scratch before the call or on the timing of the blocks (no atomics on floats, no "last block to finish merges" unless the order it adds in is fixed).
+    if (context_len <= 0) return;
 
-Numerics. The scores are rounded exactly as in v1 and v2: s_j = bf16(bf16(q_h . K_j) * scale), the dot product accumulated in FP32 before the first rounding. The running sums and the weighted sum of V are FP32, the output is rounded to BF16 once, and the result must be finite and right when the maximum moves on almost every token, when exp would overflow without subtracting the maximum (scores up to 128 in the tests), for contexts of 8,192 tokens and when the global maximum is in a split other than the first. The result is not required to be bit-identical to v2 or to a different num_splits, only within the tolerance below; what is required is that for a fixed num_splits the output of a row is deterministic and bit-identical whether the row is computed alone or in any batch next to any other rows, because the M3 criterion that 16 concurrent requests produce the same text as 16 sequential runs relies on it. A row's output depends only on its query, the first ceil(L / block_size) entries of its block table and the L cached tokens they reach: the slots past position L - 1 in its last block, every other block and the table entries after the ones in use (which may hold NaN-producing garbage or -1) must not change a single bit of it. A context of one token gives exactly V_0 for every head, bit for bit, for every num_splits.
+    int total_blocks = (context_len + block_size - 1) / block_size;
+    int blocks_per_split = (total_blocks + num_splits - 1) / num_splits;
+    int range_start = min(context_len, split_idx * blocks_per_split * block_size);
+    int range_end = min(context_len, (split_idx + 1) * blocks_per_split * block_size);
 
-Errors and preconditions. Before launching anything, throw std::invalid_argument with a message naming paged_attention_decode_split for exactly the argument errors of v2 (k_cache or v_cache not BF16 or not 4-dimensional or of different shapes; out not BF16 or not 2-dimensional, with a width that is not a multiple of head_dim, or heads not a positive multiple of kv_heads; qkv not BF16 or not 2-dimensional, with a row count different from out's or a width other than (heads + 2 * kv_heads) * head_dim; block_tables not I32 or not 2-dimensional, with a row count other than B or no columns; context_lens not I32 or not 1-dimensional or not of length B), plus for scratch: not F32, not 4-dimensional, a shape other than [B, heads, num_splits, head_dim + 2] in the first, second and fourth dimensions, or num_splits = 0. There is no cap on the table capacity and the tests call it with 8,192 tokens. The caller guarantees, without checks, that 0 <= context_lens[b] <= max_blocks * block_size and that the first ceil(context_lens[b] / block_size) entries of row b of block_tables are between 0 and num_blocks - 1. The launch is asynchronous on stream (every kernel you launch, in stream order, with the usual KERNEL_CHECK after each) and the call must be safe to repeat on the same scratch buffer, including right after another call on the same stream.
+    if (range_start >= range_end) return;
 
-Edge cases and boundaries. B = 0 is a valid call that does nothing and must not launch a kernel with an empty grid (scratch may then be an empty tensor with a null data pointer). num_splits larger than the number of tokens or of blocks of a row, num_splits = 1 (which must still produce a correct result) and a batch whose rows have very different lengths (8,192, 1 and 0 in the same call) must all be right. It must be correct for any positive block_size, kv_heads and head_dim, any heads that is a multiple of kv_heads (the tests use head dims 4 to 128 and block sizes 1 to 32).
+    int kv_head_idx = attention_head_idx / (heads / kv_heads);
+    int qkv_total_width = (heads + (2 * kv_heads)) * head_dim;
 
-What to compare against. The same references as v1 and v2: naive::attention on a contiguous copy of the row's L cached tokens with start = L - 1, within 1/64 of (sum over j of p_j * |V_j[d]|) + |naive output| per element, with p the exact softmax in double from the BF16 inputs, and HF's attn output of every layer of the traced reference prompt within 2^-7 times the largest |V| of the visible tokens in that column. For speed, compare with paged_attention_decode_v2 under Nsight Compute on TinyLlama's layout (32 heads, 4 kv heads, head dim 64, block size 16) with 1 and 16 rows at contexts of 512, 2,048 and 8,192 tokens, trying num_splits of 1, 2, 4, 8 and 16, and record the table in docs/profiling.md; report where splitting wins, by how much, what the best num_splits is per context and where the extra merge launch makes it lose. A rule for choosing num_splits from the batch size and the longest context is what the wiring branch needs from you.
+    const nv_bfloat16* query_ptr =
+        qkv + (batch_row_idx * qkv_total_width) + (attention_head_idx * head_dim);
 
-Tests that prove it. tests/todo/gpu/test_paged_attention_split.cpp: every test of tests/gpu/test_paged_attention_v2.cpp run against this function for num_splits of 1, 3, 16 and 64 (a 37-token sequence through a shuffled table, contexts around the block boundaries, contexts up to 8,192 tokens, contexts around 256, 512 and 1,024, a 16-sequence batch with mixed lengths, padding rows with guard elements around out, scores up to 128, a one-token context equal to V bit for bit, NaN and huge values outside the contexts and -1 table entries leaving the output bit-identical, batch invariance and repeatability, rows sharing one table as a prefill, six odd head and block layouts, a running maximum that rises, falls or spikes, HF's attn on all 22 layers, B = 0 and every rejected argument), plus a scratch buffer filled with NaN giving the bit-identical output of a scratch buffer filled with zeros, and every rejected scratch shape. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them.
-*/
-void paged_attention_decode_split(const Tensor&, const Tensor&, const Tensor&, const Tensor&,
-                                  const Tensor&, const Tensor&, const Tensor&, Stream) {
-    std::fprintf(stderr, "unimplemented: paged_attention_decode_split\n");
-    std::abort();
+    extern __shared__ char dynamic_shared_memory[];
+    float* shared_reduction = reinterpret_cast<float*>(dynamic_shared_memory);
+    float* shared_probs = shared_reduction + blockDim.x;
+    float* shared_partial = shared_probs + blockDim.x;
+    float* shared_acc = shared_partial + blockDim.x;
+    nv_bfloat16* shared_query = reinterpret_cast<nv_bfloat16*>(shared_acc + head_dim);
+
+    for (int dim_idx = threadIdx.x; dim_idx < head_dim; dim_idx += blockDim.x) {
+        shared_query[dim_idx] = query_ptr[dim_idx];
+        shared_acc[dim_idx] = 0.0f;
+    }
+
+    __syncthreads();
+
+    float attention_scale = 1.0f / sqrtf(static_cast<float>(head_dim));
+    const int* seq_block_table = block_tables + (batch_row_idx * max_blocks);
+
+    float running_max = -1e20f;
+    float running_sum = 0.0f;
+    int chunk_size = blockDim.x;
+
+    for (int chunk_start = range_start; chunk_start < range_end; chunk_start += chunk_size) {
+        int token_idx = chunk_start + threadIdx.x;
+        float local_score = -1e20f;
+
+        int lane_in_group = threadIdx.x % 8;
+        int group_idx = threadIdx.x / 8;
+        int group_count = blockDim.x / 8;
+        int chunk_tokens = min(chunk_size, range_end - chunk_start);
+
+        for (int slot = group_idx; slot < chunk_size; slot += group_count) {
+            int slot_token = chunk_start + slot;
+            float dot = 0.0f;
+
+            if (slot < chunk_tokens) {
+                size_t k_cache_offset =
+                    static_cast<size_t>(seq_block_table[slot_token / block_size]) * kv_heads *
+                        block_size * head_dim +
+                    static_cast<size_t>(kv_head_idx) * block_size * head_dim +
+                    static_cast<size_t>(slot_token % block_size) * head_dim;
+
+                for (int d = lane_in_group; d < head_dim; d += 8) {
+                    dot += static_cast<float>(shared_query[d]) *
+                           static_cast<float>(k_cache[k_cache_offset + d]);
+                }
+            }
+
+            dot += __shfl_xor_sync(0xffffffffu, dot, 4);
+            dot += __shfl_xor_sync(0xffffffffu, dot, 2);
+            dot += __shfl_xor_sync(0xffffffffu, dot, 1);
+
+            if (lane_in_group == 0) {
+                nv_bfloat16 dot_bf16 = __float2bfloat16(dot);
+                nv_bfloat16 scaled_bf16 =
+                    __float2bfloat16(static_cast<float>(dot_bf16) * attention_scale);
+                shared_probs[slot] = static_cast<float>(scaled_bf16);
+            }
+        }
+
+        __syncthreads();
+
+        if (token_idx < range_end) {
+            local_score = shared_probs[threadIdx.x];
+        }
+
+        shared_reduction[threadIdx.x] = local_score;
+
+        __syncthreads();
+
+        for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+            if (threadIdx.x < stride) {
+                shared_reduction[threadIdx.x] =
+                    fmaxf(shared_reduction[threadIdx.x], shared_reduction[threadIdx.x + stride]);
+            }
+
+            __syncthreads();
+        }
+
+        float chunk_max = shared_reduction[0];
+
+        __syncthreads();
+        float new_running_max = fmaxf(running_max, chunk_max);
+
+        float exp_old = __expf(running_max - new_running_max);
+        running_sum *= exp_old;
+
+        float thread_exp = (token_idx < range_end) ? __expf(local_score - new_running_max) : 0.0f;
+        shared_probs[threadIdx.x] = thread_exp;
+        shared_reduction[threadIdx.x] = thread_exp;
+
+        __syncthreads();
+
+        for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+            if (threadIdx.x < stride) {
+                shared_reduction[threadIdx.x] += shared_reduction[threadIdx.x + stride];
+            }
+
+            __syncthreads();
+        }
+
+        running_sum += shared_reduction[0];
+
+        int slice_count = max(1, static_cast<int>(blockDim.x) / head_dim);
+        int active_threads = slice_count * head_dim;
+
+        if (static_cast<int>(threadIdx.x) < active_threads) {
+            int d = threadIdx.x % head_dim;
+            int slice = threadIdx.x / head_dim;
+            float partial = 0.0f;
+
+            for (int t = slice; t < chunk_tokens; t += slice_count) {
+                int token = chunk_start + t;
+                size_t v_cache_offset = static_cast<size_t>(seq_block_table[token / block_size]) *
+                                            kv_heads * block_size * head_dim +
+                                        static_cast<size_t>(kv_head_idx) * block_size * head_dim +
+                                        static_cast<size_t>(token % block_size) * head_dim;
+                partial += shared_probs[t] * static_cast<float>(v_cache[v_cache_offset + d]);
+            }
+
+            shared_partial[threadIdx.x] = partial;
+        }
+
+        __syncthreads();
+
+        for (int d = threadIdx.x; d < head_dim; d += blockDim.x) {
+            float acc = shared_acc[d] * exp_old;
+
+            for (int slice = 0; slice < slice_count; ++slice) {
+                acc += shared_partial[slice * head_dim + d];
+            }
+
+            shared_acc[d] = acc;
+        }
+
+        __syncthreads();
+
+        running_max = new_running_max;
+    }
+
+    float* partial_out =
+        scratch + ((static_cast<size_t>(batch_row_idx) * heads + attention_head_idx) * num_splits +
+                   split_idx) *
+                      (head_dim + 2);
+
+    if (threadIdx.x == 0) {
+        partial_out[0] = running_max;
+        partial_out[1] = running_sum;
+    }
+
+    for (int d = threadIdx.x; d < head_dim; d += blockDim.x) {
+        partial_out[2 + d] = shared_acc[d];
+    }
+}
+
+__global__ void paged_attention_split_merge_kernel(nv_bfloat16* __restrict__ out,
+                                                   const float* __restrict__ scratch,
+                                                   const int* __restrict__ context_lens,
+                                                   int num_splits, int heads, int head_dim,
+                                                   int block_size) {
+    int attention_head_idx = blockIdx.x;
+    int batch_row_idx = blockIdx.y;
+    int context_len = context_lens[batch_row_idx];
+
+    if (context_len <= 0) return;
+
+    int total_blocks = (context_len + block_size - 1) / block_size;
+    int blocks_per_split = (total_blocks + num_splits - 1) / num_splits;
+    int used_splits = (total_blocks + blocks_per_split - 1) / blocks_per_split;
+
+    const float* partials =
+        scratch + (static_cast<size_t>(batch_row_idx) * heads + attention_head_idx) * num_splits *
+                      (head_dim + 2);
+    int stride = head_dim + 2;
+
+    float global_max = partials[0];
+
+    for (int split = 1; split < used_splits; ++split) {
+        global_max = fmaxf(global_max, partials[split * stride]);
+    }
+
+    float total_sum = 0.0f;
+
+    for (int split = 0; split < used_splits; ++split) {
+        total_sum += __expf(partials[split * stride] - global_max) * partials[split * stride + 1];
+    }
+
+    for (int d = threadIdx.x; d < head_dim; d += blockDim.x) {
+        float acc = 0.0f;
+
+        for (int split = 0; split < used_splits; ++split) {
+            acc += __expf(partials[split * stride] - global_max) * partials[split * stride + 2 + d];
+        }
+
+        float final_val = (total_sum > 0.0f) ? (acc / total_sum) : 0.0f;
+
+        out[batch_row_idx * (heads * head_dim) + (attention_head_idx * head_dim) + d] =
+            __float2bfloat16(final_val);
+    }
+}
+
+void paged_attention_decode_split(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
+                                  const Tensor& v_cache, const Tensor& block_tables,
+                                  const Tensor& context_lens, const Tensor& scratch,
+                                  Stream stream) {
+    const auto fail = [](const char* message) {
+        throw std::invalid_argument(std::string("[paged_attention_decode_split] ") + message);
+    };
+
+    if (k_cache.dtype != DType::BF16 || k_cache.ndim != 4) {
+        fail("k_cache must be BF16 and 4-dimensional");
+    }
+
+    if (v_cache.dtype != DType::BF16 || v_cache.ndim != 4) {
+        fail("v_cache must be BF16 and 4-dimensional");
+    }
+
+    for (int i = 0; i < Tensor::kMaxDims; ++i) {
+        if (k_cache.shape[i] != v_cache.shape[i]) fail("k_cache and v_cache shapes must match");
+    }
+
+    if (out.dtype != DType::BF16 || out.ndim != 2) fail("out must be BF16 and 2-dimensional");
+    if (qkv.dtype != DType::BF16 || qkv.ndim != 2) fail("qkv must be BF16 and 2-dimensional");
+
+    if (block_tables.dtype != DType::I32 || block_tables.ndim != 2) {
+        fail("block_tables must be I32 and 2-dimensional");
+    }
+
+    if (context_lens.dtype != DType::I32 || context_lens.ndim != 1) {
+        fail("context_lens must be I32 and 1-dimensional");
+    }
+
+    if (scratch.dtype != DType::F32 || scratch.ndim != 4) {
+        fail("scratch must be F32 and 4-dimensional");
+    }
+
+    int64_t rows = out.shape[0];
+    int64_t head_dim64 = k_cache.shape[3];
+    int64_t kv_heads64 = k_cache.shape[1];
+    int64_t block_size64 = k_cache.shape[2];
+
+    if (head_dim64 <= 0 || kv_heads64 <= 0 || block_size64 <= 0 || k_cache.shape[0] <= 0) {
+        fail("cache dimensions must be positive");
+    }
+
+    if (out.shape[1] <= 0 || out.shape[1] % head_dim64 != 0) {
+        fail("out width must be a positive multiple of head_dim");
+    }
+
+    int64_t heads64 = out.shape[1] / head_dim64;
+
+    if (heads64 % kv_heads64 != 0) fail("heads must be a multiple of kv_heads");
+    if (qkv.shape[0] != rows) fail("qkv rows must match out rows");
+
+    if (qkv.shape[1] != (heads64 + 2 * kv_heads64) * head_dim64) {
+        fail("qkv width must be (heads + 2 * kv_heads) * head_dim");
+    }
+
+    if (block_tables.shape[0] != rows || block_tables.shape[1] <= 0) {
+        fail("block_tables must have one row per batch row and at least one column");
+    }
+
+    if (context_lens.shape[0] != rows) fail("context_lens length must match the batch size");
+
+    if (scratch.shape[0] != rows || scratch.shape[1] != heads64 ||
+        scratch.shape[3] != head_dim64 + 2) {
+        fail("scratch must be [batch, heads, num_splits, head_dim + 2]");
+    }
+
+    if (scratch.shape[2] <= 0) fail("scratch must hold at least one split");
+
+    if (rows == 0) {
+        return;
+    }
+
+    int batch_size = static_cast<int>(rows);
+    int head_dim = static_cast<int>(head_dim64);
+    int heads = static_cast<int>(heads64);
+    int kv_heads = static_cast<int>(kv_heads64);
+    int block_size = static_cast<int>(block_size64);
+    int max_blocks = static_cast<int>(block_tables.shape[1]);
+    int num_splits = static_cast<int>(scratch.shape[2]);
+
+    auto* d_out = static_cast<nv_bfloat16*>(out.data);
+    auto* d_scratch = static_cast<float*>(scratch.data);
+    auto* d_qkv = static_cast<const nv_bfloat16*>(qkv.data);
+    auto* d_k_cache = static_cast<const nv_bfloat16*>(k_cache.data);
+    auto* d_v_cache = static_cast<const nv_bfloat16*>(v_cache.data);
+    auto* d_block_tables = static_cast<const int*>(block_tables.data);
+    auto* d_context_lens = static_cast<const int*>(context_lens.data);
+
+    int thread_block_size = 256;
+    dim3 partial_grid(num_splits, heads, batch_size);
+
+    size_t shared_mem_bytes = (static_cast<size_t>(3 * thread_block_size) * sizeof(float)) +
+                              (static_cast<size_t>(head_dim) * sizeof(float)) +
+                              (static_cast<size_t>(head_dim) * sizeof(nv_bfloat16));
+
+    paged_attention_split_partial_kernel<<<partial_grid, thread_block_size, shared_mem_bytes,
+                                           stream>>>(
+        d_scratch, d_qkv, d_k_cache, d_v_cache, d_block_tables, d_context_lens, batch_size,
+        num_splits, heads, kv_heads, head_dim, block_size, max_blocks);
+
+    KERNEL_CHECK(stream);
+
+    dim3 merge_grid(heads, batch_size);
+    int merge_block_size = std::min(head_dim, 128);
+
+    paged_attention_split_merge_kernel<<<merge_grid, merge_block_size, 0, stream>>>(
+        d_out, d_scratch, d_context_lens, num_splits, heads, head_dim, block_size);
+
+    KERNEL_CHECK(stream);
 }
 
 }  // namespace engine

@@ -6,6 +6,7 @@
 
 #include "engine/core/tensor.h"
 #include "engine/kernels/paged_attention.h"
+#include "engine/kernels/paged_attention_split.h"
 #include "engine/kernels/paged_attention_v2.h"
 using namespace engine;
 int main(int argc, char** argv) {
@@ -68,7 +69,17 @@ int main(int argc, char** argv) {
             v1 = timeit([&] { paged_attention_decode(To, Tq, Tk, Tv, Tb, Tc, nullptr); });
         } catch (...) {
         }
-        printf("rows %2d ctx %5d: v1 %8.1f us  v2 %8.1f us\n", rows, ctx, v1, v2);
+        printf("rows %2d ctx %5d: v1 %8.1f us  v2 %8.1f us  split", rows, ctx, v1, v2);
+        for (int splits : {1, 2, 4, 8, 16}) {
+            void* ws;
+            cudaMalloc(&ws, (size_t)rows * heads * splits * (hd + 2) * 4);
+            Tensor Ts(ws, DType::F32, {rows, heads, splits, hd + 2});
+            float us =
+                timeit([&] { paged_attention_decode_split(To, Tq, Tk, Tv, Tb, Tc, Ts, nullptr); });
+            printf("  %d:%8.1f", splits, us);
+            cudaFree(ws);
+        }
+        printf(" us\n");
         cudaFree(k);
         cudaFree(v);
         cudaFree(qkv);
