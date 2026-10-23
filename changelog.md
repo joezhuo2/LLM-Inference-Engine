@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/paged-attention-split-impl
+
+- Implement `paged_attention_decode_split` (`src/kernels/paged_attention_split.cu`), drafted by Claude at Joe's request so he can study it: a partial kernel on a grid of (split, head, row) blocks that is the v2 kernel restricted to its token range (the context is cut on block boundaries, `blocks_per_split = ceil(total_blocks / num_splits)`, a split with no tokens returns at once) and writes its running max, running sum and unnormalized weighted sum of V to the scratch tensor, then a merge kernel on a grid of (head, row) blocks that takes the maximum over the non-empty splits, rescales each partial by `exp(m_s - M)` and adds them in split order before the one division and the single BF16 rounding. All argument errors of v2 plus the scratch checks throw `std::invalid_argument`. All 94 `todo_joe` tests pass; three mutants (merge without the rescale, empty splits included in the merge, overlapping ranges) are each caught. (Part C, drafted by Claude)
+
 ## kernel/paged-attention-split-stub
 
 - Let the shared paged attention test harness (`tests/support/paged_attention_harness.h`) take any callable as the kernel under test (`std::function` instead of a plain function pointer), so a kernel with extra arguments, like a scratch buffer, can be tested by wrapping it in a lambda; the v1 and v2 suites pass a function pointer as before. (Part A)
