@@ -217,3 +217,19 @@ Nsight Compute on one launch each (clocks locked, cold caches, so longer than th
 Reading it. At batch 1 the grid of v2 is 32 blocks, fewer than the SMs can hold, and splitting the context into 4 to 8 pieces makes a 2,048-token context 2.8x faster and an 8,192-token context 2.8x faster, with 8 splits (256 blocks) the best or within 3% of the best from 2,048 tokens up. At 512 tokens the gain is 1.1x (4 splits) and at 128 tokens it loses, because a split holds too few tokens to pay for the second launch and the partial write. With 16 rows the grid is already 512 blocks, so splitting only adds work: it ties v2 at 2 splits, loses beyond that, and wins only at 8,192 tokens (1.2x at 16 splits, with a noisy 4-split point). One split costs 0 to 10 us over v2 (the extra merge launch), more at short contexts. A rule for the wiring branch: use `num_splits = 1` (or v2) when `batch * 32 >= 256` blocks already or the longest context is under 512 tokens, otherwise `num_splits` near `256 / (batch * 32)` rounded to a power of two, at most 8 to 16 and at least 256 tokens per split.
 
 To reproduce: `nvcc -std=c++20 -arch=sm_120 -Iinclude -Isrc scripts/paged_attention_bench.cu build/release/src/libengine_kernels.a build/release/src/libengine_core.a -o /tmp/pa_bench && /tmp/pa_bench`.
+
+## Split attention in the forward pass (Branch 42)
+
+`PagedRunner` now calls `paged_attention_decode_split` when `attention_splits(rows, heads, longest_context)` asks for more than one split (1 to 4 rows and a context of 512 tokens or more; with TinyLlama's 2,048 positions one row gets 2 splits from 512 tokens and 4 from 1,024, since 8 would need 2,048). `engine bench`, RTX 5060 Laptop GPU, release build, main (b597d93) against this branch (e298faf), 64 output tokens, warmup 1, TPOT p50 in ms of two runs each (run 1 / run 2):
+
+| max batch | prompt | splits | v2 eager | split eager | v2 graphs | this branch graphs |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 64 | 1 | 8.90 / 8.86 | 8.84 / 10.08 | 8.32 / 8.53 | 8.44 / 8.43 |
+| 1 | 512 | 2 | 9.63 / 9.62 | 9.28 / 9.51 | 9.19 / 9.38 | 9.23 / 9.79 |
+| 1 | 1,024 | 4 | 10.55 / 10.73 | 9.34 / 9.68 | 9.94 / 10.09 | 10.05 / 10.02 |
+| 1 | 1,984 | 4 | 14.68 / 14.70 | 10.19 / 10.94 | 13.97 / 14.08 | 14.05 / 14.03 |
+| 4 | 1,984 | 2 when 4 rows decode | 50.93 / 51.19 | 50.71 / 51.06 | 50.10 / 50.43 | 50.23 / 50.48 |
+
+Reading it. At batch 1 eager the split takes the long-context TPOT from 14.7 to 10.2 to 10.9 ms (1.4x). That saving of 3.8 to 4.5 ms per token is more than the 22 x (167.6 - 64.7) us = 2.3 ms the warm-cache loop above predicts for 4 splits at 2,048 tokens and less than the cold-cache Nsight Compute numbers (v2 383 us per launch) would give; inside a step attention runs right after GEMMs that stream 2 GB of weights through L2, so its cache state is likely between the two. Not checked with a profile yet; at 1,024 tokens the gain is 1.1x and at 512 it is inside the noise. Short contexts take the v2 path and are unchanged (the 10.08 ms eager run at 64 tokens is a host hiccup; the graph runs of the same build agree with main). The graph columns do not move: `DecodeGraphs` captures each bucket on a dummy batch with no context, so the captured step always runs v2 and a replay cannot change its grid, which makes eager faster than graphs from about 1,024 tokens on. With 4 requests at 1,984 tokens the TPOT is dominated by the prefills that stall the decodes (each step is all prefill or all decode), so the attention gain does not show. The short-prompt workload of `scripts/reproduce.sh` (64 prompt and 64 output tokens) never splits, so `docs/results.md` keeps its numbers.
+
+To reproduce one cell: `build/release/bin/engine bench --model models/tinyllama --max-batch 1 --num-requests 1 --prompt-len 1984 --output-len 64 --warmup 1 --out /tmp/split.csv` (add `--graphs` for the graph column).

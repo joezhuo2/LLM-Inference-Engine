@@ -52,7 +52,7 @@ Decoding one token at batch 1 reads every weight except all but one row of the e
 - **Fused weights at load time:** Q, K and V are concatenated into one `[2560, 2048]` matrix and gate and up into one `[11264, 2048]` matrix, turning five GEMMs per layer into two at no runtime cost.
 - **GEMMs through cuBLAS:** the weights are row-major `[out, in]` and cuBLAS is column-major, so `y = x W^T` is computed as the column-major product `Y^T = W X^T` in one `cublasGemmEx` call. A hand-written GEMM is a learning kernel benchmarked against cuBLAS, not a replacement for it.
 - **Paged KV cache:** blocks of 16 tokens laid out `[num_blocks, kv_heads, 16, 64]` per layer, block 0 reserved as a null block, and 90% of the VRAM left after the weights given to the cache. Sequences get blocks from a free list through per-sequence block tables, so memory is never reserved for tokens that do not exist yet.
-- **Paged decode attention:** version 1 keeps the scores in shared memory (context capped at 2,048); version 2 uses an online softmax with one thread block per KV head, so each block reads its K and V once for all 8 query heads that share them.
+- **Paged decode attention:** version 1 keeps the scores in shared memory (context capped at 2,048); version 2 uses an online softmax with one thread block per KV head, so each block reads its K and V once for all 8 query heads that share them. For 1 to 4 sequences at 512 tokens or more, a split version cuts each context across several blocks and merges their partial softmax results, which fills the GPU at batch 1 (2.8x faster attention at 2,048 tokens).
 - **Continuous batching:** waiting, running and finished queues, admission by free blocks, and recompute-style preemption when the cache runs out. Each step is all prefill or all decode; the resulting stall is measured so chunked prefill can fix it later.
 - **Sampling on the GPU:** greedy, Gumbel-max for temperature sampling, and top-k and top-p through binary-searched thresholds instead of a full sort of the vocabulary.
 - **CUDA Graphs:** with `--graphs` decode is captured for batch sizes 1, 2, 4, 8, 16 and so on up to the max batch and replayed from fixed device buffers, which removes per-kernel launch overhead; prefill runs eagerly.
@@ -60,7 +60,7 @@ Decoding one token at batch 1 reads every weight except all but one row of the e
 
 ## Beyond the MVP
 
-Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, FlashAttention-style prefill and split-K decode, prefix caching and copy-on-write blocks, chunked prefill, speculative decoding, and an OpenAI-compatible HTTP server with a live metrics dashboard.
+Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, FlashAttention-style prefill, split decode inside CUDA Graphs, prefix caching and copy-on-write blocks, chunked prefill, speculative decoding, and an OpenAI-compatible HTTP server with a live metrics dashboard.
 
 ## Hardware
 

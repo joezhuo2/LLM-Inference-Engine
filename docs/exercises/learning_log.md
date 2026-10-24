@@ -1263,3 +1263,4 @@
 ## Wiring Split Attention (Branch 42)
 - **choosing a kernel variant at launch time from the problem shape (a launch heuristic)** => 
 - **why a CUDA Graph replays the launch parameters it captured (grid size, kernel choice) even when the inputs change** => 
+- **why a kernel timed in a warm loop can be faster than the same kernel inside a forward pass (cache state between launches)** => 
