@@ -10,6 +10,7 @@
 #include "engine/kernels/add.h"
 #include "engine/kernels/add_rmsnorm.h"
 #include "engine/kernels/embedding.h"
+#include "engine/kernels/paged_attention_split.h"
 #include "engine/kernels/paged_attention_v2.h"
 #include "engine/kernels/rmsnorm.h"
 #include "engine/kernels/rope.h"
@@ -66,6 +67,7 @@ PagedRunner::PagedRunner(const ModelConfig& config, const ModelWeights& weights,
     gate_up_ = buffer(max_tokens, 2 * int64_t(config.intermediate), DType::BF16);
     act_ = buffer(max_tokens, config.intermediate, DType::BF16);
     logits_ = buffer(max_seqs, config.vocab, DType::BF16);
+    scratch_ = buffer(kSplitAttentionBlocks, config.head_dim + 2, DType::F32);
 }
 
 Tensor PagedRunner::logits(int64_t rows) {
@@ -99,6 +101,7 @@ void PagedRunner::stage(const PagedBatch& batch) {
         require(row >= 0 && row < t, "a logit row is outside the batch");
 
     CUDA_CHECK(cudaEventSynchronize(staged_));
+    longest_context_ = batch.longest_context();
     auto* host = static_cast<int32_t*>(staging_.data());
     size_t at = 0;
     for (const std::vector<int32_t>* part :
@@ -138,6 +141,8 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
     const Tensor proj = view(proj_, t, c.hidden);
     const Tensor gate_up = view(gate_up_, t, 2 * int64_t(c.intermediate));
     const Tensor act = view(act_, t, c.intermediate);
+    const int64_t splits = attention_splits(t, c.heads, longest_context_);
+    const Tensor scratch(scratch_.data(), DType::F32, {t, c.heads, splits, c.head_dim + 2});
 
     ranged("embedding", [&] { naive::embedding(x, input_ids, weights_.embed, stream_); });
     for (int i = 0; i < c.layers; ++i) {
@@ -152,8 +157,12 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
         });
         ranged("write_kv", [&] { write_kv(cache_->k(i), cache_->v(i), qkv, slots, stream_); });
         ranged("attention", [&] {
-            paged_attention_decode_v2(attn, qkv, cache_->k(i), cache_->v(i), block_tables,
-                                      context_lens, stream_);
+            if (splits == 1)
+                paged_attention_decode_v2(attn, qkv, cache_->k(i), cache_->v(i), block_tables,
+                                          context_lens, stream_);
+            else
+                paged_attention_decode_split(attn, qkv, cache_->k(i), cache_->v(i), block_tables,
+                                             context_lens, scratch, stream_);
         });
         ranged("o_proj", [&] { gemm(blas_, proj, attn, w.wo); });
         ranged("add1_norm2", [&] { fast::add_rmsnorm(x, norm, x, proj, w.ln2, eps, stream_); });
