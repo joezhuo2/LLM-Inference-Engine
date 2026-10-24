@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## runtime/wire-attention-split
+
+- Add the rule that picks the split count of `paged_attention_decode_split` (`attention_splits(rows, heads, longest_context)` and `PagedBatch::longest_context()` in `include/engine/sched/paged_batch.h`), from the timings in `docs/profiling.md`: double the split count from 1 while the grid stays at most `kSplitAttentionBlocks` (256) blocks, the split count stays at most 8 and every split keeps at least 256 tokens of the longest context. That gives 8 splits for one row at 2,048 tokens or more, 2 at 512, 4 / 2 / 2 for 2 / 3 / 4 rows, and 1 (v2) for 5 rows or more or a context under 512 tokens. CPU tests check the table and that a split grid never exceeds 256 blocks, which bounds the scratch buffer. (Part B)
+
 ## kernel/paged-attention-split-impl
 
 - Implement `paged_attention_decode_split` (`src/kernels/paged_attention_split.cu`), drafted by Claude at Joe's request so he can study it: a partial kernel on a grid of (split, head, row) blocks that is the v2 kernel restricted to its token range (the context is cut on block boundaries, `blocks_per_split = ceil(total_blocks / num_splits)`, a split with no tokens returns at once) and writes its running max, running sum and unnormalized weighted sum of V to the scratch tensor, then a merge kernel on a grid of (head, row) blocks that takes the maximum over the non-empty splits, rescales each partial by `exp(m_s - M)` and adds them in split order before the one division and the single BF16 rounding. All argument errors of v2 plus the scratch checks throw `std::invalid_argument`. All 94 `todo_joe` tests pass; three mutants (merge without the rescale, empty splits included in the merge, overlapping ranges) are each caught. (Part C, drafted by Claude)
