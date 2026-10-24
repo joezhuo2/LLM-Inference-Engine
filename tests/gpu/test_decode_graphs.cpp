@@ -47,13 +47,13 @@ std::vector<int32_t> prompt_of(int64_t id, int length, int vocab) {
 }
 
 struct Rig {
-    Rig(const engine::DeviceWeights& w, cudaStream_t stream, int max_context)
+    Rig(const engine::DeviceWeights& w, cudaStream_t stream, int max_context, int max_tokens = 256)
         : cache(w.config, 400, kBlockSize),
-          runner(w.config, w.weights, cache, 256, kMaxSeqs, max_context, stream),
+          runner(w.config, w.weights, cache, max_tokens, kMaxSeqs, max_context, stream),
           scheduler(SchedulerConfig{.num_blocks = 400,
                                     .block_size = kBlockSize,
                                     .max_batch = kMaxSeqs,
-                                    .max_prefill_tokens = 256,
+                                    .max_prefill_tokens = max_tokens,
                                     .max_context = max_context}),
           vocab(w.config.vocab) {}
 
@@ -219,6 +219,62 @@ TEST_F(DecodeGraphsTest, TwoHundredReplaysWithChangingInputsStayBitIdentical) {
         rig.scheduler.update(argmax_rows(replayed, rig.vocab));
         ++replays;
     }
+}
+
+TEST_F(DecodeGraphsTest, LongContextsCaptureOneGraphPerBucketAndSplitCount) {
+    Rig rig(w(), stream, 2048, 2048);
+    DecodeGraphs graphs(rig.runner, kBuckets);
+    EXPECT_EQ(graphs.num_captured(), int64_t(kBuckets.size()) + 3 + 2 + 1);
+}
+
+TEST_F(DecodeGraphsTest, LongContextReplaysAreBitIdenticalToThePaddedEagerStep) {
+    for (const std::vector<int>& lengths :
+         {std::vector<int>{1100}, std::vector<int>{1100, 520}, std::vector<int>{600, 520, 700}}) {
+        SCOPED_TRACE("batch of " + std::to_string(lengths.size()));
+        Rig rig(w(), stream, 2048, 2048);
+        for (size_t i = 0; i < lengths.size(); ++i) rig.submit(int64_t(i), lengths[i], 4);
+        DecodeGraphs graphs(rig.runner, kBuckets);
+        for (int step = 0; step < 3; ++step) {
+            const PagedBatch batch = rig.next_decode_batch();
+            ASSERT_EQ(batch.num_seqs, int64_t(lengths.size()));
+            ASSERT_GT(engine::attention_splits(bucket_of(batch.num_seqs), w().config.heads,
+                                               batch.longest_context()),
+                      1);
+            const auto replayed = to_host(graphs.forward(batch));
+            ASSERT_EQ(replayed, rig.padded_eager(batch, bucket_of(batch.num_seqs)))
+                << "step " << step;
+            rig.scheduler.update(argmax_rows(replayed, rig.vocab));
+        }
+    }
+}
+
+TEST_F(DecodeGraphsTest, ReplaysFollowTheSplitCountAcrossAThreshold) {
+    Rig rig(w(), stream, 2048, 2048);
+    rig.submit(0, 1018, 12);
+    DecodeGraphs graphs(rig.runner, kBuckets);
+    std::vector<int64_t> splits_seen;
+    for (int step = 0; step < 10; ++step) {
+        const PagedBatch batch = rig.next_decode_batch();
+        const int64_t splits =
+            engine::attention_splits(1, w().config.heads, batch.longest_context());
+        if (splits_seen.empty() || splits_seen.back() != splits) splits_seen.push_back(splits);
+        const auto replayed = to_host(graphs.forward(batch));
+        ASSERT_EQ(replayed, rig.padded_eager(batch, 1)) << "step " << step;
+        rig.scheduler.update(argmax_rows(replayed, rig.vocab));
+    }
+    EXPECT_EQ(splits_seen, (std::vector<int64_t>{2, 4}));
+}
+
+TEST_F(DecodeGraphsTest, ABatchPastTheRunnerMaxContextIsNotCovered) {
+    Rig rig(w(), stream, 120);
+    rig.submit(0, 6, 4);
+    PagedBatch batch = rig.next_decode_batch();
+    DecodeGraphs graphs(rig.runner, kBuckets);
+    batch.context_lens[0] = 120;
+    EXPECT_TRUE(graphs.covers(batch));
+    batch.context_lens[0] = 121;
+    EXPECT_FALSE(graphs.covers(batch));
+    EXPECT_THROW(graphs.forward(batch), std::invalid_argument);
 }
 
 TEST_F(DecodeGraphsTest, CoversAndBucketFor) {
