@@ -1264,3 +1264,7 @@
 - **choosing a kernel variant at launch time from the problem shape (a launch heuristic)** => 
 - **why a CUDA Graph replays the launch parameters it captured (grid size, kernel choice) even when the inputs change** => 
 - **why a kernel timed in a warm loop can be faster than the same kernel inside a forward pass (cache state between launches)** => 
+
+## Graphs for Split Attention (Branch 43)
+- **capturing one graph per launch configuration and choosing among them at replay time** => 
+- **`std::map` with a `std::pair` key and `contains` (C++20)** => 

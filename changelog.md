@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## runtime/graphs-split-attention
+
+- Capture one CUDA Graph per (bucket, split count) in `DecodeGraphs` (`src/runtime/decode_graphs.cpp`), drafted by Claude at Joe's request: for each bucket the constructor walks every context from 0 to the runner's max context, and the first context that gives a new `attention_splits(bucket, heads, context)` is staged on the dummy batch and captured, so the captured step runs the split kernel with that split count. `forward` picks the graph from the padded batch's longest context, the same value `run_staged` reads, so a replay runs exactly the eager step. With TinyLlama at a 2,048-token max context that is 11 graphs instead of 5 (bucket 1: 1, 2, 4, 8 splits; bucket 2: 1, 2, 4; bucket 4: 1, 2; buckets 8 and 16: 1); at 128 tokens it stays one per bucket. `covers` now also rejects a batch whose longest context is past the runner's max context, so serve falls back to the eager step instead of looking up a graph that was never captured. `PagedRunner` exposes `max_context()` and `config()`. (Part C, drafted by Claude)
+
 ## runtime/wire-attention-split
 
 - Add the rule that picks the split count of `paged_attention_decode_split` (`attention_splits(rows, heads, longest_context)` and `PagedBatch::longest_context()` in `include/engine/sched/paged_batch.h`), from the timings in `docs/profiling.md`: double the split count from 1 while the grid stays at most `kSplitAttentionBlocks` (256) blocks, the split count stays at most 8 and every split keeps at least 256 tokens of the longest context. That gives 8 splits for one row at 2,048 tokens or more, 2 at 512, 4 / 2 / 2 for 2 / 3 / 4 rows, and 1 (v2) for 5 rows or more or a context under 512 tokens. CPU tests check the table and that a split grid never exceeds 256 blocks, which bounds the scratch buffer. (Part B)
