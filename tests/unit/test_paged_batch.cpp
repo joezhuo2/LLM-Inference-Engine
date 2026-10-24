@@ -7,6 +7,7 @@
 
 #include "engine/sched/paged_batch.h"
 
+using engine::attention_splits;
 using engine::build_paged_batch;
 using engine::pad_decode_batch;
 using engine::PagedBatch;
@@ -193,4 +194,37 @@ TEST(PagedBatch, PaddingRejectsPrefillBatchesAndTooFewRows) {
     odd.logit_rows[0] = 0;
     odd.token_ids.push_back(5);
     EXPECT_THROW(pad_decode_batch(odd, 4), std::invalid_argument);
+}
+
+TEST(PagedBatch, LongestContextIsTheLargestContextLengthOfAnyRow) {
+    PagedBatch b;
+    EXPECT_EQ(b.longest_context(), 0);
+    b.context_lens = {5, 700, 0, 12};
+    EXPECT_EQ(b.longest_context(), 700);
+}
+
+TEST(AttentionSplits, SplitsOnlyWhenTheGridIsSmallAndTheContextIsLong) {
+    EXPECT_EQ(attention_splits(1, 32, 128), 1);
+    EXPECT_EQ(attention_splits(1, 32, 511), 1);
+    EXPECT_EQ(attention_splits(1, 32, 512), 2);
+    EXPECT_EQ(attention_splits(1, 32, 1023), 2);
+    EXPECT_EQ(attention_splits(1, 32, 1024), 4);
+    EXPECT_EQ(attention_splits(1, 32, 2048), 8);
+    EXPECT_EQ(attention_splits(1, 32, 8192), 8);
+    EXPECT_EQ(attention_splits(2, 32, 8192), 4);
+    EXPECT_EQ(attention_splits(3, 32, 8192), 2);
+    EXPECT_EQ(attention_splits(4, 32, 8192), 2);
+    EXPECT_EQ(attention_splits(5, 32, 8192), 1);
+    EXPECT_EQ(attention_splits(16, 32, 8192), 1);
+    EXPECT_EQ(attention_splits(1, 4, 1 << 20), 8);
+}
+
+TEST(AttentionSplits, TheSplitGridNeverExceedsTheScratchBound) {
+    for (int64_t heads : {1, 4, 32, 48, 64, 256})
+        for (int64_t rows = 1; rows <= 64; ++rows)
+            for (int64_t context : {0, 256, 512, 2048, 100000}) {
+                const int64_t splits = attention_splits(rows, heads, context);
+                EXPECT_GE(splits, 1);
+                EXPECT_TRUE(splits == 1 || rows * heads * splits <= engine::kSplitAttentionBlocks);
+            }
 }

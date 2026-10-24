@@ -8,6 +8,9 @@ namespace engine {
 
 namespace {
 
+constexpr int64_t kMaxSplits = 8;
+constexpr int64_t kMinSplitTokens = 256;
+
 void require(bool ok, const std::string& what) {
     if (!ok) throw std::invalid_argument("[build_paged_batch] " + what);
 }
@@ -71,6 +74,18 @@ PagedBatch pad_decode_batch(const PagedBatch& batch, int64_t rows) {
     padded.logit_rows.resize(size_t(rows));
     for (int64_t i = batch.num_seqs; i < rows; ++i) padded.logit_rows[size_t(i)] = int32_t(i);
     return padded;
+}
+
+int64_t PagedBatch::longest_context() const {
+    return context_lens.empty() ? 0 : *std::max_element(context_lens.begin(), context_lens.end());
+}
+
+int64_t attention_splits(int64_t rows, int64_t heads, int64_t longest_context) {
+    int64_t splits = 1;
+    while (splits < kMaxSplits && 2 * splits * rows * heads <= kSplitAttentionBlocks &&
+           longest_context >= 2 * splits * kMinSplitTokens)
+        splits *= 2;
+    return splits;
 }
 
 std::vector<SampleRow> sample_rows(const Step& step, const Scheduler& scheduler) {

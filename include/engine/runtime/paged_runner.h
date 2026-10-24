@@ -45,12 +45,13 @@ private:
     int64_t max_tokens_;
     int64_t max_seqs_;
     int64_t max_blocks_;
+    int64_t longest_context_ = 0;
     Stream stream_;
     DeviceBuffer workspace_;
     Blas blas_;
     PinnedBuffer staging_;
     CUevent_st* staged_ = nullptr;
-    DeviceBuffer ints_, x_, norm_, qkv_, attn_, proj_, gate_up_, act_, logits_;
+    DeviceBuffer ints_, x_, norm_, qkv_, attn_, proj_, gate_up_, act_, logits_, scratch_;
 };
 
 }  // namespace engine

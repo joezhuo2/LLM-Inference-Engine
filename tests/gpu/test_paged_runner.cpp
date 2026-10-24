@@ -106,6 +106,59 @@ TEST_F(PagedRunnerTest, MatchesTheContiguousRunnerOnAMixedBatchOverSeveralSteps)
     std::printf("worst relative L2 of paged logits against the contiguous runner: %g\n", worst);
 }
 
+TEST_F(PagedRunnerTest, LongContextsMatchTheContiguousRunnerThroughTheSplitKernel) {
+    constexpr int kLongContext = 2048;
+    const std::vector<int> lengths = {1100, 520};
+    constexpr int kSteps = 4;
+    ASSERT_EQ(engine::attention_splits(1, w().config.heads, lengths[0]), 4);
+    ASSERT_EQ(engine::attention_splits(2, w().config.heads, lengths[0]), 4);
+    const int blocks = 2 * kLongContext / kBlockSize;
+    KvCache cache(w().config, blocks, kBlockSize);
+    PagedRunner runner(w().config, w().weights, cache, kLongContext, 2, kLongContext, stream);
+    Scheduler scheduler(SchedulerConfig{.num_blocks = blocks,
+                                        .block_size = kBlockSize,
+                                        .max_batch = 2,
+                                        .max_prefill_tokens = kLongContext,
+                                        .max_context = kLongContext});
+    std::vector<std::unique_ptr<ModelRunner>> solo;
+    for (size_t i = 0; i < lengths.size(); ++i) {
+        solo.push_back(std::make_unique<ModelRunner>(w().config, w().weights, kLongContext,
+                                                     kLongContext, stream));
+        Request r{.id = int64_t(i), .max_new_tokens = kSteps + 1};
+        r.prompt = prompt_of(int64_t(i), lengths[i], int(vocab()));
+        scheduler.submit(r);
+    }
+
+    double worst = 0.0;
+    int decode_steps = 0;
+    while (decode_steps < kSteps) {
+        const auto step = scheduler.schedule();
+        ASSERT_FALSE(step.seqs.empty());
+        if (!step.prefill) ++decode_steps;
+        const auto batch = engine::build_paged_batch(step, scheduler, int(runner.max_blocks()));
+        const auto paged = to_host(runner.forward(batch));
+        std::vector<int32_t> tokens;
+        for (size_t i = 0; i < step.seqs.size(); ++i) {
+            SCOPED_TRACE("decode step " + std::to_string(decode_steps) + " seq " +
+                         std::to_string(step.seqs[i]));
+            const Request& r = scheduler.request(step.seqs[i]);
+            ModelRunner& m = *solo[size_t(step.seqs[i])];
+            const std::vector<int32_t> feed =
+                step.prefill ? r.prompt : std::vector<int32_t>{r.output.back()};
+            const auto expected = to_host(m.forward(feed));
+            const std::vector<uint16_t> row(paged.begin() + int64_t(i) * vocab(),
+                                            paged.begin() + int64_t(i + 1) * vocab());
+            const double rel = relative_l2(row, expected);
+            worst = std::max(worst, rel);
+            EXPECT_LE(rel, kLogitRelativeL2);
+            tokens.push_back(argmax_rows(expected, vocab())[0]);
+        }
+        scheduler.update(tokens);
+    }
+    std::printf("worst relative L2 of split-attention logits against the contiguous runner: %g\n",
+                worst);
+}
+
 TEST_F(PagedRunnerTest, ASingleTokenPromptIsBitIdenticalToTheContiguousRunner) {
     KvCache cache(w().config, 16, kBlockSize);
     PagedRunner runner(w().config, w().weights, cache, 16, 1, kMaxContext, stream);

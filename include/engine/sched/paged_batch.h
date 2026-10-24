@@ -8,6 +8,8 @@
 
 namespace engine {
 
+inline constexpr int64_t kSplitAttentionBlocks = 256;
+
 struct PagedBatch {
     bool prefill = false;
     int64_t num_seqs = 0;
@@ -20,11 +22,14 @@ struct PagedBatch {
     std::vector<int32_t> block_tables{};
 
     int64_t num_tokens() const { return int64_t(token_ids.size()); }
+    int64_t longest_context() const;
 };
 
 PagedBatch build_paged_batch(const Step& step, const Scheduler& scheduler, int max_blocks);
 
 PagedBatch pad_decode_batch(const PagedBatch& batch, int64_t rows);
+
+int64_t attention_splits(int64_t rows, int64_t heads, int64_t longest_context);
 
 std::vector<SampleRow> sample_rows(const Step& step, const Scheduler& scheduler);
 
