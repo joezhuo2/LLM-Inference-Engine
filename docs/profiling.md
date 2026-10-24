@@ -233,3 +233,18 @@ To reproduce: `nvcc -std=c++20 -arch=sm_120 -Iinclude -Isrc scripts/paged_attent
 Reading it. At batch 1 eager the split takes the long-context TPOT from 14.7 to 10.2 to 10.9 ms (1.4x). That saving of 3.8 to 4.5 ms per token is more than the 22 x (167.6 - 64.7) us = 2.3 ms the warm-cache loop above predicts for 4 splits at 2,048 tokens and less than the cold-cache Nsight Compute numbers (v2 383 us per launch) would give; inside a step attention runs right after GEMMs that stream 2 GB of weights through L2, so its cache state is likely between the two. Not checked with a profile yet; at 1,024 tokens the gain is 1.1x and at 512 it is inside the noise. Short contexts take the v2 path and are unchanged (the 10.08 ms eager run at 64 tokens is a host hiccup; the graph runs of the same build agree with main). The graph columns do not move: `DecodeGraphs` captures each bucket on a dummy batch with no context, so the captured step always runs v2 and a replay cannot change its grid, which makes eager faster than graphs from about 1,024 tokens on. With 4 requests at 1,984 tokens the TPOT is dominated by the prefills that stall the decodes (each step is all prefill or all decode), so the attention gain does not show. The short-prompt workload of `scripts/reproduce.sh` (64 prompt and 64 output tokens) never splits, so `docs/results.md` keeps its numbers.
 
 To reproduce one cell: `build/release/bin/engine bench --model models/tinyllama --max-batch 1 --num-requests 1 --prompt-len 1984 --output-len 64 --warmup 1 --out /tmp/split.csv` (add `--graphs` for the graph column).
+
+## Split attention in CUDA Graphs (Branch 43)
+
+`DecodeGraphs` now captures one graph per (bucket, split count): for each bucket it walks the contexts from 0 to the runner's max context and captures the step on a dummy batch at the first context that gives a new `attention_splits(bucket, heads, context)`, and `forward` replays the graph of the padded batch's split count. With TinyLlama at a 2,048-token max context that is 11 graphs instead of 5 (bucket 1: 1, 2, 4, 8 splits; bucket 2: 1, 2, 4; bucket 4: 1, 2; buckets 8 and 16: 1). `engine bench`, RTX 5060 Laptop GPU, release build of this branch, same settings as the table above (64 output tokens, warmup 1), TPOT p50 in ms of two runs each, with the graph column of main copied from that table:
+
+| max batch | prompt | splits | eager | main graphs | this branch graphs |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 64 | 1 | 8.85 / 9.15 | 8.44 / 8.43 | 8.04 / 8.34 |
+| 1 | 512 | 2 | 9.47 / 9.15 | 9.23 / 9.79 | 9.04 / 9.09 |
+| 1 | 1,024 | 4 | 9.41 / 9.72 | 10.05 / 10.02 | 8.26 / 8.33 |
+| 1 | 1,984 | 4 | 9.93 / 10.60 | 14.05 / 14.03 | 9.13 / 9.12 |
+| 4 | 1,984 | 2 when 4 rows decode | 50.45 / 50.41 | 50.23 / 50.48 | 49.38 / 49.49 |
+
+Reading it. Graphs are faster than eager again at every length: at a 1,984-token prompt the replayed step goes from 14.0 to 9.1 ms (1.5x) and sits about 1 ms under eager, the same launch saving graphs give at 64 tokens. At 64 tokens the split count is 1, so the replay is the old graph and the difference to main is clock noise. Batch 4 at 1,984 tokens is still dominated by prefills that stall the decodes (each step is all prefill or all decode). The extra graphs cost capture time once at startup and some device memory for the executable graphs; neither was measured. Compute-sanitizer memcheck on the 12 `DecodeGraphsTest` tests: 0 errors, 0 bytes leaked. Reproduce one cell with the command above plus `--graphs`.
+
