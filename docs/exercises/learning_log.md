@@ -1296,3 +1296,9 @@
 - **passing a `std::function` callback so a pure library function can use state that lives in the caller** => 
 - **an optional out-parameter (`std::vector<T>* = nullptr`) to record data without changing the normal call path** => 
 - **incremental detokenization (why one token's text depends on the tokens before it)** => 
+
+## Web Site Scaffold (Branch 50)
+- **static export (`output: "export"`): pre-rendering every page to HTML at build time** => 
+- **CSS custom properties as design tokens and switching them with a `data-theme` attribute** => 
+- **why a theme script must run before the first paint (flash of the wrong theme)** => 
+- **`min-width: 0` on a flex child so it can shrink and scroll instead of widening the page** => 
