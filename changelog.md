@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## docs/m5-readme
 
 - Add a Results section to the README from the committed `docs/results.md` run (7d60861, 2026-10-25, RTX 5060 laptop): the five goals against what was measured (1 met under the near-tie rule with 15 of 20 prompts exact, 2 met at 82% of the measured bandwidth, 3 met at 11.0x, 4 partly because `write_kv` has no before and after, 5 met), output tokens/s at batch 1 / 4 / 16 for the engine with and without CUDA Graphs, llama.cpp and HF with the batch-1 TPOT, the throughput and roofline plots, the margin over llama.cpp with its batch-16 spread, the roofline reading (bandwidth bound everywhere, attention the largest target at batch 16), and that all numbers are from one laptop GPU with no cloud run. (Part A)
+- Add a "Reproducing the results" section to the README with the steps from a clean clone: the llmie virtual environment from `scripts/requirements.txt`, the three golden-data scripts (`checksum.py`, `tokenizer_golden.py`, `dump_reference.py`, since `tests/golden/` is gitignored), `scripts/setup_llamacpp.sh` with `LLAMA_CUDA_ARCH` for another GPU, what `scripts/reproduce.sh` runs and its flags, and how to measure `PEAK_GB_S` and `PEAK_TFLOPS` on another GPU with `src/practice/bandwith_test.cu` and `scripts/gemm_peak.cu` (both commands compiled with `-arch=native` and run on the laptop: 324.2 GB/s). (Part A)
 
 ## tools/roofline
 

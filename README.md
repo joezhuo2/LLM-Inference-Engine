@@ -133,6 +133,52 @@ The answer streams to stdout as it decodes, followed on stderr by the prompt and
 
 `bench` serves a synthetic workload and writes two CSVs: one row per request (`--out`: prompt and output tokens, preemptions, arrival time, TTFT, TPOT and latency in seconds) and one summary row (`results/laptop_b1_summary.csv`, or `--summary`) with the run's settings, the GPU, the build type, throughput, the mean, p50, p90 and p99 of TTFT, TPOT and latency, and the achieved bandwidth (the 2.07 GB of weights a decode step reads, divided by the median TPOT). Prompts are random token ids after BOS; `--prompt-len` and `--output-len` take a length `N` or a range `MIN:MAX` drawn per request, `--seed` fixes the prompts, and `--request-rate R` spreads arrivals as a Poisson process at R requests per second instead of submitting all of them at once. Every request generates its full output length unless `--stop-at-eos` is given, and `--warmup` (default 3) untimed requests run first. `--max-batch N` serves through the paged runner with up to N concurrent sequences and `--graphs` (with `--max-batch`) replays CUDA Graphs for the decode steps. Sampling takes the same `--temperature`, `--top-k` and `--top-p` as `generate`, with seed `seed + i` for request `i`. Until the paged runner and the scheduler land, requests run one at a time (batch 1), so with every request submitted at once the TTFT includes the time spent waiting for the earlier requests. Benchmark only the `release` preset (the command warns otherwise), plugged in and in maximum performance mode; on the RTX 5060, 8 requests of 128 prompt and 128 output tokens decoded at 96 tokens/s (200 GB/s of weights) in a run where `generate` reached 103, below the 125 to 135 above because the laptop was not in its fastest state, which is why every summary records its date and settings.
 
+## Reproducing the results
+
+From a clean clone, after the build above. The Python scripts (golden data, the HuggingFace baseline, plots) need the pinned packages in a virtual environment, which `scripts/reproduce.sh` looks for at `~/.venvs/llmie` (or set `PYTHON`):
+
+```bash
+python3 -m venv ~/.venvs/llmie && ~/.venvs/llmie/bin/pip install -r scripts/requirements.txt
+```
+
+The golden data the correctness tests compare against is generated from the model, not committed (`tests/golden/` is gitignored):
+
+```bash
+~/.venvs/llmie/bin/python scripts/checksum.py --model models/tinyllama --out tests/golden/checksums.json
+```
+
+```bash
+~/.venvs/llmie/bin/python scripts/tokenizer_golden.py --model models/tinyllama --out tests/golden/tokenizer.json
+```
+
+```bash
+~/.venvs/llmie/bin/python scripts/dump_reference.py --model models/tinyllama --out tests/golden/reference
+```
+
+The llama.cpp baseline is a pinned release (b11870) built outside the repo, plus a BF16 GGUF of the same weights; without it `reproduce.sh` skips the llama.cpp rows. On a GPU other than the RTX 5060 set `LLAMA_CUDA_ARCH` (89 for an L4 or an RTX 4090):
+
+```bash
+scripts/setup_llamacpp.sh
+```
+
+Then one script rebuilds the release preset, runs the tests and the HF comparison, benchmarks the engine (eager at max batch 1, 2, 4, 8, 16 and with CUDA Graphs at 1, 4, 16), HuggingFace and llama.cpp, profiles batch-1 and batch-16 decode steps with Nsight Systems when `nsys` is installed, draws the plots and the roofline, and rewrites the measured blocks of `docs/results.md`. Plug the laptop in, use maximum performance mode and close other GPU programs first. A full run takes about 10 minutes; `--quick` is a smoke run, and `--skip-tests`, `--skip-hf` and `--skip-llamacpp` leave those parts out:
+
+```bash
+scripts/reproduce.sh
+```
+
+The "% of peak" figures and the roofline use measured ceilings, not datasheet ones: 323.6 GB/s and 34.5 TFLOP/s on the laptop (`docs/hardware.md`). On another GPU measure both and pass them as `PEAK_GB_S` and `PEAK_TFLOPS`:
+
+```bash
+nvcc -O3 -arch=native src/practice/bandwith_test.cu -o /tmp/bandwidth_test && /tmp/bandwidth_test
+```
+
+```bash
+nvcc -std=c++20 -arch=native scripts/gemm_peak.cu -lcublas -o /tmp/gemm_peak && /tmp/gemm_peak
+```
+
+The `results/` files and `docs/results.md` are committed right after the code they measured, and `results/environment.txt` records the commit, GPU, driver, CUDA version and date of the run.
+
 ## Repository layout
 
 ```
