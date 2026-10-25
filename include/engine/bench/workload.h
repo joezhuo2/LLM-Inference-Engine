@@ -26,6 +26,7 @@ struct WorkloadConfig {
     double request_rate = 0.0;
     uint64_t seed = 0;
     SamplingParams params{};
+    std::vector<std::vector<int32_t>> prompts{};
 };
 
 struct Workload {

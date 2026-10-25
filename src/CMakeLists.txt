@@ -1,4 +1,5 @@
 add_library(engine_core
+  bench/chat_prompts.cpp
   bench/csv.cpp
   bench/metrics.cpp
   bench/trace.cpp

@@ -1296,3 +1296,7 @@
 - **passing a `std::function` callback so a pure library function can use state that lives in the caller** => 
 - **an optional out-parameter (`std::vector<T>* = nullptr`) to record data without changing the normal call path** => 
 - **incremental detokenization (why one token's text depends on the tokens before it)** => 
+
+## Chat Prompt Workloads (Branch 49)
+- **raw string literals (`R"(...)"`) for embedding JSON in C++ tests** => 
+- **why a benchmark workload with random token ids and one with real prompts can behave differently (EOS, output lengths)** => 

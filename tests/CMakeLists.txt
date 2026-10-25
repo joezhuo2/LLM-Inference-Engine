@@ -2,11 +2,13 @@ include(GoogleTest)
 
 set(ENGINE_TEST_DEFINITIONS
   ENGINE_MODEL_DIR="${PROJECT_SOURCE_DIR}/models/tinyllama"
-  ENGINE_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/tests/golden")
+  ENGINE_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/tests/golden"
+  ENGINE_SCRIPTS_DIR="${PROJECT_SOURCE_DIR}/scripts")
 
 add_executable(unit_tests
   unit/test_bf16.cpp
   unit/test_bench_metrics.cpp
+  unit/test_chat_prompts.cpp
   unit/test_block_manager.cpp
   unit/test_chat.cpp
   unit/test_checksum.cpp

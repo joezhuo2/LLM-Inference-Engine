@@ -169,3 +169,21 @@ TEST(Workload, RejectsBadConfigs) {
          })
         EXPECT_THROW(make_workload(config), std::invalid_argument);
 }
+
+TEST(Workload, FixedPromptsAreUsedInTurn) {
+    WorkloadConfig c = small(5);
+    c.prompts = {{1, 10, 11}, {1, 20}};
+    const auto w = make_workload(c);
+    ASSERT_EQ(w.requests.size(), 5u);
+    for (size_t i = 0; i < 5; ++i) {
+        EXPECT_EQ(w.requests[i].prompt, c.prompts[i % 2]) << "request " << i;
+        EXPECT_GE(w.requests[i].max_new_tokens, c.output_len.min);
+        EXPECT_LE(w.requests[i].max_new_tokens, c.output_len.max);
+    }
+}
+
+TEST(Workload, RejectsAnEmptyFixedPrompt) {
+    WorkloadConfig c = small(2);
+    c.prompts = {{1, 10}, {}};
+    EXPECT_THROW(make_workload(c), std::invalid_argument);
+}

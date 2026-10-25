@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/chat-prompts
+
+- Add `load_chat_prompts(file, tokenizer)` (`include/engine/bench/chat_prompts.h`, engine_core), which reads chat prompts in the format of `scripts/prompts.json` and returns each as the token ids of its TinyLlama chat template with the generation prompt, BOS first; malformed files throw `std::invalid_argument`. `WorkloadConfig` gains `prompts`: when it is not empty, request i uses prompt i modulo their number instead of random tokens, and no prompt length is drawn, so the random workloads (and their Python port) are unchanged. CPU tests check the template round trip, the 20 repository prompts, the rejected files, the prompts used in turn and an empty prompt rejected. (Part A)
+
 ## docs/api-contract
 
 - Add `docs/api.md`, the contract between the engine and the web site: the step object (one per scheduler step: times, prefill or decode, sequences, sampled token ids with their incremental text, finished sequences, queue sizes, free KV blocks), the trace file `engine bench --trace` will write, and the planned server endpoints (`/health`, `/metrics`, the `/v1/steps` event stream, OpenAI-compatible `/v1/chat/completions` with SSE and an `engine` extension field, CORS). (Part A)
