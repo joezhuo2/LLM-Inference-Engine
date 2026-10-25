@@ -1319,3 +1319,4 @@
 - **route groups in the Next.js App Router (a `(folder)` that adds a layout without adding a URL segment)** => 
 - **`svh`, `lvh` and `dvh` viewport units on phones (why `100vh` jumps when the address bar hides)** => 
 - **overlapping replay cycles on one continuous clock to hide a loop seam** => 
+- **`matchMedia` and its `change` event for reading a media query from JavaScript** => 

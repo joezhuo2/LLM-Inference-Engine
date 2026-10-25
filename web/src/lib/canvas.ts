@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "motion/react";
+import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 
 export type Palette = {
   bg: string;
@@ -31,7 +31,7 @@ export type Frame = { ctx: CanvasRenderingContext2D; width: number; height: numb
 
 export function useCanvasLoop(draw: (frame: Frame) => void, stillAtS: number) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const reduced = useReducedMotion();
+  const reduced = usePrefersReducedMotion();
   const [playRequested, setPlayRequested] = useState(false);
   const playing = !reduced || playRequested;
   const drawRef = useRef(draw);
