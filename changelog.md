@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/prototypes
+
+- Add the prototype harness (`web/src/prototypes/`): the variant picker of the `prototype` skill (github.com/emilkowalski/skills), its CSS copied verbatim (the spec requires it, including the one comment it carries) and its behavior in React (number keys and arrows switch, R replays, the choice lives in `?v=`, the highlight slides only after first paint), plus helpers that load a recorded trace (a chat-prompt trace when one exists) and replay it: steps done by a time, a replayer that feeds step events in order and resets on loop, and a snapshot of throughput over the last second, batch occupancy, KV blocks used and TTFT and TPOT medians. Adds the libraries the prototypes use, pinned: motion 14.1.0, @number-flow/react 0.6.2, recharts 3.10.1, liveline 0.0.7. (Part A)
+
 ## web/scaffold
 
 - Add the web site skeleton in `web/` (Next.js 16.4.3 with static export, React 19.3, Tailwind CSS 4.3, TypeScript 5.9, ESLint 9 with the Next config, exact versions pinned): the design tokens of `docs/claude/web_plan.md` as CSS variables (paper-light and dark sets, muted phosphor green accent, the ease-out and ease-in-out curves, press and UI durations), Inter for prose and JetBrains Mono for the interface through `next/font`, a dark-default theme toggle (`next-themes`, no flash on load), a top bar with the four routes (`/`, `/results`, `/kernels`, `/dashboard`) and heading-only pages. Pressable elements scale to 0.97 on press, hover styles only apply on devices that hover, and reduced motion turns the press scale off. Next.js 16.4.0 was replaced by 16.4.3 before the first build because `npm audit` reports three advisories for 16.0.0 to 16.4.0 (GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r, GHSA-673q-mjm6-r5xr). (Part A)

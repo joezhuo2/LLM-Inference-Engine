@@ -1303,3 +1303,8 @@
 - **why a theme script must run before the first paint (flash of the wrong theme)** => 
 - **`min-width: 0` on a flex child so it can shrink and scroll instead of widening the page** => 
 - **importing JSON generated at build time into a page (data as a build input instead of a fetch)** => 
+
+## Web Prototypes (Branch 51)
+- **`useSyncExternalStore` for state that lives outside React (here the `?v=` URL parameter)** => 
+- **re-mounting a component with a changed `key` to restart its animations** => 
+- **binary search over sorted step end times** => 
