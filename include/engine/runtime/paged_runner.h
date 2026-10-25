@@ -36,6 +36,8 @@ public:
     int64_t max_tokens() const { return max_tokens_; }
     int64_t max_seqs() const { return max_seqs_; }
     int64_t max_blocks() const { return max_blocks_; }
+    int64_t max_context() const { return max_context_; }
+    const ModelConfig& config() const { return config_; }
     Stream stream() const { return stream_; }
 
 private:
@@ -45,6 +47,7 @@ private:
     int64_t max_tokens_;
     int64_t max_seqs_;
     int64_t max_blocks_;
+    int64_t max_context_;
     int64_t longest_context_ = 0;
     Stream stream_;
     DeviceBuffer workspace_;

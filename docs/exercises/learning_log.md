@@ -1274,3 +1274,7 @@
 - **argparse subcommands (`add_subparsers`)** => 
 - **why TTFT in an offline benchmark includes queueing, and why two systems must serve the same number of requests to compare it** => 
 - **placing text in data coordinates with a fixed offset in points (`offset_copy`)** => 
+
+## Graphs for Split Attention (Branch 43)
+- **capturing one graph per launch configuration and choosing among them at replay time** => 
+- **`std::map` with a `std::pair` key and `contains` (C++20)** => 

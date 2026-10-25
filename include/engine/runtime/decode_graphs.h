@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <map>
+#include <utility>
 #include <vector>
 
 #include "engine/core/tensor.h"
@@ -29,7 +30,7 @@ public:
 private:
     PagedRunner* runner_;
     std::vector<int64_t> buckets_;
-    std::map<int64_t, CUgraphExec_st*> graphs_;
+    std::map<std::pair<int64_t, int64_t>, CUgraphExec_st*> graphs_;
 };
 
 }  // namespace engine
