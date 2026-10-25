@@ -1320,3 +1320,6 @@
 - **`svh`, `lvh` and `dvh` viewport units on phones (why `100vh` jumps when the address bar hides)** => 
 - **overlapping replay cycles on one continuous clock to hide a loop seam** => 
 - **`matchMedia` and its `change` event for reading a media query from JavaScript** => 
+- **scroll-linked animation: mapping a section's scroll progress (0 to 1) to `scaleY`** => 
+- **`position: sticky` inside a grid column (`align-self: start` so the sticky element is shorter than its row)** => 
+- **`whileInView` with `once` and a negative bottom root margin** => 

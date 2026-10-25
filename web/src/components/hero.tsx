@@ -44,7 +44,7 @@ export function Hero({ next }: { next?: { href: string; label: string } }) {
               second, amber marks a request&apos;s first token
             </p>
             {next && (
-              <a href={next.href} className="pressable link-hover inline-flex items-center gap-2 text-text">
+              <a href={next.href} className="pressable hover-grow inline-flex origin-right items-center gap-2 text-text">
                 {next.label}
                 <span aria-hidden="true" className="text-accent">
                   ↓

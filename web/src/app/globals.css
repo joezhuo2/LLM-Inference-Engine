@@ -93,3 +93,50 @@ body {
     transform: none;
   }
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.hover-grow {
+  transition: transform 320ms var(--ease-out);
+}
+
+.hover-grow:active {
+  transition-duration: var(--duration-press);
+}
+
+.link-underline {
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hover-grow:hover:not(:active) {
+    transform: scale(1.03);
+  }
+
+  .link-underline {
+    transition: text-decoration-color var(--duration-ui) ease;
+  }
+
+  .link-underline:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hover-grow,
+  .hover-grow:hover,
+  .hover-grow:active {
+    transition: none;
+    transform: none;
+  }
+}
