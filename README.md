@@ -16,6 +16,37 @@ The measured state against these five criteria, with plots and the per-kernel ta
 
 Correct comes first: nothing is optimized until the naive engine produces the same text as HuggingFace, and the naive kernels stay in the repo as the oracles the optimized kernels are tested against.
 
+## Results
+
+Measured on the RTX 5060 Laptop GPU on 2026-10-25 (commit 7d60861, release build): 32 requests of 64 prompt and 64 output tokens, greedy, EOS ignored, all submitted at once, median of 3 runs. Every number here comes from `docs/results.md`, which `scripts/reproduce.sh` regenerates; that page has the per-kernel table, the decode-step profiles and the caveats.
+
+| # | Goal | Measured | |
+| --- | --- | --- | --- |
+| 1 | Correct | teacher forced: 99.57% argmax over 1,842 positions, mean absolute logit error 0.0285; free running: 15 of 20 prompts exact for 64 tokens, the other 5 first differ at a near tie of at most 2 BF16 ulps in HF's own logits | met |
+| 2 | Fast at batch 1 | 265 GB/s of weights per token = 82% of the measured 323.6 GB/s (TPOT 7.81 ms) | met |
+| 3 | Fast at batch N | 1,402 tokens/s at 16 concurrent requests against 127 at batch 1 = 11.0x | met |
+| 4 | Explained | Nsight Compute before and after for paged attention (v1, v2, split), add + RMSNorm, RoPE and SwiGLU, and Nsight Systems launch gaps before and after CUDA Graphs, in `docs/profiling.md`; `write_kv` has no measurement yet | partly |
+| 5 | Reproducible | `scripts/reproduce.sh` rebuilds, tests and re-measures everything on this page | met |
+
+Output tokens per second against the maximum number of concurrent requests:
+
+| system | batch 1 | batch 4 | batch 16 | TPOT at batch 1 |
+| --- | --- | --- | --- | --- |
+| engine + CUDA Graphs | 127.3 | 478.4 | 1,401.7 | 7.81 ms |
+| engine, eager | 115.8 | 441.4 | 1,293.6 | 8.52 ms |
+| llama.cpp b11870 (CUDA, same BF16 weights) | 110.1 | 399.2 | 1,154.0 | 8.89 ms |
+| HF transformers (BF16, static batches) | 26.6 | 114.4 | 407.0 | 37.62 ms |
+
+![Throughput against concurrency](results/plots/throughput_vs_batch.png)
+
+With CUDA Graphs the engine is ahead of llama.cpp at every batch size: 1.16x at batch 1, 1.20x at 4 and 1.21x at 16 on the medians, though llama.cpp's three batch-16 runs spread from 953 to 1,271 tokens/s, so against its best run the margin at 16 is 1.10x. The baselines run static batches of identical requests, which favors them over the engine's continuous batching; `docs/baselines.md` lists what is and is not comparable.
+
+![Decode ops and whole decode steps against the measured bandwidth and compute ceilings](results/plots/roofline.png)
+
+Decode is bandwidth bound at every batch size here: every point sits left of the 107 FLOP/byte ridge (measured 34.5 TFLOP/s BF16 GEMM peak over 323.6 GB/s). At batch 1 the cuBLAS GEMVs run at 91% to 102% of the bandwidth roof, so they cannot get faster without reading fewer bytes. At batch 16 the same GEMMs take the same time while doing 16 times the FLOPs, which is where the 11x comes from, but attention, whose intensity does not grow with the batch because each sequence reads its own KV cache, rises to 19% of kernel time at only 7% of its roof: the largest remaining target. The whole step with graphs is at 82% of the roof at batch 1 and 68% at batch 16 (llama.cpp 54%, HF 17%).
+
+All numbers are from this one laptop GPU, whose clocks move by 10% to 20% between runs; a cloud GPU run was planned and has not been done.
+
 ## Architecture
 
 ```

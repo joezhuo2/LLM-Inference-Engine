@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## docs/m5-readme
+
+- Add a Results section to the README from the committed `docs/results.md` run (7d60861, 2026-10-25, RTX 5060 laptop): the five goals against what was measured (1 met under the near-tie rule with 15 of 20 prompts exact, 2 met at 82% of the measured bandwidth, 3 met at 11.0x, 4 partly because `write_kv` has no before and after, 5 met), output tokens/s at batch 1 / 4 / 16 for the engine with and without CUDA Graphs, llama.cpp and HF with the batch-1 TPOT, the throughput and roofline plots, the margin over llama.cpp with its batch-16 spread, the roofline reading (bandwidth bound everywhere, attention the largest target at batch 16), and that all numbers are from one laptop GPU with no cloud run. (Part A)
+
 ## tools/roofline
 
 - Add `scripts/gemm_peak.cu`, which times square BF16 cuBLAS GEMMs (`cublasGemmEx`, F32 accumulation, 20 calls after 3 warm-up calls, sizes from the arguments, default 2048, 4096 and 8192) and prints the best as `peak_tflops=`, the compute ceiling of the roofline. RTX 5060 laptop: 34.6 / 31.5 / 32.0 TFLOP/s, recorded in `docs/hardware.md` with the ridge point of 107 FLOP/byte against the measured 323.6 GB/s. (Part A)
