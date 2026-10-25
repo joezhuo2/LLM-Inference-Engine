@@ -46,6 +46,7 @@ PagedRunner::PagedRunner(const ModelConfig& config, const ModelWeights& weights,
       cache_(&cache),
       max_tokens_(max_tokens),
       max_seqs_(max_seqs),
+      max_context_(max_context),
       stream_(stream),
       workspace_(kWorkspaceBytes),
       blas_(stream, workspace_.data(), workspace_.size()) {

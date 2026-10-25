@@ -55,12 +55,12 @@ Decoding one token at batch 1 reads every weight except all but one row of the e
 - **Paged decode attention:** version 1 keeps the scores in shared memory (context capped at 2,048); version 2 uses an online softmax with one thread block per KV head, so each block reads its K and V once for all 8 query heads that share them. For 1 to 4 sequences at 512 tokens or more, a split version cuts each context across several blocks and merges their partial softmax results, which fills the GPU at batch 1 (2.8x faster attention at 2,048 tokens).
 - **Continuous batching:** waiting, running and finished queues, admission by free blocks, and recompute-style preemption when the cache runs out. Each step is all prefill or all decode; the resulting stall is measured so chunked prefill can fix it later.
 - **Sampling on the GPU:** greedy, Gumbel-max for temperature sampling, and top-k and top-p through binary-searched thresholds instead of a full sort of the vocabulary.
-- **CUDA Graphs:** with `--graphs` decode is captured for batch sizes 1, 2, 4, 8, 16 and so on up to the max batch and replayed from fixed device buffers, which removes per-kernel launch overhead; prefill runs eagerly.
+- **CUDA Graphs:** with `--graphs` decode is captured for batch sizes 1, 2, 4, 8, 16 and so on up to the max batch and replayed from fixed device buffers, which removes per-kernel launch overhead; each batch size that can split its attention also gets one graph per split count, so long contexts replay the split kernel too; prefill runs eagerly.
 - **Portable headers:** public headers in `include/engine/` contain no CUDA includes, so the pure C++ parts (config, parser, layout planner, checksums) build and test on machines without a GPU, including macOS.
 
 ## Beyond the MVP
 
-Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, FlashAttention-style prefill, split decode inside CUDA Graphs, prefix caching and copy-on-write blocks, chunked prefill, speculative decoding, and an OpenAI-compatible HTTP server with a live metrics dashboard.
+Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, FlashAttention-style prefill, prefix caching and copy-on-write blocks, chunked prefill, speculative decoding, and an OpenAI-compatible HTTP server with a live metrics dashboard.
 
 ## Hardware
 

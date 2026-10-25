@@ -34,6 +34,25 @@ void validate_buckets(const std::vector<int64_t>& buckets, const PagedRunner& ru
         }
     }
 }
+
+cudaGraphExec_t capture(PagedRunner& runner, const PagedBatch& padded) {
+    const int64_t b = padded.num_seqs;
+    runner.stage(padded);
+    runner.run_staged(b, b);
+
+    CUDA_CHECK(cudaStreamBeginCapture(runner.stream(), cudaStreamCaptureModeGlobal));
+
+    runner.run_staged(b, b);
+
+    cudaGraph_t graph = nullptr;
+    CUDA_CHECK(cudaStreamEndCapture(runner.stream(), &graph));
+
+    cudaGraphExec_t exec = nullptr;
+    const cudaError_t status = cudaGraphInstantiate(&exec, graph, 0);
+    cudaGraphDestroy(graph);
+    CUDA_CHECK(status);
+    return exec;
+}
 }  // namespace
 
 DecodeGraphs::DecodeGraphs(PagedRunner& runner, std::vector<int64_t> buckets)
@@ -51,25 +70,17 @@ DecodeGraphs::DecodeGraphs(PagedRunner& runner, std::vector<int64_t> buckets)
     dummy.logit_rows = {0};
     dummy.block_tables.resize(size_t(runner_->max_blocks()), 0);
 
+    const int64_t heads = runner_->config().heads;
     for (int64_t b : buckets_) {
-        PagedBatch padded = pad_decode_batch(dummy, b);
+        for (int64_t context = 0; context <= runner_->max_context(); ++context) {
+            const int64_t splits = attention_splits(b, heads, context);
+            if (graphs_.contains({b, splits})) {
+                continue;
+            }
 
-        runner_->stage(padded);
-        runner_->run_staged(b, b);
-
-        CUDA_CHECK(cudaStreamBeginCapture(runner_->stream(), cudaStreamCaptureModeGlobal));
-
-        runner_->run_staged(b, b);
-
-        cudaGraph_t graph = nullptr;
-        CUDA_CHECK(cudaStreamEndCapture(runner_->stream(), &graph));
-
-        cudaGraphExec_t exec = nullptr;
-        const cudaError_t status = cudaGraphInstantiate(&exec, graph, 0);
-        cudaGraphDestroy(graph);
-        CUDA_CHECK(status);
-
-        graphs_[b] = exec;
+            dummy.context_lens = {int32_t(context)};
+            graphs_[{b, splits}] = capture(*runner_, pad_decode_batch(dummy, b));
+        }
     }
 }
 
@@ -78,7 +89,7 @@ DecodeGraphs::~DecodeGraphs() {
         cudaStreamSynchronize(runner_->stream());
     }
 
-    for (auto& [b, exec] : graphs_) {
+    for (auto& [key, exec] : graphs_) {
         cudaGraphExecDestroy(exec);
     }
 }
@@ -93,6 +104,10 @@ bool DecodeGraphs::covers(const PagedBatch& batch) const {
     }
 
     if (batch.max_blocks != runner_->max_blocks()) {
+        return false;
+    }
+
+    if (batch.longest_context() > runner_->max_context()) {
         return false;
     }
 
@@ -125,9 +140,11 @@ Tensor DecodeGraphs::forward(const PagedBatch& batch) {
     int64_t b = bucket_for(batch.num_seqs);
     PagedBatch padded = pad_decode_batch(batch, b);
 
+    const int64_t splits = attention_splits(b, runner_->config().heads, padded.longest_context());
+
     runner_->stage(padded);
 
-    CUDA_CHECK(cudaGraphLaunch(graphs_.at(b), runner_->stream()));
+    CUDA_CHECK(cudaGraphLaunch(graphs_.at({b, splits}), runner_->stream()));
 
     return runner_->logits(batch.num_seqs);
 }
