@@ -168,11 +168,17 @@ def roofline_plot(ops, steps, peak_gb_s, peak_tflops, out, theme, note=None):
         ax.scatter([p["intensity"] for p in group], [p["tflops"] for p in group], s=46,
                    marker=markers[i % len(markers)], facecolor="none", edgecolor=t["text"], linewidth=1.4,
                    label=f"ops, {rows} row{'s' if rows > 1 else ''}", zorder=3)
-        logs = plot.spread_labels([math.log10(p["tflops"]) for p in group], 0.1)
-        for p, y in zip(group, logs):
+        gemms = [p for p in group if p["name"] != "attention"]
+        logs = plot.spread_labels([math.log10(p["tflops"]) for p in gemms], 0.1)
+        for p, y in zip(gemms, logs):
             ax.annotate(p["name"], (p["intensity"], p["tflops"]), xytext=(p["intensity"] / 1.6, 10 ** y),
                         textcoords="data", ha="right", va="center", color=t["muted"], fontsize=8,
                         arrowprops={"arrowstyle": "-", "color": t["grid"], "linewidth": 0.8})
+        for p in group:
+            if p["name"] == "attention":
+                ax.annotate(f"attention, {rows} row{'s' if rows > 1 else ''}", (p["intensity"], p["tflops"]),
+                            xytext=(9, 0), textcoords="offset points", va="center", color=t["muted"],
+                            fontsize=8)
 
     plotted = [s for s in PLOT_SYSTEMS if any(p["name"] == s for p in steps)]
     for system in plotted:
