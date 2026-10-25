@@ -1323,3 +1323,4 @@
 - **scroll-linked animation: mapping a section's scroll progress (0 to 1) to `scaleY`** => 
 - **`position: sticky` inside a grid column (`align-self: start` so the sticky element is shorter than its row)** => 
 - **`whileInView` with `once` and a negative bottom root margin** => 
+- **hydration mismatch and what `suppressHydrationWarning` does (one element deep)** => 
