@@ -1269,3 +1269,6 @@
 - **pinning a dependency to a release tag so a baseline number can be reproduced** => 
 - **CMAKE_CUDA_ARCHITECTURES and why a binary built for one GPU architecture does not run on another** => 
 - **unsigned integer wraparound when a later timestamp reads smaller than an earlier one** => 
+- **JSON Lines output and parsing a tool's machine-readable stream apart from its logs** => 
+- **cold-start cost in the first measured configuration and a discarded warm-up run** => 
+- **argparse subcommands (`add_subparsers`)** => 

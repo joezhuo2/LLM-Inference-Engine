@@ -17,17 +17,29 @@ BF16 weights, `sdpa` attention (`--attn eager` to compare), a hand-written greed
 
 ## llama.cpp
 
-llama.cpp is not a dependency of this repo. `scripts/setup_llamacpp.sh` clones the pinned release (`b11870`, commit 74bca3950) into `~/.cache/llmie/llama.cpp`, builds only `llama-bench` and `llama-batched-bench` with CUDA for sm_120 (`LLAMA_CUDA_ARCH=89` for an L4 or a 4090; the build takes about 15 minutes on the laptop) and converts the model to `models/tinyllama-bf16.gguf` with llama.cpp's own `convert_hf_to_gguf.py --outtype bf16` (the BF16 weights unchanged, 2.2 GB). It reuses what already exists, so rerunning it is cheap. Then:
+llama.cpp is not a dependency of this repo. `scripts/setup_llamacpp.sh` clones the pinned release (`b11870`, commit 74bca3950) into `~/.cache/llmie/llama.cpp`, builds only `llama-bench` and `llama-batched-bench` with CUDA for sm_120 (`LLAMA_CUDA_ARCH=89` for an L4 or a 4090; the build takes about 15 minutes on the laptop) and converts the model to `models/tinyllama-bf16.gguf` with llama.cpp's own `convert_hf_to_gguf.py --outtype bf16` (the BF16 weights unchanged, 2.2 GB). It reuses what already exists, so rerunning it is cheap.
+
+`scripts/baseline_llamacpp.py` has two modes. `batched` is the one `scripts/reproduce.sh` uses, because it gives the whole curve with one method:
 
 ```bash
-llama-bench -m tinyllama-bf16.gguf -p 128 -n 256 -r 5 -ngl 99 -o json > llama.json
-python3 scripts/baseline_llamacpp.py --from-json llama.json --prompt-len 128 --output-len 256 \
-    --summary results/llamacpp_b1_summary.csv
+~/.venvs/llmie/bin/python scripts/baseline_llamacpp.py batched --model models/tinyllama-bf16.gguf \
+    --llama-batched-bench ~/.cache/llmie/llama.cpp/build/bin/llama-batched-bench \
+    --prompt-len 64 --output-len 64 --max-batch 1,2,4,8,16 --repetitions 3 --out-dir results
 ```
 
-or let the script run it: `--model tinyllama-bf16.gguf --llama-bench /path/to/llama-bench`. `llama-bench` measures prompt processing and generation separately and has no request concurrency, so this gives the batch-1 point only (`driver` `llamacpp_bench`), with TTFT derived as `prompt_len / prefill tokens per second` and TPOT as `1 / decode tokens per second`. For a concurrency curve use `llama-batched-bench`; its output is not parsed yet. Throughput is computed from each repetition's `samples_ns` rather than the printed `samples_ts`: on the laptop (WSL2) one repetition in about twenty reported a duration that wrapped below zero (18446744071733648849 ns, printed as 3.5e-9 tokens/s), and such samples are dropped with a note on stderr. The first prompt repetition is about twice as slow as the rest even after llama-bench's warm-up, which the p50 absorbs.
+It runs `llama-batched-bench -npp <prompt-len> -ntg <output-len - 1> -npl <sizes> --output-format jsonl -ngl 99` once per repetition: for each size B, B sequences with their own prompts are prefilled in one call and then decoded together, one token per sequence per step. That is a static batch of B requests that all arrive at once, the same shape as the HF baseline's static batches. Each row becomes a summary (`driver` `llamacpp_batched`, `results/llamacpp_b<B>_r<run>_summary.csv`) with B requests whose first token comes at `t_pp` (the prefill returns the first token's logits, hence `output-len - 1` decode steps) and which all finish at `t`, so TPOT is `t_tg / (output-len - 1)` and output throughput is `B * output-len / t`. The first configuration of every llama-batched-bench run pays a cold start (prefill 0.49 s instead of 0.018 s at batch 1 on the laptop), so the script asks for the first size twice and drops the first row. Options after `--` replace `-ngl 99`; `--from-jsonl` parses saved outputs, one file per repetition.
 
-Comparability: the same BF16 weights (not a quantized GGUF), the same prompt and output length, the same GPU, plugged in, several repetitions. Record the llama.cpp commit; it is stored in the summary's `version`.
+`bench` gives the conventional batch-1 numbers from `llama-bench`:
+
+```bash
+~/.venvs/llmie/bin/python scripts/baseline_llamacpp.py bench --model models/tinyllama-bf16.gguf \
+    --llama-bench ~/.cache/llmie/llama.cpp/build/bin/llama-bench --prompt-len 64 --output-len 64 \
+    --summary results/llamacpp_bench.csv
+```
+
+`llama-bench` measures prompt processing and generation separately and has no request concurrency, so this is the batch-1 point only (`driver` `llamacpp_bench`), with TTFT derived as `prompt_len / prefill tokens per second` and TPOT as `1 / decode tokens per second`; `--from-json` parses a saved `llama-bench -o json`. Throughput is computed from each repetition's `samples_ns` rather than the printed `samples_ts`: on the laptop (WSL2) one repetition in about twenty reported a duration that wrapped below zero (18446744071733648849 ns, printed as 3.5e-9 tokens/s), and such samples are dropped with a note on stderr. The first prompt repetition is about twice as slow as the rest even after llama-bench's warm-up, which the p50 absorbs. It is a cross-check, not part of reproduce.sh (a second batch-1 series would be merged into the first by the plots): on 2026-10-24 on the laptop it measured 117 decode tokens/s (8.5 ms TPOT), against 8.7 ms at batch 1 from `batched`.
+
+Comparability: the same BF16 weights (not a quantized GGUF), the same prompt and output length, the same GPU, plugged in, several repetitions. The llama.cpp release is stored in the summary's `version` and the flash attention setting in `build` (`fa=auto`, which is on for CUDA). What differs: llama.cpp keeps its KV cache in F16 (the engine in BF16, same size), feeds random tokens instead of the workload's prompts (the timing does not depend on the token values) and does not sample (it computes the logits of every step but never runs a sampler, which the engine does on the GPU).
 
 ## Plots
 

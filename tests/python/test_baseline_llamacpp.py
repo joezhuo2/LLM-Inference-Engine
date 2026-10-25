@@ -62,13 +62,72 @@ class LlamaBench(unittest.TestCase):
             src = Path(d) / "lb.json"
             src.write_text(json.dumps([PP, TG]))
             out = Path(d) / "s.csv"
-            self.assertEqual(bl.main(["--from-json", str(src), "--summary", str(out)]), 0)
+            self.assertEqual(bl.main(["bench", "--from-json", str(src), "--summary", str(out)]), 0)
             header, row = out.read_text().splitlines()
             cols = dict(zip(header.split(","), row.split(",")))
             self.assertEqual(cols["driver"], "llamacpp_bench")
             self.assertEqual(cols["max_batch"], "1")
             self.assertEqual(cols["model"], "tinyllama-bf16.gguf")
             self.assertFalse(math.isnan(float(cols["tpot_s_p50"])))
+
+
+def batched_row(pl, t_pp, t_tg, shared=0):
+    return {"n_kv_max": 4096, "n_batch": 2048, "n_ubatch": 512, "flash_attn": -1, "is_pp_shared": shared,
+            "n_gpu_layers": 99, "n_threads": 5, "n_threads_batch": 5, "pp": 64, "tg": 63, "pl": pl,
+            "n_kv": pl * 127, "t_pp": t_pp, "speed_pp": pl * 64 / t_pp, "t_tg": t_tg,
+            "speed_tg": pl * 63 / t_tg, "t": t_pp + t_tg, "speed": pl * 127 / (t_pp + t_tg)}
+
+
+WARMUP = batched_row(1, 0.491913, 0.535171)
+B1 = batched_row(1, 0.018006, 0.553058)
+B16 = batched_row(16, 0.122363, 0.659913)
+
+
+class LlamaBatchedBench(unittest.TestCase):
+    def test_command_prepends_a_warmup_batch_and_sizes_the_context(self):
+        cmd = bl.batched_command("bb", "m.gguf", 64, 64, [1, 4, 16], ["-ngl", "99"])
+        self.assertEqual(cmd[cmd.index("-npl") + 1], "1,1,4,16")
+        self.assertEqual(cmd[cmd.index("-ntg") + 1], "63")
+        self.assertEqual(cmd[cmd.index("-c") + 1], str(16 * 128))
+        self.assertEqual(cmd[-2:], ["-ngl", "99"])
+
+    def test_parse_keeps_only_jsonl_rows(self):
+        text = "noise\n" + "\n".join(json.dumps(r) for r in (WARMUP, B1, B16)) + "\n"
+        self.assertEqual([r["pl"] for r in bl.parse_batched_bench(text)], [1, 1, 16])
+        with self.assertRaises(ValueError):
+            bl.parse_batched_bench("no results\n")
+        with self.assertRaises(ValueError):
+            bl.parse_batched_bench(json.dumps(batched_row(4, 0.03, 0.5, shared=1)))
+        with self.assertRaises(ValueError):
+            bl.parse_batched_bench(json.dumps({"pl": 1}))
+
+    def test_a_batch_maps_to_requests_finishing_together(self):
+        s = bl.summary_from_batched_row(B16)
+        self.assertEqual(s["requests"], 16)
+        self.assertEqual(s["output_tokens"], 16 * 64)
+        self.assertAlmostEqual(s["ttft_s_p50"], 0.122363)
+        self.assertAlmostEqual(s["tpot_s_p50"], 0.659913 / 63)
+        self.assertAlmostEqual(s["output_throughput"], 16 * 64 / B16["t"])
+        self.assertNotIn("bandwidth_gb_s", s)
+        self.assertAlmostEqual(bl.summary_from_batched_row(B1)["bandwidth_gb_s"],
+                               2_069_024_768 / (0.553058 / 63) / 1e9)
+
+    def test_main_drops_the_warmup_row_and_writes_one_summary_per_batch_and_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            runs = []
+            for i in (1, 2):
+                src = Path(d) / f"bb{i}.jsonl"
+                src.write_text("\n".join(json.dumps(r) for r in (WARMUP, B1, B16)) + "\n")
+                runs.append(str(src))
+            self.assertEqual(bl.main(["batched", "--from-jsonl", *runs, "--out-dir", d]), 0)
+            written = sorted(p.name for p in Path(d).glob("*_summary.csv"))
+            self.assertEqual(written, ["llamacpp_b16_r1_summary.csv", "llamacpp_b16_r2_summary.csv",
+                                       "llamacpp_b1_r1_summary.csv", "llamacpp_b1_r2_summary.csv"])
+            header, row = (Path(d) / "llamacpp_b1_r1_summary.csv").read_text().splitlines()
+            cols = dict(zip(header.split(","), row.split(",")))
+            self.assertEqual(cols["driver"], "llamacpp_batched")
+            self.assertEqual(cols["output_len"], "64")
+            self.assertAlmostEqual(float(cols["ttft_s_p50"]), 0.018006)
 
 
 if __name__ == "__main__":

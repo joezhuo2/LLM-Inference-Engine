@@ -4,7 +4,7 @@ cd "$(git rev-parse --show-toplevel)"
 
 usage() {
     cat >&2 <<'USAGE'
-usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf]
+usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp]
 
 Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/environment.txt   commit, GPU, driver, CUDA, date, workload
@@ -12,7 +12,8 @@ Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/engine_b*_r*.csv  engine bench at max batch 1 2 4 8 16, REPEATS runs each
   results/engine_graphs_b*_r*.csv   the same with --graphs (CUDA Graph decode), max batch 1 4 16
   results/hf_b*_r*.csv      HuggingFace baseline at max batch 1 4 16, HF_REPEATS runs each
-  results/llamacpp_b1_summary.csv   only when LLAMA_BENCH and LLAMA_GGUF are set
+  results/llamacpp_b*_r*_summary.csv   llama.cpp at batch 1 2 4 8 16, REPEATS runs each, when
+                            scripts/setup_llamacpp.sh has built it (skipped otherwise)
   results/decode_step.md    nsys launch gaps, GPU time per op and bandwidth of a batch-1 decode step
   results/decode_step_graphs.md   the same decode step replayed from a CUDA Graph
   results/plots/            the plots and summary_table.md
@@ -20,7 +21,7 @@ and then refreshes the measured blocks of docs/results.md.
 
 Environment: MODEL (default models/tinyllama), PEAK_GB_S (measured DRAM bandwidth, 323.6),
 REPEATS (3), HF_REPEATS (1), PYTHON (default ~/.venvs/llmie/bin/python, else python3),
-LLAMA_BENCH and LLAMA_GGUF (path to llama-bench and a BF16 GGUF of the model).
+LLAMA_BATCHED_BENCH and LLAMA_GGUF (default where scripts/setup_llamacpp.sh puts them).
 Plug the laptop in, use maximum performance mode and close other GPU programs first.
 USAGE
     exit 2
@@ -29,11 +30,13 @@ USAGE
 quick=0
 skip_tests=0
 skip_hf=0
+skip_llamacpp=0
 for arg in "$@"; do
     case "$arg" in
     --quick) quick=1 ;;
     --skip-tests) skip_tests=1 ;;
     --skip-hf) skip_hf=1 ;;
+    --skip-llamacpp) skip_llamacpp=1 ;;
     *) usage ;;
     esac
 done
@@ -43,6 +46,8 @@ peak=${PEAK_GB_S:-323.6}
 repeats=${REPEATS:-3}
 hf_repeats=${HF_REPEATS:-1}
 python=${PYTHON:-$HOME/.venvs/llmie/bin/python}
+llama_batched=${LLAMA_BATCHED_BENCH:-$HOME/.cache/llmie/llama.cpp/build/bin/llama-batched-bench}
+llama_gguf=${LLAMA_GGUF:-models/tinyllama-bf16.gguf}
 [ -x "$python" ] || python=python3
 requests=32
 prompt=64
@@ -130,10 +135,16 @@ if [ "$skip_hf" = 0 ]; then
     done
 fi
 
-if [ -n "${LLAMA_BENCH:-}" ] && [ -n "${LLAMA_GGUF:-}" ]; then
-    echo "== llama.cpp"
-    "$python" scripts/baseline_llamacpp.py --model "$LLAMA_GGUF" --llama-bench "$LLAMA_BENCH" \
-        --prompt-len "$prompt" --output-len "$output" --summary "$out/llamacpp_b1_summary.csv"
+if [ "$skip_llamacpp" = 0 ]; then
+    if [ -x "$llama_batched" ] && [ -s "$llama_gguf" ]; then
+        echo "== llama.cpp baseline"
+        rm -f "$out"/llamacpp_*_summary.csv
+        "$python" scripts/baseline_llamacpp.py batched --model "$llama_gguf" \
+            --llama-batched-bench "$llama_batched" --prompt-len "$prompt" --output-len "$output" \
+            --max-batch 1,2,4,8,16 --repetitions "$repeats" --out-dir "$out"
+    else
+        echo "== llama.cpp baseline skipped: run scripts/setup_llamacpp.sh first"
+    fi
 fi
 
 if command -v nsys > /dev/null; then
