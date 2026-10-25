@@ -46,11 +46,28 @@ class Scoreboard(unittest.TestCase):
         self.assertTrue(lines["1a"].rstrip().endswith("| not met |"))
         self.assertIn("98.96%", lines["1a"])
         self.assertTrue(lines["1b"].rstrip().endswith("| not met |"))
-        self.assertIn("at most 2 BF16 ulps", lines["1b"])
+        self.assertIn("2 of the other 5 diverge", lines["1b"])
         self.assertTrue(lines["2"].rstrip().endswith("| met |"))
         self.assertIn("70%", lines["2"])
         self.assertTrue(lines["3"].rstrip().endswith("| met |"))
         self.assertIn("10.0x", lines["3"])
+
+    def test_free_running_is_met_when_every_unmatched_prompt_is_a_near_tie(self):
+        def line_1b(log):
+            text = mr.scoreboard([], mr.parse_correctness(log))
+            return {l.split("|")[1].strip(): l for l in text.splitlines()[2:]}["1b"]
+
+        ties = "".join(f"p{i} differs at step 3: ours 1, HF 2, {u} BF16 ulps apart in HF's logits\n"
+                       for i, u in enumerate([0, 1, 2]))
+        met = line_1b(ties + "free-running greedy identical to HF on 17 of 20 prompts\n")
+        self.assertTrue(met.rstrip().endswith("| met |"))
+        self.assertIn("the other 3 diverge", met)
+        summary = "free-running greedy identical to HF on 17 of 20 prompts\n"
+        wide = line_1b(ties.replace("2 BF16", "3 BF16") + summary)
+        self.assertTrue(wide.rstrip().endswith("| not met |"))
+        exact = line_1b("free-running greedy identical to HF on 20 of 20 prompts\n")
+        self.assertTrue(exact.rstrip().endswith("| met |"))
+        self.assertNotIn("other", exact)
 
     def test_missing_data_is_reported_not_guessed(self):
         text = mr.scoreboard([], {})
