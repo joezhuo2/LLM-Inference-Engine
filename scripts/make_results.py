@@ -108,6 +108,7 @@ def scoreboard(rows, correctness, peak=PEAK_GB_S):
 def environment_block(env):
     order = [("date", "Date"), ("commit", "Commit"), ("gpu", "GPU"), ("driver", "Driver"),
              ("cuda", "CUDA"), ("build", "Build"), ("peak_gb_s", "Measured DRAM bandwidth (GB/s)"),
+             ("peak_tflops", "Measured BF16 GEMM peak (TFLOP/s)"),
              ("workload", "Workload")]
     return "".join(f"- {label}: {env[key]}\n" for key, label in order if key in env)
 
@@ -149,6 +150,10 @@ def main(argv=None):
     text = replace_block(text, "profile", profile)
     if "<!-- auto:profile_graphs -->" in text:
         text = replace_block(text, "profile_graphs", graphs_profile)
+    roofline_path = args.results_dir / "plots" / "roofline.md"
+    if "<!-- auto:roofline -->" in text:
+        text = replace_block(text, "roofline", roofline_path.read_text() if roofline_path.exists()
+                             else "No roofline recorded.\n")
     text = replace_block(text, "scoreboard", scoreboard(rows, correctness, args.peak_gb_s))
     text = replace_block(text, "table", plot.table_markdown(rows) if rows else "No summaries found.\n")
     args.doc.write_text(text)

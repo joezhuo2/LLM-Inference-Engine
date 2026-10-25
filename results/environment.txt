@@ -1,8 +1,9 @@
-date=2026-10-25T09:33:51Z
-commit=eafb664
+date=2026-10-25T11:52:26Z
+commit=7d60861
 gpu=NVIDIA GeForce RTX 5060 Laptop GPU
 driver=617.42
 cuda=13.3
 build=Release
 peak_gb_s=323.6
+peak_tflops=34.5
 workload=32 requests, 64 prompt tokens, 64 output tokens, greedy, seed 0, median of 3 run(s)

@@ -25,8 +25,8 @@ definition         86 tokens  argmax   86/86    mean |dlogit| 0.0264  worst laye
 sql                95 tokens  argmax   94/95    mean |dlogit| 0.0252  worst layer 21 (0.0145)
 unicode           103 tokens  argmax  102/103   mean |dlogit| 0.0293  worst layer 21 (0.0163)
 teacher-forced argmax 1834/1842 (99.57%), mean |dlogit| 0.0285
-[       OK ] ForwardGolden.TeacherForcedMatchesHuggingFaceOnEveryPrompt (3844 ms)
-[----------] 1 test from ForwardGolden (3844 ms total)
+[       OK ] ForwardGolden.TeacherForcedMatchesHuggingFaceOnEveryPrompt (6098 ms)
+[----------] 1 test from ForwardGolden (6099 ms total)
 
 [----------] 1 test from GenerateTest
 [ RUN      ] GenerateTest.FreeRunningGreedyMatchesHuggingFaceUpToNearTies
@@ -51,9 +51,9 @@ definition       differs at step 28: ours 304, HF 363, 0 BF16 ulps apart in HF's
 sql              identical (64 tokens)
 unicode          identical (64 tokens)
 free-running greedy identical to HF on 15 of 20 prompts
-[       OK ] GenerateTest.FreeRunningGreedyMatchesHuggingFaceUpToNearTies (10587 ms)
-[----------] 1 test from GenerateTest (10587 ms total)
+[       OK ] GenerateTest.FreeRunningGreedyMatchesHuggingFaceUpToNearTies (10358 ms)
+[----------] 1 test from GenerateTest (10359 ms total)
 
 [----------] Global test environment tear-down
-[==========] 2 tests from 2 test suites ran. (14431 ms total)
+[==========] 2 tests from 2 test suites ran. (16458 ms total)
 [  PASSED  ] 2 tests.

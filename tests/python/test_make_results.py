@@ -90,6 +90,20 @@ class Blocks(unittest.TestCase):
             self.assertEqual(mr.main(["--results-dir", str(d / "results"), "--doc", str(doc)]), 0)
             self.assertIn("- decode: graphs", doc.read_text())
 
+    def test_roofline_block_is_filled_when_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "results" / "plots").mkdir(parents=True)
+            (d / "results" / "environment.txt").write_text("peak_tflops=34.5\n")
+            (d / "results" / "plots" / "roofline.md").write_text("Ceilings: roofline table\n")
+            doc = d / "results.md"
+            doc.write_text("".join(f"<!-- auto:{n} -->\n<!-- /auto:{n} -->\n"
+                                   for n in ("environment", "profile", "roofline", "scoreboard", "table")))
+            self.assertEqual(mr.main(["--results-dir", str(d / "results"), "--doc", str(doc)]), 0)
+            out = doc.read_text()
+            self.assertIn("Ceilings: roofline table", out)
+            self.assertIn("- Measured BF16 GEMM peak (TFLOP/s): 34.5", out)
+
     def test_main_updates_a_document(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
