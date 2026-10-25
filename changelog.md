@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## bench/chat-prompts
 
 - Add `load_chat_prompts(file, tokenizer)` (`include/engine/bench/chat_prompts.h`, engine_core), which reads chat prompts in the format of `scripts/prompts.json` and returns each as the token ids of its TinyLlama chat template with the generation prompt, BOS first; malformed files throw `std::invalid_argument`. `WorkloadConfig` gains `prompts`: when it is not empty, request i uses prompt i modulo their number instead of random tokens, and no prompt length is drawn, so the random workloads (and their Python port) are unchanged. CPU tests check the template round trip, the 20 repository prompts, the rejected files, the prompts used in turn and an empty prompt rejected. (Part A)
+- Add `engine bench --prompts file.json`: the workload uses the chat prompts of the file in turn (one tokenizer shared with `--trace`), the prompt length range of the summary becomes the shortest and longest real prompt so the context size and the prefill limit fit them, and the trace's `meta` gains `prompts` (the file name, or `random`). Replace the random-prompt trace with `results/traces/chat_b16_rate4.json` (the 20 prompts of `scripts/prompts.json`, 24 requests at 4 per second, `--stop-at-eos`, temperature 0.7, top-p 0.9; 751 steps over 6.4 s, answers of 9 to 191 tokens), so the web site's token rain shows readable answers; `docs/api.md` and the README describe it. (Part A)
 
 ## docs/api-contract
 
