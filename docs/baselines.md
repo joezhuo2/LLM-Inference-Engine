@@ -25,7 +25,7 @@ python3 scripts/baseline_llamacpp.py --from-json llama.json --prompt-len 128 --o
     --summary results/llamacpp_b1_summary.csv
 ```
 
-or let the script run it: `--model tinyllama-bf16.gguf --llama-bench /path/to/llama-bench`. `llama-bench` measures prompt processing and generation separately and has no request concurrency, so this gives the batch-1 point only (`driver` `llamacpp_bench`), with TTFT derived as `prompt_len / prefill tokens per second` and TPOT as `1 / decode tokens per second`. For a concurrency curve use `llama-batched-bench`; its output is not parsed yet. The script was written against the documented JSON fields and tested on fixtures, not against a real binary.
+or let the script run it: `--model tinyllama-bf16.gguf --llama-bench /path/to/llama-bench`. `llama-bench` measures prompt processing and generation separately and has no request concurrency, so this gives the batch-1 point only (`driver` `llamacpp_bench`), with TTFT derived as `prompt_len / prefill tokens per second` and TPOT as `1 / decode tokens per second`. For a concurrency curve use `llama-batched-bench`; its output is not parsed yet. Throughput is computed from each repetition's `samples_ns` rather than the printed `samples_ts`: on the laptop (WSL2) one repetition in about twenty reported a duration that wrapped below zero (18446744071733648849 ns, printed as 3.5e-9 tokens/s), and such samples are dropped with a note on stderr. The first prompt repetition is about twice as slow as the rest even after llama-bench's warm-up, which the p50 absorbs.
 
 Comparability: the same BF16 weights (not a quantized GGUF), the same prompt and output length, the same GPU, plugged in, several repetitions. Record the llama.cpp commit; it is stored in the summary's `version`.
 

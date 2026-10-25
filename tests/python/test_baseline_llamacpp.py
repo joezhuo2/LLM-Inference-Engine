@@ -44,6 +44,19 @@ class LlamaBench(unittest.TestCase):
         with self.assertRaises(ValueError):
             bl.summary_from_rows([PP], 128, 256)
 
+    def test_throughput_comes_from_the_durations(self):
+        tg = {**TG, "samples_ns": [2_560_000_000, 2_560_000_000, 2_600_000_000]}
+        self.assertAlmostEqual(bl.samples(tg)[0], 100.0)
+
+    def test_wrapped_negative_durations_are_dropped(self):
+        tg = {**TG, "samples_ns": [18446744071733648849, 549156004, 543191289],
+              "samples_ts": [3.46945e-09, 116.542, 117.822]}
+        values = bl.samples(tg)
+        self.assertEqual(len(values), 2)
+        self.assertAlmostEqual(values[0], 256 * 1e9 / 549156004)
+        with self.assertRaises(ValueError):
+            bl.samples({**TG, "samples_ns": [18446744071733648849]})
+
     def test_main_writes_the_engine_summary_columns(self):
         with tempfile.TemporaryDirectory() as d:
             src = Path(d) / "lb.json"

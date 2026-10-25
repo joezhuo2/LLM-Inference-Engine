@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import bench_csv as bc  # noqa: E402
 
+WRAPPED_NS = 2**63
+
 
 def run_llama_bench(binary, model, prompt_len, output_len, repetitions, extra):
     cmd = [binary, "-m", str(model), "-p", str(prompt_len), "-n", str(output_len),
@@ -27,6 +29,16 @@ def parse_llama_bench(text):
 
 
 def samples(row):
+    tokens = row.get("n_prompt", 0) + row.get("n_gen", 0)
+    durations = row.get("samples_ns") or []
+    if durations:
+        kept = [int(ns) for ns in durations if 0 < int(ns) < WRAPPED_NS]
+        if len(kept) < len(durations):
+            print(f"dropped {len(durations) - len(kept)} llama-bench sample(s) with a negative duration",
+                  file=sys.stderr)
+        if not kept:
+            raise ValueError("every llama-bench sample has a negative duration")
+        return [tokens * 1e9 / ns for ns in kept]
     values = row.get("samples_ts") or []
     if values:
         return [float(v) for v in values]

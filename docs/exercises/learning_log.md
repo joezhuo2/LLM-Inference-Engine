@@ -1268,3 +1268,4 @@
 ## llama.cpp Baseline (Branch 44)
 - **pinning a dependency to a release tag so a baseline number can be reproduced** => 
 - **CMAKE_CUDA_ARCHITECTURES and why a binary built for one GPU architecture does not run on another** => 
+- **unsigned integer wraparound when a later timestamp reads smaller than an earlier one** => 

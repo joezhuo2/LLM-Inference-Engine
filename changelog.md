@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## tools/llamacpp-baseline
 
 - Add `scripts/setup_llamacpp.sh`: clones llama.cpp outside the repo (`LLAMA_CPP_DIR`, default `~/.cache/llmie/llama.cpp`), checks out the pinned release `b11870` (`LLAMA_CPP_REF`), builds only `llama-bench` and `llama-batched-bench` in Release with CUDA for `LLAMA_CUDA_ARCH` (default 120) and without libcurl or tests, and converts `models/tinyllama` to a BF16 GGUF (`LLAMA_GGUF`, default `models/tinyllama-bf16.gguf`) with llama.cpp's `convert_hf_to_gguf.py`, whose `gguf` package it loads from the checkout, so the llmie venv needs nothing new. The checkout, the build and an existing GGUF are reused on a rerun. Built and run on the RTX 5060 laptop. (Part A)
+- Compute llama-bench throughput in `scripts/baseline_llamacpp.py` from each repetition's `samples_ns` (tokens / duration) instead of the printed `samples_ts`, and drop repetitions whose unsigned duration wrapped below zero (at least 2^63 ns) with a note on stderr. Found on the first run against the real binary: one of 23 repetitions reported 18446744071733648849 ns (about -2 s) and 3.5e-9 tokens/s, which would have put TPOT at 3e8 s in the mean. The parser otherwise matched the real JSON (`build_commit`, `build_number`, `gpu_info`, `backends`, `model_filename`, `n_prompt`, `n_gen`, `samples_ts`). Two new tests (duration-derived throughput, a dropped wrapped sample). (Part A)
 
 ## runtime/wire-attention-split
 
