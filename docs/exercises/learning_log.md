@@ -1311,3 +1311,5 @@
 - **drawing on a `<canvas>` with `requestAnimationFrame` and pausing it with `IntersectionObserver` and `visibilitychange`** => 
 - **device pixel ratio: why a canvas needs a backing store larger than its CSS size** => 
 - **sampling a replay on a timer (`setInterval`) instead of every animation frame for React state** => 
+- **`IntersectionObserver` with a narrow `rootMargin` band to find the section in the middle of the screen** => 
+- **why a CSS `translateX` in px misplaces an element inside a scaled SVG `viewBox`** => 
