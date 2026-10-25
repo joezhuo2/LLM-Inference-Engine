@@ -1,6 +1,6 @@
 # Results
 
-What the engine measures against the five MVP criteria, against HuggingFace transformers and (when run) llama.cpp, and where a decode step spends its time. The blocks between `auto` markers are written by `scripts/make_results.py` from the files `scripts/reproduce.sh` produces in `results/`; everything else is hand-written and has to be revisited when a kernel lands (see the checklist at the end).
+What the engine measures against the five MVP criteria, against HuggingFace transformers and llama.cpp, and where a decode step spends its time. The blocks between `auto` markers are written by `scripts/make_results.py` from the files `scripts/reproduce.sh` produces in `results/`; everything else is hand-written and has to be revisited when a kernel lands (see the checklist at the end).
 
 Regenerate everything with one command, plugged in and with no other GPU program running:
 
@@ -13,8 +13,8 @@ scripts/reproduce.sh            # about 10 minutes; --quick for a smoke run
 The commit is the code the numbers were measured on; the `results/` files and this page are committed right after it.
 
 <!-- auto:environment -->
-- Date: 2026-10-20T13:07:54Z
-- Commit: 1aa5e88
+- Date: 2026-10-25T09:33:51Z
+- Commit: eafb664
 - GPU: NVIDIA GeForce RTX 5060 Laptop GPU
 - Driver: 617.42
 - CUDA: 13.3
@@ -30,8 +30,8 @@ The commit is the code the numbers were measured on; the `results/` files and th
 |---|---|---|---|---|
 | 1a | Teacher-forced vs HuggingFace | at least 99% argmax, error under 0.05 | 99.57% argmax over 1842 positions, mean abs logit error 0.0285 | met |
 | 1b | Free-running greedy, first 64 tokens | exact on at least 18 of 20 | exact on 15 of 20; the other 5 diverge at a near tie (at most 2 BF16 ulps apart in HF's logits) | not met |
-| 2 | Batch-1 decode bandwidth | at least 60% of 323.6 GB/s | 264 GB/s = 82% | met |
-| 3 | Throughput at 16 concurrent requests | at least 5x batch 1 | 1406 vs 127 tokens/s = 11.1x | met |
+| 2 | Batch-1 decode bandwidth | at least 60% of 323.6 GB/s | 265 GB/s = 82% | met |
+| 3 | Throughput at 16 concurrent requests | at least 5x batch 1 | 1402 vs 128 tokens/s = 11.0x | met |
 <!-- /auto:scoreboard -->
 
 Criterion 4 (each kernel has a before and after Nsight Compute number) and criterion 5 (reproducible from a clean clone) are tracked by the kernel table and `scripts/reproduce.sh` below rather than computed.
@@ -45,20 +45,27 @@ Criterion 4 (each kernel has a before and after Nsight Compute number) and crite
 <!-- auto:table -->
 | system | max batch | output tok/s | TPOT p50 ms | TTFT p50 ms | weights GB/s | runs |
 |---|---|---|---|---|---|---|
-| engine | 1 | 114.0 | 8.61 | 8766.2 | 240.4 | 3 |
-| engine | 2 | 222.8 | 8.79 | 4233.9 |  | 3 |
-| engine | 4 | 432.9 | 8.74 | 2147.2 |  | 3 |
-| engine | 8 | 765.7 | 9.39 | 1102.2 |  | 3 |
-| engine | 16 | 1283.0 | 10.81 | 521.8 |  | 3 |
-| engine + graphs | 1 | 126.7 | 7.83 | 7786.0 | 264.2 | 3 |
-| engine + graphs | 4 | 473.0 | 7.93 | 1949.9 |  | 3 |
-| engine + graphs | 16 | 1405.8 | 9.67 | 497.0 |  | 3 |
-| HF transformers | 1 | 24.0 | 40.96 | 44404.9 | 50.5 | 1 |
-| HF transformers | 4 | 89.6 | 45.80 | 9969.9 |  | 1 |
-| HF transformers | 16 | 345.4 | 45.40 | 1590.1 |  | 1 |
+| engine | 1 | 116.1 | 8.49 | 8519.7 | 243.7 | 3 |
+| engine | 2 | 227.5 | 8.58 | 4125.8 |  | 3 |
+| engine | 4 | 445.0 | 8.58 | 2082.6 |  | 3 |
+| engine | 8 | 781.8 | 9.15 | 1082.8 |  | 3 |
+| engine | 16 | 1263.7 | 11.02 | 522.2 |  | 3 |
+| engine + graphs | 1 | 127.7 | 7.79 | 7732.0 | 265.4 | 3 |
+| engine + graphs | 4 | 479.4 | 7.77 | 1937.1 |  | 3 |
+| engine + graphs | 16 | 1402.2 | 9.68 | 498.1 |  | 3 |
+| HF transformers | 1 | 27.8 | 33.64 | 32491.1 | 61.5 | 1 |
+| HF transformers | 4 | 102.4 | 39.40 | 8975.4 |  | 1 |
+| HF transformers | 16 | 396.8 | 39.44 | 1400.8 |  | 1 |
+| llama.cpp | 1 | 110.1 | 8.95 | 9029.5 | 231.1 | 3 |
+| llama.cpp | 2 | 193.8 | 9.84 | 4994.7 |  | 3 |
+| llama.cpp | 4 | 395.5 | 9.61 | 2307.5 |  | 3 |
+| llama.cpp | 8 | 780.2 | 9.49 | 1042.8 |  | 3 |
+| llama.cpp | 16 | 1284.3 | 10.64 | 525.5 |  | 3 |
 <!-- /auto:table -->
 
-The engine batches continuously (new requests join a running batch at any step, preemption on a full cache); the HuggingFace baseline uses static batches that run to the longest request, so the curves differ in more than kernel speed. `docs/baselines.md` lists what is and is not comparable.
+The engine batches continuously (new requests join a running batch at any step, preemption on a full cache); the HuggingFace and llama.cpp baselines use static batches that run to the longest request, so the curves differ in more than kernel speed. `docs/baselines.md` lists what is and is not comparable.
+
+llama.cpp (release b11870, CUDA, the same BF16 weights as a GGUF, flash attention on `auto`, built and converted by `scripts/setup_llamacpp.sh`) is the serious baseline: a mature engine whose batch-1 decode is also bandwidth bound. Its rows come from `llama-batched-bench`, one static batch per size replayed over the 32 requests (`docs/baselines.md`). In this run the engine with CUDA Graphs is ahead at every size: TPOT 7.8 against 9.0 ms at batch 1 (265 against 231 GB/s of weights, 1.16x the tokens/s), 1.21x at batch 4 and 1.09x at batch 16. Eager, without graphs, the engine is ahead up to batch 4 and level from batch 8 (1264 against 1284 tokens/s at 16, inside the 10% run-to-run spread of llama.cpp's batch-16 runs, 1156 to 1315). The workload favors static batching (every request has the same length), and llama.cpp never runs a sampler in this tool while the engine samples on the GPU, so neither difference flatters the engine.
 
 ## Batch-1 decode bandwidth
 
@@ -73,52 +80,52 @@ From `scripts/profile.sh nsys` on a batch-1 run (see `docs/profiling.md` for how
 <!-- auto:profile -->
 ### Launch gaps per forward step
 
-- decode: 252 steps, 224 kernels, median span 8045 us, median busy 6912 us, median idle 11.1% of the span, 24 gaps over 5 us per step
-- prefill: 4 steps, 224 kernels, median span 11019 us, median busy 9837 us, median idle 9.5% of the span, 60 gaps over 5 us per step
+- decode: 252 steps, 224 kernels, median span 8198 us, median busy 6918 us, median idle 11.8% of the span, 15 gaps over 5 us per step
+- prefill: 4 steps, 224 kernels, median span 11352 us, median busy 10152 us, median idle 9.9% of the span, 46 gaps over 5 us per step
 
 ### GPU time per op in a decode step
 
 | op | kernels/step | GPU us/step | % of kernel time |
 | --- | --- | --- | --- |
-| gate_up | 22.0 | 3145.1 | 43.8 |
-| down | 22.0 | 1726.1 | 24.1 |
-| qkv | 22.0 | 757.9 | 10.6 |
-| o_proj | 22.0 | 617.9 | 8.6 |
-| lm_head | 1.0 | 399.5 | 5.6 |
-| attention | 22.0 | 325.6 | 4.5 |
-| rope | 22.0 | 61.1 | 0.9 |
-| add1_norm2 | 22.0 | 38.0 | 0.5 |
-| add2_norm1 | 21.0 | 34.5 | 0.5 |
-| write_kv | 22.0 | 31.6 | 0.4 |
-| swiglu | 22.0 | 24.8 | 0.3 |
-| norm1 | 1.0 | 3.2 | 0.0 |
+| gate_up | 22.0 | 3161.5 | 43.9 |
+| down | 22.0 | 1743.4 | 24.2 |
+| qkv | 22.0 | 764.1 | 10.6 |
+| o_proj | 22.0 | 621.8 | 8.6 |
+| lm_head | 1.0 | 402.7 | 5.6 |
+| attention | 22.0 | 317.1 | 4.4 |
+| rope | 22.0 | 59.5 | 0.8 |
+| add1_norm2 | 22.0 | 37.1 | 0.5 |
+| add2_norm1 | 21.0 | 33.7 | 0.5 |
+| write_kv | 22.0 | 30.9 | 0.4 |
+| swiglu | 22.0 | 24.5 | 0.3 |
 | embedding | 1.0 | 3.2 | 0.0 |
-| final_norm | 1.0 | 3.2 | 0.0 |
+| norm1 | 1.0 | 3.2 | 0.0 |
+| final_norm | 1.0 | 3.1 | 0.0 |
 | add2 | 1.0 | 0.9 | 0.0 |
 
 ### Top 12 kernels
 
 | kernel | count | total ms | avg us | % |
 | --- | --- | --- | --- | --- |
-| std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, __nv_bfloat... | 22432 | 1676.5 | 74.7 | 90.6 |
-| engine::paged_attention_decode_v2_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 5632 | 91.6 | 16.3 | 4.9 |
-| void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_32x... | 176 | 20.6 | 117.3 | 1.1 |
-| engine::fast::add_rmsnorm_vec_kernel(__nv_bfloat16 *, __nv_bfloat16 *, const ... | 11008 | 18.6 | 1.7 | 1.0 |
-| engine::fast::rope_kernel(__nv_bfloat16 *, const int *, int, int, int, engine... | 5632 | 15.7 | 2.8 | 0.8 |
-| engine::write_kv_kernel(const __nv_bfloat16 *, const int *, __nv_bfloat16 *, ... | 5632 | 8.1 | 1.4 | 0.4 |
-| engine::fast::swiglu_kernel(__nv_bfloat16 *, const __nv_bfloat16 *, long, long) | 5544 | 6.3 | 1.1 | 0.3 |
-| nvjet_sm120_tst_mma_80x64x64_5_80x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 3.3 | 37.1 | 0.2 |
-| nvjet_sm120_tst_mma_112x64x64_4_112x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 3.2 | 36.4 | 0.2 |
-| engine::<unnamed>::sample_kernel(int *, const __nv_bfloat16 *, int, const eng... | 256 | 2.7 | 10.4 | 0.1 |
-| engine::naive::<unnamed>::rmsnorm_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 512 | 1.7 | 3.2 | 0.1 |
+| std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, __nv_bfloat... | 22432 | 1688.4 | 75.3 | 90.8 |
+| engine::paged_attention_decode_v2_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 5632 | 89.8 | 16.0 | 4.8 |
+| void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_32x... | 176 | 21.0 | 119.1 | 1.1 |
+| engine::fast::add_rmsnorm_vec_kernel(__nv_bfloat16 *, __nv_bfloat16 *, const ... | 11008 | 18.2 | 1.7 | 1.0 |
+| engine::fast::rope_kernel(__nv_bfloat16 *, const int *, int, int, int, engine... | 5632 | 15.3 | 2.7 | 0.8 |
+| engine::write_kv_kernel(const __nv_bfloat16 *, const int *, __nv_bfloat16 *, ... | 5632 | 7.9 | 1.4 | 0.4 |
+| engine::fast::swiglu_kernel(__nv_bfloat16 *, const __nv_bfloat16 *, long, long) | 5544 | 6.2 | 1.1 | 0.3 |
+| nvjet_sm120_tst_mma_80x64x64_5_80x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 3.4 | 38.4 | 0.2 |
+| nvjet_sm120_tst_mma_112x64x64_4_112x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 3.3 | 37.4 | 0.2 |
+| engine::<unnamed>::sample_kernel(int *, const __nv_bfloat16 *, int, const eng... | 256 | 2.6 | 10.2 | 0.1 |
+| engine::naive::<unnamed>::rmsnorm_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 512 | 1.6 | 3.2 | 0.1 |
 | engine::naive::<unnamed>::embedding_kernel(__nv_bfloat16 *, const int *, cons... | 256 | 0.8 | 3.2 | 0.0 |
 
 ### Decode bandwidth
 
-- max_batch 1, median TPOT 9.25 ms
-- weights read per token / TPOT: 223.8 GB/s = 69.2% of the 323.6 GB/s peak (target 60%)
-- GPU kernel busy time in a decode step: 6.91 ms (75% of TPOT)
-- weights / kernel busy time: 299.3 GB/s (what the kernels would reach with no launch gaps)
+- max_batch 1, median TPOT 9.28 ms
+- weights read per token / TPOT: 222.9 GB/s = 68.9% of the 323.6 GB/s peak (target 60%)
+- GPU kernel busy time in a decode step: 6.92 ms (75% of TPOT)
+- weights / kernel busy time: 299.1 GB/s (what the kernels would reach with no launch gaps)
 <!-- /auto:profile -->
 
 The same step replayed from a CUDA Graph (`engine bench --graphs`, one graph per power-of-two batch size, kernels unchanged):
@@ -126,38 +133,38 @@ The same step replayed from a CUDA Graph (`engine bench --graphs`, one graph per
 <!-- auto:profile_graphs -->
 ### Launch gaps per forward step
 
-- decode: 252 steps, 224 kernels, median span 6939 us, median busy 6884 us, median idle 0.8% of the span, 0 gaps over 5 us per step
-- prefill: 4 steps, 224 kernels, median span 12338 us, median busy 10214 us, median idle 19.5% of the span, 54 gaps over 5 us per step
+- decode: 252 steps, 224 kernels, median span 6983 us, median busy 6927 us, median idle 0.8% of the span, 0 gaps over 5 us per step
+- prefill: 4 steps, 224 kernels, median span 15989 us, median busy 10310 us, median idle 9.5% of the span, 62 gaps over 5 us per step
 
 ### GPU time per op in a decode step
 
 | op | kernels/step | GPU us/step | % of kernel time |
 | --- | --- | --- | --- |
-| forward_decode | 224.0 | 7176.7 | 100.0 |
+| forward_decode | 224.0 | 7319.6 | 100.0 |
 
 ### Top 12 kernels
 
 | kernel | count | total ms | avg us | % |
 | --- | --- | --- | --- | --- |
-| std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, __nv_bfloat... | 22432 | 1676.6 | 74.7 | 90.1 |
-| engine::paged_attention_decode_v2_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 5632 | 99.6 | 17.7 | 5.4 |
-| void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_32x... | 176 | 25.1 | 142.6 | 1.3 |
-| engine::fast::add_rmsnorm_vec_kernel(__nv_bfloat16 *, __nv_bfloat16 *, const ... | 11008 | 18.1 | 1.6 | 1.0 |
-| engine::fast::rope_kernel(__nv_bfloat16 *, const int *, int, int, int, engine... | 5632 | 14.6 | 2.6 | 0.8 |
-| engine::write_kv_kernel(const __nv_bfloat16 *, const int *, __nv_bfloat16 *, ... | 5632 | 7.9 | 1.4 | 0.4 |
-| engine::fast::swiglu_kernel(__nv_bfloat16 *, const __nv_bfloat16 *, long, long) | 5544 | 5.3 | 1.0 | 0.3 |
-| nvjet_sm120_tst_mma_80x64x64_5_80x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 4.2 | 48.3 | 0.2 |
-| nvjet_sm120_tst_mma_112x64x64_4_112x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 4.1 | 46.4 | 0.2 |
-| engine::<unnamed>::sample_kernel(int *, const __nv_bfloat16 *, int, const eng... | 256 | 2.8 | 10.9 | 0.1 |
-| engine::naive::<unnamed>::rmsnorm_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 512 | 1.7 | 3.3 | 0.1 |
-| engine::naive::<unnamed>::embedding_kernel(__nv_bfloat16 *, const int *, cons... | 256 | 0.8 | 3.2 | 0.0 |
+| std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, __nv_bfloat... | 22432 | 1703.8 | 76.0 | 89.7 |
+| engine::paged_attention_decode_v2_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 5632 | 105.7 | 18.8 | 5.6 |
+| void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_32x... | 176 | 25.3 | 143.7 | 1.3 |
+| engine::fast::add_rmsnorm_vec_kernel(__nv_bfloat16 *, __nv_bfloat16 *, const ... | 11008 | 19.3 | 1.8 | 1.0 |
+| engine::fast::rope_kernel(__nv_bfloat16 *, const int *, int, int, int, engine... | 5632 | 15.5 | 2.7 | 0.8 |
+| engine::write_kv_kernel(const __nv_bfloat16 *, const int *, __nv_bfloat16 *, ... | 5632 | 8.4 | 1.5 | 0.4 |
+| engine::fast::swiglu_kernel(__nv_bfloat16 *, const __nv_bfloat16 *, long, long) | 5544 | 5.7 | 1.0 | 0.3 |
+| nvjet_sm120_tst_mma_80x64x64_5_80x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 4.3 | 48.9 | 0.2 |
+| nvjet_sm120_tst_mma_112x64x64_4_112x8x64_tmaAB_alignCD4_bz_TNNN | 88 | 4.1 | 47.1 | 0.2 |
+| engine::<unnamed>::sample_kernel(int *, const __nv_bfloat16 *, int, const eng... | 256 | 3.0 | 11.6 | 0.2 |
+| engine::naive::<unnamed>::rmsnorm_kernel(__nv_bfloat16 *, const __nv_bfloat16... | 512 | 1.8 | 3.5 | 0.1 |
+| engine::naive::<unnamed>::embedding_kernel(__nv_bfloat16 *, const int *, cons... | 256 | 0.9 | 3.4 | 0.0 |
 
 ### Decode bandwidth
 
-- max_batch 1, median TPOT 8.23 ms
-- weights read per token / TPOT: 251.4 GB/s = 77.7% of the 323.6 GB/s peak (target 60%)
-- GPU kernel busy time in a decode step: 6.88 ms (84% of TPOT)
-- weights / kernel busy time: 300.5 GB/s (what the kernels would reach with no launch gaps)
+- max_batch 1, median TPOT 7.77 ms
+- weights read per token / TPOT: 266.2 GB/s = 82.3% of the 323.6 GB/s peak (target 60%)
+- GPU kernel busy time in a decode step: 6.93 ms (89% of TPOT)
+- weights / kernel busy time: 298.7 GB/s (what the kernels would reach with no launch gaps)
 <!-- /auto:profile_graphs -->
 
 The launch gaps are gone (idle share of a decode step from about 10% to about 1%, gaps over 5 us from 15 per step to 0) and the kernels take the same time, so the saving is exactly the host-side launch time: a batch-1 token takes about 0.9 ms less (9.3 to 8.4 ms) and the weights bandwidth rises from about 223 to 247 GB/s, 76% of the measured peak (that was before paged attention v2 was wired in; the run above reaches 262 GB/s, 81%). What is left is the kernels themselves: the cuBLAS GEMV for gate/up and down owns about 68% of the step and runs at about 310 GB/s, and `paged_attention_decode_v2` owns 3.8% (v1 owned 11.5%). The eager profile above shows 24% idle time and 39 gaps per step against 10% and 15 in the previous run, and the HuggingFace rows are slower too, so the host was slower during this run (laptop clocks); the graph-replayed step is not affected by host speed.
