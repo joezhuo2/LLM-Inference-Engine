@@ -169,6 +169,15 @@ The same step replayed from a CUDA Graph (`engine bench --graphs`, one graph per
 
 The launch gaps are gone (idle share of a decode step from about 10% to about 1%, gaps over 5 us from 15 per step to 0) and the kernels take the same time, so the saving is exactly the host-side launch time: a batch-1 token takes about 0.9 ms less (9.3 to 8.4 ms) and the weights bandwidth rises from about 223 to 247 GB/s, 76% of the measured peak (that was before paged attention v2 was wired in; the run above reaches 262 GB/s, 81%). What is left is the kernels themselves: the cuBLAS GEMV for gate/up and down owns about 68% of the step and runs at about 310 GB/s, and `paged_attention_decode_v2` owns 3.8% (v1 owned 11.5%). The eager profile above shows 24% idle time and 39 gaps per step against 10% and 15 in the previous run, and the HuggingFace rows are slower too, so the host was slower during this run (laptop clocks); the graph-replayed step is not affected by host speed.
 
+## Roofline
+
+![Decode ops and whole decode steps against the measured bandwidth and compute ceilings](../results/plots/roofline.png)
+
+From `scripts/roofline.py`: FLOPs and DRAM bytes of each GEMM and of attention are counted from `config.json` (weights, activations and the KV cache read once, nothing for caches), the op times come from the batch-1 profile above and a batch-16 profile (`results/decode_step_b16.md`), the whole-step points from the median TPOT of the table above. The ceilings are the measured DRAM bandwidth and the measured BF16 GEMM peak (`scripts/gemm_peak.cu`, `docs/hardware.md`).
+
+<!-- auto:roofline -->
+<!-- /auto:roofline -->
+
 ## Kernels
 
 Every kernel exists twice, a naive one that is obviously correct (the test oracle and the "before" number) and an optimized one tested against it. "In the forward pass" says whether `PagedRunner` calls the fast one; the end-to-end numbers above include only the kernels marked yes.

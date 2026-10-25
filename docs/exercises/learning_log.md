@@ -1286,3 +1286,4 @@
 - **arithmetic intensity of a GEMV against a GEMM with B rows (why batching moves a point right on the roofline)** => 
 - **why attention's arithmetic intensity does not grow with the batch size (each row reads its own KV cache)** => 
 - **log-log axes and why the bandwidth roof is a straight line on them** => 
+- **shell arithmetic expansion `$(( ))`** => 
