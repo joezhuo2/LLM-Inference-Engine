@@ -1265,6 +1265,16 @@
 - **why a CUDA Graph replays the launch parameters it captured (grid size, kernel choice) even when the inputs change** => 
 - **why a kernel timed in a warm loop can be faster than the same kernel inside a forward pass (cache state between launches)** => 
 
+## llama.cpp Baseline (Branch 44)
+- **pinning a dependency to a release tag so a baseline number can be reproduced** => 
+- **CMAKE_CUDA_ARCHITECTURES and why a binary built for one GPU architecture does not run on another** => 
+- **unsigned integer wraparound when a later timestamp reads smaller than an earlier one** => 
+- **JSON Lines output and parsing a tool's machine-readable stream apart from its logs** => 
+- **cold-start cost in the first measured configuration and a discarded warm-up run** => 
+- **argparse subcommands (`add_subparsers`)** => 
+- **why TTFT in an offline benchmark includes queueing, and why two systems must serve the same number of requests to compare it** => 
+- **placing text in data coordinates with a fixed offset in points (`offset_copy`)** => 
+
 ## Graphs for Split Attention (Branch 43)
 - **capturing one graph per launch configuration and choosing among them at replay time** => 
 - **`std::map` with a `std::pair` key and `contains` (C++20)** => 
