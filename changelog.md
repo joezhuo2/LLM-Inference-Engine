@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## docs/api-contract
+
+- Add `docs/api.md`, the contract between the engine and the web site: the step object (one per scheduler step: times, prefill or decode, sequences, sampled token ids with their incremental text, finished sequences, queue sizes, free KV blocks), the trace file `engine bench --trace` will write, and the planned server endpoints (`/health`, `/metrics`, the `/v1/steps` event stream, OpenAI-compatible `/v1/chat/completions` with SSE and an `engine` extension field, CORS). (Part A)
+
 ## tools/roofline
 
 - Add `scripts/gemm_peak.cu`, which times square BF16 cuBLAS GEMMs (`cublasGemmEx`, F32 accumulation, 20 calls after 3 warm-up calls, sizes from the arguments, default 2048, 4096 and 8192) and prints the best as `peak_tflops=`, the compute ceiling of the roofline. RTX 5060 laptop: 34.6 / 31.5 / 32.0 TFLOP/s, recorded in `docs/hardware.md` with the ridge point of 107 FLOP/byte against the measured 323.6 GB/s. (Part A)

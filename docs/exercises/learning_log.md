@@ -1287,3 +1287,8 @@
 - **why attention's arithmetic intensity does not grow with the batch size (each row reads its own KV cache)** => 
 - **log-log axes and why the bandwidth roof is a straight line on them** => 
 - **shell arithmetic expansion `$(( ))`** => 
+
+## Engine API Contract (Branch 48)
+- **Server-Sent Events (`text/event-stream`, `data:` lines) and how they differ from WebSockets** => 
+- **CORS preflight requests (`OPTIONS`, `Access-Control-Allow-Origin`)** => 
+- **versioning a JSON format so old clients keep working (additive fields, a version number)** => 
