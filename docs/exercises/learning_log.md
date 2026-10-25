@@ -1273,3 +1273,4 @@
 - **cold-start cost in the first measured configuration and a discarded warm-up run** => 
 - **argparse subcommands (`add_subparsers`)** => 
 - **why TTFT in an offline benchmark includes queueing, and why two systems must serve the same number of requests to compare it** => 
+- **placing text in data coordinates with a fixed offset in points (`offset_copy`)** => 

@@ -63,6 +63,15 @@ class Plot(unittest.TestCase):
         self.assertIn("| engine | 16 | 1000.0 | 15.50 |", lines[3])
         self.assertTrue(lines[-1].endswith("| 1 |"))
 
+    def test_close_end_labels_are_spread_around_their_values(self):
+        out = plot.spread_labels([1264.0, 1284.0, 1402.0, 397.0], 60.0)
+        self.assertAlmostEqual(out[0], 1244.0)
+        self.assertAlmostEqual(out[1], 1304.0)
+        self.assertEqual(out[2:], [1402.0, 397.0])
+        chain = plot.spread_labels([100.0, 110.0, 150.0], 60.0)
+        self.assertAlmostEqual(min(b - a for a, b in zip(chain, chain[1:])), 60.0)
+        self.assertAlmostEqual(sum(chain) / 3, 120.0)
+
     def test_main_writes_the_images_and_the_table(self):
         try:
             import matplotlib  # noqa: F401

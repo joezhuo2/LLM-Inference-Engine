@@ -106,7 +106,27 @@ def _style(plt, theme):
     return t
 
 
+def _place(members, ys, gap):
+    center = sum(ys[i] for i in members) / len(members)
+    start = center - gap * (len(members) - 1) / 2
+    return [start + k * gap for k in range(len(members))]
+
+
+def spread_labels(ys, gap):
+    clusters = []
+    for i in sorted(range(len(ys)), key=ys.__getitem__):
+        clusters.append([i])
+        while len(clusters) > 1 and _place(clusters[-2], ys, gap)[-1] + gap > _place(clusters[-1], ys, gap)[0]:
+            clusters[-2:] = [clusters[-2] + clusters[-1]]
+    out = list(ys)
+    for members in clusters:
+        for i, y in zip(members, _place(members, ys, gap)):
+            out[i] = y
+    return out
+
+
 def line_plot(rows, key, scale, ylabel, title, out, theme, note=None):
+    import matplotlib.transforms as mtransforms
     import matplotlib
 
     matplotlib.use("Agg")
@@ -117,15 +137,14 @@ def line_plot(rows, key, scale, ylabel, title, out, theme, note=None):
     if not data:
         return False
     fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=160)
+    ends = []
     for system, points in data.items():
         xs = [p[0] for p in points]
         ys = [p[1] * scale for p in points]
         color = t["series"][system]
         ax.plot(xs, ys, color=color, linewidth=2, marker="o", markersize=8,
                 markeredgecolor=t["surface"], markeredgewidth=2, label=system)
-        ax.annotate(f"{ys[-1]:.0f}" if scale == 1 and ys[-1] >= 10 else f"{ys[-1]:.1f}",
-                    (xs[-1], ys[-1]), textcoords="offset points", xytext=(8, 0), va="center",
-                    color=t["text"], fontsize=10)
+        ends.append((xs[-1], ys[-1]))
     batches = sorted({p[0] for pts in data.values() for p in pts})
     if len(batches) > 1:
         ax.set_xscale("log", base=2)
@@ -133,6 +152,14 @@ def line_plot(rows, key, scale, ylabel, title, out, theme, note=None):
     ax.set_xticklabels([str(b) for b in batches])
     ax.set_xlim(left=min(batches) * 0.8, right=max(batches) * 1.35)
     ax.set_ylim(bottom=0)
+    gap = 0.055 * ax.get_ylim()[1]
+    shifted = mtransforms.offset_copy(ax.transData, fig=fig, x=8, units="points")
+    for x in {e[0] for e in ends}:
+        at_x = [i for i, e in enumerate(ends) if e[0] == x]
+        for i, y in zip(at_x, spread_labels([ends[i][1] for i in at_x], gap)):
+            value = ends[i][1]
+            ax.text(x, y, f"{value:.0f}" if scale == 1 and value >= 10 else f"{value:.1f}",
+                    transform=shifted, va="center", color=t["text"], fontsize=10)
     ax.set_xlabel("max batch (concurrent requests)")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
