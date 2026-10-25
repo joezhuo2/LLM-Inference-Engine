@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "engine/bench/trace.h"
 #include "engine/runtime/decode_graphs.h"
 #include "engine/runtime/device_buffer.h"
 #include "engine/runtime/paged_runner.h"
@@ -18,7 +19,8 @@ struct ServeStats {
 
 std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
                                 DeviceBuffer& next, ServeStats* stats = nullptr,
-                                DecodeGraphs* graphs = nullptr);
+                                DecodeGraphs* graphs = nullptr,
+                                std::vector<StepTrace>* trace = nullptr);
 
 std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
                            DecodeGraphs* graphs = nullptr);

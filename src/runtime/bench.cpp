@@ -32,7 +32,8 @@ void run_one_at_a_time(ModelRunner& runner, Workload& workload, int32_t eos_id,
 }
 
 ServeStats run_batched(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
-                       Workload& workload, Clock::time_point start, DecodeGraphs* graphs) {
+                       Workload& workload, Clock::time_point start, DecodeGraphs* graphs,
+                       std::vector<StepTrace>* trace) {
     auto& requests = workload.requests;
     if (workload.arrivals.size() != requests.size())
         throw std::invalid_argument("run_batched: one arrival time per request");
@@ -58,7 +59,7 @@ ServeStats run_batched(Scheduler& scheduler, PagedRunner& runner, Sampler& sampl
             std::this_thread::sleep_until(arrival(submitted));
             continue;
         }
-        for (Request& done : serve_step(scheduler, runner, sampler, next, &stats, graphs)) {
+        for (Request& done : serve_step(scheduler, runner, sampler, next, &stats, graphs, trace)) {
             const size_t i = index.at(done.id);
             done.arrived = arrival(i);
             requests[i] = std::move(done);

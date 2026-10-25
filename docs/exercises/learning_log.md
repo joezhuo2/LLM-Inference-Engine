@@ -1294,3 +1294,5 @@
 - **versioning a JSON format so old clients keep working (additive fields, a version number)** => 
 - **`nlohmann::ordered_json` versus `nlohmann::json` (key order in the output)** => 
 - **passing a `std::function` callback so a pure library function can use state that lives in the caller** => 
+- **an optional out-parameter (`std::vector<T>* = nullptr`) to record data without changing the normal call path** => 
+- **incremental detokenization (why one token's text depends on the tokens before it)** => 

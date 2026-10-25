@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "engine/runtime/decode_graphs.h"
+#include "engine/runtime/device_buffer.h"
 #include "engine/runtime/generate.h"
 #include "engine/runtime/kv_cache.h"
 #include "engine/runtime/model_runner.h"
@@ -173,6 +174,56 @@ TEST_F(ServeTest, ForcedPreemptionKeepsTheOutputsOfEveryRequest) {
         std::printf("temperature %.1f: %d preemptions, %zu of %d identical\n", params.temperature,
                     preemptions, identical, kRequests);
     }
+}
+
+TEST_F(ServeTest, AStepTraceRebuildsEveryOutputThroughPreemption) {
+    constexpr int kBlocks = 56;
+    constexpr int kTraceContext = 512;
+    KvCache cache(w().config, kBlocks, kBlockSize);
+    PagedRunner runner(w().config, w().weights, cache, kTraceContext, kRequests, kTraceContext,
+                       stream);
+    Scheduler scheduler(SchedulerConfig{.num_blocks = kBlocks,
+                                        .block_size = kBlockSize,
+                                        .max_batch = kRequests,
+                                        .max_prefill_tokens = kTraceContext,
+                                        .max_context = kTraceContext});
+    Sampler sampler(kRequests);
+    const int free_at_start = scheduler.blocks().num_free();
+    for (const Request& r : requests(SamplingParams{0.0f, 0})) scheduler.submit(r);
+    engine::DeviceBuffer next(size_t(kRequests) * sizeof(int32_t));
+    std::vector<engine::StepTrace> trace;
+    std::map<int64_t, std::vector<int32_t>> outputs;
+    int preemptions = 0;
+    while (scheduler.num_waiting() + scheduler.num_running() > 0) {
+        for (const Request& r :
+             engine::serve_step(scheduler, runner, sampler, next, nullptr, nullptr, &trace)) {
+            outputs[r.id] = r.output;
+            preemptions += r.preemptions;
+        }
+    }
+    ASSERT_GT(preemptions, 0);
+    ASSERT_EQ(outputs.size(), size_t(kRequests));
+
+    std::map<int64_t, std::vector<int32_t>> rebuilt;
+    std::map<int64_t, int> finished;
+    for (size_t i = 0; i < trace.size(); ++i) {
+        const engine::StepTrace& s = trace[i];
+        ASSERT_EQ(s.tokens.size(), s.seqs.size()) << "step " << i;
+        EXPECT_LE(s.start, s.end);
+        if (i > 0) {
+            EXPECT_LE(trace[i - 1].end, s.start);
+        }
+        for (size_t j = 0; j < s.seqs.size(); ++j) rebuilt[s.seqs[j]].push_back(s.tokens[j]);
+        for (const int64_t id : s.finished) ++finished[id];
+        EXPECT_GE(s.free_blocks, 0);
+        EXPECT_LE(s.free_blocks, kBlocks);
+    }
+    EXPECT_EQ(rebuilt, outputs);
+    for (const auto& [id, count] : finished) EXPECT_EQ(count, 1) << "request " << id;
+    EXPECT_EQ(finished.size(), size_t(kRequests));
+    EXPECT_TRUE(trace.front().prefill);
+    EXPECT_EQ(trace.back().waiting + trace.back().running, 0);
+    EXPECT_EQ(trace.back().free_blocks, free_at_start);
 }
 
 TEST_F(ServeTest, DecodeGraphsKeepTheGreedyOutputsOfEveryRequest) {

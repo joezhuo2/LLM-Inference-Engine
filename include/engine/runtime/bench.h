@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #include "engine/bench/workload.h"
 #include "engine/runtime/model_runner.h"
@@ -16,6 +17,7 @@ void run_one_at_a_time(ModelRunner& runner, Workload& workload, int32_t eos_id,
                        Clock::time_point start);
 
 ServeStats run_batched(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
-                       Workload& workload, Clock::time_point start, DecodeGraphs* graphs = nullptr);
+                       Workload& workload, Clock::time_point start, DecodeGraphs* graphs = nullptr,
+                       std::vector<StepTrace>* trace = nullptr);
 
 }  // namespace engine

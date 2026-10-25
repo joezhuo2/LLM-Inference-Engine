@@ -5,6 +5,7 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -16,9 +17,12 @@
 #include "commands.h"
 #include "engine/bench/csv.h"
 #include "engine/bench/metrics.h"
+#include "engine/bench/trace.h"
 #include "engine/bench/workload.h"
 #include "engine/core/version.h"
 #include "engine/model/config.h"
+#include "engine/tokenizer/text_stream.h"
+#include "engine/tokenizer/tokenizer.h"
 
 #if ENGINE_HAS_CUDA
 #include <cuda_profiler_api.h>
@@ -55,6 +59,7 @@ struct Options {
     bool profile = false;
     std::filesystem::path out;
     std::filesystem::path summary;
+    std::filesystem::path trace;
 };
 
 #if ENGINE_HAS_CUDA
@@ -139,6 +144,8 @@ void run(const Options& o) {
     const bool batched = o.max_batch > 0;
     if (o.graphs && !batched)
         throw std::invalid_argument("--graphs needs --max-batch of at least 1");
+    if (!o.trace.empty() && !batched)
+        throw std::invalid_argument("--trace needs --max-batch of at least 1");
 
     int num_blocks = 0;
     ServeStats stats;
@@ -167,14 +174,16 @@ void run(const Options& o) {
     } else {
         one_runner.emplace(w.config, w.weights, wc.prompt_len.max, context, nullptr);
     }
-    const auto drive = [&](Workload& load, Clock::time_point start) {
+    std::vector<StepTrace> steps;
+    const auto drive = [&](Workload& load, Clock::time_point start, bool timed) {
         if (!batched) {
             run_one_at_a_time(*one_runner, load, eos_id, start);
             return ServeStats{};
         }
         Scheduler scheduler(sc);
         return run_batched(scheduler, *paged_runner, *sampler, load, start,
-                           graphs ? &*graphs : nullptr);
+                           graphs ? &*graphs : nullptr,
+                           timed && !o.trace.empty() ? &steps : nullptr);
     };
     if (o.warmup > 0) {
         WorkloadConfig warm = wc;
@@ -182,12 +191,12 @@ void run(const Options& o) {
         warm.request_rate = 0.0;
         warm.seed = o.seed + 1;
         Workload warmup = make_workload(warm);
-        drive(warmup, Clock::now());
+        drive(warmup, Clock::now(), false);
     }
 
     if (o.profile) cudaProfilerStart();
     const auto start = Clock::now();
-    stats = drive(workload, start);
+    stats = drive(workload, start, true);
     if (o.profile) {
         cudaDeviceSynchronize();
         cudaProfilerStop();
@@ -240,6 +249,37 @@ void run(const Options& o) {
         fields.emplace_back("bandwidth_gb_s", csv_number(bandwidth));
     }
     write_csv_row(summary_out, fields);
+    if (!o.trace.empty()) {
+        nlohmann::ordered_json meta;
+        for (const auto& [key, value] : fields) {
+            if (key == "version")
+                meta["engine_version"] = value;
+            else if (key == "date" || key == "gpu" || key == "build" || key == "model" ||
+                     key == "prompt_len" || key == "output_len")
+                meta[key] = value;
+        }
+        meta["max_batch"] = o.max_batch;
+        meta["graphs"] = o.graphs;
+        meta["kv_blocks"] = num_blocks;
+        meta["block_size"] = kKvBlockSize;
+        meta["num_requests"] = o.num_requests;
+        meta["request_rate"] = o.request_rate;
+        meta["temperature"] = o.temperature;
+        meta["top_k"] = o.top_k;
+        meta["top_p"] = o.top_p;
+        meta["seed"] = o.seed;
+        const Tokenizer tokenizer(o.model / "tokenizer.model");
+        std::map<SeqId, TextStream> streams;
+        const auto text = [&](SeqId seq, int32_t token) {
+            if (token == w.config.eos_id) return std::string();
+            return streams.try_emplace(seq, tokenizer).first->second.push(token);
+        };
+        std::ofstream trace_out = open_csv(o.trace);
+        trace_out << trace_json(std::move(meta), workload.requests, steps, start, text).dump()
+                  << '\n';
+        trace_out.close();
+        if (!trace_out) throw std::runtime_error("writing " + o.trace.string() + " failed");
+    }
     out.close();
     summary_out.close();
     if (!out || !summary_out) throw std::runtime_error("writing the CSV files failed");
@@ -257,6 +297,8 @@ void run(const Options& o) {
     else
         std::fprintf(stderr, "%.1f GB/s of weights\n", bandwidth);
     std::fprintf(stderr, "wrote %s and %s\n", o.out.c_str(), summary_path.c_str());
+    if (!o.trace.empty())
+        std::fprintf(stderr, "wrote %zu steps to %s\n", steps.size(), o.trace.c_str());
 }
 #else
 void run(const Options&) {
@@ -323,6 +365,8 @@ void add_bench_command(CLI::App& app) {
         ->required();
     cmd->add_option("--summary", opts->summary,
                     "Summary CSV to write (default: the --out name with _summary added)");
+    cmd->add_option("--trace", opts->trace,
+                    "Trace JSON of every step of the timed run (docs/api.md); needs --max-batch");
     cmd->callback([opts] { run(*opts); });
 }
 

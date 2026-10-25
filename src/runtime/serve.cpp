@@ -12,8 +12,10 @@
 namespace engine {
 
 std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
-                                DeviceBuffer& next, ServeStats* stats, DecodeGraphs* graphs) {
+                                DeviceBuffer& next, ServeStats* stats, DecodeGraphs* graphs,
+                                std::vector<StepTrace>* trace) {
     const NvtxRange step_range("step");
+    const Clock::time_point started = Clock::now();
     Step step;
     ranged("schedule", [&] { step = scheduler.schedule(); });
     if (step.seqs.empty())
@@ -44,7 +46,20 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
         CUDA_CHECK(cudaStreamSynchronize(runner.stream()));
     });
     ranged("update", [&] { scheduler.update(tokens); });
-    return scheduler.take_finished();
+    std::vector<Request> finished = scheduler.take_finished();
+    if (trace) {
+        StepTrace& record = trace->emplace_back();
+        record.start = started;
+        record.end = Clock::now();
+        record.prefill = step.prefill;
+        record.seqs = step.seqs;
+        record.tokens = tokens;
+        for (const Request& r : finished) record.finished.push_back(r.id);
+        record.waiting = scheduler.num_waiting();
+        record.running = scheduler.num_running();
+        record.free_blocks = scheduler.blocks().num_free();
+    }
+    return finished;
 }
 
 std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,

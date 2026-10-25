@@ -37,7 +37,7 @@ One scheduler step: one forward pass over the batch and one sampled token per se
 | `start_s`, `end_s` | When the step started (before scheduling) and ended (tokens copied back to the host) |
 | `kind` | `"prefill"` or `"decode"`; a step is all one or the other |
 | `seqs` | The sequences in the batch, in batch row order |
-| `tokens` | One entry per entry of `seqs`, same order: the sampled token id and the text it adds to its sequence. `text` is the incremental UTF-8 text, so it starts with a space where SentencePiece puts one, and it is `""` when the token completes no character yet or is EOS |
+| `tokens` | One entry per entry of `seqs`, same order: the sampled token id and the text it adds to its sequence. `text` is the incremental UTF-8 text, so it starts with a space where SentencePiece puts one (except the first token of a sequence, whose leading space decoding drops), and it is `""` when the token completes no character yet or is EOS |
 | `finished` | Sequences that finished in this step (their last token is in `tokens`) |
 | `waiting`, `running` | Queue sizes after the step |
 | `free_blocks` | Free KV cache blocks after the step |
