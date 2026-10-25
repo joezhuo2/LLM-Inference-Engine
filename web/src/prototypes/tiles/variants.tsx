@@ -4,7 +4,7 @@ import NumberFlow from "@number-flow/react";
 import { Liveline, type LivelinePoint } from "liveline";
 import { useTheme } from "next-themes";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { loopTime, type Snapshot, snapshotAt, stepsDoneBy, type Trace, traceDuration } from "../trace";
+import { loopTime, type Snapshot, snapshotAt, stepsDoneBy, type Trace, traceDuration } from "@/lib/trace";
 
 type History = { snap: Snapshot; points: Record<Key, LivelinePoint[]> };
 type Key = "tps" | "running" | "kv" | "ttft" | "tpot";

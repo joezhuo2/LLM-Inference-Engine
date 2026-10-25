@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/overview
+
+- Make the token rain the landing page: the Cascade variant chosen from `/prototypes/rain` becomes `TokenRain` (`web/src/components/token-rain.tsx`), drawn full width under the top bar at the height of the screen (`100svh` minus the bar, at least 520 px) with no border, the title, one sentence, four headline numbers from `results/` and the caption over a gradient scrim (`web/src/components/hero.tsx`). The other pages keep their centered column through a route group (`web/src/app/(content)/layout.tsx`), so only `/` is full width. The canvas loop and trace helpers move from `web/src/prototypes/` to `web/src/lib/`, and the rain prototype and its page are deleted. (Part A)
+
 ## web/prototypes
 
 - Add the prototype harness (`web/src/prototypes/`): the variant picker of the `prototype` skill (github.com/emilkowalski/skills), its CSS copied verbatim (the spec requires it, including the one comment it carries) and its behavior in React (number keys and arrows switch, R replays, the choice lives in `?v=`, the highlight slides only after first paint), plus helpers that load a recorded trace (a chat-prompt trace when one exists) and replay it: steps done by a time, a replayer that feeds step events in order and resets on loop, and a snapshot of throughput over the last second, batch occupancy, KV blocks used and TTFT and TPOT medians. Adds the libraries the prototypes use, pinned: motion 14.1.0, @number-flow/react 0.6.2, recharts 3.10.1, liveline 0.0.7. (Part A)

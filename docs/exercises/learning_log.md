@@ -1314,3 +1314,7 @@
 - **`IntersectionObserver` with a narrow `rootMargin` band to find the section in the middle of the screen** => 
 - **why a CSS `translateX` in px misplaces an element inside a scaled SVG `viewBox`** => 
 - **emphasis encoding: one series in the accent, the rest in gray, identified by stroke pattern and labels** => 
+
+## Web Overview (Branch 52)
+- **route groups in the Next.js App Router (a `(folder)` that adds a layout without adding a URL segment)** => 
+- **`svh`, `lvh` and `dvh` viewport units on phones (why `100vh` jumps when the address bar hides)** => 

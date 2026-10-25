@@ -1,7 +1,7 @@
 "use client";
 
 import { Picker } from "../picker";
-import { useTrace } from "../trace";
+import { useTrace } from "@/lib/trace";
 import { Gauge, Readout, Spark } from "./variants";
 
 export function TilesPrototype() {
