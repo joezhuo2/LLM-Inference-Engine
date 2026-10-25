@@ -25,6 +25,7 @@ add_executable(unit_tests
   unit/test_text_stream.cpp
   unit/test_tokenizer.cpp
   unit/test_tokenizer_golden.cpp
+  unit/test_trace.cpp
   unit/test_version.cpp
   unit/test_weight_layout.cpp
   unit/test_workload.cpp

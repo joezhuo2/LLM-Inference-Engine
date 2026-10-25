@@ -1,6 +1,7 @@
 add_library(engine_core
   bench/csv.cpp
   bench/metrics.cpp
+  bench/trace.cpp
   bench/workload.cpp
   core/tensor.cpp
   core/version.cpp

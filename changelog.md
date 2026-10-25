@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## docs/api-contract
 
 - Add `docs/api.md`, the contract between the engine and the web site: the step object (one per scheduler step: times, prefill or decode, sequences, sampled token ids with their incremental text, finished sequences, queue sizes, free KV blocks), the trace file `engine bench --trace` will write, and the planned server endpoints (`/health`, `/metrics`, the `/v1/steps` event stream, OpenAI-compatible `/v1/chat/completions` with SSE and an `engine` extension field, CORS). (Part A)
+- Add `StepTrace` and `trace_json` (`include/engine/bench/trace.h`, engine_core): one record per scheduler step (start and end time, prefill or decode, sequences, sampled tokens, finished sequences, queue sizes, free blocks) and the trace file of `docs/api.md` built from the records and the requests, with times relative to the start of the run and the text of each token taken from a callback called in step order. CPU tests check the layout, the relative times, the order of the text calls, requests sorted by id and the rejection of a step without one token per sequence. (Part A)
 
 ## tools/roofline
 
