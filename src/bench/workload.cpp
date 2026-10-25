@@ -83,6 +83,8 @@ Workload make_workload(const WorkloadConfig& config) {
     if (!(config.request_rate >= 0.0) || std::isinf(config.request_rate))
         throw std::invalid_argument("workload: request_rate must be finite and not negative");
     validate(config.params);
+    for (const auto& prompt : config.prompts)
+        if (prompt.empty()) throw std::invalid_argument("workload: a fixed prompt is empty");
 
     SplitMix64 rng(config.seed);
     Workload w;
@@ -93,14 +95,18 @@ Workload make_workload(const WorkloadConfig& config) {
         Request r{.id = i, .max_new_tokens = rng.between(config.output_len)};
         r.params = config.params;
         r.params.seed = config.params.seed + uint64_t(i);
-        r.prompt.resize(size_t(rng.between(config.prompt_len)));
-        r.prompt[0] = config.bos_id;
-        for (size_t j = 1; j < r.prompt.size(); ++j) {
-            auto token = int32_t(rng.below(uint64_t(config.vocab - 2)));
-            for (const int32_t special :
-                 {std::min(config.bos_id, config.eos_id), std::max(config.bos_id, config.eos_id)})
-                if (token >= special) ++token;
-            r.prompt[j] = token;
+        if (!config.prompts.empty()) {
+            r.prompt = config.prompts[size_t(i) % config.prompts.size()];
+        } else {
+            r.prompt.resize(size_t(rng.between(config.prompt_len)));
+            r.prompt[0] = config.bos_id;
+            for (size_t j = 1; j < r.prompt.size(); ++j) {
+                auto token = int32_t(rng.below(uint64_t(config.vocab - 2)));
+                for (const int32_t special : {std::min(config.bos_id, config.eos_id),
+                                              std::max(config.bos_id, config.eos_id)})
+                    if (token >= special) ++token;
+                r.prompt[j] = token;
+            }
         }
         if (i > 0 && config.request_rate > 0.0) t -= std::log1p(-rng.unit()) / config.request_rate;
         w.arrivals.push_back(t);
