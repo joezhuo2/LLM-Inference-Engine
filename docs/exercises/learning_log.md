@@ -1313,3 +1313,4 @@
 - **sampling a replay on a timer (`setInterval`) instead of every animation frame for React state** => 
 - **`IntersectionObserver` with a narrow `rootMargin` band to find the section in the middle of the screen** => 
 - **why a CSS `translateX` in px misplaces an element inside a scaled SVG `viewBox`** => 
+- **emphasis encoding: one series in the accent, the rest in gray, identified by stroke pattern and labels** => 
