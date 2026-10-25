@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## tools/llamacpp-baseline
+
+- Add `scripts/setup_llamacpp.sh`: clones llama.cpp outside the repo (`LLAMA_CPP_DIR`, default `~/.cache/llmie/llama.cpp`), checks out the pinned release `b11870` (`LLAMA_CPP_REF`), builds only `llama-bench` and `llama-batched-bench` in Release with CUDA for `LLAMA_CUDA_ARCH` (default 120) and without libcurl or tests, and converts `models/tinyllama` to a BF16 GGUF (`LLAMA_GGUF`, default `models/tinyllama-bf16.gguf`) with llama.cpp's `convert_hf_to_gguf.py`, whose `gguf` package it loads from the checkout, so the llmie venv needs nothing new. The checkout, the build and an existing GGUF are reused on a rerun. Built and run on the RTX 5060 laptop. (Part A)
+
 ## runtime/wire-attention-split
 
 - Add the rule that picks the split count of `paged_attention_decode_split` (`attention_splits(rows, heads, longest_context)` and `PagedBatch::longest_context()` in `include/engine/sched/paged_batch.h`), from the timings in `docs/profiling.md`: double the split count from 1 while the grid stays at most `kSplitAttentionBlocks` (256) blocks, the split count stays at most 8 and every split keeps at least 256 tokens of the longest context. That gives 8 splits for one row at 2,048 tokens or more, 2 at 512, 4 / 2 / 2 for 2 / 3 / 4 rows, and 1 (v2) for 5 rows or more or a context under 512 tokens. CPU tests check the table and that a split grid never exceeds 256 blocks, which bounds the scratch buffer. (Part B)

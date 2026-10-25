@@ -1264,3 +1264,7 @@
 - **choosing a kernel variant at launch time from the problem shape (a launch heuristic)** => 
 - **why a CUDA Graph replays the launch parameters it captured (grid size, kernel choice) even when the inputs change** => 
 - **why a kernel timed in a warm loop can be faster than the same kernel inside a forward pass (cache state between launches)** => 
+
+## llama.cpp Baseline (Branch 44)
+- **pinning a dependency to a release tag so a baseline number can be reproduced** => 
+- **CMAKE_CUDA_ARCHITECTURES and why a binary built for one GPU architecture does not run on another** => 

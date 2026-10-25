@@ -17,7 +17,7 @@ BF16 weights, `sdpa` attention (`--attn eager` to compare), a hand-written greed
 
 ## llama.cpp
 
-llama.cpp is not a dependency of this repo. Build it with CUDA, convert the model to a BF16 GGUF with its `convert_hf_to_gguf.py --outtype bf16`, then:
+llama.cpp is not a dependency of this repo. `scripts/setup_llamacpp.sh` clones the pinned release (`b11870`, commit 74bca3950) into `~/.cache/llmie/llama.cpp`, builds only `llama-bench` and `llama-batched-bench` with CUDA for sm_120 (`LLAMA_CUDA_ARCH=89` for an L4 or a 4090; the build takes about 15 minutes on the laptop) and converts the model to `models/tinyllama-bf16.gguf` with llama.cpp's own `convert_hf_to_gguf.py --outtype bf16` (the BF16 weights unchanged, 2.2 GB). It reuses what already exists, so rerunning it is cheap. Then:
 
 ```bash
 llama-bench -m tinyllama-bf16.gguf -p 128 -n 256 -r 5 -ngl 99 -o json > llama.json
