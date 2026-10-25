@@ -3,10 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "sync-data": "node scripts/sync-data.mjs",
+    "predev": "npm run sync-data",
+    "prebuild": "npm run sync-data",
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "npm run sync-data && next typegen && tsc --noEmit"
   },
   "dependencies": {
     "clsx": "2.1.1",

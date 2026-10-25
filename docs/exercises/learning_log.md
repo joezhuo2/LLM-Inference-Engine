@@ -1302,3 +1302,4 @@
 - **CSS custom properties as design tokens and switching them with a `data-theme` attribute** => 
 - **why a theme script must run before the first paint (flash of the wrong theme)** => 
 - **`min-width: 0` on a flex child so it can shrink and scroll instead of widening the page** => 
+- **importing JSON generated at build time into a page (data as a build input instead of a fetch)** => 
