@@ -141,7 +141,7 @@ if [ "$skip_llamacpp" = 0 ]; then
         rm -f "$out"/llamacpp_*_summary.csv
         "$python" scripts/baseline_llamacpp.py batched --model "$llama_gguf" \
             --llama-batched-bench "$llama_batched" --prompt-len "$prompt" --output-len "$output" \
-            --max-batch 1,2,4,8,16 --repetitions "$repeats" --out-dir "$out"
+            --max-batch 1,2,4,8,16 --num-requests "$requests" --repetitions "$repeats" --out-dir "$out"
     else
         echo "== llama.cpp baseline skipped: run scripts/setup_llamacpp.sh first"
     fi

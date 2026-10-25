@@ -102,15 +102,25 @@ class LlamaBatchedBench(unittest.TestCase):
             bl.parse_batched_bench(json.dumps({"pl": 1}))
 
     def test_a_batch_maps_to_requests_finishing_together(self):
-        s = bl.summary_from_batched_row(B16)
+        s = bl.summary_from_batched_row(B16, 16)
         self.assertEqual(s["requests"], 16)
         self.assertEqual(s["output_tokens"], 16 * 64)
         self.assertAlmostEqual(s["ttft_s_p50"], 0.122363)
         self.assertAlmostEqual(s["tpot_s_p50"], 0.659913 / 63)
         self.assertAlmostEqual(s["output_throughput"], 16 * 64 / B16["t"])
         self.assertNotIn("bandwidth_gb_s", s)
-        self.assertAlmostEqual(bl.summary_from_batched_row(B1)["bandwidth_gb_s"],
+        self.assertAlmostEqual(bl.summary_from_batched_row(B1, 1)["bandwidth_gb_s"],
                                2_069_024_768 / (0.553058 / 63) / 1e9)
+
+    def test_more_requests_queue_as_consecutive_batches(self):
+        s = bl.summary_from_batched_row(B16, 32)
+        one = bl.summary_from_batched_row(B16, 16)
+        self.assertEqual(s["requests"], 32)
+        self.assertAlmostEqual(s["wall_s"], 2 * B16["t"])
+        self.assertAlmostEqual(s["output_throughput"], one["output_throughput"])
+        self.assertAlmostEqual(s["tpot_s_p50"], one["tpot_s_p50"])
+        self.assertAlmostEqual(s["ttft_s_mean"], B16["t_pp"] + B16["t"] / 2)
+        self.assertAlmostEqual(s["latency_s_p99"], 2 * B16["t"])
 
     def test_main_drops_the_warmup_row_and_writes_one_summary_per_batch_and_run(self):
         with tempfile.TemporaryDirectory() as d:
@@ -119,7 +129,8 @@ class LlamaBatchedBench(unittest.TestCase):
                 src = Path(d) / f"bb{i}.jsonl"
                 src.write_text("\n".join(json.dumps(r) for r in (WARMUP, B1, B16)) + "\n")
                 runs.append(str(src))
-            self.assertEqual(bl.main(["batched", "--from-jsonl", *runs, "--out-dir", d]), 0)
+            self.assertEqual(bl.main(["batched", "--from-jsonl", *runs, "--out-dir", d,
+                                      "--num-requests", "32"]), 0)
             written = sorted(p.name for p in Path(d).glob("*_summary.csv"))
             self.assertEqual(written, ["llamacpp_b16_r1_summary.csv", "llamacpp_b16_r2_summary.csv",
                                        "llamacpp_b1_r1_summary.csv", "llamacpp_b1_r2_summary.csv"])
@@ -127,7 +138,8 @@ class LlamaBatchedBench(unittest.TestCase):
             cols = dict(zip(header.split(","), row.split(",")))
             self.assertEqual(cols["driver"], "llamacpp_batched")
             self.assertEqual(cols["output_len"], "64")
-            self.assertAlmostEqual(float(cols["ttft_s_p50"]), 0.018006)
+            self.assertEqual(cols["num_requests"], "32")
+            self.assertAlmostEqual(float(cols["ttft_s_p50"]), 0.018006 + 15.5 * B1["t"])
 
 
 if __name__ == "__main__":

@@ -102,11 +102,14 @@ def parse_batched_bench(text):
     return rows
 
 
-def summary_from_batched_row(row):
+def summary_from_batched_row(row, num_requests):
     output_tokens = row["tg"] + 1
-    metrics = [bc.request_metrics(i, row["pp"], output_tokens, 0.0, row["t_pp"], row["t"])
-               for i in range(row["pl"])]
-    summary = bc.summarize(metrics, row["t"])
+    metrics = []
+    for i in range(num_requests):
+        start = (i // row["pl"]) * row["t"]
+        metrics.append(bc.request_metrics(i, row["pp"], output_tokens, 0.0, start + row["t_pp"],
+                                          start + row["t"]))
+    summary = bc.summarize(metrics, max(m["latency_s"] for m in metrics))
     if row["pl"] == 1:
         summary.update(bc.bandwidth_fields(summary))
     return summary
@@ -195,9 +198,10 @@ def batched_main(args):
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for r, rows in enumerate(runs, start=1):
         for row in rows[1:]:
-            summary = summary_from_batched_row(row)
+            requests = args.num_requests or row["pl"]
+            summary = summary_from_batched_row(row, requests)
             settings = settings_for(version, gpu, f"CUDA fa={FLASH_ATTN.get(row.get('flash_attn'), '?')}", model,
-                                    "llamacpp_batched", row["pl"], row["pl"], row["pp"],
+                                    "llamacpp_batched", row["pl"], requests, row["pp"],
                                     row["tg"] + 1, 1)
             path = args.out_dir / f"{args.prefix}_b{row['pl']}_r{r}_summary.csv"
             bc.write_summary_csv(path, settings, summary)
@@ -229,6 +233,8 @@ def main(argv=None):
     m.add_argument("--output-len", type=int, default=256)
     m.add_argument("--max-batch", default="1,4,16", help="comma-separated batch sizes")
     m.add_argument("--repetitions", type=int, default=3)
+    m.add_argument("--num-requests", type=int, default=0,
+                   help="requests served as consecutive static batches of each size (default: one batch)")
     m.add_argument("--from-jsonl", type=Path, nargs="+",
                    help="parse saved `--output-format jsonl` outputs (one file per repetition, first row the warm-up) instead of running")
     m.add_argument("--out-dir", type=Path, required=True)
