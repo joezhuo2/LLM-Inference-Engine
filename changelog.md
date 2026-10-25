@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## tools/roofline
+
+- Add `scripts/gemm_peak.cu`, which times square BF16 cuBLAS GEMMs (`cublasGemmEx`, F32 accumulation, 20 calls after 3 warm-up calls, sizes from the arguments, default 2048, 4096 and 8192) and prints the best as `peak_tflops=`, the compute ceiling of the roofline. RTX 5060 laptop: 34.6 / 31.5 / 32.0 TFLOP/s, recorded in `docs/hardware.md` with the ridge point of 107 FLOP/byte against the measured 323.6 GB/s. (Part A)
+
 ## tools/llamacpp-baseline
 
 - Add `scripts/setup_llamacpp.sh`: clones llama.cpp outside the repo (`LLAMA_CPP_DIR`, default `~/.cache/llmie/llama.cpp`), checks out the pinned release `b11870` (`LLAMA_CPP_REF`), builds only `llama-bench` and `llama-batched-bench` in Release with CUDA for `LLAMA_CUDA_ARCH` (default 120) and without libcurl or tests, and converts `models/tinyllama` to a BF16 GGUF (`LLAMA_GGUF`, default `models/tinyllama-bf16.gguf`) with llama.cpp's `convert_hf_to_gguf.py`, whose `gguf` package it loads from the checkout, so the llmie venv needs nothing new. The checkout, the build and an existing GGUF are reused on a rerun. Built and run on the RTX 5060 laptop. (Part A)
