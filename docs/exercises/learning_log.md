@@ -1310,3 +1310,4 @@
 - **binary search over sorted step end times** => 
 - **drawing on a `<canvas>` with `requestAnimationFrame` and pausing it with `IntersectionObserver` and `visibilitychange`** => 
 - **device pixel ratio: why a canvas needs a backing store larger than its CSS size** => 
+- **sampling a replay on a timer (`setInterval`) instead of every animation frame for React state** => 
