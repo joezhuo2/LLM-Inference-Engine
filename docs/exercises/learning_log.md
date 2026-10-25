@@ -1308,3 +1308,5 @@
 - **`useSyncExternalStore` for state that lives outside React (here the `?v=` URL parameter)** => 
 - **re-mounting a component with a changed `key` to restart its animations** => 
 - **binary search over sorted step end times** => 
+- **drawing on a `<canvas>` with `requestAnimationFrame` and pausing it with `IntersectionObserver` and `visibilitychange`** => 
+- **device pixel ratio: why a canvas needs a backing store larger than its CSS size** => 
