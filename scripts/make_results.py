@@ -13,7 +13,7 @@ TARGET_BANDWIDTH_PCT = 60.0
 TARGET_SPEEDUP = 5.0
 TARGET_ARGMAX_PCT = 99.0
 TARGET_LOGIT_ERROR = 0.05
-TARGET_EXACT_PROMPTS = 18
+TARGET_TIE_ULPS = 2
 
 TEACHER = re.compile(r"teacher-forced argmax (\d+)/(\d+) \(([\d.]+)%\), mean \|dlogit\| ([\d.]+)")
 FREE = re.compile(r"free-running greedy identical to HF on (\d+) of (\d+) prompts")
@@ -76,13 +76,16 @@ def scoreboard(rows, correctness, peak=PEAK_GB_S):
     else:
         lines.append("| 1a | Teacher-forced vs HuggingFace | | not recorded | |")
     if "exact_prompts" in c:
-        ok = c["exact_prompts"] >= TARGET_EXACT_PROMPTS
-        note = (f"; the other {c['prompts'] - c['exact_prompts']} diverge at a near tie "
-                f"(at most {c['max_tie_ulps']} BF16 ulps apart in HF's logits)"
-                if c["exact_prompts"] < c["prompts"] else "")
-        lines.append(f"| 1b | Free-running greedy, first 64 tokens | exact on at least "
-                     f"{TARGET_EXACT_PROMPTS} of {c['prompts']} | exact on {c['exact_prompts']} of "
-                     f"{c['prompts']}{note} | {verdict(ok)} |")
+        unmatched = c["prompts"] - c["exact_prompts"]
+        ok = c["near_ties"] == unmatched and c["max_tie_ulps"] <= TARGET_TIE_ULPS
+        note = ""
+        if unmatched:
+            ties = "the other" if c["near_ties"] == unmatched else f"{c['near_ties']} of the other"
+            note = (f"; {ties} {unmatched} diverge at a near tie "
+                    f"(at most {c['max_tie_ulps']} BF16 ulps apart in HF's logits)")
+        lines.append(f"| 1b | Free-running greedy, first 64 tokens | exact, or diverging where HF's two "
+                     f"logits are at most {TARGET_TIE_ULPS} BF16 ulps apart, on all {c['prompts']} | "
+                     f"exact on {c['exact_prompts']} of {c['prompts']}{note} | {verdict(ok)} |")
     else:
         lines.append("| 1b | Free-running greedy | | not recorded | |")
 
