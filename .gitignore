@@ -21,5 +21,4 @@ model_dir/
 .cache/
 docs/claude/
 src/practice/bandwith_test
-graphify-out/
 results/profile/
