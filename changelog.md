@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## web/overview
 
 - Make the token rain the landing page: the Cascade variant chosen from `/prototypes/rain` becomes `TokenRain` (`web/src/components/token-rain.tsx`), drawn full width under the top bar at the height of the screen (`100svh` minus the bar, at least 520 px) with no border, the title, one sentence, four headline numbers from `results/` and the caption over a gradient scrim (`web/src/components/hero.tsx`). The other pages keep their centered column through a route group (`web/src/app/(content)/layout.tsx`), so only `/` is full width. The canvas loop and trace helpers move from `web/src/prototypes/` to `web/src/lib/`, and the rain prototype and its page are deleted. (Part A)
+- Loop the token rain without a gap: the replay no longer pauses 1.5 s at the end of the trace and clears the screen before starting over (the screen drained to empty, then refilled from the top). Each new pass over the trace starts 0.4 s before the previous one ends (the trace's last half second holds a third of the usual tokens), on one continuous clock, and drops already falling keep falling; measured in headless Chrome, the lit share of the canvas stays between 1,300 and 2,300 samples across two wraps instead of falling to zero. (Part A)
 
 ## web/prototypes
 
