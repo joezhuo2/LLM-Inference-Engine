@@ -81,6 +81,14 @@ Written by `engine bench --trace out.json` (batched mode only, the timed run onl
 
 `requests` lists every timed request in id order; `steps` lists every step object in order. A request's `arrival_s` is when it was submitted, `first_token_s` when its first token reached the host and `finished_s` when its last one did; they match the per-request CSV of the same run.
 
+
+`results/traces/batching_b16_rate4.json` is the first recorded trace (RTX 5060 Laptop GPU, release build, 664 steps over 6.5 s, up to 8 sequences decoding together), made with:
+
+```
+build/release/bin/engine bench --model models/tinyllama --max-batch 16 --graphs --num-requests 24 --prompt-len 32:128 --output-len 32:160 --request-rate 4 --temperature 0.8 --top-p 0.95 --seed 0 --warmup 1 --out /tmp/trace_run.csv --trace results/traces/batching_b16_rate4.json
+```
+
+Its prompts are random token ids like every `bench` workload, so the generated text is real model output but not meaningful.
 ## HTTP endpoints (server, planned)
 
 ### `GET /health`
