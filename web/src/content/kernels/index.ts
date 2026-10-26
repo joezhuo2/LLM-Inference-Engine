@@ -2,11 +2,12 @@ import { addRmsnorm } from "./add-rmsnorm";
 import { cudaGraphs } from "./cuda-graphs";
 import { gemm } from "./gemm";
 import { pagedAttention } from "./paged-attention";
+import { pagedKv } from "./paged-kv";
 import { rope } from "./rope";
 import { swiglu } from "./swiglu";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs];
+export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);
@@ -14,10 +15,7 @@ export function kernelStory(slug: string): KernelStory | undefined {
 
 export type KernelCard = { slug: string; title: string; short: string; ready: boolean };
 
-export const kernelCards: KernelCard[] = [
-  ...kernelStories.map((k) => ({ slug: k.slug, title: k.title, short: k.short, ready: true })),
-  { slug: "paged-kv", title: "paged KV cache", short: "write_kv and the block manager: memory handed out 16 tokens at a time.", ready: false },
-];
+export const kernelCards: KernelCard[] = kernelStories.map((k) => ({ slug: k.slug, title: k.title, short: k.short, ready: true }));
 
 export type LayerOp = { op: string; label: string; slug: string; note?: string };
 
