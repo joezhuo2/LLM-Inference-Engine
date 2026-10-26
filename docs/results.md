@@ -238,7 +238,7 @@ Every kernel exists twice, a naive one that is obviously correct (the test oracl
 - The laptop GPU's clocks move between runs by 10 to 20%, so each configuration is run several times and the table shows the median of the runs.
 - At batch 1 the engine's time per token is the sum of its kernels plus launch gaps and host work; the profile block above separates them.
 - Both systems ignore EOS and generate exactly the requested number of tokens with greedy sampling, so the work per request is identical.
-- The "Teacher-forced vs HuggingFace" and free-running rows run the contiguous `ModelRunner`, which keeps the naive kernels as the oracle. The paged runner that serves requests runs the fast kernels; its own HF check (`PagedRunnerTest.ConcurrentSequencesMatchHuggingFaceTeacherForced`, up to 16 sequences at once) reads 1166 of 1171 argmax matches (99.57%) with a mean absolute logit error of 0.0247.
+- The "Teacher-forced vs HuggingFace" and free-running rows run the contiguous `ModelRunner`, which keeps the naive kernels as the oracle. The paged runner that serves requests runs the fast kernels; its own HF check (`PagedRunnerTest.ConcurrentSequencesMatchHuggingFaceTeacherForced`, up to 16 sequences at once) reads 1168 of 1171 argmax matches (99.74%) with a mean absolute logit error of 0.0248 (release build, main at df5324c, 2026-10-26, the same on two runs).
 - Free-running exact match is stricter than teacher forcing: a single BF16 near tie flips a token and the continuations then differ. The accepted rule (decided with the correctness suite) is that an unmatched prompt must diverge at a position where HuggingFace's own two logits are within 2 BF16 ulps.
 
 ## When a kernel lands

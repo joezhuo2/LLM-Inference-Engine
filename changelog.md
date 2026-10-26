@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## docs/graphs-gap-reading
 
+- Refresh the paged runner's own HF figure in "Reading these numbers" of `docs/results.md`, last measured before paged attention v2, the split kernel and the add_rmsnorm tuning: `PagedRunnerTest.ConcurrentSequencesMatchHuggingFaceTeacherForced` on a release build of main (df5324c) now reads 1168 of 1171 argmax matches (99.74%), mean absolute logit error 0.0248, identical on two runs. (Part A)
 - Describe `DecodeGraphs` in the Kernels table of `docs/results.md` as it is since #53: one graph per batch-size bucket and, where attention splits, per split count (11 graphs at a 2,048-token max context). (Part A)
 - Give the roofline paragraph the gate/up + down times of its own table, 4,888 us at batch 16 against 4,863 at batch 1, instead of 5,000 against 4,990. (Part A)
 - Drop the graph paragraph's sentence about a slow-host run (24% idle and 39 gaps per step eager): the committed eager profile shows 11.5% and 17, so the sentence described a run that is no longer on the page. (Part A)
