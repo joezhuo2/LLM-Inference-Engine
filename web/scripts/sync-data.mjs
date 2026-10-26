@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseProfiling } from "./profiling.mjs";
+import { parseLaunchGaps, parseProfiling } from "./profiling.mjs";
 
 const web = resolve(fileURLToPath(import.meta.url), "../..");
 const results = resolve(web, "../results");
@@ -117,10 +117,18 @@ for (const [key, name] of [["b1", "decode_step.md"], ["b16", "decode_step_b16.md
   const ops = parseProfiling(readFileSync(path, "utf8")).find((s) => s.id === "gpu-time-per-op-in-a-decode-step");
   if (ops?.tables[0]) decodeSteps[key] = { file: `results/${name}`, ...ops.tables[0] };
 }
+const launchGaps = {};
+for (const [key, name] of [["eager", "decode_step.md"], ["graphs", "decode_step_graphs.md"]]) {
+  const path = join(results, name);
+  if (!existsSync(path)) continue;
+  const gaps = parseLaunchGaps(readFileSync(path, "utf8"));
+  if (gaps.decode) launchGaps[key] = { file: `results/${name}`, ...gaps.decode };
+}
 writeFileSync(join(dataDir, "summaries.json"), JSON.stringify(summaries));
 writeFileSync(join(dataDir, "environment.json"), JSON.stringify(environment));
 writeFileSync(join(dataDir, "traces.json"), JSON.stringify(traces));
 writeFileSync(join(dataDir, "profiling.json"), JSON.stringify(profiling));
 writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, environment ${environment.commit ?? "missing"}`);
+writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, environment ${environment.commit ?? "missing"}`);

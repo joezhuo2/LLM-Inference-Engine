@@ -47,3 +47,23 @@ export function number(cell) {
   const match = /^-?[\d,]*\.?\d+/.exec(cell.replace(/\s/g, ""));
   return match ? Number(match[0].replace(/,/g, "")) : null;
 }
+
+export function parseLaunchGaps(text) {
+  const steps = {};
+  const pattern =
+    /^- (\w+): (\d+) steps, (\d+) kernels, median span (\d+) us, median busy (\d+) us, median idle ([\d.]+)% of the span, (\d+) gaps over ([\d.]+) us per step$/;
+  for (const line of text.split("\n")) {
+    const m = pattern.exec(line.trim());
+    if (!m) continue;
+    steps[m[1]] = {
+      steps: Number(m[2]),
+      kernels: Number(m[3]),
+      span_us: Number(m[4]),
+      busy_us: Number(m[5]),
+      idle_pct: Number(m[6]),
+      gaps: Number(m[7]),
+      gap_us: Number(m[8]),
+    };
+  }
+  return steps;
+}

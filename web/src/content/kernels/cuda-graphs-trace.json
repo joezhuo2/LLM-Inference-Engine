@@ -1,0 +1,261 @@
+{
+ "commit": "7d60861",
+ "files": {
+  "eager": "decode_step.sqlite",
+  "graphs": "decode_step_graphs.sqlite"
+ },
+ "eager": {
+  "steps": 252,
+  "kernels": 224,
+  "span_us": 8073.4,
+  "busy_us": 7192.7,
+  "gap_us": {
+   "p10": 2.08,
+   "p50": 3.08,
+   "p90": 4.58
+  },
+  "launches": {
+   "cudaLaunchKernel": {
+    "per_step": 227.2,
+    "median_us": 13.0
+   }
+  },
+  "cpu_ahead_us": 1719.0,
+  "layer": 11,
+  "kernels_in_layer": [
+   {
+    "op": "add2_norm1",
+    "start": 0.0,
+    "end": 1.87
+   },
+   {
+    "op": "qkv",
+    "start": 4.58,
+    "end": 38.85
+   },
+   {
+    "op": "rope",
+    "start": 42.18,
+    "end": 45.41
+   },
+   {
+    "op": "write_kv",
+    "start": 48.8,
+    "end": 50.47
+   },
+   {
+    "op": "attention",
+    "start": 53.34,
+    "end": 69.29
+   },
+   {
+    "op": "o_proj",
+    "start": 73.24,
+    "end": 101.24
+   },
+   {
+    "op": "add1_norm2",
+    "start": 104.4,
+    "end": 106.41
+   },
+   {
+    "op": "gate_up",
+    "start": 108.73,
+    "end": 251.6
+   },
+   {
+    "op": "swiglu",
+    "start": 255.17,
+    "end": 256.49
+   },
+   {
+    "op": "down",
+    "start": 259.64,
+    "end": 337.32
+   }
+  ],
+  "cpu_in_layer": [
+   {
+    "name": "cudaLaunchKernel",
+    "start": -12.76,
+    "end": 10.44
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 13.89,
+    "end": 26.4
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 28.32,
+    "end": 38.54
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 40.53,
+    "end": 53.48
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 60.06,
+    "end": 73.25
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 75.64,
+    "end": 88.36
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 95.06,
+    "end": 108.01
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 111.44,
+    "end": 123.95
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 130.57,
+    "end": 143.05
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 145.47,
+    "end": 157.86
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 164.72,
+    "end": 176.8
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 179.4,
+    "end": 191.47
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 193.37,
+    "end": 206.4
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 208.25,
+    "end": 220.65
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 227.32,
+    "end": 240.14
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 242.38,
+    "end": 254.92
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 261.38,
+    "end": 273.7
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 277.0,
+    "end": 289.28
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 295.89,
+    "end": 308.19
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 310.39,
+    "end": 323.37
+   },
+   {
+    "name": "cudaLaunchKernel",
+    "start": 335.03,
+    "end": 347.81
+   }
+  ]
+ },
+ "graphs": {
+  "steps": 252,
+  "kernels": 224,
+  "span_us": 6973.4,
+  "busy_us": 6915.4,
+  "gap_us": {
+   "p10": 0.21,
+   "p50": 0.24,
+   "p90": 0.35
+  },
+  "launches": {
+   "cudaGraphLaunch": {
+    "per_step": 1.0,
+    "median_us": 133.3
+   },
+   "cudaLaunchKernel": {
+    "per_step": 3.2,
+    "median_us": 14.4
+   }
+  },
+  "cpu_ahead_us": 3398.8,
+  "layer": 11,
+  "kernels_in_layer": [
+   {
+    "op": "add2_norm1",
+    "start": 0.0,
+    "end": 1.59
+   },
+   {
+    "op": "qkv",
+    "start": 1.84,
+    "end": 35.15
+   },
+   {
+    "op": "rope",
+    "start": 35.39,
+    "end": 37.92
+   },
+   {
+    "op": "write_kv",
+    "start": 38.16,
+    "end": 39.55
+   },
+   {
+    "op": "attention",
+    "start": 39.79,
+    "end": 53.83
+   },
+   {
+    "op": "o_proj",
+    "start": 54.07,
+    "end": 80.97
+   },
+   {
+    "op": "add1_norm2",
+    "start": 81.24,
+    "end": 82.87
+   },
+   {
+    "op": "gate_up",
+    "start": 83.11,
+    "end": 220.09
+   },
+   {
+    "op": "swiglu",
+    "start": 220.33,
+    "end": 221.27
+   },
+   {
+    "op": "down",
+    "start": 221.55,
+    "end": 297.66
+   }
+  ],
+  "cpu_in_layer": []
+ }
+}

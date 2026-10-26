@@ -1,5 +1,6 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
+import launchGapsJson from "@/data/launch_gaps.json";
 import profilingJson from "@/data/profiling.json";
 import resultsDocJson from "@/data/results_doc.json";
 import summariesJson from "@/data/summaries.json";
@@ -34,6 +35,14 @@ export const environment = environmentJson as Record<string, string | number>;
 export const traces = tracesJson as unknown as TraceInfo[];
 export const profiling = profilingJson as unknown as ProfilingSection[];
 export const decodeSteps = decodeStepsJson as unknown as Partial<Record<"b1" | "b16", ProfilingTable & { file: string }>>;
+
+export type LaunchGaps = { file: string; steps: number; kernels: number; span_us: number; busy_us: number; idle_pct: number; gaps: number; gap_us: number };
+
+export function launchGaps(mode: "eager" | "graphs"): LaunchGaps {
+  const gaps = (launchGapsJson as Partial<Record<"eager" | "graphs", LaunchGaps>>)[mode];
+  if (!gaps) throw new Error(`results/${mode === "eager" ? "decode_step.md" : "decode_step_graphs.md"} has no decode launch gap line`);
+  return gaps;
+}
 
 export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null };
 
