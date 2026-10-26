@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## docs/graphs-gap-reading
 
+- Give the roofline paragraph the gate/up + down times of its own table, 4,888 us at batch 16 against 4,863 at batch 1, instead of 5,000 against 4,990. (Part A)
 - Drop the graph paragraph's sentence about a slow-host run (24% idle and 39 gaps per step eager): the committed eager profile shows 11.5% and 17, so the sentence described a run that is no longer on the page. (Part A)
 - Give the graph paragraph attention's share of the committed eager profile, 4.6% instead of 3.8%, and say the 11.5% of v1 is from the profile before v2. (Part A)
 - Replace the graph paragraph's time per token and bandwidth (9.3 to 8.4 ms, 223 to 247 GB/s, from before paged attention v2) with those of the committed profiles: 8.85 to 7.79 ms (8.52 to 7.81 ms in the bench table), 234 to 266 GB/s, 72% to 82% of the peak. (Part A)
