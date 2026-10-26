@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIntroDone } from "@/lib/intro";
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&*";
@@ -17,16 +17,33 @@ export function Scramble({
   numeric = false,
   durationMs = 900,
   delayMs = 0,
+  trigger = "load",
   className,
 }: {
   text: string;
   numeric?: boolean;
   durationMs?: number;
   delayMs?: number;
+  trigger?: "load" | "view";
   className?: string;
 }) {
-  const start = useIntroDone();
+  const introDone = useIntroDone();
   const ref = useRef<HTMLSpanElement>(null);
+  const [seen, setSeen] = useState(false);
+  const start = introDone && (trigger === "load" || seen);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || trigger !== "view" || seen) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setSeen(true);
+      },
+      { rootMargin: "0px 0px -10% 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [trigger, seen]);
 
   useEffect(() => {
     const el = ref.current;

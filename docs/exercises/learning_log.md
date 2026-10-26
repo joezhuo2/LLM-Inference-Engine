@@ -1332,3 +1332,6 @@
 - **`node --test`, Node's built-in test runner** => 
 - **why `cmd && echo ok` under `set -e` does not stop a script when `cmd` fails** => 
 - **syntax highlighting at build time (shiki) with two themes as CSS variables** => 
+
+## Kernel Pages (Branch 54)
+- **the `popstate` event, and why back and forward navigation should keep the browser's restored scroll position** => 

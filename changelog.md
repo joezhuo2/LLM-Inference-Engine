@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernels-template
+
+- Unscramble page titles: `PageTitle` (`web/src/components/page-title.tsx`) wraps the hero's `Scramble` (1.6 s) and is used on `/results`, `/dashboard`, `/kernels` and every kernel page; `Scramble` gains `trigger="view"`, which waits until the text scrolls into view (used for the kernel names on the `/kernels` cards). Start every newly opened page at the top: Next.js scrolled a client-side navigation only to the top of the page's own content, which left the title half under the sticky top bar; `ScrollToTop` (`web/src/components/scroll-to-top.tsx`) puts the window at 0 on every path change, except back and forward (the browser restores those) and links with a hash. (Part A)
+
 ## web/kernels-data
 
 - Feed the site from `docs/profiling.md`: `web/scripts/profiling.mjs` splits it into sections by `##` and `###` heading (id from the heading, level, branch number from "(Branch N)") with every Markdown table as a header and rows of trimmed cells, and `sync-data` writes them to `web/src/data/profiling.json` (16 sections today). `profilingTable(section, index)` and `cellNumber` in `web/src/lib/data.ts` read them, and a missing table fails the build instead of rendering a stale number. Six `node --test` tests (`npm test`, now in the CI `web` job): headings, tables, a pipe that is not a table, numbers with thousands separators, slugs, and the real file's split-attention table. Pins `shiki` 4.5.0 (released 2026-10-01, `npm audit` clean) for the code excerpts of the next commit. (Part A)
