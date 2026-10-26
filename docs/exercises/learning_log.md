@@ -1351,3 +1351,4 @@
 - **why a variable reassigned inside a `.map` during render breaks React's rules (the `react-hooks/immutability` lint)** => 
 - **`Page.captureScreenshot` clip coordinates are page coordinates, not viewport coordinates** => 
 - **xor butterfly (`__shfl_xor_sync`) versus a tree reduction (`__shfl_down_sync`): which lanes end up holding the total** => 
+- **animating `clip-path: inset(... round r)` to reveal a bar without distorting its rounded ends (and why `scaleX` squashes `border-radius`)** => 

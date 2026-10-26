@@ -6,27 +6,34 @@ import Link from "next/link";
 import { useState } from "react";
 import { kernelCards, layerOps } from "@/content/kernels";
 import { cellNumber, decodeSteps } from "@/lib/data";
+import { EasedBar } from "./eased-bar";
 
 const choices = [
   { key: "b1", label: "batch 1" },
   { key: "b16", label: "batch 16" },
 ] as const;
 
+function shareIn(key: "b1" | "b16", op: string) {
+  const table = decodeSteps[key];
+  if (!table) return 0;
+  return cellNumber(table.rows.find((r) => r[0] === op)?.[table.header.indexOf("% of kernel time")]) ?? 0;
+}
+
+const maxShare = Math.max(...choices.flatMap((c) => layerOps.map((l) => shareIn(c.key, l.op))));
+
 export function LayerMap() {
   const [batch, setBatch] = useState<"b1" | "b16">("b1");
   const table = decodeSteps[batch];
   if (!table) return null;
-  const col = (name: string) => table.header.indexOf(name);
-  const time = (op: string) => cellNumber(table.rows.find((r) => r[0] === op)?.[col("GPU us/step")]) ?? 0;
-  const share = (op: string) => cellNumber(table.rows.find((r) => r[0] === op)?.[col("% of kernel time")]) ?? 0;
-  const max = Math.max(...layerOps.map((l) => time(l.op)));
+  const share = (op: string) => shareIn(batch, op);
   const ready = new Set(kernelCards.filter((k) => k.ready).map((k) => k.slug));
   return (
     <figure className="rounded border border-border bg-surface p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <figcaption className="max-w-xl text-sm text-muted">
-          One of TinyLlama&apos;s 22 layers, in the order its kernels run in a decode step. Bars are each kernel&apos;s GPU
-          time per step over all layers.
+          One of TinyLlama&apos;s 22 layers, in the order its kernels run in a decode step. Bars are each kernel&apos;s share
+          of the step&apos;s GPU time over all layers, on one scale for both batch sizes. The projections take about as long
+          at batch 16 as at batch 1, since the weights are read once either way; attention grows with every row.
         </figcaption>
         <div role="radiogroup" aria-label="batch size" className="flex overflow-hidden rounded border border-border font-mono text-xs">
           {choices.map((c) => (
@@ -65,10 +72,7 @@ export function LayerMap() {
                 label
               )}
               <div className="h-2 min-w-0">
-                <div
-                  className={clsx("bar-ease h-full origin-left rounded-sm", linked ? "bg-accent" : "bg-baseline/60")}
-                  style={{ transform: `scaleX(${Math.max(0.006, time(l.op) / max)})` }}
-                />
+                <EasedBar fraction={share(l.op) / maxShare} className={linked ? "bg-accent" : "bg-baseline/60"} />
               </div>
               <span className="text-right text-muted tabular-nums">
                 <NumberFlow value={share(l.op)} suffix="%" format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />

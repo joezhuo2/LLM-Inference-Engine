@@ -1,11 +1,11 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
-import clsx from "clsx";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
 import { cellNumber, decodeSteps } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
+import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { FirstFusedFigure, JobFigure, RoundingFigure, RoundTripFigure, ShuffleFigure, VectorFigure } from "./figures";
 
@@ -57,8 +57,8 @@ function TokensPicker() {
         {times.map((t, i) => (
           <div key={t.column} className="grid grid-cols-[5.5rem_1fr_4.5rem] items-center gap-2">
             <span className={i === 2 ? "text-accent" : "text-muted"}>{t.label}</span>
-            <div className="h-3 min-w-0 rounded-sm bg-border">
-              <div className={clsx("bar-ease h-full origin-left rounded-sm", i === 2 ? "bg-accent" : "bg-baseline/70")} style={{ transform: `scaleX(${t.us / max})` }} />
+            <div className="h-3 min-w-0 rounded-full bg-border">
+              <EasedBar fraction={t.us / max} className={i === 2 ? "bg-accent" : "bg-baseline/70"} />
             </div>
             <span className="text-right tabular-nums text-muted">
               <NumberFlow value={t.us} suffix=" µs" format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />
@@ -71,8 +71,8 @@ function TokensPicker() {
         {bytes.map((b, i) => (
           <div key={b.label} className="grid grid-cols-[5.5rem_1fr_4.5rem] items-center gap-2">
             <span className={i === 1 ? "text-accent" : "text-muted"}>{b.label}</span>
-            <div className="h-3 min-w-0 rounded-sm bg-border">
-              <div className={clsx("bar-ease h-full origin-left rounded-sm", i === 1 ? "bg-accent" : "bg-baseline/70")} style={{ transform: `scaleX(${b.kb / maxKb})` }} />
+            <div className="h-3 min-w-0 rounded-full bg-border">
+              <EasedBar fraction={b.kb / maxKb} className={i === 1 ? "bg-accent" : "bg-baseline/70"} />
             </div>
             <span className="text-right tabular-nums text-muted">
               <NumberFlow value={b.kb} suffix=" KB" format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />
