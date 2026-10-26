@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## docs/graphs-gap-reading
 
+- Give the graph paragraph attention's share of the committed eager profile, 4.6% instead of 3.8%, and say the 11.5% of v1 is from the profile before v2. (Part A)
 - Replace the graph paragraph's time per token and bandwidth (9.3 to 8.4 ms, 223 to 247 GB/s, from before paged attention v2) with those of the committed profiles: 8.85 to 7.79 ms (8.52 to 7.81 ms in the bench table), 234 to 266 GB/s, 72% to 82% of the peak. (Part A)
 - Bring the graph paragraph of `docs/results.md` to the committed profiles (7d60861): idle share of a decode step 11.5% to 0.8% and gaps over 5 us 17 to 0, instead of "about 10% to about 1%" and 15 from an older run. (Part A)
 - Correct the same misreading in `docs/results.md` (the paragraph under the graph-replayed profile): the saving is no longer called "exactly the host-side launch time" but the gap before each kernel launched one by one, with the numbers of the two committed profiles (median 3.1 us over the 223 boundaries of an eager decode step, 0.24 us replayed, the eager launch calls 1.7 ms ahead of their kernels) and a pointer to `docs/profiling.md`. Prose outside the `auto:` blocks, so `make_results.py` keeps it. (Part A)
