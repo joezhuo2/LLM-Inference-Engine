@@ -1,7 +1,8 @@
+import { addRmsnorm } from "./add-rmsnorm";
 import { pagedAttention } from "./paged-attention";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [pagedAttention];
+export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);
@@ -11,7 +12,6 @@ export type KernelCard = { slug: string; title: string; short: string; ready: bo
 
 export const kernelCards: KernelCard[] = [
   ...kernelStories.map((k) => ({ slug: k.slug, title: k.title, short: k.short, ready: true })),
-  { slug: "add-rmsnorm", title: "fused add + RMSNorm", short: "Two kernels and a round trip to memory become one, then 128-bit loads and the row kept in registers.", ready: false },
   { slug: "rope", title: "RoPE", short: "Pairs of dimensions rotated by position, from one thread per head to every pair in parallel.", ready: false },
   { slug: "swiglu", title: "SwiGLU", short: "Eight values per 16-byte load, and a scalar path for batches too small to fill the GPU.", ready: false },
   { slug: "gemm", title: "GEMM and GEMV", short: "cuBLAS with the row-major trick, and how close batch 1 runs to the memory bandwidth roof.", ready: false },

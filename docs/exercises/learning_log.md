@@ -1348,3 +1348,6 @@
 ## Fused Add + RMSNorm Page (Branch 55)
 - **SVG `transform` animations (`x`, `y` in motion) versus animating `cx`/`cy` or `x` attributes** => 
 - **keyframe `times` with a per-segment `ease` array** => 
+- **why a variable reassigned inside a `.map` during render breaks React's rules (the `react-hooks/immutability` lint)** => 
+- **`Page.captureScreenshot` clip coordinates are page coordinates, not viewport coordinates** => 
+- **xor butterfly (`__shfl_xor_sync`) versus a tree reduction (`__shfl_down_sync`): which lanes end up holding the total** => 
