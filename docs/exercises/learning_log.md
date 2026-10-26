@@ -1324,3 +1324,6 @@
 - **`position: sticky` inside a grid column (`align-self: start` so the sticky element is shorter than its row)** => 
 - **`whileInView` with `once` and a negative bottom root margin** => 
 - **hydration mismatch and what `suppressHydrationWarning` does (one element deep)** => 
+- **a module-level store read with `useSyncExternalStore` to share one flag between components without a context provider** => 
+- **why an element hidden with `aria-hidden` needs a visually hidden (`sr-only`) copy of its text** => 
+- **writing to the DOM through refs inside a `requestAnimationFrame` loop instead of setting React state every frame** => 

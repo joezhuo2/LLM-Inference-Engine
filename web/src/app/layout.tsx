@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Footer } from "@/components/footer";
+import { IntroLoader } from "@/components/intro-loader";
 import { TopBar } from "@/components/top-bar";
 import "./globals.css";
 
@@ -18,6 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrains.variable}`}>
       <body suppressHydrationWarning className="min-h-dvh bg-bg text-text">
         <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          <noscript>
+            <style>{".intro-loader { display: none; }"}</style>
+          </noscript>
+          <IntroLoader />
           <TopBar />
           <main>{children}</main>
           <Footer />

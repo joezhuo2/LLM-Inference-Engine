@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useCanvasLoop } from "@/lib/canvas";
+import { useIntroDone } from "@/lib/intro";
 import { type Trace, traceDuration, useTrace } from "@/lib/trace";
 
 type Drop = { col: number; spawn: number; chars: string; first: boolean };
@@ -91,5 +92,6 @@ function RainCanvas({ trace }: { trace: Trace }) {
 
 export function TokenRain() {
   const trace = useTrace();
-  return trace ? <RainCanvas trace={trace} /> : null;
+  const introDone = useIntroDone();
+  return trace && introDone ? <RainCanvas trace={trace} /> : null;
 }

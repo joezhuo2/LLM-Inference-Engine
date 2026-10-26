@@ -140,3 +140,9 @@ html {
     transform: none;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-loader {
+    display: none;
+  }
+}
