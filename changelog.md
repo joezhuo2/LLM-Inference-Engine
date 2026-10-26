@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernels-data
+
+- Feed the site from `docs/profiling.md`: `web/scripts/profiling.mjs` splits it into sections by `##` and `###` heading (id from the heading, level, branch number from "(Branch N)") with every Markdown table as a header and rows of trimmed cells, and `sync-data` writes them to `web/src/data/profiling.json` (16 sections today). `profilingTable(section, index)` and `cellNumber` in `web/src/lib/data.ts` read them, and a missing table fails the build instead of rendering a stale number. Six `node --test` tests (`npm test`, now in the CI `web` job): headings, tables, a pipe that is not a table, numbers with thousands separators, slugs, and the real file's split-attention table. Pins `shiki` 4.5.0 (released 2026-10-01, `npm audit` clean) for the code excerpts of the next commit. (Part A)
+
 ## web/overview
 
 - Make the token rain the landing page: the Cascade variant chosen from `/prototypes/rain` becomes `TokenRain` (`web/src/components/token-rain.tsx`), drawn full width under the top bar at the height of the screen (`100svh` minus the bar, at least 520 px) with no border, the title, one sentence, four headline numbers from `results/` and the caption over a gradient scrim (`web/src/components/hero.tsx`). The other pages keep their centered column through a route group (`web/src/app/(content)/layout.tsx`), so only `/` is full width. The canvas loop and trace helpers move from `web/src/prototypes/` to `web/src/lib/`, and the rain prototype and its page are deleted. (Part A)

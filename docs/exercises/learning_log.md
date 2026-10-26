@@ -1327,3 +1327,7 @@
 - **a module-level store read with `useSyncExternalStore` to share one flag between components without a context provider** => 
 - **why an element hidden with `aria-hidden` needs a visually hidden (`sr-only`) copy of its text** => 
 - **writing to the DOM through refs inside a `requestAnimationFrame` loop instead of setting React state every frame** => 
+
+## Kernel Pages Data (Branch 53)
+- **`node --test`, Node's built-in test runner** => 
+- **why `cmd && echo ok` under `set -e` does not stop a script when `cmd` fails** => 
