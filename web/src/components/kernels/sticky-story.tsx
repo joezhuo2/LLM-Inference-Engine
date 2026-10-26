@@ -19,8 +19,22 @@ export function StickyStory({
   caption: (step: number) => ReactNode;
 }) {
   const [active, setActive] = useState(0);
+  const [visits, setVisits] = useState(0);
   const refs = useRef<(HTMLElement | null)[]>([]);
+  const panel = useRef<HTMLDivElement>(null);
   const reduced = usePrefersReducedMotion();
+
+  useEffect(() => {
+    const el = panel.current;
+    if (!el) return;
+    let shown = false;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !shown) setVisits((v) => v + 1);
+      shown = entry.isIntersecting;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -37,12 +51,12 @@ export function StickyStory({
 
   return (
     <div className="md:grid md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-10">
-      <div className="sticky top-12 z-10 -mx-4 mb-2 border-b border-border bg-bg px-4 pb-3 pt-2 sm:mx-0 sm:px-0 md:top-20 md:col-start-2 md:row-start-1 md:mb-0 md:self-start md:border-0 md:bg-transparent md:p-0">
+      <div ref={panel} className="sticky top-12 z-10 -mx-4 mb-2 border-b border-border bg-bg px-4 pb-3 pt-2 sm:mx-0 sm:px-0 md:top-20 md:col-start-2 md:row-start-1 md:mb-0 md:self-start md:border-0 md:bg-transparent md:p-0">
         <div className="rounded border border-border bg-surface p-3 sm:p-4">
           <div className="relative aspect-[14/10] w-full">
-            <AnimatePresence initial={false}>
+            <AnimatePresence>
               <motion.div
-                key={active}
+                key={`${active}-${visits}`}
                 className="absolute inset-0"
                 initial={reduced ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}

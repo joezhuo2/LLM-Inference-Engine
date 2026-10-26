@@ -1340,3 +1340,4 @@
 - **`IntersectionObserver` root margins as a band across the middle of the screen** => 
 - **`generateStaticParams` and `dynamicParams = false` for a static export** => 
 - **SVG `transform-box: fill-box` and why motion wants `originX`/`originY` instead of `transform-origin`** => 
+- **what `initial={false}` on `AnimatePresence` does to every motion element inside it** => 
