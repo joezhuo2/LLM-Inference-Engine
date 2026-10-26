@@ -1297,6 +1297,36 @@
 - **an optional out-parameter (`std::vector<T>* = nullptr`) to record data without changing the normal call path** => 
 - **incremental detokenization (why one token's text depends on the tokens before it)** => 
 
+## Web Site Scaffold (Branch 50)
+- **static export (`output: "export"`): pre-rendering every page to HTML at build time** => 
+- **CSS custom properties as design tokens and switching them with a `data-theme` attribute** => 
+- **why a theme script must run before the first paint (flash of the wrong theme)** => 
+- **`min-width: 0` on a flex child so it can shrink and scroll instead of widening the page** => 
+- **importing JSON generated at build time into a page (data as a build input instead of a fetch)** => 
+
+## Web Prototypes (Branch 51)
+- **`useSyncExternalStore` for state that lives outside React (here the `?v=` URL parameter)** => 
+- **re-mounting a component with a changed `key` to restart its animations** => 
+- **binary search over sorted step end times** => 
+- **drawing on a `<canvas>` with `requestAnimationFrame` and pausing it with `IntersectionObserver` and `visibilitychange`** => 
+- **device pixel ratio: why a canvas needs a backing store larger than its CSS size** => 
+- **sampling a replay on a timer (`setInterval`) instead of every animation frame for React state** => 
+- **`IntersectionObserver` with a narrow `rootMargin` band to find the section in the middle of the screen** => 
+- **why a CSS `translateX` in px misplaces an element inside a scaled SVG `viewBox`** => 
+- **emphasis encoding: one series in the accent, the rest in gray, identified by stroke pattern and labels** => 
+
+## Web Overview (Branch 52)
+- **route groups in the Next.js App Router (a `(folder)` that adds a layout without adding a URL segment)** => 
+- **`svh`, `lvh` and `dvh` viewport units on phones (why `100vh` jumps when the address bar hides)** => 
+- **overlapping replay cycles on one continuous clock to hide a loop seam** => 
+- **`matchMedia` and its `change` event for reading a media query from JavaScript** => 
+- **scroll-linked animation: mapping a section's scroll progress (0 to 1) to `scaleY`** => 
+- **`position: sticky` inside a grid column (`align-self: start` so the sticky element is shorter than its row)** => 
+- **`whileInView` with `once` and a negative bottom root margin** => 
+- **hydration mismatch and what `suppressHydrationWarning` does (one element deep)** => 
+- **a module-level store read with `useSyncExternalStore` to share one flag between components without a context provider** => 
+- **why an element hidden with `aria-hidden` needs a visually hidden (`sr-only`) copy of its text** => 
+- **writing to the DOM through refs inside a `requestAnimationFrame` loop instead of setting React state every frame** => 
 ## Chat Prompt Workloads (Branch 49)
 - **raw string literals (`R"(...)"`) for embedding JSON in C++ tests** => 
 - **why a benchmark workload with random token ids and one with real prompts can behave differently (EOS, output lengths)** => 

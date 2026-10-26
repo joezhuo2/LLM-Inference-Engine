@@ -1,0 +1,35 @@
+{
+  "name": "llmie-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync-data": "node scripts/sync-data.mjs",
+    "predev": "npm run sync-data",
+    "prebuild": "npm run sync-data",
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "eslint .",
+    "typecheck": "npm run sync-data && next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@number-flow/react": "0.6.2",
+    "clsx": "2.1.1",
+    "liveline": "0.0.7",
+    "motion": "14.1.0",
+    "next": "16.4.3",
+    "next-themes": "0.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "recharts": "3.10.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3"
+  }
+}
