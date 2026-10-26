@@ -1341,3 +1341,6 @@
 - **`generateStaticParams` and `dynamicParams = false` for a static export** => 
 - **SVG `transform-box: fill-box` and why motion wants `originX`/`originY` instead of `transform-origin`** => 
 - **what `initial={false}` on `AnimatePresence` does to every motion element inside it** => 
+## Chat Prompt Workloads (Branch 49)
+- **raw string literals (`R"(...)"`) for embedding JSON in C++ tests** => 
+- **why a benchmark workload with random token ids and one with real prompts can behave differently (EOS, output lengths)** => 

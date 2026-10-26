@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "commands.h"
+#include "engine/bench/chat_prompts.h"
 #include "engine/bench/csv.h"
 #include "engine/bench/metrics.h"
 #include "engine/bench/trace.h"
@@ -60,6 +61,7 @@ struct Options {
     std::filesystem::path out;
     std::filesystem::path summary;
     std::filesystem::path trace;
+    std::filesystem::path prompts;
 };
 
 #if ENGINE_HAS_CUDA
@@ -126,6 +128,15 @@ void run(const Options& o) {
                       .request_rate = o.request_rate,
                       .seed = o.seed,
                       .params = {o.temperature, o.seed, o.top_k, o.top_p}};
+    std::optional<Tokenizer> tokenizer;
+    if (!o.prompts.empty() || !o.trace.empty()) tokenizer.emplace(o.model / "tokenizer.model");
+    if (!o.prompts.empty()) {
+        wc.prompts = load_chat_prompts(o.prompts, *tokenizer);
+        const auto [shortest, longest] =
+            std::minmax_element(wc.prompts.begin(), wc.prompts.end(),
+                                [](const auto& a, const auto& b) { return a.size() < b.size(); });
+        wc.prompt_len = {int(shortest->size()), int(longest->size())};
+    }
     Workload workload = make_workload(wc);
     const int64_t context = int64_t(wc.prompt_len.max) + wc.output_len.max - 1;
     if (context > config.max_positions)
@@ -268,11 +279,11 @@ void run(const Options& o) {
         meta["top_k"] = o.top_k;
         meta["top_p"] = o.top_p;
         meta["seed"] = o.seed;
-        const Tokenizer tokenizer(o.model / "tokenizer.model");
+        meta["prompts"] = o.prompts.empty() ? "random" : o.prompts.filename().string();
         std::map<SeqId, TextStream> streams;
         const auto text = [&](SeqId seq, int32_t token) {
             if (token == w.config.eos_id) return std::string();
-            return streams.try_emplace(seq, tokenizer).first->second.push(token);
+            return streams.try_emplace(seq, *tokenizer).first->second.push(token);
         };
         std::ofstream trace_out = open_csv(o.trace);
         trace_out << trace_json(std::move(meta), workload.requests, steps, start, text).dump()
@@ -330,6 +341,11 @@ void add_bench_command(CLI::App& app) {
     cmd->add_option("--prompt-len", opts->prompt_len,
                     "Prompt tokens, BOS included: N, or MIN:MAX drawn uniformly per request")
         ->capture_default_str();
+    cmd->add_option(
+           "--prompts", opts->prompts,
+           "Chat prompts JSON in the format of scripts/prompts.json; request i uses prompt "
+           "i modulo their number, and --prompt-len is ignored")
+        ->check(CLI::ExistingFile);
     cmd->add_option("--output-len", opts->output_len,
                     "Tokens to generate: N, or MIN:MAX drawn uniformly per request")
         ->capture_default_str();
