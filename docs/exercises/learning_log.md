@@ -1371,3 +1371,6 @@
 - **`uint4` loads and stores: 16-byte vector memory instructions and their alignment requirement** => 
 - **memory bound versus latency bound: why a kernel with too few blocks cannot reach the bandwidth roof** => 
 - **choosing a kernel at launch time from the SM count (`cudaDevAttrMultiProcessorCount`)** => 
+
+## GEMM Page (Branch 58)
+- **failing the build when a number cannot be read out of a document, instead of falling back to a hand-copied value** => 
