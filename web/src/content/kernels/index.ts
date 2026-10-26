@@ -1,9 +1,10 @@
 import { addRmsnorm } from "./add-rmsnorm";
 import { pagedAttention } from "./paged-attention";
 import { rope } from "./rope";
+import { swiglu } from "./swiglu";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope];
+export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);
@@ -13,7 +14,6 @@ export type KernelCard = { slug: string; title: string; short: string; ready: bo
 
 export const kernelCards: KernelCard[] = [
   ...kernelStories.map((k) => ({ slug: k.slug, title: k.title, short: k.short, ready: true })),
-  { slug: "swiglu", title: "SwiGLU", short: "Eight values per 16-byte load, and a scalar path for batches too small to fill the GPU.", ready: false },
   { slug: "gemm", title: "GEMM and GEMV", short: "cuBLAS with the row-major trick, and how close batch 1 runs to the memory bandwidth roof.", ready: false },
   { slug: "cuda-graphs", title: "CUDA Graphs", short: "The whole decode step captured once and replayed with one launch.", ready: false },
   { slug: "paged-kv", title: "paged KV cache", short: "write_kv and the block manager: memory handed out 16 tokens at a time.", ready: false },

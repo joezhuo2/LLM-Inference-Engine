@@ -1362,3 +1362,12 @@
 - **`__powf` versus `powf` versus the host's `std::pow`: which are correctly rounded and which are not** => 
 - **coalesced global loads: when a warp's 2-byte accesses already use full memory transactions without 128-bit loads** => 
 - **SVG rotation in motion around a group's own origin (an invisible circle to center the fill-box)** => 
+
+## SwiGLU Page (Branch 57)
+- **SwiGLU: why an MLP multiplies a gated branch by a second linear branch instead of applying one activation** => 
+- **silu (swish), g · sigmoid(g): its shape for negative and large inputs** => 
+- **why rounding an intermediate to BF16 (silu before the product) changes the final BF16 result** => 
+- **`gridDim.x` versus `gridDim.y` and `gridDim.z` limits, and a flat 1D grid with the row and column derived from the index** => 
+- **`uint4` loads and stores: 16-byte vector memory instructions and their alignment requirement** => 
+- **memory bound versus latency bound: why a kernel with too few blocks cannot reach the bandwidth roof** => 
+- **choosing a kernel at launch time from the SM count (`cudaDevAttrMultiProcessorCount`)** => 
