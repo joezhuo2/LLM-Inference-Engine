@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernel-rope
+
+- Add the third kernel story, RoPE (`/kernels/rope`, registry `web/src/content/kernels/rope.ts`, story and figures in `web/src/components/kernels/rope/`). Six animated steps: eight of a head's 32 pairs as 2D vectors turning at their real rates (one position per second, theta 10,000); the fused QKV row (32 Q, 4 K and 4 V heads, V untouched) with pair i joined to i + 32 as in rotate_half, and the 8 BF16 roundings per pair; the last-bit `powf` bug that led to host-computed frequencies (57 of 1.4 million outputs off by up to 64 ulps); Joe's first draft (one thread per head, 36 of 128 threads working, 32 pairs in order, a flat 21 µs); the final mapping of 32 pairs times 8 head groups (sin and cos 256 times per token instead of 1,152); and a token toggle (1, 16, 64, 512) over the Nsight Compute times, the fast kernel's DRAM bytes and its current share of a batch-1 decode step from `results/decode_step.md`. Timeline: #20 naive oracle, #35 spec, #40 Joe's draft and Claude's three fixes (host frequencies, empty vector block removed, parallel mapping), #46 wiring (96.7 to 56.1 µs per step). Headline 1.4x against the naive kernel at one token. The index card now links to it. (Part A)
+- Key the kernel timeline's entries by branch, PR and title instead of branch and PR alone (`web/src/components/kernels/kernel-timeline.tsx`): several entries can come from one PR (the RoPE page has three from #40), and duplicate React keys made React warn and could drop or repeat an entry. No visible change on the existing pages. (Part A)
+
 ## web/kernel-add-rmsnorm
 
 - Share the pieces every kernel story needs: `Frame` and `Label` (`web/src/components/kernels/frame.tsx`, the 560 x 400 SVG figure and its 11 px text) and `Toggle` (`web/src/components/kernels/toggle.tsx`, the radio buttons of the split picker) move out of the paged attention story, and `useLoop` gains `move(start, end, dx, dy)`, which slides an element by a transform inside a time window of the loop and shows it at its destination with reduced motion. No visible change to the paged attention page. (Part A)

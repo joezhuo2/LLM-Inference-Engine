@@ -1353,3 +1353,12 @@
 - **xor butterfly (`__shfl_xor_sync`) versus a tree reduction (`__shfl_down_sync`): which lanes end up holding the total** => 
 - **animating `clip-path: inset(... round r)` to reveal a bar without distorting its rounded ends (and why `scaleX` squashes `border-radius`)** => 
 - **`PointerEvent.pointerType` and why hover effects should ignore touch (a tap fires `pointerenter` and no `pointerleave` until the next tap)** => 
+
+## RoPE Page (Branch 56)
+- **React `key`s: unique among siblings, and what React does when two children share one** => 
+- **rotary position embedding: why rotating q and k by position makes their dot product depend only on the distance between tokens** => 
+- **`rotate_half` pairing (i with i + d/2) versus interleaved pairing (2i with 2i + 1), and why the weights fix the choice** => 
+- **catastrophic cancellation: why one ulp of an input can be many ulps of `a·c − b·s`** => 
+- **`__powf` versus `powf` versus the host's `std::pow`: which are correctly rounded and which are not** => 
+- **coalesced global loads: when a warp's 2-byte accesses already use full memory transactions without 128-bit loads** => 
+- **SVG rotation in motion around a group's own origin (an invisible circle to center the fill-box)** => 
