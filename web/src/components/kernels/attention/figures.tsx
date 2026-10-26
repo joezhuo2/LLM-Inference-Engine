@@ -1,26 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
+import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
-
-const W = 560;
-const H = 400;
-
-function Frame({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full font-mono" role="img" aria-label={label}>
-      {children}
-    </svg>
-  );
-}
-
-function Label({ x, y, children, anchor, className = "fill-muted" }: { x: number; y: number; children: React.ReactNode; anchor?: "end" | "middle"; className?: string }) {
-  return (
-    <text x={x} y={y} textAnchor={anchor} className={`${className} text-[11px]`}>
-      {children}
-    </text>
-  );
-}
 
 const scores = [0.42, 0.7, 0.25, 0.9, 0.55, 0.33, 0.78, 0.5, 0.62, 0.2];
 const probs = (() => {

@@ -1344,3 +1344,7 @@
 ## Chat Prompt Workloads (Branch 49)
 - **raw string literals (`R"(...)"`) for embedding JSON in C++ tests** => 
 - **why a benchmark workload with random token ids and one with real prompts can behave differently (EOS, output lengths)** => 
+
+## Fused Add + RMSNorm Page (Branch 55)
+- **SVG `transform` animations (`x`, `y` in motion) versus animating `cx`/`cy` or `x` attributes** => 
+- **keyframe `times` with a per-segment `ease` array** => 

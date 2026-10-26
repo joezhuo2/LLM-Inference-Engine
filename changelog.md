@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernel-add-rmsnorm
+
+- Share the pieces every kernel story needs: `Frame` and `Label` (`web/src/components/kernels/frame.tsx`, the 560 x 400 SVG figure and its 11 px text) and `Toggle` (`web/src/components/kernels/toggle.tsx`, the radio buttons of the split picker) move out of the paged attention story, and `useLoop` gains `move(start, end, dx, dy)`, which slides an element by a transform inside a time window of the loop and shows it at its destination with reduced motion. No visible change to the paged attention page. (Part A)
+
 ## web/kernels-template
 
 - Unscramble page titles: `PageTitle` (`web/src/components/page-title.tsx`) wraps the hero's `Scramble` (1.6 s) and is used on `/results`, `/dashboard`, `/kernels` and every kernel page; `Scramble` gains `trigger="view"`, which waits until the text scrolls into view (used for the kernel names on the `/kernels` cards). Start every newly opened page at the top: Next.js scrolled a client-side navigation only to the top of the page's own content, which left the title half under the sticky top bar; `ScrollToTop` (`web/src/components/scroll-to-top.tsx`) puts the window at 0 on every path change, except back and forward (the browser restores those) and links with a hash. (Part A)
