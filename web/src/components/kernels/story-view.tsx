@@ -3,6 +3,7 @@
 import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PagedAttentionStory } from "./attention/story";
 import { RopeStory } from "./rope/story";
+import { SwigluStory } from "./swiglu/story";
 
 export function KernelStoryView({ slug }: { slug: string }) {
   switch (slug) {
@@ -12,6 +13,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <AddRmsnormStory />;
     case "rope":
       return <RopeStory />;
+    case "swiglu":
+      return <SwigluStory />;
     default:
       return null;
   }
