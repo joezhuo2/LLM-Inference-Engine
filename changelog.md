@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernel-rope
+
+- Key the kernel timeline's entries by branch, PR and title instead of branch and PR alone (`web/src/components/kernels/kernel-timeline.tsx`): several entries can come from one PR (the RoPE page has three from #40), and duplicate React keys made React warn and could drop or repeat an entry. No visible change on the existing pages. (Part A)
+
 ## web/kernel-add-rmsnorm
 
 - Share the pieces every kernel story needs: `Frame` and `Label` (`web/src/components/kernels/frame.tsx`, the 560 x 400 SVG figure and its 11 px text) and `Toggle` (`web/src/components/kernels/toggle.tsx`, the radio buttons of the split picker) move out of the paged attention story, and `useLoop` gains `move(start, end, dx, dy)`, which slides an element by a transform inside a time window of the loop and shows it at its destination with reduced motion. No visible change to the paged attention page. (Part A)

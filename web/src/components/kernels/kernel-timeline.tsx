@@ -27,7 +27,7 @@ export function KernelTimeline({ entries }: { entries: KernelEntry[] }) {
       <ol>
         {entries.map((e) => (
           <motion.li
-            key={`${e.branch}-${e.prs.join("-")}`}
+            key={`${e.branch}-${e.prs.join("-")}-${e.title}`}
             className="relative pb-12 pl-8 last:pb-0"
             initial={reduced ? { opacity: 0 } : { opacity: 0, transform: "translateY(8px)" }}
             whileInView={reduced ? { opacity: 1 } : { opacity: 1, transform: "translateY(0px)" }}
