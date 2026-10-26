@@ -1,6 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { replayKv } from "./kv-replay.mjs";
 import { parseLaunchGaps, parseProfiling } from "./profiling.mjs";
 
 const web = resolve(fileURLToPath(import.meta.url), "../..");
@@ -124,6 +125,8 @@ for (const [key, name] of [["eager", "decode_step.md"], ["graphs", "decode_step_
   const gaps = parseLaunchGaps(readFileSync(path, "utf8"));
   if (gaps.decode) launchGaps[key] = { file: `results/${name}`, ...gaps.decode };
 }
+const kvTrace = join(results, "traces/chat_b16_rate4.json");
+const kvReplay = existsSync(kvTrace) ? replayKv(JSON.parse(readFileSync(kvTrace, "utf8")), "results/traces/chat_b16_rate4.json") : {};
 writeFileSync(join(dataDir, "summaries.json"), JSON.stringify(summaries));
 writeFileSync(join(dataDir, "environment.json"), JSON.stringify(environment));
 writeFileSync(join(dataDir, "traces.json"), JSON.stringify(traces));
@@ -131,4 +134,5 @@ writeFileSync(join(dataDir, "profiling.json"), JSON.stringify(profiling));
 writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
 writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, environment ${environment.commit ?? "missing"}`);
+writeFileSync(join(dataDir, "kv_replay.json"), JSON.stringify(kvReplay));
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, environment ${environment.commit ?? "missing"}`);

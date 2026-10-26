@@ -4,6 +4,7 @@ import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PagedAttentionStory } from "./attention/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
+import { PagedKvStory } from "./paged-kv/story";
 import { RopeStory } from "./rope/story";
 import { SwigluStory } from "./swiglu/story";
 
@@ -21,6 +22,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <GemmStory />;
     case "cuda-graphs":
       return <CudaGraphsStory />;
+    case "paged-kv":
+      return <PagedKvStory />;
     default:
       return null;
   }

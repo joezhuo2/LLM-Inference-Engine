@@ -1,5 +1,6 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
+import kvReplayJson from "@/data/kv_replay.json";
 import launchGapsJson from "@/data/launch_gaps.json";
 import profilingJson from "@/data/profiling.json";
 import resultsDocJson from "@/data/results_doc.json";
@@ -42,6 +43,25 @@ export function launchGaps(mode: "eager" | "graphs"): LaunchGaps {
   const gaps = (launchGapsJson as Partial<Record<"eager" | "graphs", LaunchGaps>>)[mode];
   if (!gaps) throw new Error(`results/${mode === "eager" ? "decode_step.md" : "decode_step_graphs.md"} has no decode launch gap line`);
   return gaps;
+}
+
+export type KvRequest = { id: number; prompt: number; output: number; arrival_s: number; admitted: number; decodes: number; finished: number; final_length: number; blocks: { id: number; step: number }[] };
+
+export type KvReplay = {
+  file: string;
+  meta: { kv_blocks: number; block_size: number; max_batch: number; num_requests: number; request_rate: number; gpu: string; date: string };
+  duration_s: number;
+  peak: { blocks: number; step: number; t: number; running: number; tokens: number };
+  max_block: number;
+  max_running: number;
+  requests: KvRequest[];
+  steps: [number, number, number, number][];
+};
+
+export function kvReplay(): KvReplay {
+  const replay = kvReplayJson as unknown as Partial<KvReplay>;
+  if (!replay.steps) throw new Error("results/traces/chat_b16_rate4.json is missing, so the KV replay is empty");
+  return replay as KvReplay;
 }
 
 export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null };
