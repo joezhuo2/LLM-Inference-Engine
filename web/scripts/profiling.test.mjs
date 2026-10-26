@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { number, parseProfiling, slug } from "./profiling.mjs";
+import { number, parseLaunchGaps, parseProfiling, slug } from "./profiling.mjs";
 
 const doc = `# Profiling
 
@@ -65,4 +65,23 @@ test("the repository's profiling notes parse with the attention tables intact", 
   assert.deepEqual(table.header.slice(0, 3), ["rows", "context", "v2"]);
   assert.ok(table.rows.length >= 8);
   for (const row of table.rows) assert.equal(row.length, table.header.length);
+});
+
+test("launch gap lines are read per step kind", () => {
+  const gaps = parseLaunchGaps(`## Launch gaps per forward step
+
+- decode: 252 steps, 224 kernels, median span 8069 us, median busy 6909 us, median idle 11.5% of the span, 17 gaps over 5 us per step
+- prefill: 4 steps, 224 kernels, median span 11187 us, median busy 10093 us, median idle 8.1% of the span, 40 gaps over 5 us per step
+- not a step line
+`);
+  assert.deepEqual(Object.keys(gaps), ["decode", "prefill"]);
+  assert.deepEqual(gaps.decode, { steps: 252, kernels: 224, span_us: 8069, busy_us: 6909, idle_pct: 11.5, gaps: 17, gap_us: 5 });
+});
+
+test("the committed decode step profiles have a decode launch gap line", () => {
+  for (const name of ["decode_step.md", "decode_step_graphs.md"]) {
+    const gaps = parseLaunchGaps(readFileSync(new URL(`../../results/${name}`, import.meta.url), "utf8"));
+    assert.ok(gaps.decode, `${name} has a decode line`);
+    assert.ok(gaps.decode.busy_us <= gaps.decode.span_us);
+  }
 });

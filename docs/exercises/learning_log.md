@@ -1381,3 +1381,7 @@
 - **why batching moves a memory-bound GEMM right on the roofline without changing its time** => 
 - **tensor cores: which of the profiled cuBLAS kernels (gemvx, cutlass tensorop, nvjet) use them** => 
 - **log-log axes: why a bandwidth ceiling is a straight line of slope 1 on a roofline** => 
+
+## CUDA Graphs Page (Branch 59)
+- **the gap between two kernels on one stream, and why it stays when the CPU is far ahead** => 
+- **an Nsight Systems sqlite export: the CUPTI kernel and runtime tables, joined by `correlationId`** => 

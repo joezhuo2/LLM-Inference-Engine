@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernel-cuda-graphs
+
+- Read the launch gaps of a decode step at build time and keep one layer of the real Nsight Systems timeline: `parseLaunchGaps` (`web/scripts/profiling.mjs`, 2 tests) reads the "decode:" line of `results/decode_step.md` and `results/decode_step_graphs.md` (steps, kernels, median span, busy, idle share, gaps over 5 µs), `sync-data` writes them to `web/src/data/launch_gaps.json`, and `launchGaps(mode)` throws when the line is missing. `web/scripts/step-timeline.py` reads the two sqlite exports behind those profiles through `scripts/profile_report.py` and writes `web/src/content/kernels/cuda-graphs-trace.json` (committed, 4 KB): layer 11 of the median decode step eager and replayed (kernel start and end times, the CPU's launch calls), the gap before every kernel over all 252 decode steps (median 3.08 µs eager, 0.24 µs replayed), the median `cudaLaunchKernel` (13.0 µs under the profiler) and how far the CPU runs ahead of the GPU (1.7 ms). Generated from the 7d60861 profiles of 2026-10-25. (Part A)
+
 ## web/kernel-gemm
 
 - Read `docs/results.md` at build time too (`web/scripts/sync-data.mjs` writes `web/src/data/results_doc.json` with the same section parser as `docs/profiling.md`, plus the roofline's measured ceilings from its `Ceilings:` line), and let a kernel page's numbers and tables name the document they come from (`doc` on `KernelMeasurement`, a `doc` argument on `measured` and `profilingTable`, `ceilings()` in `web/src/lib/data.ts`; profiling stays the default). The measurements section of a kernel page now says which documents its tables were copied from. Needed for the GEMM page, whose numbers live in the Roofline section of `docs/results.md`. (Part A)
