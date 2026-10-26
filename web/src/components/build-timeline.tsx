@@ -8,7 +8,7 @@ import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 const ease = [0.23, 1, 0.32, 1] as const;
 const inView = { once: true, margin: "0px 0px -15% 0px" };
 
-function MetricView({ metric, reduced }: { metric: Metric; reduced: boolean }) {
+export function MetricView({ metric, reduced }: { metric: Metric; reduced: boolean }) {
   if (metric.kind === "value") {
     return (
       <div className="font-mono">

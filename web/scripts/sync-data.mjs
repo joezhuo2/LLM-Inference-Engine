@@ -106,8 +106,16 @@ const environment = readEnvironment();
 const traces = syncTraces();
 const profilingPath = resolve(web, "../docs/profiling.md");
 const profiling = existsSync(profilingPath) ? parseProfiling(readFileSync(profilingPath, "utf8")) : [];
+const decodeSteps = {};
+for (const [key, name] of [["b1", "decode_step.md"], ["b16", "decode_step_b16.md"]]) {
+  const path = join(results, name);
+  if (!existsSync(path)) continue;
+  const ops = parseProfiling(readFileSync(path, "utf8")).find((s) => s.id === "gpu-time-per-op-in-a-decode-step");
+  if (ops?.tables[0]) decodeSteps[key] = { file: `results/${name}`, ...ops.tables[0] };
+}
 writeFileSync(join(dataDir, "summaries.json"), JSON.stringify(summaries));
 writeFileSync(join(dataDir, "environment.json"), JSON.stringify(environment));
 writeFileSync(join(dataDir, "traces.json"), JSON.stringify(traces));
 writeFileSync(join(dataDir, "profiling.json"), JSON.stringify(profiling));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, environment ${environment.commit ?? "missing"}`);
+writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${Object.keys(decodeSteps).length} decode step profiles, environment ${environment.commit ?? "missing"}`);

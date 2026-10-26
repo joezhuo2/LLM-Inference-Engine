@@ -146,3 +146,31 @@ html {
     display: none;
   }
 }
+
+.code-excerpt pre {
+  overflow-x: auto;
+  padding: 1rem;
+  font-size: 12px;
+  line-height: 1.6;
+  background: transparent !important;
+}
+
+.code-excerpt pre span {
+  color: var(--shiki-light);
+}
+
+[data-theme="dark"] .code-excerpt pre span {
+  color: var(--shiki-dark);
+}
+
+.bar-ease {
+  transition:
+    transform 700ms var(--ease-out),
+    background-color 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-ease {
+    transition: background-color 200ms ease;
+  }
+}

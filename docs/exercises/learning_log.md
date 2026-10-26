@@ -1335,3 +1335,8 @@
 
 ## Kernel Pages (Branch 54)
 - **the `popstate` event, and why back and forward navigation should keep the browser's restored scroll position** => 
+- **`position: sticky` only sticks inside its parent: why the figure must be a direct child of the story container** => 
+- **hydration mismatch from floating point: `Math.exp` can differ in the last digit between Node and the browser** => 
+- **`IntersectionObserver` root margins as a band across the middle of the screen** => 
+- **`generateStaticParams` and `dynamicParams = false` for a static export** => 
+- **SVG `transform-box: fill-box` and why motion wants `originX`/`originY` instead of `transform-origin`** => 

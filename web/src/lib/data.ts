@@ -1,3 +1,4 @@
+import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
 import profilingJson from "@/data/profiling.json";
 import summariesJson from "@/data/summaries.json";
@@ -31,6 +32,7 @@ export const summaries = summariesJson as unknown as Summary[];
 export const environment = environmentJson as Record<string, string | number>;
 export const traces = tracesJson as unknown as TraceInfo[];
 export const profiling = profilingJson as unknown as ProfilingSection[];
+export const decodeSteps = decodeStepsJson as unknown as Partial<Record<"b1" | "b16", ProfilingTable & { file: string }>>;
 
 export function profilingTable(sectionId: string, index = 0): ProfilingTable {
   const table = profiling.find((s) => s.id === sectionId)?.tables[index];

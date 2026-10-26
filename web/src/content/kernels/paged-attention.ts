@@ -52,6 +52,32 @@ export const pagedAttention: KernelStory = {
       caption: "The merge: every split's partial result rescaled to the global maximum, added in split order",
     },
   ],
+  measurements: [
+    {
+      section: v2,
+      table: 0,
+      caption: "v1 against v2, every row at the full context, µs per launch (loop of 50 after 3 warm-up launches)",
+      command: "nvcc -std=c++20 -arch=sm_120 -Iinclude -Isrc scripts/paged_attention_bench.cu build/release/src/libengine_kernels.a build/release/src/libengine_core.a -o /tmp/pa_bench && /tmp/pa_bench",
+    },
+    {
+      section: v2,
+      table: 1,
+      caption: "Nsight Compute, one launch each (clocks locked, cold caches, so slower than the loop)",
+      command: 'ncu --kernel-name "regex:^paged_attention_decode_v2_kernel" --launch-skip 3 --launch-count 1 /tmp/pa_bench 1 2048',
+    },
+    {
+      section: split,
+      table: 0,
+      caption: "split against v2, µs per call including the merge kernel",
+      command: "/tmp/pa_bench",
+    },
+    {
+      section: splitGraphs,
+      table: 0,
+      caption: "ms per token (TPOT p50, two runs) with one CUDA graph per split count, 64 output tokens",
+      command: "build/release/bin/engine bench --model models/tinyllama --max-batch 1 --num-requests 1 --prompt-len 1984 --output-len 64 --warmup 1 --graphs --out /tmp/split.csv",
+    },
+  ],
   timeline: [
     {
       date: "Oct 10",

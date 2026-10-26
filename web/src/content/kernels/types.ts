@@ -23,6 +23,8 @@ export type KernelEntry = {
 
 export type KernelSource = { path: string; label: string };
 
+export type KernelMeasurement = { section: string; table: number; caption: string; command: string };
+
 export type KernelStory = {
   slug: string;
   index: number;
@@ -34,6 +36,7 @@ export type KernelStory = {
   tests: KernelSource[];
   testing: string;
   excerpts: ExcerptSpec[];
+  measurements: KernelMeasurement[];
   timeline: KernelEntry[];
 };
 
