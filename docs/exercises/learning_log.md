@@ -1327,6 +1327,20 @@
 - **a module-level store read with `useSyncExternalStore` to share one flag between components without a context provider** => 
 - **why an element hidden with `aria-hidden` needs a visually hidden (`sr-only`) copy of its text** => 
 - **writing to the DOM through refs inside a `requestAnimationFrame` loop instead of setting React state every frame** => 
+
+## Kernel Pages Data (Branch 53)
+- **`node --test`, Node's built-in test runner** => 
+- **why `cmd && echo ok` under `set -e` does not stop a script when `cmd` fails** => 
+- **syntax highlighting at build time (shiki) with two themes as CSS variables** => 
+
+## Kernel Pages (Branch 54)
+- **the `popstate` event, and why back and forward navigation should keep the browser's restored scroll position** => 
+- **`position: sticky` only sticks inside its parent: why the figure must be a direct child of the story container** => 
+- **hydration mismatch from floating point: `Math.exp` can differ in the last digit between Node and the browser** => 
+- **`IntersectionObserver` root margins as a band across the middle of the screen** => 
+- **`generateStaticParams` and `dynamicParams = false` for a static export** => 
+- **SVG `transform-box: fill-box` and why motion wants `originX`/`originY` instead of `transform-origin`** => 
+- **what `initial={false}` on `AnimatePresence` does to every motion element inside it** => 
 ## Chat Prompt Workloads (Branch 49)
 - **raw string literals (`R"(...)"`) for embedding JSON in C++ tests** => 
 - **why a benchmark workload with random token ids and one with real prompts can behave differently (EOS, output lengths)** => 

@@ -1,28 +1,48 @@
+import clsx from "clsx";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { LayerMap } from "@/components/kernels/layer-map";
+import { PageTitle } from "@/components/page-title";
+import { Scramble } from "@/components/scramble";
+import { kernelCards } from "@/content/kernels";
 
 export const metadata: Metadata = { title: "kernels" };
 
-const stories = [
-  { title: "paged attention: v1 to v2 to split", text: "Scores in shared memory, then an online softmax, then one long context cut across thread blocks and merged." },
-  { title: "CUDA Graphs", text: "Capturing the decode step once per batch size and split count to remove launch gaps." },
-  { title: "continuous batching and the paged KV cache", text: "Admitting, preempting and recomputing requests over a block-allocated cache." },
-  { title: "fused add + RMSNorm", text: "128-bit loads, values kept in registers and warp shuffles in one kernel." },
-];
-
 export default function Kernels() {
   return (
-    <div className="space-y-6">
-      <h1 className="font-mono text-2xl">kernels</h1>
-      <ol className="space-y-3">
-        {stories.map((s, i) => (
-          <li key={s.title} className="rounded border border-border bg-surface p-4">
-            <div className="font-mono text-sm">
-              <span className="text-muted">{String(i + 1).padStart(2, "0")} </span>
-              <span className="text-accent">{s.title}</span>
-            </div>
-            <p className="mt-2 text-sm text-muted">{s.text}</p>
-          </li>
-        ))}
+    <div className="space-y-10">
+      <header className="space-y-3">
+        <PageTitle text="kernels" />
+        <p className="max-w-2xl text-muted">
+          How each kernel of the decode step works and how it got faster, version by version, with the measurements
+          behind every change.
+        </p>
+      </header>
+      <LayerMap />
+      <ol className="grid gap-4 sm:grid-cols-2">
+        {kernelCards.map((k, i) => {
+          const body = (
+            <>
+              <div className="font-mono text-sm">
+                <span className="text-muted">{String(i + 1).padStart(2, "0")} </span>
+                <Scramble text={k.title} trigger="view" delayMs={i * 80} durationMs={900} className={k.ready ? "text-accent" : "text-text"} />
+                {!k.ready && <span className="ml-2 text-xs text-muted">soon</span>}
+              </div>
+              <p className="mt-2 text-sm text-muted">{k.short}</p>
+            </>
+          );
+          return (
+            <li key={k.slug}>
+              {k.ready ? (
+                <Link href={`/kernels/${k.slug}`} className="pressable hover-grow block h-full rounded border border-border bg-surface p-4">
+                  {body}
+                </Link>
+              ) : (
+                <div className={clsx("h-full rounded border border-dashed border-border p-4")}>{body}</div>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

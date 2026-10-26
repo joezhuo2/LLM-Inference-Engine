@@ -1,3 +1,4 @@
+import { PageTitle } from "@/components/page-title";
 import type { Metadata } from "next";
 import { batches, environment, format, medianOf, systems } from "@/lib/data";
 
@@ -6,7 +7,7 @@ export const metadata: Metadata = { title: "results" };
 export default function Results() {
   return (
     <div className="space-y-6">
-      <h1 className="font-mono text-2xl">results</h1>
+      <PageTitle text="results" />
       <p className="max-w-2xl text-muted">
         Output tokens per second and median time per output token, median of the recorded runs. Workload:{" "}
         {String(environment.workload ?? "unknown")}.

@@ -1,3 +1,4 @@
+import { PageTitle } from "@/components/page-title";
 import type { Metadata } from "next";
 import { format, traces } from "@/lib/data";
 
@@ -6,7 +7,7 @@ export const metadata: Metadata = { title: "dashboard" };
 export default function Dashboard() {
   return (
     <div className="space-y-6">
-      <h1 className="font-mono text-2xl">dashboard</h1>
+      <PageTitle text="dashboard" />
       <p className="max-w-2xl text-muted">Recorded serving runs available for replay.</p>
       <ul className="space-y-3 font-mono text-sm">
         {traces.map((t) => (

@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Footer } from "@/components/footer";
 import { IntroLoader } from "@/components/intro-loader";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import { TopBar } from "@/components/top-bar";
 import "./globals.css";
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <style>{".intro-loader { display: none; }"}</style>
           </noscript>
           <IntroLoader />
+          <ScrollToTop />
           <TopBar />
           <main>{children}</main>
           <Footer />
