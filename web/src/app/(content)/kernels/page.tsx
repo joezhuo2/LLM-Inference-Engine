@@ -1,10 +1,7 @@
-import clsx from "clsx";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { KernelCards } from "@/components/kernels/kernel-cards";
 import { LayerMap } from "@/components/kernels/layer-map";
 import { PageTitle } from "@/components/page-title";
-import { Scramble } from "@/components/scramble";
-import { kernelCards } from "@/content/kernels";
 
 export const metadata: Metadata = { title: "kernels" };
 
@@ -19,31 +16,7 @@ export default function Kernels() {
         </p>
       </header>
       <LayerMap />
-      <ol className="grid gap-4 sm:grid-cols-2">
-        {kernelCards.map((k, i) => {
-          const body = (
-            <>
-              <div className="font-mono text-sm">
-                <span className="text-muted">{String(i + 1).padStart(2, "0")} </span>
-                <Scramble text={k.title} trigger="view" delayMs={i * 80} durationMs={900} className={k.ready ? "text-accent" : "text-text"} />
-                {!k.ready && <span className="ml-2 text-xs text-muted">soon</span>}
-              </div>
-              <p className="mt-2 text-sm text-muted">{k.short}</p>
-            </>
-          );
-          return (
-            <li key={k.slug}>
-              {k.ready ? (
-                <Link href={`/kernels/${k.slug}`} className="pressable hover-grow block h-full rounded border border-border bg-surface p-4">
-                  {body}
-                </Link>
-              ) : (
-                <div className={clsx("h-full rounded border border-dashed border-border p-4")}>{body}</div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+      <KernelCards />
     </div>
   );
 }

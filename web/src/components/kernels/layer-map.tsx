@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { kernelCards, layerOps } from "@/content/kernels";
 import { cellNumber, decodeSteps } from "@/lib/data";
+import { useHoveredKernel } from "@/lib/kernel-hover";
 import { EasedBar } from "./eased-bar";
 
 const choices = [
@@ -23,6 +24,7 @@ const maxShare = Math.max(...choices.flatMap((c) => layerOps.map((l) => shareIn(
 
 export function LayerMap() {
   const [batch, setBatch] = useState<"b1" | "b16">("b1");
+  const hovered = useHoveredKernel();
   const table = decodeSteps[batch];
   if (!table) return null;
   const share = (op: string) => shareIn(batch, op);
@@ -72,7 +74,7 @@ export function LayerMap() {
                 label
               )}
               <div className="h-2 min-w-0">
-                <EasedBar fraction={share(l.op) / maxShare} className={linked ? "bg-accent" : "bg-baseline/60"} />
+                <EasedBar fraction={share(l.op) / maxShare} className={hovered === l.slug ? "bg-text" : linked ? "bg-accent" : "bg-baseline/60"} />
               </div>
               <span className="text-right text-muted tabular-nums">
                 <NumberFlow value={share(l.op)} suffix="%" format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />

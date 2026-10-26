@@ -1352,3 +1352,4 @@
 - **`Page.captureScreenshot` clip coordinates are page coordinates, not viewport coordinates** => 
 - **xor butterfly (`__shfl_xor_sync`) versus a tree reduction (`__shfl_down_sync`): which lanes end up holding the total** => 
 - **animating `clip-path: inset(... round r)` to reveal a bar without distorting its rounded ends (and why `scaleX` squashes `border-radius`)** => 
+- **`PointerEvent.pointerType` and why hover effects should ignore touch (a tap fires `pointerenter` and no `pointerleave` until the next tap)** => 
