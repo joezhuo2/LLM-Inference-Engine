@@ -106,6 +106,10 @@ const environment = readEnvironment();
 const traces = syncTraces();
 const profilingPath = resolve(web, "../docs/profiling.md");
 const profiling = existsSync(profilingPath) ? parseProfiling(readFileSync(profilingPath, "utf8")) : [];
+const resultsPath = resolve(web, "../docs/results.md");
+const resultsText = existsSync(resultsPath) ? readFileSync(resultsPath, "utf8") : "";
+const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsText);
+const resultsDoc = { sections: parseProfiling(resultsText), ceilings: ceilings ? { gbs: Number(ceilings[1]), tflops: Number(ceilings[2]) } : null };
 const decodeSteps = {};
 for (const [key, name] of [["b1", "decode_step.md"], ["b16", "decode_step_b16.md"]]) {
   const path = join(results, name);
@@ -118,4 +122,5 @@ writeFileSync(join(dataDir, "environment.json"), JSON.stringify(environment));
 writeFileSync(join(dataDir, "traces.json"), JSON.stringify(traces));
 writeFileSync(join(dataDir, "profiling.json"), JSON.stringify(profiling));
 writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${Object.keys(decodeSteps).length} decode step profiles, environment ${environment.commit ?? "missing"}`);
+writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, environment ${environment.commit ?? "missing"}`);

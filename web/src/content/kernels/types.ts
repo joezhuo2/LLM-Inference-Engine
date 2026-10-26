@@ -1,5 +1,5 @@
 import type { Metric } from "@/content/build-log";
-import { cellNumber, profilingTable } from "@/lib/data";
+import { cellNumber, type Doc, docPath, profilingTable } from "@/lib/data";
 import type { ExcerptSpec } from "@/lib/excerpt";
 
 export type Author = "joe" | "claude" | "both";
@@ -23,7 +23,7 @@ export type KernelEntry = {
 
 export type KernelSource = { path: string; label: string };
 
-export type KernelMeasurement = { section: string; table: number; caption: string; command: string };
+export type KernelMeasurement = { section: string; table: number; caption: string; command: string; doc?: Doc };
 
 export type KernelStory = {
   slug: string;
@@ -40,12 +40,12 @@ export type KernelStory = {
   timeline: KernelEntry[];
 };
 
-export function measured(section: string, match: Record<string, string>, column: string, table = 0): number {
-  const { header, rows } = profilingTable(section, table);
+export function measured(section: string, match: Record<string, string>, column: string, table = 0, doc: Doc = "profiling"): number {
+  const { header, rows } = profilingTable(section, table, doc);
   const col = header.indexOf(column);
-  if (col < 0) throw new Error(`docs/profiling.md ${section}: no column "${column}"`);
+  if (col < 0) throw new Error(`${docPath[doc]} ${section}: no column "${column}"`);
   const row = rows.find((r) => Object.entries(match).every(([k, v]) => r[header.indexOf(k)] === v));
   const value = cellNumber(row?.[col]);
-  if (value === undefined) throw new Error(`docs/profiling.md ${section}: no number for ${JSON.stringify(match)} in "${column}"`);
+  if (value === undefined) throw new Error(`${docPath[doc]} ${section}: no number for ${JSON.stringify(match)} in "${column}"`);
   return value;
 }

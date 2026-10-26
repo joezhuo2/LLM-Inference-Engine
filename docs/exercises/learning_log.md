@@ -1371,3 +1371,13 @@
 - **`uint4` loads and stores: 16-byte vector memory instructions and their alignment requirement** => 
 - **memory bound versus latency bound: why a kernel with too few blocks cannot reach the bandwidth roof** => 
 - **choosing a kernel at launch time from the SM count (`cudaDevAttrMultiProcessorCount`)** => 
+
+## GEMM Page (Branch 58)
+- **failing the build when a number cannot be read out of a document, instead of falling back to a hand-copied value** => 
+- **row-major versus column-major storage, and the leading dimension (`lda`) of a matrix** => 
+- **why asking cuBLAS for Yᵀ = W · Xᵀ gives a row-major Y = X · Wᵀ with no copy** => 
+- **GEMV versus GEMM: why a matrix-vector product reads every weight once for one multiply-add** => 
+- **arithmetic intensity (FLOP per byte) and the ridge point of a roofline** => 
+- **why batching moves a memory-bound GEMM right on the roofline without changing its time** => 
+- **tensor cores: which of the profiled cuBLAS kernels (gemvx, cutlass tensorop, nvjet) use them** => 
+- **log-log axes: why a bandwidth ceiling is a straight line of slope 1 on a roofline** => 

@@ -1,6 +1,7 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
 import profilingJson from "@/data/profiling.json";
+import resultsDocJson from "@/data/results_doc.json";
 import summariesJson from "@/data/summaries.json";
 import tracesJson from "@/data/traces.json";
 
@@ -34,10 +35,25 @@ export const traces = tracesJson as unknown as TraceInfo[];
 export const profiling = profilingJson as unknown as ProfilingSection[];
 export const decodeSteps = decodeStepsJson as unknown as Partial<Record<"b1" | "b16", ProfilingTable & { file: string }>>;
 
-export function profilingTable(sectionId: string, index = 0): ProfilingTable {
-  const table = profiling.find((s) => s.id === sectionId)?.tables[index];
-  if (!table) throw new Error(`docs/profiling.md has no table ${index} in section ${sectionId}`);
+export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null };
+
+export type Doc = "profiling" | "results";
+
+export const docPath: Record<Doc, string> = { profiling: "docs/profiling.md", results: "docs/results.md" };
+
+export function docSections(doc: Doc): ProfilingSection[] {
+  return doc === "results" ? resultsDoc.sections : profiling;
+}
+
+export function profilingTable(sectionId: string, index = 0, doc: Doc = "profiling"): ProfilingTable {
+  const table = docSections(doc).find((s) => s.id === sectionId)?.tables[index];
+  if (!table) throw new Error(`${docPath[doc]} has no table ${index} in section ${sectionId}`);
   return table;
+}
+
+export function ceilings(): { gbs: number; tflops: number } {
+  if (!resultsDoc.ceilings) throw new Error("docs/results.md has no Ceilings line in its Roofline section");
+  return resultsDoc.ceilings;
 }
 
 export function cellNumber(cell: string | undefined): number | undefined {

@@ -8,7 +8,7 @@ import { PageTitle } from "@/components/page-title";
 import { Scramble } from "@/components/scramble";
 import { repoUrl } from "@/content/build-log";
 import { kernelStories, kernelStory } from "@/content/kernels";
-import { environment, profiling, profilingTable } from "@/lib/data";
+import { docPath, docSections, environment, profilingTable } from "@/lib/data";
 import { loadExcerpt } from "@/lib/excerpt";
 
 export const dynamicParams = false;
@@ -77,11 +77,11 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
 
       <Section id="measurements" title="measurements">
         <p className="max-w-2xl text-muted">
-          Copied at build time from docs/profiling.md, measured on the {String(environment.gpu ?? "RTX 5060 Laptop GPU")}.
+          Copied at build time from {[...new Set(story.measurements.map((m) => docPath[m.doc ?? "profiling"]))].join(" and ")}, measured on the {String(environment.gpu ?? "RTX 5060 Laptop GPU")}.
         </p>
         {story.measurements.map((m) => {
-          const t = profilingTable(m.section, m.table);
-          const title = profiling.find((s) => s.id === m.section)?.title;
+          const t = profilingTable(m.section, m.table, m.doc);
+          const title = docSections(m.doc ?? "profiling").find((s) => s.id === m.section)?.title;
           return (
             <figure key={`${m.section}-${m.table}`} className="space-y-2">
               <figcaption className="text-sm text-muted">
