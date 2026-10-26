@@ -82,13 +82,14 @@ Written by `engine bench --trace out.json` (batched mode only, the timed run onl
 `requests` lists every timed request in id order; `steps` lists every step object in order. A request's `arrival_s` is when it was submitted, `first_token_s` when its first token reached the host and `finished_s` when its last one did; they match the per-request CSV of the same run.
 
 
-`results/traces/batching_b16_rate4.json` is the first recorded trace (RTX 5060 Laptop GPU, release build, 664 steps over 6.5 s, up to 8 sequences decoding together), made with:
+`results/traces/chat_b16_rate4.json` is the recorded trace the web site replays (RTX 5060 Laptop GPU, release build, 751 steps over 6.4 s, up to 8 sequences decoding together, answers ending at EOS after 9 to 191 tokens), made with the 20 chat prompts of `scripts/prompts.json`:
 
 ```
-build/release/bin/engine bench --model models/tinyllama --max-batch 16 --graphs --num-requests 24 --prompt-len 32:128 --output-len 32:160 --request-rate 4 --temperature 0.8 --top-p 0.95 --seed 0 --warmup 1 --out /tmp/trace_run.csv --trace results/traces/batching_b16_rate4.json
+build/release/bin/engine bench --model models/tinyllama --prompts scripts/prompts.json --max-batch 16 --graphs --num-requests 24 --output-len 64:192 --stop-at-eos --request-rate 4 --temperature 0.7 --top-p 0.9 --seed 0 --warmup 1 --out /tmp/chat_run.csv --trace results/traces/chat_b16_rate4.json
 ```
 
-Its prompts are random token ids like every `bench` workload, so the generated text is real model output but not meaningful.
+`meta.prompts` names the prompts file (`"random"` for the random-token workload of `bench`).
+
 ## HTTP endpoints (server, planned)
 
 ### `GET /health`

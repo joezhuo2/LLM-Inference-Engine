@@ -1327,3 +1327,6 @@
 - **a module-level store read with `useSyncExternalStore` to share one flag between components without a context provider** => 
 - **why an element hidden with `aria-hidden` needs a visually hidden (`sr-only`) copy of its text** => 
 - **writing to the DOM through refs inside a `requestAnimationFrame` loop instead of setting React state every frame** => 
+## Chat Prompt Workloads (Branch 49)
+- **raw string literals (`R"(...)"`) for embedding JSON in C++ tests** => 
+- **why a benchmark workload with random token ids and one with real prompts can behave differently (EOS, output lengths)** => 
