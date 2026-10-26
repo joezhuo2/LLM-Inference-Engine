@@ -19,16 +19,16 @@ export const kernelCards: KernelCard[] = [
   { slug: "paged-kv", title: "paged KV cache", short: "write_kv and the block manager: memory handed out 16 tokens at a time.", ready: false },
 ];
 
-export type LayerOp = { op: string; label: string; slug: string };
+export type LayerOp = { op: string; label: string; slug: string; note?: string };
 
 export const layerOps: LayerOp[] = [
-  { op: "add2_norm1", label: "add + RMSNorm", slug: "add-rmsnorm" },
+  { op: "add2_norm1", label: "add + RMSNorm", slug: "add-rmsnorm", note: "from the previous MLP" },
   { op: "qkv", label: "QKV projection", slug: "gemm" },
   { op: "rope", label: "RoPE", slug: "rope" },
   { op: "write_kv", label: "write_kv", slug: "paged-kv" },
   { op: "attention", label: "paged attention", slug: "paged-attention" },
   { op: "o_proj", label: "output projection", slug: "gemm" },
-  { op: "add1_norm2", label: "add + RMSNorm", slug: "add-rmsnorm" },
+  { op: "add1_norm2", label: "add + RMSNorm", slug: "add-rmsnorm", note: "after attention" },
   { op: "gate_up", label: "gate/up projection", slug: "gemm" },
   { op: "swiglu", label: "SwiGLU", slug: "swiglu" },
   { op: "down", label: "down projection", slug: "gemm" },

@@ -47,15 +47,18 @@ export function LayerMap() {
         {layerOps.map((l, i) => {
           const linked = ready.has(l.slug);
           const label = (
-            <span className={clsx("truncate", linked ? "text-accent" : "text-text")}>
-              <span className="text-muted">{String(i + 1).padStart(2, "0")} </span>
-              {l.label}
+            <span className="block min-w-0">
+              <span className={clsx("block truncate", linked ? "text-accent" : "text-text")}>
+                <span className="text-muted">{String(i + 1).padStart(2, "0")} </span>
+                {l.label}
+              </span>
+              {l.note && <span className="block truncate pl-[1.35rem] text-[11px] text-muted">{l.note}</span>}
             </span>
           );
           return (
             <li key={l.op} className="grid grid-cols-[10.5rem_1fr_4.5rem] items-center gap-3 sm:grid-cols-[13rem_1fr_6rem]">
               {linked ? (
-                <Link href={`/kernels/${l.slug}`} className="link-underline truncate">
+                <Link href={`/kernels/${l.slug}`} className="link-underline min-w-0">
                   {label}
                 </Link>
               ) : (
