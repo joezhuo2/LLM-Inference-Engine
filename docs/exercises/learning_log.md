@@ -1331,3 +1331,4 @@
 ## Kernel Pages Data (Branch 53)
 - **`node --test`, Node's built-in test runner** => 
 - **why `cmd && echo ok` under `set -e` does not stop a script when `cmd` fails** => 
+- **syntax highlighting at build time (shiki) with two themes as CSS variables** => 
