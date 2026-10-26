@@ -1388,3 +1388,6 @@
 - **stream capture (`cudaStreamBeginCapture`, `cudaStreamEndCapture`) and what may not happen while a stream is capturing** => 
 - **`cudaGraph_t` versus `cudaGraphExec_t`, and what `cudaGraphInstantiate` does once so a launch is cheap** => 
 - **why a replayed graph needs its inputs at the same device addresses on every step** => 
+
+## Reading the Graph Gaps (Branch 60)
+- **why the throughput gain of CUDA Graphs shrinks with the batch while the time saved per decode step does not** => 
