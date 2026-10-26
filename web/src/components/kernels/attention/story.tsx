@@ -1,11 +1,12 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
-import clsx from "clsx";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
 import { traces } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
+import { EasedBar } from "../eased-bar";
+import { Toggle } from "../toggle";
 import { BlocksFigure, IdleFigure, LanesFigure, MergeFigure, OnlineSoftmaxFigure, OverviewFigure, SplitFigure, V1Figure } from "./figures";
 
 const split = "split-context-attention-branch-40";
@@ -39,28 +40,6 @@ const options = [
   { column: "16", label: "16 splits" },
 ];
 
-function Toggle({ label, choices, value, onChange }: { label: string; choices: string[]; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-14 text-muted">{label}</span>
-      <div role="radiogroup" aria-label={label} className="flex overflow-hidden rounded border border-border">
-        {choices.map((c) => (
-          <button
-            key={c}
-            type="button"
-            role="radio"
-            aria-checked={value === c}
-            onClick={() => onChange(c)}
-            className={clsx("pressable px-2.5 py-1 tabular-nums", value === c ? "bg-accent-dim text-accent" : "text-muted")}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function SplitPicker() {
   const [rows, setRows] = useState("1");
   const [context, setContext] = useState("2,048");
@@ -79,11 +58,8 @@ function SplitPicker() {
         {times.map((t) => (
           <div key={t.column} className="grid grid-cols-[4.5rem_1fr_4.5rem] items-center gap-2">
             <span className={t.column === pickedColumn ? "text-accent" : "text-muted"}>{t.label}</span>
-            <div className="h-3 min-w-0 rounded-sm bg-border">
-              <div
-                className={clsx("bar-ease h-full origin-left rounded-sm", t.column === pickedColumn ? "bg-accent" : "bg-baseline/70")}
-                style={{ transform: `scaleX(${t.us / max})` }}
-              />
+            <div className="h-3 min-w-0 rounded-full bg-border">
+              <EasedBar fraction={t.us / max} className={t.column === pickedColumn ? "bg-accent" : "bg-baseline/70"} />
             </div>
             <span className="text-right tabular-nums text-muted">
               <NumberFlow value={t.us} suffix=" µs" format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />
