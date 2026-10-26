@@ -1391,3 +1391,7 @@
 
 ## Reading the Graph Gaps (Branch 60)
 - **why the throughput gain of CUDA Graphs shrinks with the batch while the time saved per decode step does not** => 
+
+## Paged KV Page (Branch 61)
+- **first-fit allocation: why the block manager's lowest free block keeps the pool's used ids small** => 
+- **checking a model of a system against its own recorded log (replaying a trace and comparing every step)** => 

@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernel-paged-kv
+
+- Replay the recorded chat trace through the block manager at build time (`web/scripts/kv-replay.mjs`, called by `sync-data`, written to `web/src/data/kv_replay.json` and read by `kvReplay()` in `web/src/lib/data.ts`): first-fit allocation from block 1 like `BlockManager`, a sequence's prompt blocks at its prefill, one more block on a decode step that starts a new block, every block back when it finishes. Each step's free count must equal the trace's `free_blocks` or the build fails, and a trace with preemptions is refused since its steps do not say which sequence was preempted. On `results/traces/chat_b16_rate4.json` all 751 steps match; it keeps every request's block ids with the step that took them, plus the time, kind, blocks held and decode count of each step (22 KB). 4 tests in `web/scripts/kv-replay.test.mjs`. (Part A)
+
 ## docs/graphs-gap-reading
 
 - Refresh the paged runner's own HF figure in "Reading these numbers" of `docs/results.md`, last measured before paged attention v2, the split kernel and the add_rmsnorm tuning: `PagedRunnerTest.ConcurrentSequencesMatchHuggingFaceTeacherForced` on a release build of main (df5324c) now reads 1168 of 1171 argmax matches (99.74%), mean absolute logit error 0.0248, identical on two runs. (Part A)
