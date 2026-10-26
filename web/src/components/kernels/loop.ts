@@ -46,9 +46,17 @@ export function useLoop(duration: number) {
           transition: { duration: 1.4, repeat: Infinity, ease: "easeInOut", delay: offset },
         };
 
-  const move = (start: number, end: number, dx: number, dy: number, still = true): Props => {
+  const move = (start: number, end: number, dx: number, dy: number, still = true, hold?: number): Props => {
     if (reduced) return { initial: false, animate: { x: still ? dx : 0, y: still ? dy : 0, opacity: still ? 1 : 0 } };
-    const t = windowTimes(start, end);
+    const t = windowTimes(start, hold === undefined ? end : hold);
+    if (hold !== undefined) {
+      const e = Math.min(Math.max(end, t[2]), t[3]);
+      return {
+        initial: { x: 0, y: 0, opacity: 0 },
+        animate: { x: [0, 0, 0, dx, dx, dx, dx], y: [0, 0, 0, dy, dy, dy, dy], opacity: [0, 0, 1, 1, 1, 0, 0] },
+        transition: { ...loop, times: [t[0], t[1], t[2], e, t[3], t[4], t[5]], ease: ["linear", "linear", "easeInOut", "linear", "linear", "linear"] },
+      };
+    }
     return {
       initial: { x: 0, y: 0, opacity: 0 },
       animate: { x: [0, 0, 0, dx, dx, dx], y: [0, 0, 0, dy, dy, dy], opacity: [0, 0, 1, 1, 0, 0] },

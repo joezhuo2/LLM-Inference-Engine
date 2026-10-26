@@ -1385,3 +1385,6 @@
 ## CUDA Graphs Page (Branch 59)
 - **the gap between two kernels on one stream, and why it stays when the CPU is far ahead** => 
 - **an Nsight Systems sqlite export: the CUPTI kernel and runtime tables, joined by `correlationId`** => 
+- **stream capture (`cudaStreamBeginCapture`, `cudaStreamEndCapture`) and what may not happen while a stream is capturing** => 
+- **`cudaGraph_t` versus `cudaGraphExec_t`, and what `cudaGraphInstantiate` does once so a launch is cheap** => 
+- **why a replayed graph needs its inputs at the same device addresses on every step** => 
