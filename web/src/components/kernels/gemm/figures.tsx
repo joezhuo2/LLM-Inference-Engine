@@ -109,7 +109,7 @@ export function GemvFigure({ weightBytes, peakGbs, tpotUs }: { weightBytes: numb
         return (
           <g key={r}>
             <rect x={40} y={rowY(r)} width={316} height={10} rx={2} className="fill-surface stroke-border" strokeWidth={0.5} />
-            <motion.rect x={40} y={rowY(r)} width={316} height={10} rx={2} className="fill-baseline" {...on(start, start + 1.5 * slice, false)} />
+            <motion.rect x={40} y={rowY(r)} width={316} height={10} rx={2} className="fill-baseline" {...on(start, start + 1.5 * slice)} />
             <rect x={400} y={rowY(r)} width={18} height={10} rx={2} className="fill-surface stroke-border" strokeWidth={0.5} />
             <motion.rect x={400} y={rowY(r)} width={18} height={10} rx={2} className="fill-accent" {...on(start + slice, 0.94, true)} />
           </g>
