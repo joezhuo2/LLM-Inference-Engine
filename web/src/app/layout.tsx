@@ -29,10 +29,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <noscript>
             <style>{".intro-loader { display: none; }"}</style>
           </noscript>
+          <a
+            href="#content"
+            className="sr-only z-50 rounded border border-border bg-surface px-3 py-2 font-mono text-sm text-accent focus:not-sr-only focus:fixed focus:left-4 focus:top-2"
+          >
+            skip to content
+          </a>
           <IntroLoader />
           <ScrollToTop />
           <TopBar />
-          <main>{children}</main>
+          <main id="content" tabIndex={-1} className="scroll-mt-12">
+            {children}
+          </main>
           <Footer />
         </ThemeProvider>
       </body>
