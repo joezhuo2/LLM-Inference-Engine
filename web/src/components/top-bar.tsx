@@ -16,15 +16,15 @@ export function TopBar() {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-bg/90 backdrop-blur">
-      <nav className="mx-auto flex h-12 w-full max-w-5xl items-center gap-6 px-4 font-mono text-sm sm:px-6">
+      <nav className="mx-auto flex h-12 w-full max-w-5xl items-center gap-4 px-4 font-mono text-[13px] sm:gap-6 sm:text-sm sm:px-6">
         <Link href="/" className="text-accent">
           llmie
         </Link>
-        <ul className="flex min-w-0 flex-1 gap-4 overflow-x-auto">
+        <ul className="flex min-w-0 flex-1 gap-3 overflow-x-auto sm:gap-4">
           {links.map(({ href, label }) => {
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
-              <li key={href}>
+              <li key={href} className={clsx(href === "/" && "max-sm:hidden")}>
                 <Link
                   href={href}
                   aria-current={active ? "page" : undefined}

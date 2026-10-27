@@ -4,8 +4,8 @@ import clsx from "clsx";
 
 export function Toggle({ label, choices, value, onChange }: { label: string; choices: string[]; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-14 text-muted">{label}</span>
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="w-14 shrink-0 text-muted">{label}</span>
       <div role="radiogroup" aria-label={label} className="flex overflow-hidden rounded border border-border">
         {choices.map((c) => (
           <button

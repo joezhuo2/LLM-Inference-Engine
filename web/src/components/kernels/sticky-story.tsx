@@ -37,27 +37,48 @@ export function StickyStory({
   }, []);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) setActive(Number((e.target as HTMLElement).dataset.step));
+    let frame = 0;
+    const pick = () => {
+      frame = 0;
+      const p = panel.current?.getBoundingClientRect();
+      const first = refs.current[0]?.getBoundingClientRect();
+      const above = p && first && p.left < first.right && first.left < p.right;
+      const mid = ((above ? Math.max(p.bottom, 0) : 0) + window.innerHeight) / 2;
+      let best = 0;
+      let dist = Infinity;
+      refs.current.forEach((el, i) => {
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const d = Math.abs((r.top + r.bottom) / 2 - mid);
+        if (d < dist) {
+          dist = d;
+          best = i;
         }
-      },
-      { rootMargin: "-40% 0px -40% 0px" },
-    );
-    refs.current.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
+      });
+      setActive(best);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(pick);
+    };
+    pick();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
   }, []);
 
   return (
     <div className="md:grid md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-10">
       <div ref={panel} className="sticky top-12 z-10 -mx-4 mb-2 border-b border-border bg-bg px-4 pb-3 pt-2 sm:mx-0 sm:px-0 md:top-20 md:col-start-2 md:row-start-1 md:mb-0 md:self-start md:border-0 md:bg-transparent md:p-0">
-        <div className="rounded border border-border bg-surface p-3 sm:p-4">
-          <div className="relative aspect-[14/10] w-full">
+        <div className="mx-auto max-w-md rounded border border-border bg-surface p-3 sm:p-4 md:max-w-none">
+          <div className="grid aspect-[14/10] w-full">
             <AnimatePresence>
               <motion.div
                 key={`${active}-${visits}`}
-                className="absolute inset-0"
+                className="col-start-1 row-start-1 min-w-0"
                 initial={reduced ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -77,7 +98,7 @@ export function StickyStory({
           <section
             key={s.id}
             aria-current={i === active ? "step" : undefined}
-            className="flex min-h-[70svh] flex-col justify-center py-8 first:pt-0 md:min-h-[80svh]"
+            className="flex min-h-[55svh] flex-col justify-center py-8 first:pt-0 md:min-h-[80svh]"
           >
             <div
               data-step={i}
