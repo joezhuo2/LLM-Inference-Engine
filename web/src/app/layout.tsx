@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrains.variable}`}>
-      <body suppressHydrationWarning className="min-h-dvh bg-bg text-text">
+      <body suppressHydrationWarning className="flex min-h-dvh flex-col bg-bg text-text">
         <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <noscript>
             <style>{".intro-loader { display: none; }"}</style>
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <IntroLoader />
           <ScrollToTop />
           <TopBar />
-          <main id="content" tabIndex={-1} className="scroll-mt-12">
+          <main id="content" tabIndex={-1} className="flex-1 scroll-mt-12">
             {children}
           </main>
           <Footer />
