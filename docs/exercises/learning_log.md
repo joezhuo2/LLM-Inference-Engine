@@ -1402,3 +1402,4 @@
 ## Kernels Polish (Branch 62)
 - **scrollytelling: choosing the active step from scroll position, and why an IntersectionObserver band can sit behind a sticky element** => 
 - **throttling a scroll handler to one run per frame with `requestAnimationFrame`** => 
+- **Tailwind `max-sm:` variants: styling only below a breakpoint** => 
