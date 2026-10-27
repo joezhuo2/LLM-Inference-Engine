@@ -21,7 +21,7 @@ export async function loadExcerpt(spec: ExcerptSpec): Promise<Excerpt> {
   const end = start + offset;
   const html = await codeToHtml(dedent(lines.slice(start, end + 1)), {
     lang: "cpp",
-    themes: { light: "github-light", dark: "github-dark" },
+    themes: { light: "github-light-default", dark: "github-dark" },
     defaultColor: false,
   });
   return {

@@ -1411,3 +1411,4 @@
 - **Satori: rendering JSX to SVG with flexbox only, and why it needs the font file itself** => 
 - **`metadataBase`: why social image URLs must be absolute** => 
 - **a route handler pre-rendered by a static export (`force-static` + `generateStaticParams`)** => 
+- **WCAG contrast ratio: relative luminance, and the 4.5:1 and 3:1 thresholds for small and large text** => 
