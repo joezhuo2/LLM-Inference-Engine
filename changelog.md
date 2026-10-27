@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/kernels-polish
 
+- Delete the kernel story prototype (`/prototypes/story`, `web/src/prototypes/story/`) now that all seven stories use `StickyStory`, as decided when the sticky layout was picked. The tiles and charts prototypes stay until their variants are chosen. (Part A)
 - Fit the top bar on phones: below 640 px the separate "overview" link is hidden (the `llmie` mark already links home), the gaps shrink and the links drop to 13 px. The links needed 308 px in a 214 px slot at 390 px wide, so "dashboard" was hidden in a sideways scroll on every page; they now fit down to 360 px. (Part A)
 - Pick a kernel story's active step from what can be read instead of a band in the middle of the screen: on every scroll frame the step whose text sits nearest the middle of the area below the sticky figure (the whole window on wider screens, where the figure sits beside the text) becomes active. On a phone the old band was hidden behind the figure, so the figure showed the previous step while the next one was being read (between 7 and 21 scroll positions per page out of sync at 390 px, now none). Steps on phones are at least 55% of the screen tall instead of 70%, which left blank gaps under the shorter steps. (Part A)
 
