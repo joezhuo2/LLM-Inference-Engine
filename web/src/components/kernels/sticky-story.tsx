@@ -73,12 +73,12 @@ export function StickyStory({
   return (
     <div className="md:grid md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-10">
       <div ref={panel} className="sticky top-12 z-10 -mx-4 mb-2 border-b border-border bg-bg px-4 pb-3 pt-2 sm:mx-0 sm:px-0 md:top-20 md:col-start-2 md:row-start-1 md:mb-0 md:self-start md:border-0 md:bg-transparent md:p-0">
-        <div className="rounded border border-border bg-surface p-3 sm:p-4">
-          <div className="relative aspect-[14/10] w-full">
+        <div className="mx-auto max-w-md rounded border border-border bg-surface p-3 sm:p-4 md:max-w-none">
+          <div className="grid aspect-[14/10] w-full">
             <AnimatePresence>
               <motion.div
                 key={`${active}-${visits}`}
-                className="absolute inset-0"
+                className="col-start-1 row-start-1 min-w-0"
                 initial={reduced ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}

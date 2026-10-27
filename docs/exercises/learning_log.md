@@ -1403,3 +1403,5 @@
 - **scrollytelling: choosing the active step from scroll position, and why an IntersectionObserver band can sit behind a sticky element** => 
 - **throttling a scroll handler to one run per frame with `requestAnimationFrame`** => 
 - **Tailwind `max-sm:` variants: styling only below a breakpoint** => 
+- **`aspect-ratio` as a minimum: why an in-flow child can make the box taller and an absolutely placed one cannot** => 
+- **stacking elements in one grid cell (`col-start-1 row-start-1`) instead of `position: absolute`** => 
