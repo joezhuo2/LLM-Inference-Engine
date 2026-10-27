@@ -1398,3 +1398,7 @@
 - **internal fragmentation: why a paged cache wastes at most one partly filled block per request** => 
 - **the null block: why block 0 is never handed out and what a table entry of 0 means** => 
 - **recompute-style preemption: freeing a request's blocks and rebuilding its cache from its tokens later** => 
+
+## Kernels Polish (Branch 62)
+- **scrollytelling: choosing the active step from scroll position, and why an IntersectionObserver band can sit behind a sticky element** => 
+- **throttling a scroll handler to one run per frame with `requestAnimationFrame`** => 

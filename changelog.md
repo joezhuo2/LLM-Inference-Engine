@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernels-polish
+
+- Pick a kernel story's active step from what can be read instead of a band in the middle of the screen: on every scroll frame the step whose text sits nearest the middle of the area below the sticky figure (the whole window on wider screens, where the figure sits beside the text) becomes active. On a phone the old band was hidden behind the figure, so the figure showed the previous step while the next one was being read (between 7 and 21 scroll positions per page out of sync at 390 px, now none). Steps on phones are at least 55% of the screen tall instead of 70%, which left blank gaps under the shorter steps. (Part A)
+
 ## web/kernel-paged-kv
 
 - Add the seventh and last story, paged KV cache (`/kernels/paged-kv`, registry `web/src/content/kernels/paged-kv.ts`, story and figures in `web/src/components/kernels/paged-kv/`), which replaces the "soon" card on `/kernels`. Six steps, every request, block id and step number taken from the build-time replay of the recorded chat trace: contiguous worst-case reservation against 16-token blocks for its first four requests; request 0's real block table and the slot of position 100; write_kv copying a token's K and V heads into one row of a block (time and share from `results/decode_step.md`); append_slot taking a new block only at a multiple of 16; freed blocks taken again by the next requests, and preemption with the forced-preemption test's numbers; and the whole run replayed at half speed in a 72-block grid with play/pause and a step slider, blocks held over time, slots filled, and what a full 2,048-token reservation per running request would hold. Timeline from the stubs (#24, #25) through Joe's BlockManager (#29) and write_kv (#31), the scheduler (#33), the paged runner's 16/16 test (#34) and the recorded trace (#58, #59); tables from `docs/results.md`; excerpts of write_kv, append_slot and allocate_block. (Part A)

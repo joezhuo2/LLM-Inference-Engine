@@ -37,16 +37,37 @@ export function StickyStory({
   }, []);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) setActive(Number((e.target as HTMLElement).dataset.step));
+    let frame = 0;
+    const pick = () => {
+      frame = 0;
+      const p = panel.current?.getBoundingClientRect();
+      const first = refs.current[0]?.getBoundingClientRect();
+      const above = p && first && p.left < first.right && first.left < p.right;
+      const mid = ((above ? Math.max(p.bottom, 0) : 0) + window.innerHeight) / 2;
+      let best = 0;
+      let dist = Infinity;
+      refs.current.forEach((el, i) => {
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const d = Math.abs((r.top + r.bottom) / 2 - mid);
+        if (d < dist) {
+          dist = d;
+          best = i;
         }
-      },
-      { rootMargin: "-40% 0px -40% 0px" },
-    );
-    refs.current.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
+      });
+      setActive(best);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(pick);
+    };
+    pick();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
   }, []);
 
   return (
@@ -77,7 +98,7 @@ export function StickyStory({
           <section
             key={s.id}
             aria-current={i === active ? "step" : undefined}
-            className="flex min-h-[70svh] flex-col justify-center py-8 first:pt-0 md:min-h-[80svh]"
+            className="flex min-h-[55svh] flex-col justify-center py-8 first:pt-0 md:min-h-[80svh]"
           >
             <div
               data-step={i}
