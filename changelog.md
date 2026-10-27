@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/polish
+
+- Give every page a social card: 1200 x 630 PNGs drawn at build time with `next/og` from the same data as the site (`web/src/lib/og.tsx`, served by the static route `web/src/app/og/[card]/route.tsx` as `/og/overview.png` and `/og/<story>.png`), JetBrains Mono from `@fontsource/jetbrains-mono` 5.3.0 (Satori reads woff, not the woff2 that `next/font` ships). The overview card shows the hero's first three numbers (now `headlineStats()` in `web/src/lib/data.ts`, shared with the hero), each kernel card its title, summary and headline number, all with the GPU and commit. A route with a `.png` name instead of the `opengraph-image` file convention, whose static export has no file extension and may be served without an image type. `metadataBase` comes from Vercel's `VERCEL_PROJECT_PRODUCTION_URL` (localhost otherwise), and `twitter:card` is `summary_large_image`. (Part A)
+
 ## web/kernels-polish
 
 - Let a story's toggle put its choices under its label when they do not fit beside it: with the browser font at 24 px the 4- and 5-choice rows of paged attention (context) and SwiGLU (tokens) ran past the right edge of the figure. (Part A)
