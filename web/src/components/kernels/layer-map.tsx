@@ -74,7 +74,7 @@ export function LayerMap() {
                 label
               )}
               <div className="h-2 min-w-0">
-                <EasedBar fraction={share(l.op) / maxShare} className={hovered === l.slug ? "bg-accent" : linked ? "bg-text" : "bg-baseline/60"} />
+                <EasedBar fraction={share(l.op) / maxShare} className={hovered === l.slug ? "bg-accent" : linked ? "bg-baseline" : "bg-baseline/60"} />
               </div>
               <span className="text-right text-muted tabular-nums">
                 <NumberFlow value={share(l.op)} suffix="%" format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />
