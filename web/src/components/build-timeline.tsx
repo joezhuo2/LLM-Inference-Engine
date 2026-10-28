@@ -2,6 +2,7 @@
 
 import { motion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
+import { Scramble } from "@/components/scramble";
 import { type Entry, type Metric, type Milestone, milestones, repoUrl } from "@/content/build-log";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 
@@ -72,7 +73,9 @@ function EntryView({ entry, reduced }: { entry: Entry; reduced: boolean }) {
           ))}
         </span>
       </div>
-      <h3 className="mt-2 text-lg text-text">{entry.title}</h3>
+      <h3 className="mt-2 text-lg text-text">
+        <Scramble text={entry.title} trigger="view" durationMs={900} />
+      </h3>
       <p className="mt-1 max-w-xl text-muted">{entry.text}</p>
       {entry.metric && (
         <div className="mt-4 max-w-xl">
@@ -94,7 +97,7 @@ function MilestoneView({ milestone, reduced }: { milestone: Milestone; reduced: 
           {milestone.id} · {milestone.dates}
         </div>
         <h2 id={`milestone-${milestone.id}`} className="mt-1 font-mono text-xl text-text">
-          {milestone.name}
+          <Scramble text={milestone.name} trigger="view" durationMs={900} />
         </h2>
         <p className="mt-2 text-sm text-muted">{milestone.goal}</p>
       </header>
