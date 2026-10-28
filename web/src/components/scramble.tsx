@@ -18,6 +18,7 @@ export function Scramble({
   durationMs = 900,
   delayMs = 0,
   trigger = "load",
+  replay = 0,
   className,
 }: {
   text: string;
@@ -25,6 +26,7 @@ export function Scramble({
   durationMs?: number;
   delayMs?: number;
   trigger?: "load" | "view";
+  replay?: number;
   className?: string;
 }) {
   const introDone = useIntroDone();
@@ -73,7 +75,7 @@ export function Scramble({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [start, text, numeric, durationMs, delayMs]);
+  }, [start, text, numeric, durationMs, delayMs, replay]);
 
   return (
     <span className={className}>

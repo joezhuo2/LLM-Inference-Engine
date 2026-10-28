@@ -13,9 +13,13 @@ export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);
 }
 
-export type KernelCard = { slug: string; title: string; short: string; ready: boolean };
+export type KernelCard = { slug: string; title: string; short: string; dates: string; ready: boolean };
 
-export const kernelCards: KernelCard[] = kernelStories.map((k) => ({ slug: k.slug, title: k.title, short: k.short, ready: true }));
+export const kernelCards: KernelCard[] = kernelStories.map((k) => {
+  const first = k.timeline[0]?.date;
+  const last = k.timeline[k.timeline.length - 1]?.date;
+  return { slug: k.slug, title: k.title, short: k.short, dates: first === last ? (first ?? "") : `${first} – ${last}`, ready: true };
+});
 
 export type LayerOp = { op: string; label: string; slug: string; note?: string };
 
