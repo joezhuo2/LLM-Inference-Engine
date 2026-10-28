@@ -74,7 +74,7 @@ export function LayerMap() {
           return (
             <li key={l.op} className="grid grid-cols-[10.5rem_1fr_4.5rem] items-center gap-3 sm:grid-cols-[13rem_1fr_6rem]">
               {linked ? (
-                <Link href={`/kernels/${l.slug}`} className="link-underline min-w-0">
+                <Link href={`/kernels/${l.slug}`} transitionTypes={["nav-forward"]} className="link-underline min-w-0">
                   {label}
                 </Link>
               ) : (
