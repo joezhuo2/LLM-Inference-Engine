@@ -63,7 +63,7 @@ export function KernelCards() {
         return (
           <li key={k.slug} className={clsx("relative", i > 0 && "-mt-2", open && "z-10")}>
             {k.ready ? (
-              <Link href={`/kernels/${k.slug}`} className={clsx(card, "pressable")} {...hover(k.slug)}>
+              <Link href={`/kernels/${k.slug}`} transitionTypes={["nav-forward"]} className={clsx(card, "pressable")} {...hover(k.slug)}>
                 {body}
               </Link>
             ) : (

@@ -15,7 +15,7 @@ const links = [
 export function TopBar() {
   const pathname = usePathname();
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-bg/90 backdrop-blur">
+    <header style={{ viewTransitionName: "site-header" }} className="sticky top-0 z-10 border-b border-border bg-bg/90 backdrop-blur">
       <nav className="mx-auto flex h-12 w-full max-w-5xl items-center gap-4 px-4 font-mono text-[13px] sm:gap-6 sm:text-sm sm:px-6">
         <Link href="/" className="text-accent">
           llmie
