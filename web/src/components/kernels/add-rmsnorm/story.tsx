@@ -7,7 +7,7 @@ import { cellNumber, decodeSteps } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
-import { FirstFusedFigure, JobFigure, RoundingFigure, RoundTripFigure, ShuffleFigure, VectorFigure } from "./figures";
+import { FirstFusedFigure, fusedKb64, JobFigure, naiveKb64, RoundingFigure, RoundTripFigure, ShuffleFigure, VectorFigure } from "./figures";
 
 const fused = "fused-add-rmsnorm-branch-30";
 const tuned = "tuning-add-rmsnorm-branch-39";
@@ -15,8 +15,6 @@ const tuned = "tuning-add-rmsnorm-branch-39";
 const tokenChoices = ["1", "16", "64"];
 const at = (tokens: string) => ({ tokens });
 
-const naiveKb64 = measured(fused, at("64"), "naive DRAM (KB)");
-const fusedKb64 = measured(fused, at("64"), "fast DRAM (KB)");
 const pair1 = measured(fused, at("1"), "naive total (us)");
 const first1 = measured(fused, at("1"), "fast (us)");
 const firstFlat = `${tokenChoices.map((t) => measured(fused, at(t), "fast (us)").toFixed(1)).join(" / ")} µs`;

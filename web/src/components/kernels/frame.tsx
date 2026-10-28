@@ -3,7 +3,7 @@ const H = 400;
 
 export function Frame({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full font-mono" role="img" aria-label={label}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full font-mono [font-variant-ligatures:none]" role="img" aria-label={label}>
       {children}
     </svg>
   );

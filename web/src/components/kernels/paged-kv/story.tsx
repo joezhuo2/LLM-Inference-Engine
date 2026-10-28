@@ -6,14 +6,12 @@ import { measured } from "@/content/kernels/types";
 import { kvReplay } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { useLoop } from "../loop";
-import { AppendFigure, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, WhyBlocksFigure, WriteKvFigure } from "./figures";
+import { AppendFigure, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
 
 const replay = kvReplay();
 const B = replay.meta.block_size;
 const blockBytes = 360448;
 const poolGb = (replay.meta.kv_blocks * blockBytes) / 1e9;
-const writeUs = measured("gpu-time-per-op-in-a-decode-step", { op: "write_kv" }, "GPU us/step", 0, "results");
-const writeShare = measured("gpu-time-per-op-in-a-decode-step", { op: "write_kv" }, "% of kernel time", 0, "results");
 const tput = (batch: string) => measured("throughput-and-latency", { system: "engine + graphs", "max batch": batch }, "output tok/s", 0, "results");
 
 const fmt = (v: number, d = 0) =>
