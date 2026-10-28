@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BuildTimeline } from "@/components/build-timeline";
 import { Hero } from "@/components/hero";
+import { Scramble } from "@/components/scramble";
 
 const cards = [
   { href: "/results", title: "results", text: "Throughput and latency against HuggingFace and llama.cpp." },
@@ -16,7 +17,7 @@ export default function Overview() {
         <section id="built" aria-labelledby="built-heading" className="scroll-mt-16 space-y-16">
           <div className="space-y-3">
             <h2 id="built-heading" className="font-mono text-2xl sm:text-3xl">
-              built from scratch
+              <Scramble text="built from scratch" trigger="view" durationMs={1000} />
             </h2>
             <p className="max-w-2xl text-muted">
               Five weeks, one pull request at a time: from summing a vector on the GPU to beating llama.cpp. Every
