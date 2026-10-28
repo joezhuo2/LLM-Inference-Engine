@@ -1,0 +1,29 @@
+import { kernelStories, kernelStory } from "@/content/kernels";
+import { headlineStats } from "@/lib/data";
+import { ogCard } from "@/lib/og";
+
+export const dynamic = "force-static";
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return ["overview", ...kernelStories.map((k) => k.slug)].map((name) => ({ card: `${name}.png` }));
+}
+
+export async function GET(_request: Request, { params }: { params: Promise<{ card: string }> }) {
+  const name = (await params).card.replace(/\.png$/, "");
+  const story = kernelStory(name);
+  if (!story) {
+    return ogCard({
+      eyebrow: "overview",
+      title: "llm-inference-engine",
+      text: "A TinyLlama inference engine written from scratch in C++ and CUDA: paged KV cache, continuous batching, CUDA Graphs.",
+      stats: headlineStats().slice(0, 3),
+    });
+  }
+  return ogCard({
+    eyebrow: `kernels / ${String(story.index).padStart(2, "0")}`,
+    title: story.title,
+    text: story.short,
+    stats: [{ label: story.headline.label, value: story.headline.value }],
+  });
+}

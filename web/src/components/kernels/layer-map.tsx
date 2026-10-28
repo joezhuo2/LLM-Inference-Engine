@@ -7,6 +7,7 @@ import { useState } from "react";
 import { kernelCards, layerOps } from "@/content/kernels";
 import { cellNumber, decodeSteps } from "@/lib/data";
 import { useHoveredKernel } from "@/lib/kernel-hover";
+import { radioKeyDown } from "@/lib/radio-keys";
 import { EasedBar } from "./eased-bar";
 
 const choices = [
@@ -37,13 +38,19 @@ export function LayerMap() {
           of the step&apos;s GPU time over all layers, on one scale for both batch sizes. The projections take about as long
           at batch 16 as at batch 1, since the weights are read once either way; attention grows with every row.
         </figcaption>
-        <div role="radiogroup" aria-label="batch size" className="flex overflow-hidden rounded border border-border font-mono text-xs">
+        <div
+          role="radiogroup"
+          aria-label="batch size"
+          onKeyDown={radioKeyDown(choices.map((c) => c.key), batch, setBatch)}
+          className="flex overflow-hidden rounded border border-border font-mono text-xs"
+        >
           {choices.map((c) => (
             <button
               key={c.key}
               type="button"
               role="radio"
               aria-checked={batch === c.key}
+              tabIndex={batch === c.key ? 0 : -1}
               onClick={() => setBatch(c.key)}
               className={clsx("pressable px-3 py-1", batch === c.key ? "bg-accent-dim text-accent" : "text-muted")}
             >
@@ -74,7 +81,7 @@ export function LayerMap() {
                 label
               )}
               <div className="h-2 min-w-0">
-                <EasedBar fraction={share(l.op) / maxShare} className={hovered === l.slug ? "bg-accent" : linked ? "bg-text" : "bg-baseline/60"} />
+                <EasedBar fraction={share(l.op) / maxShare} className={hovered === l.slug ? "bg-accent" : linked ? "bg-baseline" : "bg-baseline/60"} />
               </div>
               <span className="text-right text-muted tabular-nums">
                 <NumberFlow value={share(l.op)} suffix="%" format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />

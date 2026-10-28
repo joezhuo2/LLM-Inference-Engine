@@ -1,18 +1,9 @@
 import { Scramble } from "@/components/scramble";
 import { TokenRain } from "@/components/token-rain";
-import { format, medianOf } from "@/lib/data";
+import { headlineStats } from "@/lib/data";
 
 export function Hero({ next }: { next?: { href: string; label: string } }) {
-  const graphs1 = medianOf("engine_graphs", 1, "output_throughput");
-  const graphs16 = medianOf("engine_graphs", 16, "output_throughput");
-  const hf16 = medianOf("hf", 16, "output_throughput");
-  const tpot1 = medianOf("engine_graphs", 1, "tpot_s_p50");
-  const stats = [
-    { label: "tokens/s at batch 16", value: format(graphs16, 0) },
-    { label: "batch 16 over batch 1", value: graphs1 && graphs16 ? `${format(graphs16 / graphs1)}x` : "–" },
-    { label: "over HuggingFace", value: graphs16 && hf16 ? `${format(graphs16 / hf16)}x` : "–" },
-    { label: "ms per token at batch 1", value: format(tpot1 === undefined ? undefined : tpot1 * 1e3, 2) },
-  ];
+  const stats = headlineStats();
   return (
     <section className="relative h-[calc(100svh-3rem)] min-h-[520px] overflow-hidden">
       <TokenRain />

@@ -10,6 +10,7 @@ import { repoUrl } from "@/content/build-log";
 import { kernelStories, kernelStory } from "@/content/kernels";
 import { docPath, docSections, environment, profilingTable } from "@/lib/data";
 import { loadExcerpt } from "@/lib/excerpt";
+import { ogImage } from "@/lib/og";
 
 export const dynamicParams = false;
 
@@ -19,7 +20,12 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const story = kernelStory((await params).slug);
-  return story ? { title: story.title, description: story.short } : {};
+  if (!story) return {};
+  return {
+    title: story.title,
+    description: story.short,
+    openGraph: { siteName: "llm-inference-engine", type: "article", title: `${story.title} · llm-inference-engine`, description: story.short, images: [ogImage(story.slug, `${story.title}: ${story.headline.value} ${story.headline.label}`)] },
+  };
 }
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {

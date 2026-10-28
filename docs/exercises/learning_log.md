@@ -1405,3 +1405,13 @@
 - **Tailwind `max-sm:` variants: styling only below a breakpoint** => 
 - **`aspect-ratio` as a minimum: why an in-flow child can make the box taller and an absolutely placed one cannot** => 
 - **stacking elements in one grid cell (`col-start-1 row-start-1`) instead of `position: absolute`** => 
+
+## Polish (Branch 63)
+- **Open Graph and Twitter card meta tags: what a link preview reads from a page** => 
+- **Satori: rendering JSX to SVG with flexbox only, and why it needs the font file itself** => 
+- **`metadataBase`: why social image URLs must be absolute** => 
+- **a route handler pre-rendered by a static export (`force-static` + `generateStaticParams`)** => 
+- **WCAG contrast ratio: relative luminance, and the 4.5:1 and 3:1 thresholds for small and large text** => 
+- **roving tabindex: one Tab stop per widget, arrow keys inside it** => 
+- **`:focus-visible` versus `:focus`: why a mouse click does not draw the focus ring** => 
+- **skip links and `tabIndex={-1}`: moving focus to an element that is not normally focusable** => 
