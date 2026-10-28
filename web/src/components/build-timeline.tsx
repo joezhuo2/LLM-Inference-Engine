@@ -13,7 +13,9 @@ export function MetricView({ metric, reduced }: { metric: Metric; reduced: boole
   if (metric.kind === "value") {
     return (
       <div className="font-mono">
-        <div className="text-2xl text-accent tabular-nums">{metric.value}</div>
+        <div className="text-2xl text-accent tabular-nums">
+          <Scramble text={metric.value} numeric trigger="view" durationMs={1200} />
+        </div>
         <div className="mt-1 text-xs text-muted">{metric.label}</div>
       </div>
     );
@@ -38,8 +40,13 @@ export function MetricView({ metric, reduced }: { metric: Metric; reduced: boole
                 />
               </div>
               <span className={bar.highlight ? "w-20 text-right text-accent tabular-nums" : "w-20 text-right text-muted tabular-nums"}>
-                {bar.value.toFixed(metric.digits)}
-                {metric.unit && ` ${metric.unit}`}
+                <Scramble
+                  text={`${bar.value.toFixed(metric.digits)}${metric.unit ? ` ${metric.unit}` : ""}`}
+                  numeric
+                  trigger="view"
+                  delayMs={150 + i * 80}
+                  durationMs={900}
+                />
               </span>
             </div>
           </div>
