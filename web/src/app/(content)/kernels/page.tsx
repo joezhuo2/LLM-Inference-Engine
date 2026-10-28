@@ -15,8 +15,12 @@ export default function Kernels() {
           behind every change.
         </p>
       </header>
-      <LayerMap />
-      <KernelCards />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <LayerMap />
+        <div className="lg:sticky lg:top-6">
+          <KernelCards />
+        </div>
+      </div>
     </div>
   );
 }
