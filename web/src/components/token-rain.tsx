@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useCanvasLoop } from "@/lib/canvas";
 import { useIntroDone } from "@/lib/intro";
 import { type Trace, traceDuration, useTrace } from "@/lib/trace";
@@ -17,6 +17,11 @@ function hash(a: number, b: number) {
 }
 
 const overlapS = 0.4;
+const span = 4;
+const holdMs = 350;
+const fadeMs = 300;
+const rowSpan = 4096;
+const glyphs = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&*";
 
 type Cursor = { cycle: number; done: number; counts: Map<number, number> };
 
@@ -51,6 +56,8 @@ function RainCanvas({ trace }: { trace: Trace }) {
   const duration = traceDuration(trace);
   const drops = useRef<Drop[]>([]);
   const advance = useRef<((t: number) => void) | null>(null);
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  const lit = useRef(new Map<number, number>());
   const { canvasRef, playing, play } = useCanvasLoop(({ ctx, width, height, elapsedS, palette }) => {
     const t = elapsedS;
     advance.current ??= createRain(trace, drops);
@@ -60,9 +67,29 @@ function RainCanvas({ trace }: { trace: Trace }) {
     ctx.font = `14px ${palette.mono}`;
     ctx.textBaseline = "top";
     const life = (height + 12 * cell) / speed;
+    const now = performance.now();
+    const p = pointer.current;
+    if (p) {
+      const pc = Math.round(p.x / cell) - span / 2;
+      const pr = Math.round(p.y / cell) - span / 2;
+      for (let dx = 0; dx < span; dx++) {
+        for (let dy = 0; dy < span; dy++) {
+          if (pc + dx >= 0 && pr + dy >= 0) lit.current.set((pc + dx) * rowSpan + pr + dy, now);
+        }
+      }
+    }
+    const glow = (key: number) => {
+      const at = lit.current.get(key);
+      if (at === undefined) return 0;
+      const age = now - at;
+      return age < holdMs ? 1 : Math.max(0, 1 - (age - holdMs) / fadeMs);
+    };
+    const white = parseInt(palette.bg.slice(1, 3), 16) < 128 ? "#ffffff" : palette.text;
+    const covered = new Set<number>();
     drops.current = drops.current.filter((d) => t - d.spawn < life && t >= d.spawn);
     for (const d of drops.current) {
-      const x = (d.col % ncols) * cell;
+      const col = d.col % ncols;
+      const x = col * cell;
       const head = (t - d.spawn) * speed;
       for (let i = d.chars.length - 1, k = 0; i >= 0; i--, k++) {
         const y = head - k * cell;
@@ -70,10 +97,47 @@ function RainCanvas({ trace }: { trace: Trace }) {
         ctx.globalAlpha = Math.max(0, 1 - k * 0.14);
         ctx.fillStyle = k === 0 ? (d.first ? palette.warn : palette.text) : palette.accent;
         ctx.fillText(d.chars[i], x, y);
+        const key = col * rowSpan + Math.round(y / cell);
+        const g = glow(key);
+        if (g === 0) continue;
+        covered.add(key);
+        ctx.globalAlpha = g;
+        ctx.fillStyle = white;
+        ctx.fillText(d.chars[i], x, y);
       }
+    }
+    for (const key of lit.current.keys()) {
+      const g = glow(key);
+      if (g === 0) {
+        lit.current.delete(key);
+        continue;
+      }
+      if (covered.has(key)) continue;
+      const col = Math.floor(key / rowSpan);
+      const row = key % rowSpan;
+      ctx.globalAlpha = g * 0.4;
+      ctx.fillStyle = palette.accent;
+      ctx.fillText(glyphs[hash(col, row) % glyphs.length], col * cell, row * cell);
     }
     ctx.globalAlpha = 1;
   }, duration * 0.6);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const area = canvas?.parentElement;
+    if (!canvas || !area) return;
+    const move = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      pointer.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    const leave = () => (pointer.current = null);
+    area.addEventListener("pointermove", move);
+    area.addEventListener("pointerleave", leave);
+    return () => {
+      area.removeEventListener("pointermove", move);
+      area.removeEventListener("pointerleave", leave);
+    };
+  }, [canvasRef]);
   return (
     <>
       <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 h-full w-full" />
