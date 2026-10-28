@@ -49,7 +49,10 @@ export function KernelCards() {
                 open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
               )}
             >
-              <p className="overflow-hidden pt-2 text-sm text-muted">{k.short}</p>
+              <div className="overflow-hidden">
+                <p className="pt-2 text-sm text-muted">{k.short}</p>
+                {k.dates && <p className="pt-1 font-mono text-xs tabular-nums text-muted">{k.dates}</p>}
+              </div>
             </div>
           </>
         );
