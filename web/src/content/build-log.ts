@@ -13,6 +13,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -34,6 +35,7 @@ export const milestones: Milestone[] = [
         date: "Sep 30",
         prs: [2],
         branch: "exercises",
+        scene: "bandwidth",
         title: "Measure the hardware first",
         text: "A bandwidth benchmark sets the number every later kernel is judged against: how fast this laptop GPU can read its own memory.",
         metric: { kind: "value", value: "323.6 GB/s", label: "measured DRAM bandwidth, RTX 5060 laptop" },
@@ -42,6 +44,7 @@ export const milestones: Milestone[] = [
         date: "Oct 1",
         prs: [3],
         branch: "practice/reduction",
+        scene: "reduce",
         title: "Three ways to sum a vector",
         text: "The same reduction with global atomics, then shared memory, then warp shuffles: the building block of RMSNorm and softmax later on.",
       },
@@ -71,6 +74,7 @@ export const milestones: Milestone[] = [
         date: "Oct 5",
         prs: [8],
         branch: "kernel/cublas-gemm",
+        scene: "gemm",
         title: "BF16 matrix multiply",
         text: "cuBLAS is column-major and the model is row-major, so the engine asks it for the transposed product instead of copying anything.",
       },
@@ -78,6 +82,7 @@ export const milestones: Milestone[] = [
         date: "Oct 9",
         prs: [10, 12, 14],
         branch: "loader/safetensors-parser",
+        scene: "weights",
         title: "Loading 2.2 GB without a library",
         text: "Memory-map the safetensors file, parse its JSON header, and upload through two pinned buffers so reading the next chunk overlaps copying the last one.",
         metric: { kind: "value", value: "0.26 s", label: "to put 2.20 GB of weights on the GPU" },
@@ -102,6 +107,7 @@ export const milestones: Milestone[] = [
         date: "Oct 9",
         prs: [19],
         branch: "tokenizer/sentencepiece",
+        scene: "tokenize",
         title: "Tokenizer and chat template",
         text: "SentencePiece and TinyLlama's chat template, checked token for token against the Hugging Face tokenizer.",
       },
@@ -116,6 +122,7 @@ export const milestones: Milestone[] = [
         date: "Oct 9",
         prs: [22],
         branch: "model/forward",
+        scene: "generate",
         title: "First text out of the engine",
         text: "The forward pass, greedy decoding and engine generate, held to Hugging Face's logits on 20 reference prompts.",
       },
@@ -123,6 +130,7 @@ export const milestones: Milestone[] = [
         date: "Oct 10",
         prs: [23],
         branch: "sampling/temperature",
+        scene: "sample",
         title: "Sampling",
         text: "Temperature sampling with the Gumbel-max trick and Philox random numbers, so a seed reproduces a run exactly.",
       },
@@ -138,6 +146,7 @@ export const milestones: Milestone[] = [
         date: "Oct 11",
         prs: [24, 25, 29],
         branch: "kv/block-manager",
+        scene: "vram",
         title: "KV cache in fixed-size blocks",
         text: "Like pages of virtual memory: a block manager hands out blocks from one pool on the GPU, so a request only holds the memory its tokens use.",
       },
@@ -193,6 +202,7 @@ export const milestones: Milestone[] = [
         date: "Oct 15",
         prs: [37],
         branch: "tools/profiling",
+        scene: "smem",
         title: "Profile before optimizing",
         text: "NVTX ranges and Nsight Systems on one decode step. Even the naive kernels read the weights at 61 to 72% of peak; the rest goes to idle gaps between hundreds of small launches.",
         metric: { kind: "value", value: "267", label: "kernel launches per decode step" },
@@ -201,6 +211,7 @@ export const milestones: Milestone[] = [
         date: "Oct 16",
         prs: [39, 40, 42, 46],
         branch: "runtime/wire-fast-kernels",
+        scene: "smem",
         title: "Fused and vectorized kernels",
         text: "Residual add fused into RMSNorm, RoPE and SwiGLU rewritten with 16-byte loads, each tested against its naive oracle before it replaced it.",
         metric: {
@@ -235,6 +246,7 @@ export const milestones: Milestone[] = [
         date: "Oct 20",
         prs: [45, 47, 48],
         branch: "kernel/paged-attention-v2-impl",
+        scene: "warps",
         title: "Attention with an online softmax",
         text: "One pass over the keys with a running maximum: scores no longer sit in shared memory, so contexts are no longer capped, and the values are summed by every thread instead of a few.",
         metric: {
@@ -252,6 +264,7 @@ export const milestones: Milestone[] = [
         date: "Oct 20",
         prs: [49],
         branch: "kernel/add-rmsnorm-tune",
+        scene: "smem",
         title: "Tuning the fused norm",
         text: "128-bit loads and the row kept in registers between the sum of squares and the scaling.",
         metric: {
@@ -269,6 +282,7 @@ export const milestones: Milestone[] = [
         date: "Oct 23",
         prs: [50, 51, 52, 53],
         branch: "runtime/graphs-split-attention",
+        scene: "warps",
         title: "Splitting one long context",
         text: "At batch 1 each attention head walked its whole context in one thread block. Now a long context is cut across blocks and the partial softmaxes are merged, with one CUDA graph per split count.",
         metric: {
@@ -312,6 +326,7 @@ export const milestones: Milestone[] = [
         date: "Oct 25",
         prs: [55],
         branch: "tools/roofline",
+        scene: "roofline",
         title: "How close to the hardware",
         text: "A roofline from the measured peaks (323.6 GB/s, 34.5 TFLOP/s). At batch 1 the matrix-vector products run at 91 to 102% of the bandwidth roof; at batch 16 attention is what is left.",
         metric: { kind: "value", value: "82%", label: "of the bandwidth roof for a whole batch-1 step" },
