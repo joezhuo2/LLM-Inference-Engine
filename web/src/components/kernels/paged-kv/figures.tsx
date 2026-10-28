@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { measured } from "@/content/kernels/types";
 import { kvReplay } from "@/lib/data";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
@@ -189,6 +190,9 @@ export function TableFigure() {
     </Frame>
   );
 }
+
+export const writeUs = measured("gpu-time-per-op-in-a-decode-step", { op: "write_kv" }, "GPU us/step", 0, "results");
+export const writeShare = measured("gpu-time-per-op-in-a-decode-step", { op: "write_kv" }, "% of kernel time", 0, "results");
 
 export function WriteKvFigure({ launchUs, share }: { launchUs: number; share: number }) {
   const { on, move } = useLoop(9);

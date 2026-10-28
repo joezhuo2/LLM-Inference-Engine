@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
+import { useActiveStep } from "./use-active-step";
 
 export type StoryStep = { id: string; title: string; body: ReactNode };
 
@@ -18,10 +19,9 @@ export function StickyStory({
   figure: (step: number) => ReactNode;
   caption: (step: number) => ReactNode;
 }) {
-  const [active, setActive] = useState(0);
   const [visits, setVisits] = useState(0);
-  const refs = useRef<(HTMLElement | null)[]>([]);
   const panel = useRef<HTMLDivElement>(null);
+  const { active, refs } = useActiveStep(panel);
   const reduced = usePrefersReducedMotion();
 
   useEffect(() => {
@@ -34,40 +34,6 @@ export function StickyStory({
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    let frame = 0;
-    const pick = () => {
-      frame = 0;
-      const p = panel.current?.getBoundingClientRect();
-      const first = refs.current[0]?.getBoundingClientRect();
-      const above = p && first && p.left < first.right && first.left < p.right;
-      const mid = ((above ? Math.max(p.bottom, 0) : 0) + window.innerHeight) / 2;
-      let best = 0;
-      let dist = Infinity;
-      refs.current.forEach((el, i) => {
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        const d = Math.abs((r.top + r.bottom) / 2 - mid);
-        if (d < dist) {
-          dist = d;
-          best = i;
-        }
-      });
-      setActive(best);
-    };
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(pick);
-    };
-    pick();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
   }, []);
 
   return (

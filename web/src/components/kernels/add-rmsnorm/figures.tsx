@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { measured } from "@/content/kernels/types";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 
@@ -84,6 +85,9 @@ function Packet({ x, y, text, accent, motionProps }: { x: number; y: number; tex
     </motion.g>
   );
 }
+
+export const naiveKb64 = measured("fused-add-rmsnorm-branch-30", { tokens: "64" }, "naive DRAM (KB)");
+export const fusedKb64 = measured("fused-add-rmsnorm-branch-30", { tokens: "64" }, "fast DRAM (KB)");
 
 export function RoundTripFigure({ naiveKb, fusedKb }: { naiveKb: number; fusedKb: number }) {
   const { move, grow, on } = useLoop(8);
