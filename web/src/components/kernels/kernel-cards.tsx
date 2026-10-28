@@ -22,13 +22,13 @@ export function KernelCards() {
   });
   return (
     <ol className="isolate flex flex-col">
-      {kernelCards.map((k, i) => {
+      {[...kernelCards].reverse().map((k, i) => {
         const open = hovered === k.slug;
         const replay = plays[k.slug] ?? 0;
         const body = (
           <>
             <div className="font-mono text-sm">
-              <span className="text-muted">{String(i + 1).padStart(2, "0")} </span>
+              <span className="text-muted">{String(kernelCards.length - i).padStart(2, "0")} </span>
               <Scramble
                 text={k.title}
                 trigger="view"
