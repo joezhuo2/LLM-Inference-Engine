@@ -5,6 +5,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## docs/write-kv-profile
 
 - Measure `write_kv` with Nsight Compute in the real forward pass and record it in `docs/profiling.md` ("write_kv") and the kernel table of `docs/results.md`: 3.8 us per launch at 1 and 16 rows, 4.3 us at 64 and 9.3 us at 512, 0.4% of a batch-1 step in Nsight Systems (Nsight Compute flushes caches and locks clocks, so it reads higher). It has one version, so there is no before and after. README goal 4 moves from "partly" to "met". (Part A)
+- Put the homepage recording (`assets/homepage.gif`) at the top of the README with a caption, a row of badges (toolchain, GPU, model and the three headline results) and a quick-navigation line linking to its main sections. (Part A)
+
 ## web/polish
 
 - Handle a build without benchmark runs, found by building with the CSVs moved out of `results/`: `/results` says there are none yet and how to make them instead of showing a table with names and no columns, and the social cards leave out numbers that are missing instead of drawing a row of dashes. Their summary stops at four lines so a long one cannot run into the numbers. Missing profiling tables, launch-gap lines or the chat trace still fail the build on purpose, since the stories quote them. (Part A)

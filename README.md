@@ -1,8 +1,23 @@
 # llm-inference-engine
 
-A single-GPU LLM inference engine in C++20 and CUDA. It serves [TinyLlama-1.1B-Chat-v1.0](https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) in BF16 with FP32 accumulation, matches HuggingFace output token for token, and serves many concurrent requests with a paged KV cache, a paged decode attention kernel, continuous batching, custom fused kernels, sampling on the GPU, and CUDA Graphs.
+<p align="center">
+    <img src="assets/homepage.gif" alt="" /></br>
+    <em>The site's homepage: decoded tokens rain down one column per sequence in the batch</em>
+</p>
 
-The goal is not to beat vLLM. It is a small engine in which every design decision is measured, explained and reproducible: every performance number comes from a script in this repo that anyone can rerun.
+<p align="center">
+<img alt="C++20" src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white">
+<img alt="CUDA 12.8+" src="https://img.shields.io/badge/CUDA-12.8%2B-76B900?logo=nvidia&logoColor=white">
+<img alt="GPU: RTX 5060 Laptop (sm_120)" src="https://img.shields.io/badge/GPU-RTX%205060%20Laptop%20(sm__120)-76B900">
+<img alt="Model: TinyLlama 1.1B BF16" src="https://img.shields.io/badge/model-TinyLlama%201.1B%20BF16-informational">
+<img alt="Batch 16: 11.0x batch 1" src="https://img.shields.io/badge/batch%2016-11.0x%20batch%201-brightgreen">
+<img alt="82% of DRAM bandwidth at batch 1" src="https://img.shields.io/badge/batch%201-82%25%20of%20DRAM%20bandwidth-brightgreen">
+<img alt="1.09x to 1.21x llama.cpp" src="https://img.shields.io/badge/vs%20llama.cpp-1.09x%20to%201.21x-brightgreen">
+</p>
+
+<p align="center"><a href="#goals">Goals</a> • <a href="#results">Results</a> • <a href="#architecture">Architecture</a> • <a href="#design-decisions">Design decisions</a> • <a href="#building">Building</a> • <a href="#reproducing-the-results">Reproducing</a> • <a href="#repository-layout">Layout</a></p>
+
+> A single-GPU LLM inference engine in C++20 and CUDA. It serves [TinyLlama-1.1B-Chat-v1.0](https://huggingface.?co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) in BF16 with FP32 accumulation, matches HuggingFace output token for token, and serves many concurrent requests with a paged KV cache, a paged decode attention kernel, continuous batching, custom fused kernels, sampling on the GPU, and CUDA Graphs. The goal is not to beat vLLM. It is a small engine in which every design decision is measured, explained and reproducible: every performance number comes from a script in this repo that anyone can rerun.
 
 ## Goals
 
