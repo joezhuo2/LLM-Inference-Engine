@@ -25,7 +25,7 @@ Measured on the RTX 5060 Laptop GPU on 2026-10-25 (commit 7d60861, release build
 | 1 | Correct | teacher forced: 99.57% argmax over 1,842 positions, mean absolute logit error 0.0285; free running: 15 of 20 prompts exact for 64 tokens, the other 5 first differ at a near tie of at most 2 BF16 ulps in HF's own logits | met |
 | 2 | Fast at batch 1 | 265 GB/s of weights per token = 82% of the measured 323.6 GB/s (TPOT 7.81 ms) | met |
 | 3 | Fast at batch N | 1,402 tokens/s at 16 concurrent requests against 127 at batch 1 = 11.0x | met |
-| 4 | Explained | Nsight Compute before and after for paged attention (v1, v2, split), add + RMSNorm, RoPE and SwiGLU, and Nsight Systems launch gaps before and after CUDA Graphs, in `docs/profiling.md`; `write_kv` has no measurement yet | partly |
+| 4 | Explained | Nsight Compute before and after for paged attention (v1, v2, split), add + RMSNorm, RoPE and SwiGLU, and Nsight Systems launch gaps before and after CUDA Graphs, in `docs/profiling.md`; `write_kv`, which has one version, is measured once (0.4% of a batch-1 step in Nsight Systems, 3.8 us per launch in Nsight Compute) | met |
 | 5 | Reproducible | `scripts/reproduce.sh` rebuilds, tests and re-measures everything on this page | met |
 
 Output tokens per second against the maximum number of concurrent requests:

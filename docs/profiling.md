@@ -248,3 +248,16 @@ To reproduce one cell: `build/release/bin/engine bench --model models/tinyllama 
 
 Reading it. Graphs are faster than eager again at every length: at a 1,984-token prompt the replayed step goes from 14.0 to 9.1 ms (1.5x) and sits about 1 ms under eager, the same launch saving graphs give at 64 tokens. At 64 tokens the split count is 1, so the replay is the old graph and the difference to main is clock noise. Batch 4 at 1,984 tokens is still dominated by prefills that stall the decodes (each step is all prefill or all decode). The extra graphs cost capture time once at startup and some device memory for the executable graphs; neither was measured. Compute-sanitizer memcheck on the 12 `DecodeGraphsTest` tests: 0 errors, 0 bytes leaked. Reproduce one cell with the command above plus `--graphs`.
 
+## write_kv (Branch 64)
+
+Measured with Nsight Compute on the RTX 5060 Laptop GPU on 2026-10-29 (release build, commit 619676d, default clock control), in the real forward pass: `ncu --profile-from-start off --kernel-name regex:write_kv_kernel --metrics gpu__time_duration.sum,dram__bytes.sum,launch__grid_size` around `engine bench --max-batch N`, one launch per layer (22 per step), medians over the layers. `write_kv` has a single version, one thread per element with a 256-thread block, so there is no before and after to compare: this is the only measurement.
+
+| rows in the step | grid blocks | launches | median time (us) | range (us) | DRAM (KB) | DRAM throughput |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 (decode, batch 1) | 1 | 22 | 3.87 | 3.81 to 4.16 | 7.9 | 0.6% of peak |
+| 16 (decode, batch 16) | 16 | 110 | 3.78 | 3.62 to 4.16 | 23.3 | not recorded |
+| 64 (prefill, one prompt) | 64 | 22 | 4.32 | 4.10 to 6.18 | 73.2 | 4.7% of peak |
+| 512 (prefill, 16 prompts) | 512 | 22 | 9.34 | 9.06 to 11.20 | 533.8 | 18% of the measured 323.6 GB/s |
+
+Reading it. A decode step copies the K and V slices of one row, 2 KB in and 2 KB out, so the kernel is nowhere near a bandwidth limit: its time is the floor of a launch plus one dependent chain of loads (the slot, then the data) and stores, about 3.8 us at 1 and 16 rows. Nsight Compute flushes the caches and locks the clocks to base, so it overstates the time in a running engine: the Nsight Systems profile of the decode step (`docs/results.md`) measures 1.5 us per launch, 32 us and 0.4% of a batch-1 step, where 22 launches at 3.8 us would be about 85 us and 1.1%. Either way it is noise next to the 7.8 ms step. It only grows with work at prefill sizes, 9.3 us for 512 rows, which is 18% of the DRAM roof and a one-off cost per prompt. There is no kernel to optimize here; the measurement closes the gap in the "explained" goal.
+
