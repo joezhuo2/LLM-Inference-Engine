@@ -6,9 +6,7 @@ export const metadata: Metadata = { title: "not found", robots: { index: false }
 
 const pages = [
   { href: "/", label: "overview" },
-  { href: "/results", label: "results" },
   { href: "/kernels", label: "kernels" },
-  { href: "/dashboard", label: "dashboard" },
 ];
 
 export default function NotFound() {

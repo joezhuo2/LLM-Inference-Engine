@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/coming-soon
+
+- Delete the tiles and charts prototypes (`/prototypes/tiles`, `/prototypes/charts`, `web/src/prototypes/`) so nothing unfinished is public, and take `/results` and `/dashboard` out of the top bar and the 404 page. The overview's results and dashboard cards are no longer links and say "coming soon". The two page files stay in place, unlinked, for when they are built. (Part A)
+
 ## web/polish
 
 - Handle a build without benchmark runs, found by building with the CSVs moved out of `results/`: `/results` says there are none yet and how to make them instead of showing a table with names and no columns, and the social cards leave out numbers that are missing instead of drawing a row of dashes. Their summary stops at four lines so a long one cannot run into the numbers. Missing profiling tables, launch-gap lines or the chat trace still fail the build on purpose, since the stories quote them. (Part A)
