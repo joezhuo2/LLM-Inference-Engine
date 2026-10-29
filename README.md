@@ -1,8 +1,20 @@
 # llm-inference-engine
 
-A single-GPU LLM inference engine in C++20 and CUDA. It serves [TinyLlama-1.1B-Chat-v1.0](https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) in BF16 with FP32 accumulation, matches HuggingFace output token for token, and serves many concurrent requests with a paged KV cache, a paged decode attention kernel, continuous batching, custom fused kernels, sampling on the GPU, and CUDA Graphs.
+<p align="center">
+    <img src="assets/homepage.gif" alt="" /></br>
+    <em>The site's homepage: decoded tokens rain down one column per sequence in the batch</em>
+</p>
 
-The goal is not to beat vLLM. It is a small engine in which every design decision is measured, explained and reproducible: every performance number comes from a script in this repo that anyone can rerun.
+<p align="center">
+<img alt="C++20" src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white">
+<img alt="CUDA 12.8+" src="https://img.shields.io/badge/CUDA-12.8%2B-76B900?logo=nvidia&logoColor=white">
+<img alt="GPU: RTX 5060 Laptop (sm_120)" src="https://img.shields.io/badge/GPU-RTX%205060%20Laptop%20(sm__120)-76B900">
+<img alt="Model: TinyLlama 1.1B BF16" src="https://img.shields.io/badge/model-TinyLlama%201.1B%20BF16-informational">
+</p>
+
+<p align="center"><a href="#goals">Goals</a> • <a href="#results">Results</a> • <a href="#architecture">Architecture</a> • <a href="#design-decisions">Design decisions</a> • <a href="#building">Building</a> • <a href="#reproducing-the-results">Reproducing</a> • <a href="#repository-layout">Layout</a></p>
+
+> A single-GPU LLM inference engine in C++20 and CUDA. It serves [TinyLlama-1.1B-Chat-v1.0](https://huggingface.?co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) in BF16 with FP32 accumulation, matches HuggingFace output token for token, and serves many concurrent requests with a paged KV cache, a paged decode attention kernel, continuous batching, custom fused kernels, sampling on the GPU, and CUDA Graphs. The goal is not to beat vLLM. It is a small engine in which every design decision is measured, explained and reproducible: every performance number comes from a script in this repo that anyone can rerun.
 
 ## Goals
 
@@ -25,7 +37,7 @@ Measured on the RTX 5060 Laptop GPU on 2026-10-25 (commit 7d60861, release build
 | 1 | Correct | teacher forced: 99.57% argmax over 1,842 positions, mean absolute logit error 0.0285; free running: 15 of 20 prompts exact for 64 tokens, the other 5 first differ at a near tie of at most 2 BF16 ulps in HF's own logits | met |
 | 2 | Fast at batch 1 | 265 GB/s of weights per token = 82% of the measured 323.6 GB/s (TPOT 7.81 ms) | met |
 | 3 | Fast at batch N | 1,402 tokens/s at 16 concurrent requests against 127 at batch 1 = 11.0x | met |
-| 4 | Explained | Nsight Compute before and after for paged attention (v1, v2, split), add + RMSNorm, RoPE and SwiGLU, and Nsight Systems launch gaps before and after CUDA Graphs, in `docs/profiling.md`; `write_kv` has no measurement yet | partly |
+| 4 | Explained | Nsight Compute before and after for paged attention (v1, v2, split), add + RMSNorm, RoPE and SwiGLU, and Nsight Systems launch gaps before and after CUDA Graphs, in `docs/profiling.md`; `write_kv`, which has one version, is measured once (0.4% of a batch-1 step in Nsight Systems, 3.8 us per launch in Nsight Compute) | met |
 | 5 | Reproducible | `scripts/reproduce.sh` rebuilds, tests and re-measures everything on this page | met |
 
 Output tokens per second against the maximum number of concurrent requests:

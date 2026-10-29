@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## docs/write-kv-profile
+
+- Measure `write_kv` with Nsight Compute in the real forward pass and record it in `docs/profiling.md` ("write_kv") and the kernel table of `docs/results.md`: 3.8 us per launch at 1 and 16 rows, 4.3 us at 64 and 9.3 us at 512, 0.4% of a batch-1 step in Nsight Systems (Nsight Compute flushes caches and locks clocks, so it reads higher). It has one version, so there is no before and after. README goal 4 moves from "partly" to "met". (Part A)
+- Put the homepage recording (`assets/homepage.gif`) at the top of the README with a caption, a row of badges (toolchain, GPU, model and the three headline results) and a quick-navigation line linking to its main sections. (Part A)
+
 ## web/coming-soon
 
 - Delete the tiles and charts prototypes (`/prototypes/tiles`, `/prototypes/charts`, `web/src/prototypes/`) so nothing unfinished is public, and take `/results` and `/dashboard` out of the top bar and the 404 page. The overview's results and dashboard cards are no longer links and say "coming soon". The two page files stay in place, unlinked, for when they are built. (Part A)
