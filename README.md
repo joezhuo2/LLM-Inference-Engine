@@ -1,5 +1,3 @@
-# llm-inference-engine
-
 <p align="center">
     <img src="assets/homepage.gif" alt="" /></br>
     <em>The site's homepage: decoded tokens rain down one column per sequence in the batch</em>
