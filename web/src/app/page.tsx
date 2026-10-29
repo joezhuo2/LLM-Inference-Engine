@@ -4,9 +4,9 @@ import { Hero } from "@/components/hero";
 import { Scramble } from "@/components/scramble";
 
 const cards = [
-  { href: "/results", title: "results", text: "Throughput and latency against HuggingFace and llama.cpp." },
+  { href: null, title: "results", text: "Throughput and latency against HuggingFace and llama.cpp." },
   { href: "/kernels", title: "kernels", text: "How each kernel got faster, with Nsight numbers." },
-  { href: "/dashboard", title: "dashboard", text: "A recorded serving run, step by step." },
+  { href: null, title: "dashboard", text: "A recorded serving run, step by step." },
 ];
 
 export default function Overview() {
@@ -27,12 +27,20 @@ export default function Overview() {
           <BuildTimeline />
         </section>
         <section aria-label="More" className="grid gap-4 sm:grid-cols-3">
-          {cards.map((card) => (
-            <Link key={card.href} href={card.href} className="pressable hover-grow block rounded border border-border bg-surface p-4">
-              <div className="font-mono text-sm text-accent">{card.title}</div>
-              <p className="mt-2 text-sm text-muted">{card.text}</p>
-            </Link>
-          ))}
+          {cards.map((card) =>
+            card.href ? (
+              <Link key={card.title} href={card.href} className="pressable hover-grow block rounded border border-border bg-surface p-4">
+                <div className="font-mono text-sm text-accent">{card.title}</div>
+                <p className="mt-2 text-sm text-muted">{card.text}</p>
+              </Link>
+            ) : (
+              <div key={card.title} className="block rounded border border-border bg-surface p-4">
+                <div className="font-mono text-sm text-muted">{card.title}</div>
+                <p className="mt-2 text-sm text-muted">{card.text}</p>
+                <div className="mt-3 font-mono text-xs text-muted">coming soon</div>
+              </div>
+            ),
+          )}
         </section>
       </div>
     </>
