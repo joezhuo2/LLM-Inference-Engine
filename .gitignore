@@ -19,6 +19,5 @@ model_dir/
 *.pth
 *.pt
 .cache/
-docs/claude/
 src/practice/bandwith_test
 results/profile/
