@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernel-attention-v2
+
+- Record the dynamic shared memory per block of attention v1 and v2 in `docs/profiling.md` ("Attention shared memory"), computed from the launch code: v1 grows by 4 bytes per token (9,344 bytes at its 2,048-token cap, 19% of the 48 KB default), v2 stays at 3,456 bytes. v1's limit is the `kMaxContext` check in the host code, not shared memory running out, which the section says next to the older wording in "Paged attention v2". (Part A)
+
 ## web/kernel-split-attention
 
 - Trim the paged attention story to six steps now that split attention has its own page: the idle-GPU, merge and split-count steps move there, and a last step, "then: split the context", keeps the before and after and links to it. The two runtime timeline entries (wiring, graphs per split count) and the CUDA Graphs measurement table move with them. (Part A)

@@ -1426,3 +1426,8 @@
 - **waves per SM: grid blocks divided by the blocks all SMs can hold at once** => 
 - **occupancy limiters: registers, warps, shared memory and the block cap, and which one binds** => 
 - **tail effect: why a grid of 1.64 waves runs about as long as one of 2** => 
+
+## Attention v2 Page (Branch 67)
+- **dynamic shared memory: the third launch argument, and the 48 KB default per block** => 
+- **why a per-token shared-memory buffer caps the context a kernel can take** => 
+- **uncoalesced loads: threads reading addresses 128 bytes apart** => 
