@@ -273,6 +273,24 @@ Reading it. A decode step copies the K and V slices of one row, 2 KB in and 2 KB
 
 Nsight Compute on one temperature-only launch at 1 row (`--launch-skip 3 --launch-count 1`): 703 us, grid 1 block of 1,024 threads, 48 registers per thread, SM throughput 3.3% and DRAM 0.05% of the GPU, and on the one busy SM the FP64 pipe is active for 1,008,000 of its 1,193,622 cycles (84%) while FP64 instructions are 63,000 of 478,550 (13%).
 
+The same launch as a table, and the throwaway variants of `gumbel()` timed in the same session as the unchanged kernel (the bench loop, interleaved runs; not committed code):
+
+| metric | value |
+| --- | --- |
+| duration (us) | 703.0 |
+| FP64 pipe active (cycles) | 1,008,000 |
+| SM cycles elapsed | 1,193,622 |
+| FP64 pipe busy | 84% |
+| FP64 instructions | 63,000 |
+| instructions | 478,550 |
+| FP64 share of instructions | 13% |
+
+| variant of `gumbel()` | 1 row, temperature (us) | 16 rows, temperature (us) | 1 row, top-k 50 (us) |
+| --- | --- | --- | --- |
+| as written (double `log`) | 467.9 / 471.5 | 474.9 / 475.2 | 115.2 / 131.4 |
+| float `u` and `__logf` | 95.5 / 87.5 / 64.5 | 91.1 / 71.2 / 85.7 | 181.1 / 191.3 / 183.7 |
+| logs removed | 54.4 | 77.8 | 174.4 |
+
 Reading it. The threshold searches do what they were written for: top-k 50 finds its cut with 32 passes of a count over the row and is about 2x faster than sorting the row alone, before the sort-based version has done any of its remaining work. The surprise is the plain temperature column. Every one of the 32,000 tokens gets Gumbel noise, and `gumbel()` computes `-log(-log(u))` in double precision; on this GPU FP64 runs at a small fraction of the FP32 rate, so the FP64 pipe is busy for 84% of the kernel's cycles and the draw costs 425 us, more than with top-k, where the noise is only computed for the 50 tokens above the cut. Top-p 0.9 keeps a large part of these synthetic logits, so it pays for most of that noise as well as for its own search of the mass threshold (an `expf` over the row per pass). Rows do not change the times because each row is one block: 16 rows run on 16 SMs side by side, and 1 row leaves 25 of the 26 SMs idle. One sampled draw per decode step at 425 us would be about 5% of the 7.8 ms batch-1 step; the end-to-end effect was not measured here. Not changed in this branch, because it changes the sampled tokens of a fixed seed: in a throwaway copy of `sample.cu` with `u` in float and `__logf`, the temperature column fell to 65 to 95 us at both row counts (four interleaved runs against 468 to 475 us for the unchanged kernel in the same session), and with the logs removed entirely to 54 to 78 us. The same copy made the top-k column slower (180 to 315 us against 115 to 140 us), which I have not explained, so it would need its own profile before it is proposed.
 
 To reproduce: `nvcc -std=c++20 -O3 -arch=sm_120 -Iinclude -Isrc scripts/sample_bench.cu build/release/src/libengine_kernels.a build/release/src/libengine_core.a -o /tmp/sample_bench && /tmp/sample_bench` (arguments: rows, then vocab), and for one launch `ncu --kernel-name regex:sample_kernel --launch-skip 3 --launch-count 1 --metrics sm__pipe_fp64_cycles_active.max,sm__cycles_elapsed.max /tmp/sample_bench 1`.
