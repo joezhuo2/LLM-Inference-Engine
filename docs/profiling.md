@@ -294,3 +294,16 @@ The merge kernel after 8 splits is 32 blocks and 6.1 us.
 Reading it. With one row the grid is one block per query head, 32 blocks for 156 slots, so a fifth of the GPU's warps are ever resident and each block walks the whole context alone. Every doubling of the split count doubles the grid and halves the time while the grid still fits in one wave (up to 4 splits, 128 blocks). At 8 splits the grid is 1.64 waves: the first 156 blocks run together and the last 100 run in a second, partly empty wave, so the time barely moves (106.7 to 102.2 us) although each block has half the work. DRAM stays at 6% or less throughout, so the kernel is bound by latency and the number of blocks in flight, not by bandwidth. This is the measurement behind the rule in "Split attention in the forward pass": aim for about 256 blocks, since the gain stops near one full wave.
 
 To reproduce: build `/tmp/pa_bench` as in "Split-context attention", then `ncu --kernel-name regex:paged_attention_split_partial_kernel --launch-skip 162 --launch-count 1 --metrics launch__grid_size,launch__waves_per_multiprocessor,sm__warps_active.avg.pct_of_peak_sustained_active,launch__occupancy_limit_registers,launch__occupancy_limit_warps,gpu__time_duration.sum /tmp/pa_bench 1 2048` for 8 splits (the bench runs 53 calls per split count in the order 1, 2, 4, 8, 16, so skip 3, 56 and 109 for 1, 2 and 4 splits), and `--kernel-name regex:^paged_attention_decode_v2_kernel --launch-skip 3` for v2.
+
+## Attention shared memory (Branch 67)
+
+Dynamic shared memory per thread block of the two decode attention kernels, computed from their launch code (`src/kernels/paged_attention.cu` and `src/kernels/paged_attention_v2.cu`, commit 19e3d13), 256 threads per block and head_dim 64. v1 reserves one float per token of the block table's capacity plus one per thread and the query in BF16: `(capacity + 256) * 4 + 64 * 2` bytes. v2 reserves three floats per thread, the 64-float accumulator and the query: `3 * 256 * 4 + 64 * 4 + 64 * 2` bytes, whatever the context. CUDA's default limit for dynamic shared memory is 48 KB (49,152 bytes) per block without an opt-in.
+
+| context | v1 bytes | v2 bytes |
+| --- | --- | --- |
+| 128 | 1,664 | 3,456 |
+| 512 | 3,200 | 3,456 |
+| 2,048 | 9,344 | 3,456 |
+| 8,192 | n/a | 3,456 |
+
+Reading it. v1's context limit is not shared memory running out: at its cap of 2,048 tokens it uses 9,344 bytes, 19% of the default limit, and the formula would reach the limit only near 12,000 tokens. The cap is `kMaxContext = 2048` in the host code, which rejects any block table longer than that (TinyLlama's full context), and that check is why the 8,192-token rows of "Paged attention v2" read n/a for v1 (it would have needed 33,920 bytes). The sentence there that v1 "cannot run a context of 8,192 because its scores live in shared memory" is right about the cause of the design and not about the limit. Neither kernel is limited by shared memory per SM at these sizes ("Split attention occupancy" measured v2 at 6 blocks per SM from registers and warps, 14 from shared memory). The bytes were not yet confirmed with Nsight Compute's `launch__shared_mem_per_block_dynamic`, because the GPU was unavailable when this was written.
