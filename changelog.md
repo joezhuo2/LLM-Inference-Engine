@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernel-sampling
+
+- Add the Nsight Compute launch and the throwaway `gumbel()` variants of the sampling bench to `docs/profiling.md` ("Sampling") as two tables, so the site reads them instead of the prose: FP64 pipe busy 84% for 13% of the instructions, and the float `u` with `__logf` copy at 64.5 to 95.5 us against 467.9 to 475.2 us for the unchanged kernel in the same session. (Part A)
+
 ## web/layer-map-embedding
 
 - Add the two ends of the decode step to the layer map on `/kernels` as collapsed cards: "embedding lookup" before the first layer and "final norm + LM head" after the last, each with its time and share of the step for the chosen batch (from `results/decode_step*.md`). Opening one eases it open over 0.7 s and shows the formula, a small animation (token ids picking rows of the embedding table; the last token normalized, multiplied into 32,000 logits and handed to the sampler), a paragraph and links to the source, and for the LM head to the GEMM story. The embedding kernel gets no story page of its own, as decided. (Part A)
