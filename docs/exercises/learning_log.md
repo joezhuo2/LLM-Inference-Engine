@@ -1421,3 +1421,8 @@
 - **segmented radix sort (`cub::DeviceSegmentedRadixSort`): sorting many rows in one call** => 
 - **a lower-bound baseline: timing only the first stage of the alternative** => 
 - **pipe utilization in Nsight Compute (`sm__pipe_fp64_cycles_active`)** => 
+
+## Split Attention Page (Branch 66)
+- **waves per SM: grid blocks divided by the blocks all SMs can hold at once** => 
+- **occupancy limiters: registers, warps, shared memory and the block cap, and which one binds** => 
+- **tail effect: why a grid of 1.64 waves runs about as long as one of 2** => 
