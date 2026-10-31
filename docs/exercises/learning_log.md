@@ -1431,3 +1431,8 @@
 - **dynamic shared memory: the third launch argument, and the 48 KB default per block** => 
 - **why a per-token shared-memory buffer caps the context a kernel can take** => 
 - **uncoalesced loads: threads reading addresses 128 bytes apart** => 
+
+## Layer Map Ends (Branch 68)
+- **embedding lookup as a gather: why it is a copy, not a matrix multiply** => 
+- **why only the last token of a prompt goes through the LM head** => 
+- **`aria-expanded` and `aria-controls` on a disclosure button** => 
