@@ -4,10 +4,11 @@ import { gemm } from "./gemm";
 import { pagedAttention } from "./paged-attention";
 import { pagedKv } from "./paged-kv";
 import { rope } from "./rope";
+import { splitAttention } from "./split-attention";
 import { swiglu } from "./swiglu";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv];
+export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);
