@@ -7,6 +7,7 @@ import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
 import { PagedKvStory } from "./paged-kv/story";
 import { RopeStory } from "./rope/story";
+import { SamplingStory } from "./sampling/story";
 import { SplitAttentionStory } from "./split-attention/story";
 import { SwigluStory } from "./swiglu/story";
 
@@ -30,6 +31,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <SplitAttentionStory />;
     case "attention-v2":
       return <AttentionV2Story />;
+    case "sampling":
+      return <SamplingStory />;
     default:
       return null;
   }
