@@ -21,7 +21,11 @@ function rainColumn(seed: number): string[] {
   });
 }
 
-export async function ogCard({ eyebrow, title, text, stats }: { eyebrow: string; title: string; text: string; stats: { label: string; value: string }[] }) {
+const ascii = (s: string) => s.replaceAll("→", "->");
+
+export async function ogCard({ eyebrow, title: rawTitle, text: rawText, stats }: { eyebrow: string; title: string; text: string; stats: { label: string; value: string }[] }) {
+  const title = ascii(rawTitle);
+  const text = ascii(rawText);
   const [regular, bold] = await Promise.all([
     readFile(join(fontDir, "jetbrains-mono-latin-400-normal.woff")),
     readFile(join(fontDir, "jetbrains-mono-latin-700-normal.woff")),

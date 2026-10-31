@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/layer-map-embedding
+
+- Draw "→" as "->" on the social cards: the JetBrains Mono latin subset they embed has no arrow, so the attention v2 card made Satori fetch a fallback font from Google at build time, which fails offline and printed a build warning. (Part A)
+
 ## web/kernel-attention-v2
 
 - Trim the paged attention story to four steps: v1, v2 and the eight-lane step move to the attention v2 page, and one "v1 → v2" step keeps the 883 to 272 us before and after and links to it. The v2 wiring timeline entry, the Nsight Compute table and the online-softmax excerpt move with them; `V1Figure` is replaced by the new page's figures, which say the cap is the host check rather than full shared memory. (Part A)
