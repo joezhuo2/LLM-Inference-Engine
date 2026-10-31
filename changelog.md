@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kernel-split-attention
+
+- Measure why split attention helps at batch 1 and record it in `docs/profiling.md` ("Split attention occupancy"): Nsight Compute at 1 row and 2,048 tokens shows 6 blocks per SM (registers and warps), so 156 blocks fill one wave; v2's 32 blocks are 0.21 waves at 20.5% warps active, and 2, 4 and 8 splits take the partial kernel from 361 to 186, 107 and 102 us as the grid grows to 1.64 waves and warps active to 80%. (Part A)
+
 ## tools/sample-bench
 
 - Record the sampling bench in `docs/profiling.md` ("Sampling") with one Nsight Compute launch: top-k by binary search is about 2x faster than sorting the rows alone, but temperature-only sampling takes 425 us because the Gumbel noise is computed in double precision for every token (FP64 pipe busy 84% of the cycles). The kernel is unchanged; a float version measured in a throwaway copy is written up for Joe to decide. (Part A)
