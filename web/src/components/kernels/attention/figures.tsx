@@ -379,19 +379,6 @@ function TimeBars({ v2, split }: { v2: number; split?: number }) {
   );
 }
 
-export function IdleFigure({ v2, warps }: { v2: number; warps: string }) {
-  return (
-    <Frame label={`With one row, v2 launches 32 blocks and most of the GPU's warp slots stay empty; ${warps} of warps active`}>
-      <Label x={20} y={24}>{`1 row × 32 query heads = 32 blocks · 26 SMs · warps active ${warps}`}</Label>
-      <SmGrid lit={0.206} y={36} />
-      <Label x={20} y={186}>each block walks the whole 2,048-token context on its own</Label>
-      <Label x={20} y={206}>long chains, little to overlap them with</Label>
-      <TimeBars v2={v2} />
-      <Label x={20} y={372}>one row at 2,048 tokens, µs per call</Label>
-    </Frame>
-  );
-}
-
 export function SplitFigure({ v2, split }: { v2: number; split: number }) {
   const { on } = useLoop(5);
   const per = 4;
@@ -412,63 +399,6 @@ export function SplitFigure({ v2, split }: { v2: number; split: number }) {
       <Label x={20} y={222}>all 8 ranges at once, then a small merge kernel</Label>
       <TimeBars v2={v2} split={split} />
       <Label x={20} y={372}>one row at 2,048 tokens; the busy SMs are an illustration</Label>
-    </Frame>
-  );
-}
-
-const partials = [
-  { m: 2.1, l: 41.7 },
-  { m: 3.4, l: 18.2 },
-  { m: 1.7, l: 63.0 },
-  { m: 2.9, l: 25.4 },
-];
-
-export function MergeFigure() {
-  const { on } = useLoop(7);
-  const M = Math.max(...partials.map((p) => p.m));
-  return (
-    <Frame label="The merge rescales every split's partial result to the largest running maximum and adds them in split order">
-      <Label x={20} y={24}>partial results in the scratch buffer (example values)</Label>
-      {partials.map((p, i) => {
-        const x = 20 + i * 132;
-        const top = p.m === M;
-        return (
-          <g key={i}>
-            <motion.g {...on(0.02 + i * 0.05)}>
-              <rect x={x} y={36} width={124} height={78} rx={3} className={top ? "fill-accent/10 stroke-accent" : "fill-surface stroke-border"} />
-              <Label x={x + 10} y={56} className="fill-text">{`split ${i}`}</Label>
-              <Label x={x + 10} y={76}>{`m = ${p.m.toFixed(1)}`}</Label>
-              <Label x={x + 10} y={92}>{`l = ${p.l.toFixed(1)}`}</Label>
-              <Label x={x + 10} y={108}>acc[64]</Label>
-            </motion.g>
-            <motion.g {...on(0.42 + i * 0.05)}>
-              <Label x={x + 62} y={148} anchor="middle" className="fill-accent">
-                {`× ${Math.exp(p.m - M).toFixed(2)}`}
-              </Label>
-              <line x1={x + 62} y1={158} x2={280} y2={250} className="stroke-accent" />
-            </motion.g>
-          </g>
-        );
-      })}
-      <motion.g {...on(0.28)}>
-        <Label x={20} y={186} className="fill-text">
-          {`M = max of the m values = ${M.toFixed(1)}`}
-        </Label>
-        <Label x={20} y={204}>each split is scaled by exp(m − M)</Label>
-      </motion.g>
-      <motion.g {...on(0.66)}>
-        <circle cx={280} cy={262} r={12} className="fill-accent" />
-        <Label x={300} y={266} className="fill-text">
-          added in split order
-        </Label>
-      </motion.g>
-      <motion.g {...on(0.76)}>
-        <Label x={20} y={312} className="fill-text">
-          out = Σ exp(mᵢ − M) accᵢ / Σ exp(mᵢ − M) lᵢ
-        </Label>
-        <Label x={20} y={334}>the same answer as one pass over the whole context,</Label>
-        <Label x={20} y={352}>and the same bits every run, because the order is fixed</Label>
-      </motion.g>
     </Frame>
   );
 }
