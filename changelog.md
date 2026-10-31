@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## tools/sample-bench
 
+- Record the sampling bench in `docs/profiling.md` ("Sampling") with one Nsight Compute launch: top-k by binary search is about 2x faster than sorting the rows alone, but temperature-only sampling takes 425 us because the Gumbel noise is computed in double precision for every token (FP64 pipe busy 84% of the cycles). The kernel is unchanged; a float version measured in a throwaway copy is written up for Joe to decide. (Part A)
 - Add `scripts/sample_bench.cu`, which times `greedy` and `sample` (temperature, top-k, top-p, both) at 1 and 16 rows of a 32,000-token vocabulary against a full `cub::DeviceSegmentedRadixSort` of the rows, a lower bound for a sort-based top-p. (Part A)
 
 ## docs/write-kv-profile

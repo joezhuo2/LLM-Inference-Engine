@@ -1415,3 +1415,9 @@
 - **roving tabindex: one Tab stop per widget, arrow keys inside it** => 
 - **`:focus-visible` versus `:focus`: why a mouse click does not draw the focus ring** => 
 - **skip links and `tabIndex={-1}`: moving focus to an element that is not normally focusable** => 
+
+## Sampling Bench (Branch 65)
+- **FP64 throughput on consumer GPUs: why a double-precision `log` can dominate a kernel** => 
+- **segmented radix sort (`cub::DeviceSegmentedRadixSort`): sorting many rows in one call** => 
+- **a lower-bound baseline: timing only the first stage of the alternative** => 
+- **pipe utilization in Nsight Compute (`sm__pipe_fp64_cycles_active`)** => 
