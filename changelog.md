@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/layer-map-embedding
 
+- Add the two ends of the decode step to the layer map on `/kernels` as collapsed cards: "embedding lookup" before the first layer and "final norm + LM head" after the last, each with its time and share of the step for the chosen batch (from `results/decode_step*.md`). Opening one eases it open over 0.7 s and shows the formula, a small animation (token ids picking rows of the embedding table; the last token normalized, multiplied into 32,000 logits and handed to the sampler), a paragraph and links to the source, and for the LM head to the GEMM story. The embedding kernel gets no story page of its own, as decided. (Part A)
 - Draw "→" as "->" on the social cards: the JetBrains Mono latin subset they embed has no arrow, so the attention v2 card made Satori fetch a fallback font from Google at build time, which fails offline and printed a build warning. (Part A)
 
 ## web/kernel-attention-v2
