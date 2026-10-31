@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/kernel-sampling
 
+- Add the sampling story, `/kernels/sampling` (tenth card on `/kernels`), reversing the earlier decision to leave sampling out: 8 steps on the block argmax, Gumbel-max (a live in-browser simulation whose picks settle onto the softmax; 2,000 precomputed draws with reduced motion), Philox noise keyed by seed and offset, top-k and top-p as binary searches over 32-bit keys, the measured cost against a full sort, the double-precision log behind the slow temperature-only mode, and a row picker over the bench table. Timeline entries for the sampler are tagged Joe, following git, with the bench tagged as drafted with Claude. (Part A)
 - Add the Nsight Compute launch and the throwaway `gumbel()` variants of the sampling bench to `docs/profiling.md` ("Sampling") as two tables, so the site reads them instead of the prose: FP64 pipe busy 84% for 13% of the instructions, and the float `u` with `__logf` copy at 64.5 to 95.5 us against 467.9 to 475.2 us for the unchanged kernel in the same session. (Part A)
 
 ## web/layer-map-embedding

@@ -1436,3 +1436,10 @@
 - **embedding lookup as a gather: why it is a copy, not a matrix multiply** => 
 - **why only the last token of a prompt goes through the LM head** => 
 - **`aria-expanded` and `aria-controls` on a disclosure button** => 
+
+## Sampling Page (Branch 69)
+- **the Gumbel-max trick: why argmax(logits / T + Gumbel noise) is a sample from the softmax** => 
+- **counter-based random numbers (Philox): noise as a pure function of (seed, offset)** => 
+- **order-preserving float to integer keys: flipping the bits of negative floats** => 
+- **top-k and top-p by binary search over a threshold instead of a sort** => 
+- **chi-square goodness of fit: testing a sampler against the distribution it should follow** => 
