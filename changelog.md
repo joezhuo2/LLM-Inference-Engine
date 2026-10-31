@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/kernel-attention-v2
 
+- Add the attention v1 to v2 story, `/kernels/attention-v2` (ninth card on `/kernels`): 7 steps on v1's three passes with a quarter of the threads busy in the last one, the context cap (a host check at 2,048 tokens, not full shared memory, drawn against the 48 KB limit), v2's online softmax over constant shared memory, eight lanes per key, the Nsight Compute before and after, the decode step (883 to 272 us of attention, batch 16 1,074.8 to 1,386.2 tokens/s) and a v1/v2 picker over the bench table. Numbers come from `docs/profiling.md` (Branches 37, 38 and the new shared-memory table). (Part A)
 - Record the dynamic shared memory per block of attention v1 and v2 in `docs/profiling.md` ("Attention shared memory"), computed from the launch code: v1 grows by 4 bytes per token (9,344 bytes at its 2,048-token cap, 19% of the 48 KB default), v2 stays at 3,456 bytes. v1's limit is the `kMaxContext` check in the host code, not shared memory running out, which the section says next to the older wording in "Paged attention v2". (Part A)
 
 ## web/kernel-split-attention
