@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/dead-ends
+
+- Add `/kernels/dead-ends`, "what didn't work", the last card on `/kernels`: ten changes that did not do what they were meant to, from `docs/profiling.md`, the changelog and the PRs, each with what was tried, what happened, what was kept, a measured metric where one exists (read from the profiling tables at build time, marked where only prose exists) and a link to its source and kernel page. Filters by kind (slower than what it replaced, broke a correctness rule, helped then stopped helping, measured right but read wrong) follow the radio group pattern, and entries ease in and out over 0.5 s. The page has its own social card. (Part A)
+
 ## web/kernel-sampling
 
 - Add the sampling story, `/kernels/sampling` (tenth card on `/kernels`), reversing the earlier decision to leave sampling out: 8 steps on the block argmax, Gumbel-max (a live in-browser simulation whose picks settle onto the softmax; 2,000 precomputed draws with reduced motion), Philox noise keyed by seed and offset, top-k and top-p as binary searches over 32-bit keys, the measured cost against a full sort, the double-precision log behind the slow temperature-only mode, and a row picker over the bench table. Timeline entries for the sampler are tagged Joe, following git, with the bench tagged as drafted with Claude. (Part A)

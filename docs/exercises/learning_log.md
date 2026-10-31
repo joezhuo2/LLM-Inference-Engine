@@ -1443,3 +1443,8 @@
 - **order-preserving float to integer keys: flipping the bits of negative floats** => 
 - **top-k and top-p by binary search over a threshold instead of a sort** => 
 - **chi-square goodness of fit: testing a sampler against the distribution it should follow** => 
+
+## Dead Ends Page (Branch 70)
+- **latency bound versus bandwidth bound: why fewer bytes did not make the fused kernel faster** => 
+- **a dependent chain of global loads: why serial work per thread hides nothing** => 
+- **reading a profile before explaining it: the CPU-bound story the timeline disproved** => 
