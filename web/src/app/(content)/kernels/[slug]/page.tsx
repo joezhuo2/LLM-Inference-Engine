@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { KernelTimeline } from "@/components/kernels/kernel-timeline";
+import { StoryNav } from "@/components/kernels/story-nav";
 import { KernelStoryView } from "@/components/kernels/story-view";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
@@ -164,6 +165,8 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
             ))}
           </div>
         </Section>
+
+        <StoryNav slug={story.slug} />
       </article>
     </PageTransition>
   );

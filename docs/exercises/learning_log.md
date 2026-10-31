@@ -1448,3 +1448,6 @@
 - **latency bound versus bandwidth bound: why fewer bytes did not make the fused kernel faster** => 
 - **a dependent chain of global loads: why serial work per thread hides nothing** => 
 - **reading a profile before explaining it: the CPU-bound story the timeline disproved** => 
+
+## Story Navigation (Branch 71)
+- **rel="prev" and rel="next" on links: telling browsers and crawlers the reading order** => 

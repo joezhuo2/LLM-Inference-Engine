@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DeadEndList } from "@/components/kernels/dead-end-list";
+import { StoryNav } from "@/components/kernels/story-nav";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
 import { deadEnds } from "@/content/dead-ends";
@@ -32,6 +33,7 @@ export default function DeadEnds() {
           </p>
         </header>
         <DeadEndList />
+        <StoryNav slug="dead-ends" />
       </article>
     </PageTransition>
   );
