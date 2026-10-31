@@ -4,13 +4,15 @@ import Link from "next/link";
 import { measured } from "@/content/kernels/types";
 import { traces } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
-import { BlocksFigure, LanesFigure, OnlineSoftmaxFigure, OverviewFigure, SplitFigure, V1Figure } from "./figures";
+import { V2LinkFigure } from "../attention-v2/figures";
+import { BlocksFigure, OverviewFigure, SplitFigure } from "./figures";
 
 const split = "split-context-attention-branch-40";
-const v2Section = "paged-attention-v2-branch-37";
 const at2048 = { rows: "1", context: "2,048" };
-const v1At2048 = measured(v2Section, at2048, "v1 (us)");
-const v2At2048 = measured(v2Section, at2048, "v2 (us)");
+const wired = "paged-attention-v2-in-the-forward-pass-branch-38";
+const attentionRow = { "": "attention per decode step (eager profile, context at most 64)" };
+const stepV1 = measured(wired, attentionRow, "before (e07c022)");
+const stepV2 = measured(wired, attentionRow, "after (79c1f91)");
 const v2Loop = measured(split, at2048, "v2");
 const split8 = measured(split, at2048, "8");
 const poolBlocks = Number((traces.find((t) => t.meta.prompts && t.meta.prompts !== "random") ?? traces[0])?.meta.kv_blocks);
@@ -43,51 +45,22 @@ const steps: StoryStep[] = [
     ),
   },
   {
-    id: "v1",
-    title: "v1: every score in shared memory",
-    body: (
-      <>
-        <p>
-          One thread block per row and head. It writes a score for every token into shared memory, finds the maximum,
-          takes the exponentials and their sum, then multiplies by the values: three passes.
-        </p>
-        <p>
-          Shared memory has a fixed size, so the context does too: v1 stops at 2,048 tokens. One row at 2,048 tokens:{" "}
-          <span className="font-mono text-text">{v1At2048} µs</span>.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "v2",
-    title: "v2: one chunk at a time",
+    title: "v1 → v2",
     body: (
       <>
         <p>
-          The online softmax keeps three things between chunks: the largest score so far, the sum of exponentials, and
-          the weighted values. When a chunk brings a larger score, the old sum and values are scaled down by
-          exp(m_old − m_new) and the new chunk is added.
+          The first version kept every score of the context in shared memory and made three passes over it, with a
+          context cap of 2,048 tokens. The second streams keys in chunks with an online softmax, shares each key between
+          eight lanes, and runs 8,192 tokens.
         </p>
         <p>
-          The answer is the same as the three-pass version, but only one 256-token chunk is ever in shared memory, so
-          contexts of 8,192 tokens run.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "lanes",
-    title: "eight lanes per key",
-    body: (
-      <>
-        <p>
-          In v1 each thread computed a whole dot product alone. In v2 a group of 8 lanes shares one key: at every step
-          they read 8 neighbouring dimensions together, one 16-byte read, and three shuffles add their 8 partial sums.
-        </p>
-        <p>
-          With the softmax change and every thread helping with the values, one row at 2,048 tokens went from{" "}
-          <span className="font-mono text-text">{v1At2048}</span> to{" "}
-          <span className="font-mono text-accent">{v2At2048} µs</span>.
+          Attention per decode step: <span className="font-mono text-text">{stepV1}</span> to{" "}
+          <span className="font-mono text-accent">{stepV2} µs</span>. The whole before and after is its own story:{" "}
+          <Link href="/kernels/attention-v2" className="link-underline text-accent">
+            attention v1 → v2
+          </Link>
+          .
         </p>
       </>
     ),
@@ -119,9 +92,7 @@ const captions = [
   Number.isFinite(poolBlocks) && poolBlocks > 0
     ? `example block table; the pool held ${poolBlocks.toLocaleString("en-US")} blocks in the recorded run`
     : "example block table",
-  `one cell of the context = 64 tokens; ${v1At2048} µs for one row at 2,048 tokens`,
-  "example scores; m only ever rises, and every rise rescales what came before",
-  "lane j reads dims j, j + 8, j + 16 … so each step's 8 reads are side by side in memory",
+  `${stepV1} → ${stepV2} µs per decode step (eager profile, contexts of at most 64 tokens), from docs/profiling.md`,
   `${v2Loop} µs → ${split8} µs, one row at 2,048 tokens, from docs/profiling.md; the busy SMs are an illustration`,
 ];
 
@@ -137,11 +108,7 @@ export function PagedAttentionStory() {
           case 1:
             return <BlocksFigure />;
           case 2:
-            return <V1Figure />;
-          case 3:
-            return <OnlineSoftmaxFigure />;
-          case 4:
-            return <LanesFigure />;
+            return <V2LinkFigure v1={stepV1} v2={stepV2} />;
           default:
             return <SplitFigure v2={v2Loop} split={split8} />;
         }
