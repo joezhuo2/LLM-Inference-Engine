@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## tools/sample-bench
+
+- Add `scripts/sample_bench.cu`, which times `greedy` and `sample` (temperature, top-k, top-p, both) at 1 and 16 rows of a 32,000-token vocabulary against a full `cub::DeviceSegmentedRadixSort` of the rows, a lower bound for a sort-based top-p. (Part A)
+
 ## docs/write-kv-profile
 
 - Measure `write_kv` with Nsight Compute in the real forward pass and record it in `docs/profiling.md` ("write_kv") and the kernel table of `docs/results.md`: 3.8 us per launch at 1 and 16 rows, 4.3 us at 64 and 9.3 us at 512, 0.4% of a batch-1 step in Nsight Systems (Nsight Compute flushes caches and locks clocks, so it reads higher). It has one version, so there is no before and after. README goal 4 moves from "partly" to "met". (Part A)
