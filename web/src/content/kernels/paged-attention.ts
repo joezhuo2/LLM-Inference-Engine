@@ -3,10 +3,6 @@ import { type KernelStory, measured } from "./types";
 const v2 = "paged-attention-v2-branch-37";
 const v2Wired = "paged-attention-v2-in-the-forward-pass-branch-38";
 const split = "split-context-attention-branch-40";
-const splitWired = "split-attention-in-the-forward-pass-branch-42";
-const splitGraphs = "split-attention-in-cuda-graphs-branch-43";
-
-const longPrompt = { "max batch": "1", prompt: "1,984" };
 
 export const pagedAttention: KernelStory = {
   slug: "paged-attention",
@@ -70,12 +66,6 @@ export const pagedAttention: KernelStory = {
       table: 0,
       caption: "split against v2, µs per call including the merge kernel",
       command: "/tmp/pa_bench",
-    },
-    {
-      section: splitGraphs,
-      table: 0,
-      caption: "ms per token (TPOT p50, two runs) with one CUDA graph per split count, 64 output tokens",
-      command: "build/release/bin/engine bench --model models/tinyllama --max-batch 1 --num-requests 1 --prompt-len 1984 --output-len 64 --warmup 1 --graphs --out /tmp/split.csv",
     },
   ],
   timeline: [
@@ -183,44 +173,6 @@ export const pagedAttention: KernelStory = {
         bars: [
           { label: "v2", value: measured(split, { rows: "1", context: "2,048" }, "v2") },
           { label: "8 splits", value: measured(split, { rows: "1", context: "2,048" }, "8"), highlight: true },
-        ],
-      },
-    },
-    {
-      date: "Oct 24",
-      prs: [52],
-      branch: "runtime/wire-attention-split",
-      version: "split",
-      author: "claude",
-      title: "Choosing the split count",
-      text: "attention_splits splits only when there are 1 to 4 rows and a context of 512 tokens or more, aiming for about 256 blocks with at least 256 tokens per split. The runner owns a 66 KB scratch buffer.",
-      metric: {
-        kind: "bars",
-        label: "ms per token at a 1,984-token prompt, batch 1, eager",
-        unit: "ms",
-        digits: 1,
-        bars: [
-          { label: "v2", value: measured(splitWired, longPrompt, "v2 eager") },
-          { label: "split", value: measured(splitWired, longPrompt, "split eager"), highlight: true },
-        ],
-      },
-    },
-    {
-      date: "Oct 25",
-      prs: [53],
-      branch: "runtime/graphs-split-attention",
-      version: "split",
-      author: "claude",
-      title: "One CUDA graph per split count",
-      text: "Graphs were captured on an empty dummy batch, so every replay ran v2. Now each batch size gets one graph per split count: 11 graphs instead of 5. Drafted at Joe's request.",
-      metric: {
-        kind: "bars",
-        label: "ms per token at a 1,984-token prompt, batch 1, CUDA Graphs",
-        unit: "ms",
-        digits: 1,
-        bars: [
-          { label: "before", value: measured(splitGraphs, longPrompt, "main graphs") },
-          { label: "after", value: measured(splitGraphs, longPrompt, "this branch graphs"), highlight: true },
         ],
       },
     },
