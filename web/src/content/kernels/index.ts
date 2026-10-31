@@ -1,4 +1,5 @@
 import { addRmsnorm } from "./add-rmsnorm";
+import { attentionV2 } from "./attention-v2";
 import { cudaGraphs } from "./cuda-graphs";
 import { gemm } from "./gemm";
 import { pagedAttention } from "./paged-attention";
@@ -8,7 +9,7 @@ import { splitAttention } from "./split-attention";
 import { swiglu } from "./swiglu";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention];
+export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);

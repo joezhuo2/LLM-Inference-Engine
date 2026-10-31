@@ -2,6 +2,7 @@
 
 import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PagedAttentionStory } from "./attention/story";
+import { AttentionV2Story } from "./attention-v2/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
 import { PagedKvStory } from "./paged-kv/story";
@@ -27,6 +28,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <PagedKvStory />;
     case "split-attention":
       return <SplitAttentionStory />;
+    case "attention-v2":
+      return <AttentionV2Story />;
     default:
       return null;
   }
