@@ -10,6 +10,7 @@ import { emptyModel, Feed } from "./feed";
 import { ReplayPlayer } from "./replay-player";
 import { Tiles } from "./tiles";
 import { KvPool, poolWindow } from "./kv-pool";
+import { Requests } from "./requests";
 import { Timeline } from "./timeline";
 
 const replayWindows = { rate: "last 1 s of the run", latency: "requests finished so far" };
@@ -103,6 +104,11 @@ export function Dashboard({ label }: { label: string }) {
         <Panel title="KV block pool" legend={<span className="text-muted">a color per request</span>}>
           <div className="h-72 lg:h-[22rem]">
             <KvPool feed={feed} minWindow={poolWindow(player?.highWater ?? 0)} />
+          </div>
+        </Panel>
+        <Panel title="requests" legend={<span className="text-muted">one lane per color</span>} className="md:col-span-2 lg:col-span-1">
+          <div className="lg:h-[22rem]">
+            <Requests feed={feed} total={trace?.requests.length ?? 0} />
           </div>
         </Panel>
       </div>

@@ -296,6 +296,10 @@ export class DashModel {
     return Math.max(0, Math.min(this.blockSize, seq.length - logical * this.blockSize));
   }
 
+  occupant(slot: number): number | null {
+    return this.slotOwner[slot] ?? null;
+  }
+
   liveSeqs(): Seq[] {
     return [...this.seqs.values()].filter((s) => s.running);
   }
