@@ -27,6 +27,7 @@ target_link_libraries(engine_core PUBLIC nlohmann_json::nlohmann_json PRIVATE en
 
 add_library(engine_server
   server/chat_api.cpp
+  server/cors.cpp
 )
 target_link_libraries(engine_server PUBLIC engine_core)
 

@@ -1464,3 +1464,7 @@
 - **OpenAI chat completions: messages, roles, finish_reason and usage** => 
 - **Server-Sent Events: the data: and event: lines and the blank line that ends an event** => 
 - **HTTP 400 versus 500: whose fault an error is** => 
+- **CORS: the Origin header, Access-Control-Allow-Origin and why the browser, not the server, enforces it** => 
+- **preflight requests: OPTIONS, Access-Control-Request-Method and Access-Control-Request-Headers** => 
+- **Private Network Access: why Chrome asks before a public page calls localhost** => 
+- **Vary: Origin and caches** => 
