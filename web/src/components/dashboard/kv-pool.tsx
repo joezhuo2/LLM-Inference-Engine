@@ -74,7 +74,7 @@ export function KvPool({ feed, minWindow }: { feed: Feed; minWindow: number }) {
     geoRef.current = g;
     const count = Math.ceil(g.blocks / g.per);
     if (cells.current.length !== count) cells.current = Array.from({ length: count }, () => ({ alpha: 0, fill: 0, slot: -1, seq: FREE }));
-    const k = reduced || dt === 0 ? 1 : 1 - Math.exp(-dt / 0.22);
+    const k = reduced ? 1 : 1 - Math.exp(-dt / 0.22);
     const focus = feed.focus();
     const hovered = hoverRef.current?.cell;
     let moving = false;

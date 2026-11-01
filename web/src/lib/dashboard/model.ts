@@ -40,6 +40,7 @@ export class DashModel {
   private readonly prompts: Map<number, number> | undefined;
   private readonly keepSteps: number;
   private readonly slotOwner: (number | null)[];
+  private readonly slotLast: (number | null)[];
   private lowestFree = 1;
   private grown: Seq[] = [];
   private current = -1;
@@ -54,6 +55,7 @@ export class DashModel {
     this.owner = new Int32Array(totalBlocks).fill(FREE);
     this.owner[0] = RESERVED;
     this.slotOwner = Array.from({ length: slots }, () => null);
+    this.slotLast = Array.from({ length: slots }, () => null);
   }
 
   get last(): TraceStep | undefined {
@@ -136,7 +138,10 @@ export class DashModel {
     seq.running = true;
     if (seq.slot < 0) {
       const slot = this.slotOwner.indexOf(null);
-      if (slot >= 0) this.slotOwner[slot] = seq.id;
+      if (slot >= 0) {
+        this.slotOwner[slot] = seq.id;
+        this.slotLast[slot] = seq.id;
+      }
       seq.slot = slot;
     }
   }
@@ -311,6 +316,10 @@ export class DashModel {
 
   occupant(slot: number): number | null {
     return this.slotOwner[slot] ?? null;
+  }
+
+  lastOccupant(slot: number): number | null {
+    return this.slotLast[slot] ?? null;
   }
 
   liveSeqs(): Seq[] {

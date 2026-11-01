@@ -58,7 +58,7 @@ export function ConnectBar({ live, status }: { live: LiveConnection | null; stat
         if (busy) live?.stop();
         else live?.connect(url);
       }}
-      className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+      className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-2 sm:basis-auto"
     >
       <input
         value={url}

@@ -65,7 +65,7 @@ export function useFeedCanvas(feed: Feed, draw: (paint: Paint) => boolean, fontP
     const frame = (now: number) => {
       raf = 0;
       if (!width || !height) return;
-      const dt = last ? Math.min((now - last) / 1000, 0.1) : 0;
+      const dt = last ? Math.min((now - last) / 1000, 0.1) : 1 / 60;
       last = now;
       ctx.clearRect(0, 0, width, height);
       if (drawRef.current({ ctx, width, height, colors, dt, label })) raf = requestAnimationFrame(frame);

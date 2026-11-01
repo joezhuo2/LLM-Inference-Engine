@@ -42,7 +42,7 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
   const { canvasRef, kick } = useFeedCanvas(feed, ({ ctx, width, height, colors, dt, label }: Paint) => {
     const model = feed.model;
     const goal = target();
-    const jump = reduced || feed.playing || Math.abs(goal - shown.current) > 60 || dt === 0;
+    const jump = reduced || feed.playing || Math.abs(goal - shown.current) > 60;
     shown.current = jump ? goal : shown.current + (goal - shown.current) * (1 - Math.exp(-dt / 0.14));
     if (Math.abs(goal - shown.current) < 0.01) shown.current = goal;
     const strip = stripWidth(maxBatch);
@@ -84,7 +84,7 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
         if (k <= model.lastIndex) path(colors.warn, true).rect(barX, y + BAR / 2, barW, 1);
         continue;
       }
-      if (k % LABEL_EVERY === 0) label(String(k), left - 6, y + BAR / 2, colors.muted, "right");
+      if (k % LABEL_EVERY === 0 && y > TOP + 2) label(String(k), left - 6, y + BAR / 2, colors.muted, "right");
       const ms = (step.end_s - step.start_s) * 1e3 * (done ? 1 : Math.min(1, feed.progress));
       const dim = focus !== null && !step.seqs.includes(focus);
       path(step.kind === "prefill" ? colors.prefill : colors.decode, dim).roundRect(barX, y, Math.max(1, Math.min(ms, AXIS_MS) * pxPerMs), BAR, [0, 2, 2, 0]);

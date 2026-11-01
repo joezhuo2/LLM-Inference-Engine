@@ -37,10 +37,7 @@ export function Requests({ feed, total }: { feed: Feed; total: number }) {
       const model = feed.model;
       let changed = false;
       for (let slot = 0; slot < SLOTS; slot++) {
-        const now = model.occupant(slot);
-        let id = laneIds.current[slot];
-        if (now !== null && now !== id) id = now;
-        if (id !== null && !model.seqs.has(id)) id = null;
+        const id = model.lastOccupant(slot);
         if (id !== laneIds.current[slot]) {
           laneIds.current[slot] = id;
           changed = true;
