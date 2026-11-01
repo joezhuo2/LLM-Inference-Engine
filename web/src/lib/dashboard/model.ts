@@ -11,6 +11,7 @@ export type Seq = {
   length: number;
   exact: boolean;
   blocks: number[];
+  since: number[];
   outputs: string[];
   text: string;
   admitted: number;
@@ -41,6 +42,7 @@ export class DashModel {
   private readonly slotOwner: (number | null)[];
   private lowestFree = 1;
   private grown: Seq[] = [];
+  private current = -1;
   private synced = false;
 
   constructor({ totalBlocks, blockSize, slots, prompts, keepSteps = Infinity }: ModelOptions) {
@@ -76,6 +78,7 @@ export class DashModel {
       this.firstIndex = step.index;
       this.synced = step.index === 0;
     }
+    this.current = step.index;
     const fresh = step.kind === "prefill" ? this.prefill(step) : this.decode(step);
     step.seqs.forEach((id, i) => this.addToken(this.seqs.get(id)!, step.tokens[i]?.text ?? ""));
     this.record(step);
@@ -109,7 +112,7 @@ export class DashModel {
     let seq = this.seqs.get(id);
     if (!seq) {
       const prompt = this.prompts?.get(id) ?? null;
-      seq = { id, slot: -1, prompt, length: prompt ?? 0, exact: prompt !== null, blocks: [], outputs: [], text: "", admitted: -1, finished: -1, preemptions: 0, running: false };
+      seq = { id, slot: -1, prompt, length: prompt ?? 0, exact: prompt !== null, blocks: [], since: [], outputs: [], text: "", admitted: -1, finished: -1, preemptions: 0, running: false };
       this.seqs.set(id, seq);
     }
     return seq;
@@ -213,6 +216,7 @@ export class DashModel {
     for (const seq of [...this.grown, ...others]) {
       if (count === 0) return;
       this.freeBlock(seq.blocks.pop()!);
+      seq.since.pop();
       seq.exact = false;
       seq.length = Math.min(seq.length, seq.blocks.length * this.blockSize);
       count--;
@@ -256,7 +260,9 @@ export class DashModel {
 
   private take(seq: Seq) {
     const id = this.takeBlock(seq.id);
-    if (id >= 0) seq.blocks.push(id);
+    if (id < 0) return;
+    seq.blocks.push(id);
+    seq.since.push(this.current);
   }
 
   private takeUnknown() {
@@ -272,6 +278,7 @@ export class DashModel {
   private release(seq: Seq) {
     for (const id of seq.blocks) this.freeBlock(id);
     seq.blocks = [];
+    seq.since = [];
   }
 
   private freeUnknown(count: number): number {

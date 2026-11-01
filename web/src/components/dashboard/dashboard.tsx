@@ -9,6 +9,7 @@ import { type Trace, useTrace } from "@/lib/trace";
 import { emptyModel, Feed } from "./feed";
 import { ReplayPlayer } from "./replay-player";
 import { Tiles } from "./tiles";
+import { KvPool, poolWindow } from "./kv-pool";
 import { Timeline } from "./timeline";
 
 const replayWindows = { rate: "last 1 s of the run", latency: "requests finished so far" };
@@ -75,7 +76,7 @@ export function Dashboard({ label }: { label: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [feed] = useState(() => new Feed(emptyModel()));
   const trace = useTrace();
-  const { tiles } = useReplay(trace, feed, rootRef);
+  const { player, tiles } = useReplay(trace, feed, rootRef);
   const maxBatch = Number(trace?.meta.max_batch ?? 16);
 
   return (
@@ -97,6 +98,11 @@ export function Dashboard({ label }: { label: string }) {
         >
           <div className="h-72 lg:h-[22rem]">
             <Timeline feed={feed} maxBatch={maxBatch} />
+          </div>
+        </Panel>
+        <Panel title="KV block pool" legend={<span className="text-muted">a color per request</span>}>
+          <div className="h-72 lg:h-[22rem]">
+            <KvPool feed={feed} minWindow={poolWindow(player?.highWater ?? 0)} />
           </div>
         </Panel>
       </div>

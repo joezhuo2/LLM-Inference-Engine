@@ -17,14 +17,14 @@ test("with prompt lengths the model hands out the same blocks as the build-time 
   const m = model(trace, true);
   const held = new Map();
   for (const s of trace.steps) {
-    for (const id of s.finished) held.set(id, [...(m.seqs.get(id)?.blocks ?? [])]);
+    const table = (seq) => seq.blocks.map((b, j) => [b, seq.since[j]]);
     m.apply(s);
-    for (const seq of m.seqs.values()) if (seq.running) held.set(seq.id, [...seq.blocks]);
+    for (const seq of m.seqs.values()) if (seq.running) held.set(seq.id, table(seq));
     assert.equal(m.free(), s.free_blocks, `step ${s.index}`);
     assert.equal(m.unknown, 0);
   }
   const kv = replayKv(trace, "t.json");
-  for (const r of kv.requests) assert.deepEqual(held.get(r.id), r.blocks.map((b) => b.id), `request ${r.id}`);
+  for (const r of kv.requests) assert.deepEqual(held.get(r.id), r.blocks.map((b) => [b.id, b.step]), `request ${r.id}`);
   assert.equal(m.missed, 0);
   assert.equal(m.highWater, kv.max_block);
 });

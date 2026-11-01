@@ -1468,3 +1468,4 @@
 - **IntersectionObserver and visibilitychange: stopping work nobody can see** => 
 - **devicePixelRatio: sizing a canvas backing store for sharp lines** => 
 - **exponential smoothing toward a target: 1 - exp(-dt / tau) per frame** => 
+- **focus plus context: a zoomed view next to an overview bar** => 

@@ -3,7 +3,7 @@ import type { TraceStep } from "@/lib/trace";
 
 export const SLOTS = 8;
 
-export type Colors = { text: string; muted: string; border: string; warn: string; bg: string; surface: string; baseline: string; prefill: string; decode: string; mono: string; slots: string[] };
+export type Colors = { text: string; muted: string; border: string; warn: string; bg: string; surface: string; baseline: string; accent: string; prefill: string; decode: string; mono: string; slots: string[] };
 
 export function readColors(): Colors {
   const s = getComputedStyle(document.documentElement);
@@ -16,6 +16,7 @@ export function readColors(): Colors {
     bg: v("--bg"),
     surface: v("--surface"),
     baseline: v("--baseline"),
+    accent: v("--accent"),
     prefill: v("--series-2"),
     decode: v("--series-1"),
     mono: v("--font-jetbrains") || "monospace",
@@ -34,6 +35,7 @@ export class Feed {
   selected: number | null = null;
   mine: number | null = null;
   playing = false;
+  live = false;
   version = 0;
   private listeners = new Set<() => void>();
 
