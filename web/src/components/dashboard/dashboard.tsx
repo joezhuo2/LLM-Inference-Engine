@@ -9,6 +9,7 @@ import { type Trace, useTrace } from "@/lib/trace";
 import { emptyModel, Feed } from "./feed";
 import { ReplayPlayer } from "./replay-player";
 import { Tiles } from "./tiles";
+import { Controls } from "./controls";
 import { KvPool, poolWindow } from "./kv-pool";
 import { Requests } from "./requests";
 import { Timeline } from "./timeline";
@@ -97,21 +98,22 @@ export function Dashboard({ label }: { label: string }) {
             </span>
           }
         >
-          <div className="h-72 lg:h-[22rem]">
+          <div className="h-72 lg:h-[20rem]">
             <Timeline feed={feed} maxBatch={maxBatch} />
           </div>
         </Panel>
         <Panel title="KV block pool" legend={<span className="text-muted">a color per request</span>}>
-          <div className="h-72 lg:h-[22rem]">
+          <div className="h-72 lg:h-[20rem]">
             <KvPool feed={feed} minWindow={poolWindow(player?.highWater ?? 0)} />
           </div>
         </Panel>
         <Panel title="requests" legend={<span className="text-muted">one lane per color</span>} className="md:col-span-2 lg:col-span-1">
-          <div className="lg:h-[22rem]">
+          <div className="lg:h-[20rem]">
             <Requests feed={feed} total={trace?.requests.length ?? 0} />
           </div>
         </Panel>
       </div>
+      <Controls player={player} feed={feed} />
     </div>
   );
 }

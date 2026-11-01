@@ -18,9 +18,7 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <header className="space-y-2">
         <PageTitle text="dashboard" />
-        <p className="max-w-3xl text-muted">
-          The engine serving requests, one scheduler step at a time: which sequences ran in each step, which KV cache blocks they held, and what they wrote. It plays a recorded run, or connects to an engine running on your machine.
-        </p>
+        <p className="max-w-3xl text-muted">The engine serving requests one scheduler step at a time: who ran, which KV blocks they held, what they wrote.</p>
       </header>
       <Dashboard label={recordingLabel()} />
     </div>

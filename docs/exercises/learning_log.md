@@ -1470,3 +1470,4 @@
 - **exponential smoothing toward a target: 1 - exp(-dt / tau) per frame** => 
 - **focus plus context: a zoomed view next to an overview bar** => 
 - **`direction: rtl` with `<bdi>`: an ellipsis at the start so the newest text stays visible** => 
+- **controlled versus uncontrolled inputs: setting a range input imperatively while it plays** => 
