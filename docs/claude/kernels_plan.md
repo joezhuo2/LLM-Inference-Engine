@@ -90,3 +90,16 @@ The landing hero's `Scramble` (letters, digits and symbols resolving left to rig
 - Story: a client component in `web/src/components/kernels/<slug>/story.tsx` passing steps, captions and a `figure(step)` function to `StickyStory`, registered in `story-view.tsx`. Figures are SVG (viewBox 560 x 400, aspect 14/10) using `useLoop(seconds)` from `loop.ts`: `on(start, end, still)` fades an element in a time window of the loop, `grow(start, end, axis)` scales a bar from its edge, `pulse(offset)`; with reduced motion they show `still` frames. Label illustrations as illustrations in the caption.
 - Shared pieces (branch 55): `Frame`/`Label` in `components/kernels/frame.tsx`, `Toggle` in `toggle.tsx`, and `useLoop().move(start, end, dx, dy)` for boxes sliding between two points.
 - Checks: `~/.cache/llmie-web/cdp-stepshot.mjs <url> <prefix> <w> <h> <ms>...` (figure-panel shots per step at several times; `THEME=light`, `REDUCED=1`), `~/.cache/llmie-web/cdp-overflow.mjs <url>` (text past the figure edge, outside its box, overlapping), `cdp-steps.mjs` (active step = visible text), `cdp-shot.mjs` (screenshots at scroll positions, 390 px for phones), `cdp-first.mjs` (first figure animates without a detour). Headless Chrome with `--remote-debugging-port=9333` (see `technical_notes.md`).
+
+## Extra pages (Joe, 2026-10-31)
+
+Joe asked for five more story pages and answered the design questions:
+
+| Topic | Decision |
+| --- | --- |
+| Sampling | Reverses the earlier "sampling is out". New page `/kernels/sampling` (Gumbel-max, binary-searched top-k/top-p, why no full vocab sort). Numbers come from a new Part A bench first (`tools/sample-bench`: `scripts/sample_bench.cu`, greedy / Gumbel / top-k / top-p plus a full-sort top-p baseline at vocab 32,000, rows 1 and 16, profiling.md section). Timeline tags the sampler commits "Joe" (git authorship), despite ownership.md listing it as Part B. |
+| Embedding | Not a page: collapsed cards in the layer map before and after the layer (embedding in, final norm + LM head out), expanding in place with formula, row-gather animation, source. |
+| Split attention | Own page `/kernels/split-attention` (few CTAs at batch 1, SM occupancy grid, merge animation, branches 40/42/43 tables). Paged attention is trimmed to one short linking step. |
+| Attention v1 to v2 | Own short page `/kernels/attention-v2` (883 to 272 us, shared-memory cap hit and removed). Paged attention trimmed to one short linking step. |
+| Dead ends | `/kernels/dead-ends`, last card on the index, each entry linking back to its kernel page. Sources: docs/profiling.md AND git history / branch summaries (entries without numbers allowed, marked). |
+| Branches | One per page, each from origin/main, stop for review after each: tools/sample-bench, web/kernel-split-attention, web/kernel-attention-v2, web/layer-map-embedding, web/kernel-sampling, web/dead-ends. |
