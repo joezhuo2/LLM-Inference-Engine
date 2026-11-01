@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const links = [
   { href: "/", label: "overview" },
   { href: "/kernels", label: "kernels" },
+  { href: "/dashboard", label: "dashboard" },
 ];
 
 export function TopBar() {
