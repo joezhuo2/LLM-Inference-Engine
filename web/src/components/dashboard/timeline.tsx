@@ -39,7 +39,7 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
 
   const rowTop = (index: number, height: number) => height - (shown.current - scroll.current - index) * PITCH;
 
-  const { canvasRef, kick } = useFeedCanvas(feed, ({ ctx, width, height, colors, dt }: Paint) => {
+  const { canvasRef, kick } = useFeedCanvas(feed, ({ ctx, width, height, colors, dt, label }: Paint) => {
     const model = feed.model;
     const goal = target();
     const jump = reduced || feed.playing || Math.abs(goal - shown.current) > 60 || dt === 0;
@@ -53,20 +53,13 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
     const pxPerMs = barW / AXIS_MS;
     const focus = feed.focus();
 
-    ctx.font = `10px ${colors.mono}`;
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = colors.muted;
-    ctx.textAlign = "center";
+    ctx.fillStyle = colors.border;
     for (let ms = 0; ms <= AXIS_MS; ms += 5) {
       const x = barX + ms * pxPerMs;
-      ctx.textAlign = ms === 0 ? "left" : ms === AXIS_MS ? "right" : "center";
-      ctx.fillText(ms === 0 ? "0 ms" : String(ms), x, 7);
-      ctx.fillStyle = colors.border;
+      label(ms === 0 ? "0 ms" : String(ms), x, 7, colors.muted, ms === 0 ? "left" : ms === AXIS_MS ? "right" : "center");
       ctx.fillRect(Math.round(x), TOP - 4, 1, height - TOP + 4);
-      ctx.fillStyle = colors.muted;
     }
-    ctx.textAlign = "left";
-    ctx.fillText("batch", stripX, 7);
+    label("batch", stripX, 7, colors.muted);
 
     ctx.save();
     ctx.beginPath();
@@ -75,63 +68,48 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
     const first = Math.max(model.firstIndex, Math.floor(shown.current - scroll.current - (height - TOP) / PITCH) - 1);
     const last = Math.ceil(shown.current - scroll.current);
     const hovered = hoverRef.current?.index;
+    const paths = new Map<string, Path2D>();
+    const path = (color: string, dim: boolean) => {
+      const key = `${dim ? 1 : 0}${color}`;
+      let p = paths.get(key);
+      if (!p) paths.set(key, (p = new Path2D()));
+      return p;
+    };
+    const outlines = new Path2D();
     for (let k = first; k <= last; k++) {
       const y = rowTop(k, height);
       const done = model.step(k);
       const step = done ?? (k === model.lastIndex + 1 ? feed.pending ?? undefined : undefined);
-      if (k % LABEL_EVERY === 0 && step) {
-        ctx.fillStyle = colors.muted;
-        ctx.textAlign = "right";
-        ctx.fillText(String(k), left - 6, y + BAR / 2);
-        ctx.textAlign = "left";
-      }
       if (!step) {
-        if (k <= model.lastIndex) {
-          ctx.fillStyle = colors.warn;
-          ctx.globalAlpha = 0.25;
-          ctx.fillRect(barX, y + BAR / 2, barW, 1);
-          ctx.globalAlpha = 1;
-        }
+        if (k <= model.lastIndex) path(colors.warn, true).rect(barX, y + BAR / 2, barW, 1);
         continue;
       }
-      const missed = model.gaps.get(k);
-      if (missed) {
-        ctx.fillStyle = colors.warn;
-        ctx.textAlign = "left";
-        ctx.fillText(`${missed} missed`, barX + 4, rowTop(k - Math.ceil(missed / 2), height) + BAR / 2);
-      }
-      const ms = done ? (step.end_s - step.start_s) * 1e3 : (step.end_s - step.start_s) * 1e3 * Math.min(1, feed.progress);
+      if (k % LABEL_EVERY === 0) label(String(k), left - 6, y + BAR / 2, colors.muted, "right");
+      const ms = (step.end_s - step.start_s) * 1e3 * (done ? 1 : Math.min(1, feed.progress));
       const dim = focus !== null && !step.seqs.includes(focus);
-      ctx.globalAlpha = dim ? 0.3 : 1;
-      ctx.fillStyle = step.kind === "prefill" ? colors.prefill : colors.decode;
-      const w = Math.max(1, Math.min(ms, AXIS_MS) * pxPerMs);
-      ctx.beginPath();
-      ctx.roundRect(barX, y, w, BAR, [0, 2, 2, 0]);
-      ctx.fill();
-      if (ms > AXIS_MS) {
-        ctx.fillStyle = colors.text;
-        ctx.fillText("»", barX + barW + 2, y + BAR / 2);
-      }
+      path(step.kind === "prefill" ? colors.prefill : colors.decode, dim).roundRect(barX, y, Math.max(1, Math.min(ms, AXIS_MS) * pxPerMs), BAR, [0, 2, 2, 0]);
+      if (ms > AXIS_MS) path(colors.text, false).rect(barX + barW + 3, y, 3, BAR);
       const slots = done ? model.slotsOf(k) : step.seqs.map((id) => model.seqs.get(id)?.slot ?? -1);
-      step.seqs.forEach((id, i) => {
-        if (i >= maxBatch) return;
+      const n = Math.min(maxBatch, step.seqs.length);
+      for (let i = 0; i < n; i++) {
         const slot = slots?.[i] ?? -1;
-        ctx.globalAlpha = dim ? 0.3 : 1;
-        ctx.fillStyle = slot >= 0 ? colors.slots[slot] : colors.baseline;
-        ctx.fillRect(stripX + i * CELL, y, CELL - 1, BAR);
-        if (id === focus) {
-          ctx.globalAlpha = 1;
-          ctx.strokeStyle = colors.text;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(stripX + i * CELL - 0.5, y - 1.5, CELL, BAR + 3);
-        }
-      });
-      ctx.globalAlpha = 1;
-      if (k === hovered) {
-        ctx.strokeStyle = colors.text;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(1.5, y - 1.5, width - 3, BAR + 3);
+        path(slot >= 0 ? colors.slots[slot] : colors.baseline, dim).rect(stripX + i * CELL, y, CELL - 1, BAR);
+        if (step.seqs[i] === focus) outlines.rect(stripX + i * CELL - 0.5, y - 1.5, CELL, BAR + 3);
       }
+      if (k === hovered) outlines.rect(1.5, y - 1.5, width - 3, BAR + 3);
+    }
+    for (const [key, p] of paths) {
+      ctx.globalAlpha = key[0] === "1" ? 0.3 : 1;
+      ctx.fillStyle = key.slice(1);
+      ctx.fill(p);
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = colors.text;
+    ctx.lineWidth = 1;
+    ctx.stroke(outlines);
+    for (const [k, missed] of model.gaps) {
+      if (k < first || k > last + missed) continue;
+      label(`${missed} missed`, barX + 4, rowTop(k - Math.ceil(missed / 2), height) + BAR / 2, colors.warn);
     }
     ctx.restore();
 
@@ -142,7 +120,7 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
       tip.style.transform = y > height / 2 ? `translateY(calc(${Math.round(y - 6)}px - 100%))` : `translateY(${Math.round(y + BAR + 6)}px)`;
     }
     return shown.current !== goal;
-  });
+  }, 10);
 
   useEffect(() => {
     hoverRef.current = hover;

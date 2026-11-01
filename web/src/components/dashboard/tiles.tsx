@@ -1,6 +1,7 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
+import clsx from "clsx";
 import type { Spread, TileValues } from "@/lib/dashboard/stats";
 
 const timing = { duration: 900, easing: "cubic-bezier(0.65, 0, 0.35, 1)" };
@@ -18,9 +19,9 @@ function Num({ value, digits = 0, suffix }: { value: number | null; digits?: num
   );
 }
 
-function Tile({ label, note, children }: { label: string; note: string; children: React.ReactNode }) {
+function Tile({ label, note, children, className }: { label: string; note: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="min-w-0 rounded border border-border bg-surface px-3 py-2.5">
+    <div className={clsx("min-w-0 rounded border border-border bg-surface px-3 py-2.5", className)}>
       <div className="truncate text-muted">{label}</div>
       <div className="mt-1 truncate text-lg tabular-nums text-text sm:text-xl">{children}</div>
       <div className="truncate text-[11px] text-muted">{note}</div>
@@ -58,7 +59,7 @@ export function Tiles({ tiles, windows }: { tiles: TileValues; windows: { rate: 
       <Tile label="TTFT p50 / p99" note={windows.latency}>
         <Pair spread={tiles.ttft} digits={0} />
       </Tile>
-      <Tile label="TPOT p50 / p99" note={windows.latency}>
+      <Tile label="TPOT p50 / p99" note={windows.latency} className="max-sm:col-span-2">
         <Pair spread={tiles.tpot} digits={1} />
       </Tile>
     </section>

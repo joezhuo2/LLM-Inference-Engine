@@ -1477,3 +1477,4 @@
 - **`mode: "no-cors"` and opaque responses: telling a blocked server from a missing one** => 
 - **Server-Sent Events: the event, data and blank-line framing, read from a fetch body stream** => 
 - **AbortController: cancelling a streaming fetch, and the server freeing the request when the connection closes** => 
+- **sprite caching: rasterizing a label once and blitting it with drawImage** => 

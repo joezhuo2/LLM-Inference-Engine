@@ -10,7 +10,8 @@ function recordingLabel(): string {
   if (!t) return "no recorded run in results/traces";
   const date = String(t.meta.date ?? "").slice(0, 10);
   const commit = t.commit ? `, commit ${t.commit}` : "";
-  return `${date} on ${String(t.meta.gpu)}${commit}: ${t.requests} chat requests at ${String(t.meta.request_rate)} per second, up to ${String(t.meta.max_batch)} at once${t.meta.graphs ? ", CUDA Graphs" : ""}`;
+  const gpu = String(t.meta.gpu).replace(/^NVIDIA (GeForce )?/, "");
+  return `${date} on ${gpu}${commit}: ${t.requests} chat requests at ${String(t.meta.request_rate)}/s, batch up to ${String(t.meta.max_batch)}${t.meta.graphs ? ", CUDA Graphs" : ""}`;
 }
 
 export default function DashboardPage() {

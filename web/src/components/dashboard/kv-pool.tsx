@@ -66,7 +66,7 @@ export function KvPool({ feed, minWindow }: { feed: Feed; minWindow: number }) {
   const hoverRef = useRef(hover);
   const textRef = useRef<HTMLParagraphElement>(null);
 
-  const { canvasRef, kick } = useFeedCanvas(feed, ({ ctx, width, colors, dt }: Paint) => {
+  const { canvasRef, kick } = useFeedCanvas(feed, ({ ctx, width, colors, dt, label }: Paint) => {
     const model = feed.model;
     windowRef.current = Math.max(windowRef.current, minWindow, poolWindow(model.highWater));
     const g = geometry(windowRef.current, width);
@@ -78,14 +78,10 @@ export function KvPool({ feed, minWindow }: { feed: Feed; minWindow: number }) {
     const focus = feed.focus();
     const hovered = hoverRef.current?.cell;
     let moving = false;
-    ctx.font = `9px ${colors.mono}`;
-    ctx.textBaseline = "middle";
 
     for (let r = 0; r < g.rows; r++) {
       if (g.size >= 9 || r % 4 === 0) {
-        ctx.fillStyle = colors.muted;
-        ctx.textAlign = "right";
-        ctx.fillText(fmt(r * g.cols * g.per), GUTTER - 5, r * g.size + g.size / 2);
+        label(fmt(r * g.cols * g.per), GUTTER - 5, r * g.size + g.size / 2, colors.muted, "right");
       }
     }
 
@@ -136,9 +132,7 @@ export function KvPool({ feed, minWindow }: { feed: Feed; minWindow: number }) {
         }
         const seq = c.seq >= 0 ? model.seqs.get(c.seq) : undefined;
         if (seq && g.per === 1 && s >= 13 && seq.blocks[0] === i && c.alpha > 0.5) {
-          ctx.fillStyle = colors.text;
-          ctx.textAlign = "center";
-          ctx.fillText(String(seq.id), x + s / 2, y + s / 2 - 1);
+          label(String(seq.id), x + s / 2, y + s / 2, colors.text, "center");
         }
       }
       if (i === hovered) {
@@ -163,9 +157,7 @@ export function KvPool({ feed, minWindow }: { feed: Feed; minWindow: number }) {
     ctx.strokeStyle = colors.accent;
     ctx.lineWidth = 1;
     ctx.strokeRect(GUTTER + 0.5, barY - 2.5, shownW, BAR_H + 5);
-    ctx.fillStyle = colors.muted;
-    ctx.textAlign = "right";
-    ctx.fillText("pool", GUTTER - 5, barY + BAR_H / 2);
+    label("pool", GUTTER - 5, barY + BAR_H / 2, colors.muted, "right");
 
     const text = textRef.current;
     const last = Math.min(g.blocks, model.totalBlocks) - 1;
@@ -175,7 +167,7 @@ export function KvPool({ feed, minWindow }: { feed: Feed; minWindow: number }) {
       text.textContent = summary;
     }
     return moving;
-  });
+  }, 9);
 
   useEffect(() => {
     hoverRef.current = hover;

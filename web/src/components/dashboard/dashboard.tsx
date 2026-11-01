@@ -17,7 +17,7 @@ import { KvPool, poolWindow } from "./kv-pool";
 import { Requests } from "./requests";
 import { Timeline } from "./timeline";
 
-const replayWindows = { rate: "last 1 s of the run", latency: "requests finished so far" };
+const replayWindows = { rate: "last 1 s of the run", latency: "finished so far" };
 
 const liveWindows = { rate: "engine, last 10 s", latency: "engine, last 60 s" };
 
