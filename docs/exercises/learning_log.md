@@ -1468,3 +1468,6 @@
 - **preflight requests: OPTIONS, Access-Control-Request-Method and Access-Control-Request-Headers** => 
 - **Private Network Access: why Chrome asks before a public page calls localhost** => 
 - **Vary: Origin and caches** => 
+- **condition variables: wait_for with a predicate and spurious wakeups** => 
+- **bounded queues: drop-oldest versus blocking the producer (backpressure)** => 
+- **weak_ptr: observing an object without keeping it alive** => 

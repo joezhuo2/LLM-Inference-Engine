@@ -26,6 +26,7 @@ target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(engine_core PUBLIC nlohmann_json::nlohmann_json PRIVATE engine_sentencepiece)
 
 add_library(engine_server
+  server/broadcaster.cpp
   server/chat_api.cpp
   server/cors.cpp
 )
