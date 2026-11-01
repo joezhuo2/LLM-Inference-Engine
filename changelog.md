@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## server/http
 
 - Split the step object out of the trace writer as `step_json`, so the trace file and the server's live step stream (`GET /v1/steps`) write a step through the same function, byte for byte the same shape. (Part A)
+- Add the `engine_server` library (`src/server/`, `include/engine/server/`) with the OpenAI-compatible chat API of `docs/api.md`: `parse_chat_request` reads `messages`, `max_tokens`, `temperature`, `top_p`, `top_k`, `seed`, `stop` (a string or a list) and `stream`, treats a null field as missing, falls back to the server defaults, and rejects anything else with an `ApiError` (status 400) whose message names the field; `resolve_max_tokens` clamps the default to the context left after the prompt and rejects an explicit `max_tokens` that does not fit; and the stream chunks (role, content, finish), the non-streamed `chat.completion` with `usage`, the error body and the SSE framing, with the `engine` extension (`seq_id`, `step`) on every chunk. (Part A)
 
 ## web/kv-visualizer
 

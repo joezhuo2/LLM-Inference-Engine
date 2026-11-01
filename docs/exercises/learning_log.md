@@ -1461,3 +1461,6 @@
 
 ## HTTP Server (Branch 73)
 - **one serializer for two consumers: why the trace file and the live stream share step_json** => 
+- **OpenAI chat completions: messages, roles, finish_reason and usage** => 
+- **Server-Sent Events: the data: and event: lines and the blank line that ends an event** => 
+- **HTTP 400 versus 500: whose fault an error is** => 

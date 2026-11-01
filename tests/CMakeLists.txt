@@ -11,6 +11,7 @@ add_executable(unit_tests
   unit/test_chat_prompts.cpp
   unit/test_block_manager.cpp
   unit/test_chat.cpp
+  unit/test_chat_api.cpp
   unit/test_checksum.cpp
   unit/test_checksum_golden.cpp
   unit/test_config.cpp
@@ -34,7 +35,7 @@ add_executable(unit_tests
 )
 target_include_directories(unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(unit_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
-target_link_libraries(unit_tests PRIVATE engine_core GTest::gtest_main)
+target_link_libraries(unit_tests PRIVATE engine_core engine_server GTest::gtest_main)
 gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 
 if(ENGINE_CUDA)
