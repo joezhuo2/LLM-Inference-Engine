@@ -1466,3 +1466,5 @@
 - **Node type stripping: running a .ts file without compiling it** => 
 - **driving a canvas from a requestAnimationFrame loop outside React state** => 
 - **IntersectionObserver and visibilitychange: stopping work nobody can see** => 
+- **devicePixelRatio: sizing a canvas backing store for sharp lines** => 
+- **exponential smoothing toward a target: 1 - exp(-dt / tau) per frame** => 
