@@ -1464,3 +1464,5 @@
 - **revealing an SVG line with an animated `clip-path: inset()` instead of `stroke-dashoffset`** => 
 - **mapping pointer coordinates into an SVG's viewBox with `getScreenCTM()`** => 
 - **`ResizeObserver`: redrawing a chart at its real pixel width so text keeps its size** => 
+- **`aria-live` regions: announcing a changing chart readout to screen readers** => 
+- **static batching against continuous batching: why the baselines' curves differ in more than kernel speed** => 
