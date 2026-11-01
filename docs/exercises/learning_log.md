@@ -1415,3 +1415,46 @@
 - **roving tabindex: one Tab stop per widget, arrow keys inside it** => 
 - **`:focus-visible` versus `:focus`: why a mouse click does not draw the focus ring** => 
 - **skip links and `tabIndex={-1}`: moving focus to an element that is not normally focusable** => 
+
+## Sampling Bench (Branch 65)
+- **FP64 throughput on consumer GPUs: why a double-precision `log` can dominate a kernel** => 
+- **segmented radix sort (`cub::DeviceSegmentedRadixSort`): sorting many rows in one call** => 
+- **a lower-bound baseline: timing only the first stage of the alternative** => 
+- **pipe utilization in Nsight Compute (`sm__pipe_fp64_cycles_active`)** => 
+
+## Split Attention Page (Branch 66)
+- **waves per SM: grid blocks divided by the blocks all SMs can hold at once** => 
+- **occupancy limiters: registers, warps, shared memory and the block cap, and which one binds** => 
+- **tail effect: why a grid of 1.64 waves runs about as long as one of 2** => 
+
+## Attention v2 Page (Branch 67)
+- **dynamic shared memory: the third launch argument, and the 48 KB default per block** => 
+- **why a per-token shared-memory buffer caps the context a kernel can take** => 
+- **uncoalesced loads: threads reading addresses 128 bytes apart** => 
+
+## Layer Map Ends (Branch 68)
+- **embedding lookup as a gather: why it is a copy, not a matrix multiply** => 
+- **why only the last token of a prompt goes through the LM head** => 
+- **`aria-expanded` and `aria-controls` on a disclosure button** => 
+
+## Sampling Page (Branch 69)
+- **the Gumbel-max trick: why argmax(logits / T + Gumbel noise) is a sample from the softmax** => 
+- **counter-based random numbers (Philox): noise as a pure function of (seed, offset)** => 
+- **order-preserving float to integer keys: flipping the bits of negative floats** => 
+- **top-k and top-p by binary search over a threshold instead of a sort** => 
+- **chi-square goodness of fit: testing a sampler against the distribution it should follow** => 
+
+## Dead Ends Page (Branch 70)
+- **latency bound versus bandwidth bound: why fewer bytes did not make the fused kernel faster** => 
+- **a dependent chain of global loads: why serial work per thread hides nothing** => 
+- **reading a profile before explaining it: the CPU-bound story the timeline disproved** => 
+
+## Story Navigation (Branch 71)
+- **rel="prev" and rel="next" on links: telling browsers and crawlers the reading order** => 
+
+## KV Visualizer (Branch 72)
+- **SentencePiece pieces: the ▁ that marks a leading space, and byte tokens like <0x0A>** => 
+- **why decoding text and encoding it again can give different token ids** => 
+- **internal fragmentation versus external fragmentation: empty slots inside a block, free blocks that are not next to each other** => 
+- **first-fit allocation of a contiguous range** => 
+- **isometric projection: drawing a 3D grid with 2D canvas paths** => 

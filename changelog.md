@@ -2,6 +2,46 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kv-visualizer
+
+- Add "allocate it yourself" to the paged KV story (issue #76), right above "how it works": a 64-block pool drawn as an isometric 3D grid on a canvas, each block a column whose height is the slots written and whose color is the request (L1, L2, L3 from `results/kv_demo.json`), with the empty rest of a held block drawn as a dashed outline. A TypeScript model of the BlockManager and scheduler rules (lowest free block, block 0 reserved, admit when the whole length fits, one slot per decode step, preempt the newest) serves the requests; a toggle replays the same arrivals with contiguous allocation, each request reserving its prompt plus 256 tokens first-fit, and a table compares both (blocks held, slots held but empty, requests waiting, preemptions). The built-in demo makes contiguous queue a request for 15 steps while paged uses a third of the blocks. Hovering a block, or focusing its entry in the block tables, shows its request and logical block, the tokens in its slots, and its K and V offsets and strides in the engine's 12,915-block pool. Request colors are three new validated series tokens for both themes. Plays when scrolled into view, not with reduced motion. (Part A)
+- Add `scripts/kv_demo.py`, which answers three chat prompts from `scripts/prompts.json` (capital, haiku, kv_cache) greedily with `engine generate` and records each one token by token in `results/kv_demo.json` for the KV visualizer on the site. The token ids come from HF greedy decoding, kept only when its token counts and decoded text match the engine's (re-tokenizing the engine's printed answer gave the haiku one token fewer). Recorded on the RTX 5060 Laptop GPU: 22 + 9, 27 + 29 and 35 + 246 tokens. (Part A)
+
+## web/story-nav
+
+- Add three centered buttons at the bottom of every kernel story page and of `/kernels/dead-ends` (issue #75): previous story, back to `/kernels`, next story, in the order of the cards on `/kernels`. The first story has no previous button and the dead ends page no next one; the empty slot keeps the middle button centered. Previous and home slide back, next slides forward, like the existing links. (Part A)
+
+## web/dead-ends
+
+- Add `/kernels/dead-ends`, "what didn't work", the last card on `/kernels`: ten changes that did not do what they were meant to, from `docs/profiling.md`, the changelog and the PRs, each with what was tried, what happened, what was kept, a measured metric where one exists (read from the profiling tables at build time, marked where only prose exists) and a link to its source and kernel page. Filters by kind (slower than what it replaced, broke a correctness rule, helped then stopped helping, measured right but read wrong) follow the radio group pattern, and entries ease in and out over 0.5 s. The page has its own social card. (Part A)
+
+## web/kernel-sampling
+
+- Add the sampling story, `/kernels/sampling` (tenth card on `/kernels`), reversing the earlier decision to leave sampling out: 8 steps on the block argmax, Gumbel-max (a live in-browser simulation whose picks settle onto the softmax; 2,000 precomputed draws with reduced motion), Philox noise keyed by seed and offset, top-k and top-p as binary searches over 32-bit keys, the measured cost against a full sort, the double-precision log behind the slow temperature-only mode, and a row picker over the bench table. Timeline entries for the sampler are tagged Joe, following git, with the bench tagged as drafted with Claude. (Part A)
+- Add the Nsight Compute launch and the throwaway `gumbel()` variants of the sampling bench to `docs/profiling.md` ("Sampling") as two tables, so the site reads them instead of the prose: FP64 pipe busy 84% for 13% of the instructions, and the float `u` with `__logf` copy at 64.5 to 95.5 us against 467.9 to 475.2 us for the unchanged kernel in the same session. (Part A)
+
+## web/layer-map-embedding
+
+- Add the two ends of the decode step to the layer map on `/kernels` as collapsed cards: "embedding lookup" before the first layer and "final norm + LM head" after the last, each with its time and share of the step for the chosen batch (from `results/decode_step*.md`). Opening one eases it open over 0.7 s and shows the formula, a small animation (token ids picking rows of the embedding table; the last token normalized, multiplied into 32,000 logits and handed to the sampler), a paragraph and links to the source, and for the LM head to the GEMM story. The embedding kernel gets no story page of its own, as decided. (Part A)
+- Draw "→" as "->" on the social cards: the JetBrains Mono latin subset they embed has no arrow, so the attention v2 card made Satori fetch a fallback font from Google at build time, which fails offline and printed a build warning. (Part A)
+
+## web/kernel-attention-v2
+
+- Trim the paged attention story to four steps: v1, v2 and the eight-lane step move to the attention v2 page, and one "v1 → v2" step keeps the 883 to 272 us before and after and links to it. The v2 wiring timeline entry, the Nsight Compute table and the online-softmax excerpt move with them; `V1Figure` is replaced by the new page's figures, which say the cap is the host check rather than full shared memory. (Part A)
+- Add the attention v1 to v2 story, `/kernels/attention-v2` (ninth card on `/kernels`): 7 steps on v1's three passes with a quarter of the threads busy in the last one, the context cap (a host check at 2,048 tokens, not full shared memory, drawn against the 48 KB limit), v2's online softmax over constant shared memory, eight lanes per key, the Nsight Compute before and after, the decode step (883 to 272 us of attention, batch 16 1,074.8 to 1,386.2 tokens/s) and a v1/v2 picker over the bench table. Numbers come from `docs/profiling.md` (Branches 37, 38 and the new shared-memory table). (Part A)
+- Record the dynamic shared memory per block of attention v1 and v2 in `docs/profiling.md` ("Attention shared memory"), computed from the launch code: v1 grows by 4 bytes per token (9,344 bytes at its 2,048-token cap, 19% of the 48 KB default), v2 stays at 3,456 bytes. v1's limit is the `kMaxContext` check in the host code, not shared memory running out, which the section says next to the older wording in "Paged attention v2". (Part A)
+
+## web/kernel-split-attention
+
+- Trim the paged attention story to six steps now that split attention has its own page: the idle-GPU, merge and split-count steps move there, and a last step, "then: split the context", keeps the before and after and links to it. The two runtime timeline entries (wiring, graphs per split count) and the CUDA Graphs measurement table move with them. (Part A)
+- Add the split-context attention story, `/kernels/split-attention` (eighth card on `/kernels`): 8 animated steps on why one block per head leaves the GPU a fifth full at batch 1 (an occupancy grid of the 26 SMs with 6 slots each), why the kernel waits rather than reads, how the context is cut on KV block boundaries, the grid filling one wave and spilling into a second at 8 splits, the scratch buffer, the merge, why CUDA Graphs kept running v2 until one graph per split count, and the measured split picker. Every number comes from `docs/profiling.md` (Branches 37, 40, 42, 43 and the new occupancy table), with a timeline, the four measurement tables and three code excerpts. (Part A)
+- Measure why split attention helps at batch 1 and record it in `docs/profiling.md` ("Split attention occupancy"): Nsight Compute at 1 row and 2,048 tokens shows 6 blocks per SM (registers and warps), so 156 blocks fill one wave; v2's 32 blocks are 0.21 waves at 20.5% warps active, and 2, 4 and 8 splits take the partial kernel from 361 to 186, 107 and 102 us as the grid grows to 1.64 waves and warps active to 80%. (Part A)
+
+## tools/sample-bench
+
+- Record the sampling bench in `docs/profiling.md` ("Sampling") with one Nsight Compute launch: top-k by binary search is about 2x faster than sorting the rows alone, but temperature-only sampling takes 425 us because the Gumbel noise is computed in double precision for every token (FP64 pipe busy 84% of the cycles). The kernel is unchanged; a float version measured in a throwaway copy is written up for Joe to decide. (Part A)
+- Add `scripts/sample_bench.cu`, which times `greedy` and `sample` (temperature, top-k, top-p, both) at 1 and 16 rows of a 32,000-token vocabulary against a full `cub::DeviceSegmentedRadixSort` of the rows, a lower bound for a sort-based top-p. (Part A)
+
 ## docs/write-kv-profile
 
 - Measure `write_kv` with Nsight Compute in the real forward pass and record it in `docs/profiling.md` ("write_kv") and the kernel table of `docs/results.md`: 3.8 us per launch at 1 and 16 rows, 4.3 us at 64 and 9.3 us at 512, 0.4% of a batch-1 step in Nsight Systems (Nsight Compute flushes caches and locks clocks, so it reads higher). It has one version, so there is no before and after. README goal 4 moves from "partly" to "met". (Part A)

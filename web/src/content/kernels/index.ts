@@ -1,13 +1,17 @@
 import { addRmsnorm } from "./add-rmsnorm";
+import { attentionV2 } from "./attention-v2";
 import { cudaGraphs } from "./cuda-graphs";
 import { gemm } from "./gemm";
 import { pagedAttention } from "./paged-attention";
 import { pagedKv } from "./paged-kv";
 import { rope } from "./rope";
+import { sampling } from "./sampling";
+import { splitAttention } from "./split-attention";
 import { swiglu } from "./swiglu";
+import { deadEnds } from "../dead-ends";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv];
+export const kernelStories: KernelStory[] = [pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);
@@ -19,6 +23,12 @@ export const kernelCards: KernelCard[] = kernelStories.map((k) => {
   const first = k.timeline[0]?.date;
   const last = k.timeline[k.timeline.length - 1]?.date;
   return { slug: k.slug, title: k.title, short: k.short, dates: first === last ? (first ?? "") : `${first} – ${last}`, ready: true };
+}).concat({
+  slug: "dead-ends",
+  title: "what didn't work",
+  short: "Slower drafts, a broken bit, rules with a cliff and a profile read wrong, each with what was kept.",
+  dates: `${deadEnds[0].date} – ${deadEnds[deadEnds.length - 1].date}`,
+  ready: true,
 });
 
 export type LayerOp = { op: string; label: string; slug: string; note?: string };

@@ -1,12 +1,7 @@
 import { type KernelStory, measured } from "./types";
 
 const v2 = "paged-attention-v2-branch-37";
-const v2Wired = "paged-attention-v2-in-the-forward-pass-branch-38";
 const split = "split-context-attention-branch-40";
-const splitWired = "split-attention-in-the-forward-pass-branch-42";
-const splitGraphs = "split-attention-in-cuda-graphs-branch-43";
-
-const longPrompt = { "max batch": "1", prompt: "1,984" };
 
 export const pagedAttention: KernelStory = {
   slug: "paged-attention",
@@ -40,12 +35,6 @@ export const pagedAttention: KernelStory = {
       caption: "Finding a token's key through the block table (v1; v2 and split do the same)",
     },
     {
-      file: "src/kernels/paged_attention_v2.cu",
-      from: "float new_running_max = fmaxf(running_max, chunk_max);",
-      to: "running_sum += shared_reduction[0];",
-      caption: "v2's online softmax: rescale what came before, add this chunk",
-    },
-    {
       file: "src/kernels/paged_attention_split.cu",
       from: "float global_max = partials[0];",
       to: "float final_val = (total_sum > 0.0f) ? (acc / total_sum) : 0.0f;",
@@ -60,22 +49,10 @@ export const pagedAttention: KernelStory = {
       command: "nvcc -std=c++20 -arch=sm_120 -Iinclude -Isrc scripts/paged_attention_bench.cu build/release/src/libengine_kernels.a build/release/src/libengine_core.a -o /tmp/pa_bench && /tmp/pa_bench",
     },
     {
-      section: v2,
-      table: 1,
-      caption: "Nsight Compute, one launch each (clocks locked, cold caches, so slower than the loop)",
-      command: 'ncu --kernel-name "regex:^paged_attention_decode_v2_kernel" --launch-skip 3 --launch-count 1 /tmp/pa_bench 1 2048',
-    },
-    {
       section: split,
       table: 0,
       caption: "split against v2, µs per call including the merge kernel",
       command: "/tmp/pa_bench",
-    },
-    {
-      section: splitGraphs,
-      table: 0,
-      caption: "ms per token (TPOT p50, two runs) with one CUDA graph per split count, 64 output tokens",
-      command: "build/release/bin/engine bench --model models/tinyllama --max-batch 1 --num-requests 1 --prompt-len 1984 --output-len 64 --warmup 1 --graphs --out /tmp/split.csv",
     },
   ],
   timeline: [
@@ -137,29 +114,6 @@ export const pagedAttention: KernelStory = {
     },
     {
       date: "Oct 20",
-      prs: [48],
-      branch: "runtime/wire-attention-v2",
-      version: "v2",
-      author: "claude",
-      title: "v2 in the decode step",
-      text: "The runner switches to v2. Batch 16 gains the most, because attention work grows with the number of rows while the weight reads do not.",
-      metric: {
-        kind: "bars",
-        label: "attention time per decode step (eager profile)",
-        unit: "µs",
-        digits: 0,
-        bars: [
-          { label: "v1", value: measured(v2Wired, { "": "attention per decode step (eager profile, context at most 64)" }, "before (e07c022)") },
-          {
-            label: "v2",
-            value: measured(v2Wired, { "": "attention per decode step (eager profile, context at most 64)" }, "after (79c1f91)"),
-            highlight: true,
-          },
-        ],
-      },
-    },
-    {
-      date: "Oct 20",
       prs: [50],
       branch: "kernel/paged-attention-split-stub",
       version: "spec",
@@ -183,44 +137,6 @@ export const pagedAttention: KernelStory = {
         bars: [
           { label: "v2", value: measured(split, { rows: "1", context: "2,048" }, "v2") },
           { label: "8 splits", value: measured(split, { rows: "1", context: "2,048" }, "8"), highlight: true },
-        ],
-      },
-    },
-    {
-      date: "Oct 24",
-      prs: [52],
-      branch: "runtime/wire-attention-split",
-      version: "split",
-      author: "claude",
-      title: "Choosing the split count",
-      text: "attention_splits splits only when there are 1 to 4 rows and a context of 512 tokens or more, aiming for about 256 blocks with at least 256 tokens per split. The runner owns a 66 KB scratch buffer.",
-      metric: {
-        kind: "bars",
-        label: "ms per token at a 1,984-token prompt, batch 1, eager",
-        unit: "ms",
-        digits: 1,
-        bars: [
-          { label: "v2", value: measured(splitWired, longPrompt, "v2 eager") },
-          { label: "split", value: measured(splitWired, longPrompt, "split eager"), highlight: true },
-        ],
-      },
-    },
-    {
-      date: "Oct 25",
-      prs: [53],
-      branch: "runtime/graphs-split-attention",
-      version: "split",
-      author: "claude",
-      title: "One CUDA graph per split count",
-      text: "Graphs were captured on an empty dummy batch, so every replay ran v2. Now each batch size gets one graph per split count: 11 graphs instead of 5. Drafted at Joe's request.",
-      metric: {
-        kind: "bars",
-        label: "ms per token at a 1,984-token prompt, batch 1, CUDA Graphs",
-        unit: "ms",
-        digits: 1,
-        bars: [
-          { label: "before", value: measured(splitGraphs, longPrompt, "main graphs") },
-          { label: "after", value: measured(splitGraphs, longPrompt, "this branch graphs"), highlight: true },
         ],
       },
     },

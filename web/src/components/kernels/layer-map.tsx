@@ -9,6 +9,7 @@ import { cellNumber, decodeSteps } from "@/lib/data";
 import { useHoveredKernel } from "@/lib/kernel-hover";
 import { radioKeyDown } from "@/lib/radio-keys";
 import { EasedBar } from "./eased-bar";
+import { LayerEnd } from "./layer-ends";
 
 const choices = [
   { key: "b1", label: "batch 1" },
@@ -59,7 +60,10 @@ export function LayerMap() {
           ))}
         </div>
       </div>
-      <ol className="mt-5 space-y-1.5 font-mono text-xs">
+      <div className="mt-5">
+        <LayerEnd end="in" batch={batch} />
+      </div>
+      <ol className="mt-3 space-y-1.5 font-mono text-xs">
         {layerOps.map((l, i) => {
           const linked = ready.has(l.slug);
           const label = (
@@ -90,8 +94,11 @@ export function LayerMap() {
           );
         })}
       </ol>
+      <div className="mt-3">
+        <LayerEnd end="out" batch={batch} />
+      </div>
       <p className="mt-4 font-mono text-[11px] text-muted">
-        from {table.file}, eager decode step, Nsight Systems; the LM head and the final norm run once after the last layer
+        from {table.file}, eager decode step, Nsight Systems; the embedding runs once before the first layer, the final norm and the LM head once after the last
       </p>
     </figure>
   );

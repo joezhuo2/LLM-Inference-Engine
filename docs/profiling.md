@@ -261,3 +261,67 @@ Measured with Nsight Compute on the RTX 5060 Laptop GPU on 2026-10-29 (release b
 
 Reading it. A decode step copies the K and V slices of one row, 2 KB in and 2 KB out, so the kernel is nowhere near a bandwidth limit: its time is the floor of a launch plus one dependent chain of loads (the slot, then the data) and stores, about 3.8 us at 1 and 16 rows. Nsight Compute flushes the caches and locks the clocks to base, so it overstates the time in a running engine: the Nsight Systems profile of the decode step (`docs/results.md`) measures 1.5 us per launch, 32 us and 0.4% of a batch-1 step, where 22 launches at 3.8 us would be about 85 us and 1.1%. Either way it is noise next to the 7.8 ms step. It only grows with work at prefill sizes, 9.3 us for 512 rows, which is 18% of the DRAM roof and a one-off cost per prompt. There is no kernel to optimize here; the measurement closes the gap in the "explained" goal.
 
+
+## Sampling (Branch 65)
+
+`greedy` and `sample` against a full sort of the vocabulary, RTX 5060 Laptop GPU, release build on commit b10575c, 2026-10-31, vocab 32,000, temperature 0.7, logits drawn from a normal distribution with a standard deviation of 2.5 (synthetic, so how many tokens top-p keeps is not the model's). Time per call in us from a loop of 50 calls after 3 warm-up calls (`scripts/sample_bench.cu`), two runs (run 1 / run 2). The full sort column is the cost of sorting every row with `cub::DeviceSegmentedRadixSort` after scaling it to float, before any prefix sum or draw, so it is a lower bound for a sort-based top-p:
+
+| rows | greedy | temperature | top-k 50 | top-p 0.9 | top-k 50 + top-p 0.9 | full sort alone |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 20.9 / 22.4 | 425.2 / 425.2 | 126.8 / 111.6 | 325.2 / 325.2 | 172.6 / 172.8 | 271.2 / 282.0 |
+| 16 | 20.4 / 19.2 | 425.7 / 425.7 | 119.7 / 119.2 | 346.7 / 346.4 | 174.6 / 175.3 | 235.1 / 238.9 |
+
+Nsight Compute on one temperature-only launch at 1 row (`--launch-skip 3 --launch-count 1`): 703 us, grid 1 block of 1,024 threads, 48 registers per thread, SM throughput 3.3% and DRAM 0.05% of the GPU, and on the one busy SM the FP64 pipe is active for 1,008,000 of its 1,193,622 cycles (84%) while FP64 instructions are 63,000 of 478,550 (13%).
+
+The same launch as a table, and the throwaway variants of `gumbel()` timed in the same session as the unchanged kernel (the bench loop, interleaved runs; not committed code):
+
+| metric | value |
+| --- | --- |
+| duration (us) | 703.0 |
+| FP64 pipe active (cycles) | 1,008,000 |
+| SM cycles elapsed | 1,193,622 |
+| FP64 pipe busy | 84% |
+| FP64 instructions | 63,000 |
+| instructions | 478,550 |
+| FP64 share of instructions | 13% |
+
+| variant of `gumbel()` | 1 row, temperature (us) | 16 rows, temperature (us) | 1 row, top-k 50 (us) |
+| --- | --- | --- | --- |
+| as written (double `log`) | 467.9 / 471.5 | 474.9 / 475.2 | 115.2 / 131.4 |
+| float `u` and `__logf` | 95.5 / 87.5 / 64.5 | 91.1 / 71.2 / 85.7 | 181.1 / 191.3 / 183.7 |
+| logs removed | 54.4 | 77.8 | 174.4 |
+
+Reading it. The threshold searches do what they were written for: top-k 50 finds its cut with 32 passes of a count over the row and is about 2x faster than sorting the row alone, before the sort-based version has done any of its remaining work. The surprise is the plain temperature column. Every one of the 32,000 tokens gets Gumbel noise, and `gumbel()` computes `-log(-log(u))` in double precision; on this GPU FP64 runs at a small fraction of the FP32 rate, so the FP64 pipe is busy for 84% of the kernel's cycles and the draw costs 425 us, more than with top-k, where the noise is only computed for the 50 tokens above the cut. Top-p 0.9 keeps a large part of these synthetic logits, so it pays for most of that noise as well as for its own search of the mass threshold (an `expf` over the row per pass). Rows do not change the times because each row is one block: 16 rows run on 16 SMs side by side, and 1 row leaves 25 of the 26 SMs idle. One sampled draw per decode step at 425 us would be about 5% of the 7.8 ms batch-1 step; the end-to-end effect was not measured here. Not changed in this branch, because it changes the sampled tokens of a fixed seed: in a throwaway copy of `sample.cu` with `u` in float and `__logf`, the temperature column fell to 65 to 95 us at both row counts (four interleaved runs against 468 to 475 us for the unchanged kernel in the same session), and with the logs removed entirely to 54 to 78 us. The same copy made the top-k column slower (180 to 315 us against 115 to 140 us), which I have not explained, so it would need its own profile before it is proposed.
+
+To reproduce: `nvcc -std=c++20 -O3 -arch=sm_120 -Iinclude -Isrc scripts/sample_bench.cu build/release/src/libengine_kernels.a build/release/src/libengine_core.a -o /tmp/sample_bench && /tmp/sample_bench` (arguments: rows, then vocab), and for one launch `ncu --kernel-name regex:sample_kernel --launch-skip 3 --launch-count 1 --metrics sm__pipe_fp64_cycles_active.max,sm__cycles_elapsed.max /tmp/sample_bench 1`.
+
+## Split attention occupancy (Branch 66)
+
+Why splitting helps at batch 1, measured with Nsight Compute on the RTX 5060 Laptop GPU on 2026-10-31 (release build, commit 19e3d13, `scripts/paged_attention_bench.cu` at 1 row and 2,048 tokens, one launch per kernel after 3 warm-up launches, clocks locked and caches cold, so the times are longer than the loop of "Split-context attention"). Both kernels launch 256-thread blocks at 40 registers per thread; registers and warps each allow 6 blocks per SM (shared memory would allow 14), so the 26 SMs hold 156 blocks in one wave.
+
+| kernel | splits | grid blocks | waves per SM | warps active | time (us) | DRAM throughput |
+| --- | --- | --- | --- | --- | --- | --- |
+| v2 | 1 | 32 | 0.21 | 20.5% | 382.5 | 1.6% |
+| split partial | 1 | 32 | 0.21 | 20.5% | 361.3 | 1.7% |
+| split partial | 2 | 64 | 0.41 | 40.9% | 186.0 | 3.3% |
+| split partial | 4 | 128 | 0.82 | 78.8% | 106.7 | 5.7% |
+| split partial | 8 | 256 | 1.64 | 80.1% | 102.2 | 6.0% |
+
+The merge kernel after 8 splits is 32 blocks and 6.1 us.
+
+Reading it. With one row the grid is one block per query head, 32 blocks for 156 slots, so a fifth of the GPU's warps are ever resident and each block walks the whole context alone. Every doubling of the split count doubles the grid and halves the time while the grid still fits in one wave (up to 4 splits, 128 blocks). At 8 splits the grid is 1.64 waves: the first 156 blocks run together and the last 100 run in a second, partly empty wave, so the time barely moves (106.7 to 102.2 us) although each block has half the work. DRAM stays at 6% or less throughout, so the kernel is bound by latency and the number of blocks in flight, not by bandwidth. This is the measurement behind the rule in "Split attention in the forward pass": aim for about 256 blocks, since the gain stops near one full wave.
+
+To reproduce: build `/tmp/pa_bench` as in "Split-context attention", then `ncu --kernel-name regex:paged_attention_split_partial_kernel --launch-skip 162 --launch-count 1 --metrics launch__grid_size,launch__waves_per_multiprocessor,sm__warps_active.avg.pct_of_peak_sustained_active,launch__occupancy_limit_registers,launch__occupancy_limit_warps,gpu__time_duration.sum /tmp/pa_bench 1 2048` for 8 splits (the bench runs 53 calls per split count in the order 1, 2, 4, 8, 16, so skip 3, 56 and 109 for 1, 2 and 4 splits), and `--kernel-name regex:^paged_attention_decode_v2_kernel --launch-skip 3` for v2.
+
+## Attention shared memory (Branch 67)
+
+Dynamic shared memory per thread block of the two decode attention kernels, computed from their launch code (`src/kernels/paged_attention.cu` and `src/kernels/paged_attention_v2.cu`, commit 19e3d13), 256 threads per block and head_dim 64. v1 reserves one float per token of the block table's capacity plus one per thread and the query in BF16: `(capacity + 256) * 4 + 64 * 2` bytes. v2 reserves three floats per thread, the 64-float accumulator and the query: `3 * 256 * 4 + 64 * 4 + 64 * 2` bytes, whatever the context. CUDA's default limit for dynamic shared memory is 48 KB (49,152 bytes) per block without an opt-in.
+
+| context | v1 bytes | v2 bytes |
+| --- | --- | --- |
+| 128 | 1,664 | 3,456 |
+| 512 | 3,200 | 3,456 |
+| 2,048 | 9,344 | 3,456 |
+| 8,192 | n/a | 3,456 |
+
+Reading it. v1's context limit is not shared memory running out: at its cap of 2,048 tokens it uses 9,344 bytes, 19% of the default limit, and the formula would reach the limit only near 12,000 tokens. The cap is `kMaxContext = 2048` in the host code, which rejects any block table longer than that (TinyLlama's full context), and that check is why the 8,192-token rows of "Paged attention v2" read n/a for v1 (it would have needed 33,920 bytes). The sentence there that v1 "cannot run a context of 8,192 because its scores live in shared memory" is right about the cause of the design and not about the limit. Neither kernel is limited by shared memory per SM at these sizes ("Split attention occupancy" measured v2 at 6 blocks per SM from registers and warps, 14 from shared memory). The bytes were not yet confirmed with Nsight Compute's `launch__shared_mem_per_block_dynamic`, because the GPU was unavailable when this was written.
