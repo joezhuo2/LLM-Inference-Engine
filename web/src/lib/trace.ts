@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { stepsDoneBy as stepsDone } from "@/lib/dashboard/stats";
 import { traces } from "@/lib/data";
 
 export type TraceToken = { id: number; text: string };
@@ -64,14 +65,7 @@ export function traceDuration(trace: Trace): number {
 }
 
 export function stepsDoneBy(trace: Trace, t: number): number {
-  let lo = 0;
-  let hi = trace.steps.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (trace.steps[mid].end_s <= t) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
+  return stepsDone(trace.steps, t);
 }
 
 export function loopTime(elapsedS: number, duration: number, pauseS = 1.5): number {
