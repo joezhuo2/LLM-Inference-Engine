@@ -26,6 +26,7 @@ export type TraceInfo = {
   steps: number;
   duration_s: number;
   max_batch_seen: number;
+  commit: string | null;
 };
 
 export type ProfilingTable = { header: string[]; rows: string[][] };

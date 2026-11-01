@@ -1458,3 +1458,6 @@
 - **internal fragmentation versus external fragmentation: empty slots inside a block, free blocks that are not next to each other** => 
 - **first-fit allocation of a contiguous range** => 
 - **isometric projection: drawing a 3D grid with 2D canvas paths** => 
+
+## Dashboard (Branch 75)
+- **`git log -1 --format=%h -- <path>`: the last commit that touched a file** => 

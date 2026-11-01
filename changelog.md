@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/dashboard
+
+- Record which commit added each trace in `web/src/data/traces.json` (`git log -1` of the file at build time, `null` when the history is not there, as in a shallow clone), so the dashboard can label the recording with its GPU, date and commit. (Part A)
+
 ## web/kv-visualizer
 
 - Add "allocate it yourself" to the paged KV story (issue #76), right above "how it works": a 64-block pool drawn as an isometric 3D grid on a canvas, each block a column whose height is the slots written and whose color is the request (L1, L2, L3 from `results/kv_demo.json`), with the empty rest of a held block drawn as a dashed outline. A TypeScript model of the BlockManager and scheduler rules (lowest free block, block 0 reserved, admit when the whole length fits, one slot per decode step, preempt the newest) serves the requests; a toggle replays the same arrivals with contiguous allocation, each request reserving its prompt plus 256 tokens first-fit, and a table compares both (blocks held, slots held but empty, requests waiting, preemptions). The built-in demo makes contiguous queue a request for 15 steps while paged uses a third of the blocks. Hovering a block, or focusing its entry in the block tables, shows its request and logical block, the tokens in its slots, and its K and V offsets and strides in the engine's 12,915-block pool. Request colors are three new validated series tokens for both themes. Plays when scrolled into view, not with reduced motion. (Part A)
