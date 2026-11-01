@@ -4,7 +4,7 @@ import { Hero } from "@/components/hero";
 import { Scramble } from "@/components/scramble";
 
 const cards = [
-  { href: null, title: "results", text: "Throughput and latency against HuggingFace and llama.cpp." },
+  { href: "/results", title: "results", text: "Throughput and latency against HuggingFace and llama.cpp." },
   { href: "/kernels", title: "kernels", text: "How each kernel got faster, with Nsight numbers." },
   { href: null, title: "dashboard", text: "A recorded serving run, step by step." },
 ];
