@@ -1455,3 +1455,6 @@
 ## KV Visualizer (Branch 72)
 - **SentencePiece pieces: the ▁ that marks a leading space, and byte tokens like <0x0A>** => 
 - **why decoding text and encoding it again can give different token ids** => 
+- **internal fragmentation versus external fragmentation: empty slots inside a block, free blocks that are not next to each other** => 
+- **first-fit allocation of a contiguous range** => 
+- **isometric projection: drawing a 3D grid with 2D canvas paths** => 
