@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/results
 
+- Add the chart pieces for `/results`, not yet on a page: an SVG line chart whose crosshair snaps to the nearest x on hover, tap or the arrow keys and lists every series' exact value, with lines revealed left to right by an animated clip-path and dots that move with a 0.7 s ease-in-out when the plotted metric changes; a stacked decode step profile whose segments grow and slide between two rows; and the MVP scoreboard with target ticks. `web/src/content/results.ts` reads every number at build time from `results/`, `docs/results.md` and `docs/profiling.md`, and fails the build when a benchmark median from the CSVs disagrees with the docs/results.md table. Charts redraw at their real pixel width so phone text stays readable. `StickyStory` gains a `morph` option that keeps one figure mounted across steps instead of crossfading a new one. (Part A)
 - Read the batch-16 launch gap line (`results/decode_step_b16.md`) and the CUDA Graphs op table (`results/decode_step_graphs.md`) into the site data at build time, next to the batch-1 ones, for the decode step breakdown on `/results`. (Part A)
 
 ## web/kv-visualizer

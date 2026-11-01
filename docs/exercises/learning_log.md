@@ -1461,3 +1461,6 @@
 
 ## Results Page (Branch 74)
 - **median span versus median busy time: what the idle share of a step measures** => 
+- **revealing an SVG line with an animated `clip-path: inset()` instead of `stroke-dashoffset`** => 
+- **mapping pointer coordinates into an SVG's viewBox with `getScreenCTM()`** => 
+- **`ResizeObserver`: redrawing a chart at its real pixel width so text keeps its size** => 
