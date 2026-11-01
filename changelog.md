@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/kv-visualizer
+
+- Add `scripts/kv_demo.py`, which answers three chat prompts from `scripts/prompts.json` (capital, haiku, kv_cache) greedily with `engine generate` and records each one token by token in `results/kv_demo.json` for the KV visualizer on the site. The token ids come from HF greedy decoding, kept only when its token counts and decoded text match the engine's (re-tokenizing the engine's printed answer gave the haiku one token fewer). Recorded on the RTX 5060 Laptop GPU: 22 + 9, 27 + 29 and 35 + 246 tokens. (Part A)
+
 ## web/story-nav
 
 - Add three centered buttons at the bottom of every kernel story page and of `/kernels/dead-ends` (issue #75): previous story, back to `/kernels`, next story, in the order of the cards on `/kernels`. The first story has no previous button and the dead ends page no next one; the empty slot keeps the middle button centered. Previous and home slide back, next slides forward, like the existing links. (Part A)

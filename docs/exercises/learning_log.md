@@ -1451,3 +1451,7 @@
 
 ## Story Navigation (Branch 71)
 - **rel="prev" and rel="next" on links: telling browsers and crawlers the reading order** => 
+
+## KV Visualizer (Branch 72)
+- **SentencePiece pieces: the ▁ that marks a leading space, and byte tokens like <0x0A>** => 
+- **why decoding text and encoding it again can give different token ids** => 
