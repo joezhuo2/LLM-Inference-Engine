@@ -36,6 +36,10 @@ export type ProfilingSection = { id: string; title: string; level: number; branc
 export const summaries = summariesJson as unknown as Summary[];
 export const environment = environmentJson as Record<string, string | number>;
 export const traces = tracesJson as unknown as TraceInfo[];
+
+export function preferredTrace(): TraceInfo | undefined {
+  return traces.find((t) => t.meta.prompts !== undefined && t.meta.prompts !== "random") ?? traces[0];
+}
 export const profiling = profilingJson as unknown as ProfilingSection[];
 export const decodeSteps = decodeStepsJson as unknown as Partial<Record<"b1" | "b16", ProfilingTable & { file: string }>>;
 

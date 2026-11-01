@@ -1464,3 +1464,5 @@
 - **nearest-rank percentile: p99 of 24 values is the largest one** => 
 - **reconciling a client-side model with a server total it can observe** => 
 - **Node type stripping: running a .ts file without compiling it** => 
+- **driving a canvas from a requestAnimationFrame loop outside React state** => 
+- **IntersectionObserver and visibilitychange: stopping work nobody can see** => 

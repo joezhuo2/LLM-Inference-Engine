@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { stepsDoneBy as stepsDone } from "@/lib/dashboard/stats";
-import { traces } from "@/lib/data";
+import { preferredTrace } from "@/lib/data";
 
 export type TraceToken = { id: number; text: string };
 
@@ -38,8 +38,7 @@ export type Trace = {
 };
 
 export function preferredTraceFile(): string | undefined {
-  const chat = traces.find((t) => t.meta.prompts !== undefined && t.meta.prompts !== "random");
-  return (chat ?? traces[0])?.file;
+  return preferredTrace()?.file;
 }
 
 export function useTrace(): Trace | null {
