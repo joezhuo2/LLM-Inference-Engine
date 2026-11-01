@@ -36,13 +36,17 @@ export const summaries = summariesJson as unknown as Summary[];
 export const environment = environmentJson as Record<string, string | number>;
 export const traces = tracesJson as unknown as TraceInfo[];
 export const profiling = profilingJson as unknown as ProfilingSection[];
-export const decodeSteps = decodeStepsJson as unknown as Partial<Record<"b1" | "b16", ProfilingTable & { file: string }>>;
+export const decodeSteps = decodeStepsJson as unknown as Partial<Record<"b1" | "b16" | "graphs", ProfilingTable & { file: string }>>;
 
 export type LaunchGaps = { file: string; steps: number; kernels: number; span_us: number; busy_us: number; idle_pct: number; gaps: number; gap_us: number };
 
-export function launchGaps(mode: "eager" | "graphs"): LaunchGaps {
-  const gaps = (launchGapsJson as Partial<Record<"eager" | "graphs", LaunchGaps>>)[mode];
-  if (!gaps) throw new Error(`results/${mode === "eager" ? "decode_step.md" : "decode_step_graphs.md"} has no decode launch gap line`);
+export type GapProfile = "eager" | "graphs" | "b16";
+
+const gapFiles: Record<GapProfile, string> = { eager: "decode_step.md", graphs: "decode_step_graphs.md", b16: "decode_step_b16.md" };
+
+export function launchGaps(mode: GapProfile): LaunchGaps {
+  const gaps = (launchGapsJson as Partial<Record<GapProfile, LaunchGaps>>)[mode];
+  if (!gaps) throw new Error(`results/${gapFiles[mode]} has no decode launch gap line`);
   return gaps;
 }
 

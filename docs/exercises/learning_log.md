@@ -1458,3 +1458,6 @@
 - **internal fragmentation versus external fragmentation: empty slots inside a block, free blocks that are not next to each other** => 
 - **first-fit allocation of a contiguous range** => 
 - **isometric projection: drawing a 3D grid with 2D canvas paths** => 
+
+## Results Page (Branch 74)
+- **median span versus median busy time: what the idle share of a step measures** => 
