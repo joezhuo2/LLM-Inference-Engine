@@ -38,6 +38,7 @@ export type KernelStory = {
   excerpts: ExcerptSpec[];
   measurements: KernelMeasurement[];
   timeline: KernelEntry[];
+  lead?: { title: string; intro: string };
 };
 
 export function measured(section: string, match: Record<string, string>, column: string, table = 0, doc: Doc = "profiling"): number {

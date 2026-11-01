@@ -135,4 +135,7 @@ writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
 writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
 writeFileSync(join(dataDir, "kv_replay.json"), JSON.stringify(kvReplay));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, environment ${environment.commit ?? "missing"}`);
+const kvDemoFile = join(results, "kv_demo.json");
+const kvDemo = existsSync(kvDemoFile) ? JSON.parse(readFileSync(kvDemoFile, "utf8")) : {};
+writeFileSync(join(dataDir, "kv_demo.json"), JSON.stringify(kvDemo));
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, environment ${environment.commit ?? "missing"}`);

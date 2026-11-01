@@ -1,5 +1,6 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
+import kvDemoJson from "@/data/kv_demo.json";
 import kvReplayJson from "@/data/kv_replay.json";
 import launchGapsJson from "@/data/launch_gaps.json";
 import profilingJson from "@/data/profiling.json";
@@ -62,6 +63,16 @@ export function kvReplay(): KvReplay {
   const replay = kvReplayJson as unknown as Partial<KvReplay>;
   if (!replay.steps) throw new Error("results/traces/chat_b16_rate4.json is missing, so the KV replay is empty");
   return replay as KvReplay;
+}
+
+export type KvDemoRequest = { name: string; prompt: string; answer: string; prompt_tokens: string[]; output_tokens: string[] };
+
+export type KvDemo = { date: string; gpu: string; commit: string; max_new_tokens: number; temperature: number; requests: KvDemoRequest[] };
+
+export function kvDemo(): KvDemo {
+  const demo = kvDemoJson as unknown as Partial<KvDemo>;
+  if (!demo.requests) throw new Error("results/kv_demo.json is missing, so the KV visualizer has no requests (scripts/kv_demo.py writes it)");
+  return demo as KvDemo;
 }
 
 export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null };

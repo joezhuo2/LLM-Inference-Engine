@@ -12,6 +12,9 @@
   --accent-dim: rgb(21 116 56 / 0.12);
   --baseline: #9ca3af;
   --warn: #b45309;
+  --series-1: #157438;
+  --series-2: #4f46e5;
+  --series-3: #db2777;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --duration-press: 120ms;
@@ -29,6 +32,9 @@
   --accent-dim: rgb(74 222 128 / 0.15);
   --baseline: #6b7280;
   --warn: #fbbf24;
+  --series-1: #16a34a;
+  --series-2: #6366f1;
+  --series-3: #ec4899;
   color-scheme: dark;
 }
 
@@ -42,6 +48,9 @@
   --color-accent-dim: var(--accent-dim);
   --color-baseline: var(--baseline);
   --color-warn: var(--warn);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 }
