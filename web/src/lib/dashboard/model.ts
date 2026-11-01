@@ -60,12 +60,25 @@ export class DashModel {
     return this.steps[this.steps.length - 1];
   }
 
+  private position(index: number): number {
+    let lo = 0;
+    let hi = this.steps.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.steps[mid].index < index) lo = mid + 1;
+      else hi = mid;
+    }
+    return this.steps[lo]?.index === index ? lo : -1;
+  }
+
   step(index: number): TraceStep | undefined {
-    return this.steps[index - this.firstIndex];
+    const at = this.position(index);
+    return at < 0 ? undefined : this.steps[at];
   }
 
   slotsOf(index: number): number[] | undefined {
-    return this.stepSlots[index - this.firstIndex];
+    const at = this.position(index);
+    return at < 0 ? undefined : this.stepSlots[at];
   }
 
   free(): number {
@@ -104,7 +117,7 @@ export class DashModel {
       this.steps.shift();
       this.stepSlots.shift();
       this.gaps.delete(this.firstIndex);
-      this.firstIndex++;
+      this.firstIndex = this.steps[0].index;
     }
   }
 
@@ -237,7 +250,7 @@ export class DashModel {
 
   private growDecode(fresh: Seq[], diff: number): number {
     const slack = (s: Seq) => s.length - s.blocks.length * this.blockSize;
-    const ranked = fresh.filter((s) => s.running).sort((a, b) => slack(b) - slack(a));
+    const ranked = fresh.filter((s) => s.running && (this.unknown === 0 || slack(s) > -this.blockSize / 4)).sort((a, b) => slack(b) - slack(a));
     for (const seq of ranked.slice(0, diff)) {
       seq.length = seq.blocks.length * this.blockSize + 1;
       this.take(seq);

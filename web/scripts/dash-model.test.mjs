@@ -59,6 +59,20 @@ test("without prompt lengths the totals still match the server and most blocks a
   assert.ok(wrong / seen < 0.12, `${wrong} of ${seen} block counts differ`);
 });
 
+test("joining the recorded run at step 300 does not pile unexplained blocks onto the new requests", { skip: !trace }, () => {
+  const exact = model(trace, true);
+  const guess = model(trace, false);
+  let extra = 0;
+  trace.steps.forEach((s, i) => {
+    exact.apply(s);
+    if (i < 300) return;
+    guess.apply(s);
+    assert.equal(guess.free(), s.free_blocks, `step ${s.index}`);
+    for (const q of exact.liveSeqs()) if (q.admitted >= 300) extra += Math.max(0, guess.seqs.get(q.id).blocks.length - q.blocks.length);
+  });
+  assert.ok(extra <= 20, `${extra} blocks too many`);
+});
+
 test("a gap in the step indices is counted and the pool is reconciled with unknown blocks", { skip: !trace }, () => {
   const m = model(trace, false);
   for (const s of trace.steps.slice(0, 100)) m.apply(s);
@@ -68,6 +82,10 @@ test("a gap in the step indices is counted and the pool is reconciled with unkno
   }
   assert.equal(m.missed, 30);
   assert.equal(m.gaps.get(130), 30);
+  assert.equal(m.step(99).index, 99);
+  assert.equal(m.step(115), undefined);
+  assert.equal(m.step(130).index, 130);
+  assert.deepEqual(m.slotsOf(130).length, trace.steps[130].seqs.length);
 });
 
 test("joining a server mid-run puts the blocks of earlier requests in the unknown pool", () => {

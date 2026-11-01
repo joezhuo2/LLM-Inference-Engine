@@ -1471,3 +1471,9 @@
 - **focus plus context: a zoomed view next to an overview bar** => 
 - **`direction: rtl` with `<bdi>`: an ellipsis at the start so the newest text stays visible** => 
 - **controlled versus uncontrolled inputs: setting a range input imperatively while it plays** => 
+- **CORS preflight: OPTIONS, Access-Control-Allow-Origin and why a POST with a JSON body needs one** => 
+- **Private Network Access (Local Network Access in newer Chrome): a public HTTPS page reaching localhost** => 
+- **mixed content: an HTTPS page loading plain http** => 
+- **`mode: "no-cors"` and opaque responses: telling a blocked server from a missing one** => 
+- **Server-Sent Events: the event, data and blank-line framing, read from a fetch body stream** => 
+- **AbortController: cancelling a streaming fetch, and the server freeing the request when the connection closes** => 

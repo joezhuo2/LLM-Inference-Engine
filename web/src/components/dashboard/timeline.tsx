@@ -9,12 +9,15 @@ import { type Paint, useFeedCanvas } from "./use-feed-canvas";
 const PITCH = 6;
 const BAR = 4;
 const TOP = 18;
-const GUTTER = 30;
 const AXIS_MS = 20;
 const CELL = 5;
 const LABEL_EVERY = 25;
 
 type Hover = { index: number; pinned: boolean };
+
+function gutter(lastIndex: number) {
+  return Math.max(30, String(Math.max(0, lastIndex)).length * 6 + 10);
+}
 
 function stripWidth(maxBatch: number) {
   return maxBatch * CELL;
@@ -43,8 +46,9 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
     shown.current = jump ? goal : shown.current + (goal - shown.current) * (1 - Math.exp(-dt / 0.14));
     if (Math.abs(goal - shown.current) < 0.01) shown.current = goal;
     const strip = stripWidth(maxBatch);
-    const barX = GUTTER;
-    const barW = Math.max(40, width - GUTTER - strip - 14);
+    const left = gutter(model.lastIndex);
+    const barX = left;
+    const barW = Math.max(40, width - left - strip - 14);
     const stripX = width - strip;
     const pxPerMs = barW / AXIS_MS;
     const focus = feed.focus();
@@ -78,7 +82,7 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
       if (k % LABEL_EVERY === 0 && step) {
         ctx.fillStyle = colors.muted;
         ctx.textAlign = "right";
-        ctx.fillText(String(k), GUTTER - 6, y + BAR / 2);
+        ctx.fillText(String(k), left - 6, y + BAR / 2);
         ctx.textAlign = "left";
       }
       if (!step) {
@@ -89,6 +93,12 @@ export function Timeline({ feed, maxBatch }: { feed: Feed; maxBatch: number }) {
           ctx.globalAlpha = 1;
         }
         continue;
+      }
+      const missed = model.gaps.get(k);
+      if (missed) {
+        ctx.fillStyle = colors.warn;
+        ctx.textAlign = "left";
+        ctx.fillText(`${missed} missed`, barX + 4, rowTop(k - Math.ceil(missed / 2), height) + BAR / 2);
       }
       const ms = done ? (step.end_s - step.start_s) * 1e3 : (step.end_s - step.start_s) * 1e3 * Math.min(1, feed.progress);
       const dim = focus !== null && !step.seqs.includes(focus);

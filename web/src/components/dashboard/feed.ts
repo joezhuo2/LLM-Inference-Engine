@@ -67,6 +67,19 @@ export class Feed {
     this.emit();
   }
 
+  follow(seq: number | null) {
+    this.mine = seq;
+    this.emit();
+  }
+
+  switchTo(live: boolean, model: DashModel) {
+    this.mine = null;
+    this.selected = null;
+    this.live = live;
+    this.playing = false;
+    this.reset(model);
+  }
+
   focus(): number | null {
     return this.mine ?? this.selected;
   }
