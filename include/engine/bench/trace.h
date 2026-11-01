@@ -24,6 +24,9 @@ struct StepTrace {
 
 using TokenText = std::function<std::string(SeqId seq, int32_t token)>;
 
+nlohmann::ordered_json step_json(const StepTrace& step, size_t index, Clock::time_point start,
+                                 std::span<const std::string> texts);
+
 nlohmann::ordered_json trace_json(nlohmann::ordered_json meta, std::span<const Request> requests,
                                   std::span<const StepTrace> steps, Clock::time_point start,
                                   const TokenText& text);
