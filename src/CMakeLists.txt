@@ -29,11 +29,12 @@ add_library(engine_server
   server/broadcaster.cpp
   server/chat_api.cpp
   server/cors.cpp
+  server/http_server.cpp
   server/metrics_window.cpp
   server/serving_loop.cpp
   server/stop_matcher.cpp
 )
-target_link_libraries(engine_server PUBLIC engine_core)
+target_link_libraries(engine_server PUBLIC engine_core PRIVATE httplib::httplib)
 
 add_executable(engine app/main.cpp app/bench_command.cpp app/checksum_command.cpp
   app/generate_command.cpp)

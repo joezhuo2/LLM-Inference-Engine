@@ -1479,3 +1479,8 @@
 - **one thread owns the scheduler: handing work to it through an inbox instead of locking it** => 
 - **std::jthread and std::stop_token** => 
 - **dependency injection: a Backend interface so the GPU can be faked in tests** => 
+- **chunked transfer encoding and why a stream has no Content-Length** => 
+- **detecting a client that went away: failed writes and peeking at the socket** => 
+- **thread pool per connection: why a long-lived SSE stream holds a worker** => 
+- **simple requests: why a text/plain POST skips the preflight and still reaches the server** => 
+- **DNS rebinding: what an Origin check stops and what it does not** => 

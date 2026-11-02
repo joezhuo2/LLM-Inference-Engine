@@ -17,6 +17,7 @@ add_executable(unit_tests
   unit/test_checksum_golden.cpp
   unit/test_config.cpp
   unit/test_cors.cpp
+  unit/test_http_server.cpp
   unit/test_kv_cache_size.cpp
   unit/test_mapped_file.cpp
   unit/test_metrics_window.cpp
@@ -40,7 +41,8 @@ add_executable(unit_tests
 )
 target_include_directories(unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(unit_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
-target_link_libraries(unit_tests PRIVATE engine_core engine_server GTest::gtest_main)
+target_link_libraries(unit_tests PRIVATE engine_core engine_server httplib::httplib
+  GTest::gtest_main)
 gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 
 if(ENGINE_CUDA)
