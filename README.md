@@ -101,7 +101,7 @@ Decoding one token at batch 1 reads every weight except all but one row of the e
 
 ## Beyond the MVP
 
-Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, FlashAttention-style prefill, prefix caching and copy-on-write blocks, chunked prefill, speculative decoding, and an OpenAI-compatible HTTP server with a live metrics dashboard.
+Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, FlashAttention-style prefill, prefix caching and copy-on-write blocks, chunked prefill and speculative decoding.
 
 ## Hardware
 
@@ -142,6 +142,15 @@ The answer streams to stdout as it decodes, followed on stderr by the prompt and
 ```
 
 `bench` serves a synthetic workload and writes two CSVs: one row per request (`--out`: prompt and output tokens, preemptions, arrival time, TTFT, TPOT and latency in seconds) and one summary row (`results/laptop_b1_summary.csv`, or `--summary`) with the run's settings, the GPU, the build type, throughput, the mean, p50, p90 and p99 of TTFT, TPOT and latency, and the achieved bandwidth (the 2.07 GB of weights a decode step reads, divided by the median TPOT). Prompts are random token ids after BOS, or with `--prompts scripts/prompts.json` the chat prompts of that file in turn (rendered with the chat template; `--prompt-len` is then ignored); `--prompt-len` and `--output-len` take a length `N` or a range `MIN:MAX` drawn per request, `--seed` fixes the prompts, and `--request-rate R` spreads arrivals as a Poisson process at R requests per second instead of submitting all of them at once. Every request generates its full output length unless `--stop-at-eos` is given, and `--warmup` (default 3) untimed requests run first. `--max-batch N` serves through the paged runner with up to N concurrent sequences and `--graphs` (with `--max-batch`) replays CUDA Graphs for the decode steps. Sampling takes the same `--temperature`, `--top-k` and `--top-p` as `generate`, with seed `seed + i` for request `i`. Without `--max-batch` requests run one at a time through the contiguous `ModelRunner`. With every request submitted at once, the TTFT includes the time a request waits behind the earlier ones, which is why the batch-1 TTFT in the results is several seconds. Benchmark only the `release` preset (the command warns otherwise), plugged in and in maximum performance mode. The laptop's clocks move by 10% to 20% between runs, which is why every summary records its date and settings and `scripts/reproduce.sh` reports the median of several runs.
+
+```bash
+./build/release/bin/engine serve --model models/tinyllama --graphs
+curl -N localhost:8000/v1/chat/completions -H 'Content-Type: application/json' -d '{"messages":[{"role":"user","content":"Write a haiku about GPUs."}],"max_tokens":64,"stream":true}'
+```
+
+`serve` loads the model and answers on `127.0.0.1:8000` (`--host`, `--port`): an OpenAI-compatible `POST /v1/chat/completions`, streamed or not, `GET /health`, `GET /metrics`, and `GET /v1/steps`, a Server-Sent Events stream of every scheduler step in the format of the trace files. One engine thread runs the scheduler while HTTP threads add requests between steps. `--max-batch` (default 16) and `--graphs` are those of `bench`; `--temperature`, `--top-k`, `--top-p` and `--max-tokens` are the defaults for requests that do not set them; `--cors-origin`, repeatable, lists the browser origins allowed to call it (default `http://localhost:3000`), which is what the site's dashboard needs in live mode. `docs/api.md` is the contract.
+
+**Security:** the server has no authentication and no rate limit. It binds to loopback by default for that reason: never expose it publicly, forward its port or tunnel it, since anyone who can reach it can use the GPU and read every prompt's answers through `/v1/steps`. A client that disconnects stops receiving tokens, but until `Scheduler::cancel` is implemented (a Part C stub with `todo_joe` tests) its sequence decodes to its limit before its blocks come back.
 
 ## Reproducing the results
 
@@ -192,8 +201,8 @@ The `results/` files and `docs/results.md` are committed right after the code th
 ## Repository layout
 
 ```
-include/engine/   public headers (bench, core, kernels, loader, model, runtime, kv, sched, sampling, tokenizer)
-src/              the engine_core (pure C++), engine_kernels (CUDA, cuBLAS) and engine_runtime libraries, and the CLI
+include/engine/   public headers (bench, core, kernels, loader, model, runtime, kv, sched, sampling, server, tokenizer)
+src/              the engine_core (pure C++), engine_kernels (CUDA, cuBLAS), engine_runtime and engine_server libraries, and the CLI
 results/          benchmark CSVs, decode-step profiles and plots (results/plots), written by scripts/reproduce.sh
 tests/            unit tests, GPU tests, test helpers and generated golden data
 scripts/          Python reference and golden scripts, profiling (docs/profiling.md), baselines and plots (docs/baselines.md)
