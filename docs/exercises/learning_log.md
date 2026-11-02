@@ -1473,3 +1473,4 @@
 - **weak_ptr: observing an object without keeping it alive** => 
 - **sliding windows over a deque: trimming old entries on read and write** => 
 - **percentiles over a time window versus over a whole run** => 
+- **stop strings: matching across token boundaries by holding back a partial match** => 

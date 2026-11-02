@@ -27,6 +27,7 @@ add_executable(unit_tests
   unit/test_safetensors.cpp
   unit/test_scheduler.cpp
   unit/test_sampling_params.cpp
+  unit/test_stop_matcher.cpp
   unit/test_tensor.cpp
   unit/test_text_stream.cpp
   unit/test_tokenizer.cpp

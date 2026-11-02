@@ -30,6 +30,7 @@ add_library(engine_server
   server/chat_api.cpp
   server/cors.cpp
   server/metrics_window.cpp
+  server/stop_matcher.cpp
 )
 target_link_libraries(engine_server PUBLIC engine_core)
 
