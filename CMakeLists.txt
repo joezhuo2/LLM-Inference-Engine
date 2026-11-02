@@ -37,8 +37,17 @@ FetchContent_Declare(nlohmann_json
 FetchContent_Declare(cli11
   URL https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.4.2.tar.gz
   FIND_PACKAGE_ARGS NAMES CLI11)
+FetchContent_Declare(httplib
+  URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.61.0.tar.gz
+  URL_HASH SHA256=f03bdb0bee4911d6db0335bc103f0f441ae70c527e993c1f4b3f177586b042d3
+  SYSTEM)
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest nlohmann_json cli11)
+set(HTTPLIB_USE_OPENSSL_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_USE_ZLIB_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_USE_BROTLI_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_USE_ZSTD_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest nlohmann_json cli11 httplib)
 
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)

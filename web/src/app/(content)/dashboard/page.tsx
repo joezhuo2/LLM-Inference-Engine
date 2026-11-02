@@ -1,25 +1,27 @@
-import { PageTitle } from "@/components/page-title";
 import type { Metadata } from "next";
-import { format, traces } from "@/lib/data";
+import { Dashboard } from "@/components/dashboard/dashboard";
+import { PageTitle } from "@/components/page-title";
+import { preferredTrace } from "@/lib/data";
 
 export const metadata: Metadata = { title: "dashboard" };
 
-export default function Dashboard() {
+function recordingLabel(): string {
+  const t = preferredTrace();
+  if (!t) return "no recorded run in results/traces";
+  const date = String(t.meta.date ?? "").slice(0, 10);
+  const commit = t.commit ? `, commit ${t.commit}` : "";
+  const gpu = String(t.meta.gpu).replace(/^NVIDIA (GeForce )?/, "");
+  return `${date} on ${gpu}${commit}: ${t.requests} chat requests at ${String(t.meta.request_rate)}/s, batch up to ${String(t.meta.max_batch)}${t.meta.graphs ? ", CUDA Graphs" : ""}`;
+}
+
+export default function DashboardPage() {
   return (
-    <div className="space-y-6">
-      <PageTitle text="dashboard" />
-      <p className="max-w-2xl text-muted">Recorded serving runs available for replay.</p>
-      <ul className="space-y-3 font-mono text-sm">
-        {traces.map((t) => (
-          <li key={t.file} className="rounded border border-border bg-surface p-4">
-            <div className="text-accent">{t.file.replace("/traces/", "")}</div>
-            <div className="mt-2 text-muted tabular-nums">
-              {t.requests} requests · {t.steps} steps · {format(t.duration_s)} s · up to {t.max_batch_seen} sequences at once ·{" "}
-              {String(t.meta.gpu ?? "")}
-            </div>
-          </li>
-        ))}
-      </ul>
+    <div className="space-y-4">
+      <header className="space-y-2">
+        <PageTitle text="dashboard" />
+        <p className="max-w-3xl text-muted">The engine serving requests one scheduler step at a time: who ran, which KV blocks they held, what they wrote.</p>
+      </header>
+      <Dashboard label={recordingLabel()} />
     </div>
   );
 }

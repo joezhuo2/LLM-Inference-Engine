@@ -25,11 +25,22 @@ add_library(engine_core
 target_include_directories(engine_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(engine_core PUBLIC nlohmann_json::nlohmann_json PRIVATE engine_sentencepiece)
 
+add_library(engine_server
+  server/broadcaster.cpp
+  server/chat_api.cpp
+  server/cors.cpp
+  server/http_server.cpp
+  server/metrics_window.cpp
+  server/serving_loop.cpp
+  server/stop_matcher.cpp
+)
+target_link_libraries(engine_server PUBLIC engine_core PRIVATE httplib::httplib)
+
 add_executable(engine app/main.cpp app/bench_command.cpp app/checksum_command.cpp
-  app/generate_command.cpp)
+  app/generate_command.cpp app/serve_command.cpp)
 target_compile_definitions(engine PRIVATE ENGINE_HAS_CUDA=$<BOOL:${ENGINE_CUDA}>
   ENGINE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
-target_link_libraries(engine PRIVATE engine_core CLI11::CLI11)
+target_link_libraries(engine PRIVATE engine_core engine_server CLI11::CLI11)
 
 if(ENGINE_CUDA)
   add_library(engine_kernels
@@ -71,6 +82,10 @@ if(ENGINE_CUDA)
   target_include_directories(engine_runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(engine_runtime PUBLIC engine_kernels)
   target_link_libraries(engine PRIVATE engine_runtime)
+
+  add_library(engine_server_gpu server/gpu_backend.cpp)
+  target_link_libraries(engine_server_gpu PUBLIC engine_server engine_runtime)
+  target_link_libraries(engine PRIVATE engine_server_gpu)
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/practice/CMakeLists.txt")

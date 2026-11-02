@@ -11,6 +11,7 @@
 using engine::Clock;
 using engine::Request;
 using engine::SeqId;
+using engine::step_json;
 using engine::StepTrace;
 using engine::trace_json;
 using std::chrono::milliseconds;
@@ -113,4 +114,21 @@ TEST(TraceJson, RequestsAreListedByIdWithTheirTimes) {
 TEST(TraceJson, RejectsAStepWithoutOneTokenPerSequence) {
     const std::vector<StepTrace> steps = {step(0, 1, false, {1, 2}, {10})};
     EXPECT_THROW(trace_json({}, {}, steps, kStart, echo), std::invalid_argument);
+}
+
+TEST(StepJson, IsTheSameObjectTheTraceWrites) {
+    StepTrace s = step(5, 12, false, {3, 8}, {40, 2});
+    s.finished = {8};
+    s.waiting = 1;
+    s.running = 1;
+    s.free_blocks = 7;
+    const std::vector<std::string> texts = {"3:40", "8:2"};
+    const auto j = trace_json({}, {}, std::vector<StepTrace>(4, s), kStart, echo);
+    EXPECT_EQ(step_json(s, 3, kStart, texts).dump(), j["steps"][3].dump());
+}
+
+TEST(StepJson, RejectsAStepWithoutOneTextPerSequence) {
+    const StepTrace s = step(0, 1, false, {1, 2}, {10, 11});
+    const std::vector<std::string> texts = {"a"};
+    EXPECT_THROW(step_json(s, 0, kStart, texts), std::invalid_argument);
 }

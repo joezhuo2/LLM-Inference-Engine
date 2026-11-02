@@ -1,6 +1,6 @@
 # Engine API contract
 
-The formats the engine writes and serves for the web site (`web/`) and other clients: the trace file `engine bench --trace` writes, and the HTTP endpoints of the server (Part 2 item 1, not built yet). The site's replay mode reads a trace file and its live mode reads the endpoints, so a step looks the same in both.
+The formats the engine writes and serves for the web site (`web/`) and other clients: the trace file `engine bench --trace` writes, and the HTTP endpoints of `engine serve`. The site's replay mode reads a trace file and its live mode reads the endpoints, so a step looks the same in both.
 
 ## Conventions
 
@@ -90,11 +90,17 @@ build/release/bin/engine bench --model models/tinyllama --prompts scripts/prompt
 
 `meta.prompts` names the prompts file (`"random"` for the random-token workload of `bench`).
 
-## HTTP endpoints (server, planned)
+## HTTP endpoints (`engine serve`)
+
+```
+build/release/bin/engine serve --model models/tinyllama --graphs
+```
+
+Listens on `127.0.0.1:8000` once the model is loaded (`--host`, `--port`); `--max-batch` (default 16) and `--graphs` are those of `bench`, and `--temperature`, `--top-k`, `--top-p` and `--max-tokens` set what a request gets when it does not say. One engine thread runs the scheduler; HTTP worker threads hand it requests and read tokens through queues, so requests join the batch between steps.
 
 ### `GET /health`
 
-`200` with `{"version": 1, "status": "ok"}` once the model is loaded.
+`200` with `{"version": 1, "status": "ok"}`. The server only listens once the model is loaded, so anything else means it is not up.
 
 ### `GET /metrics`
 
@@ -116,24 +122,26 @@ A snapshot; the dashboard polls it about once a second.
 }
 ```
 
-`output_per_s` covers the last 10 seconds; the latency percentiles cover the requests that finished in the last 60 seconds (`null` when there are none).
+`output_per_s` covers the last 10 seconds (or the time since start when that is shorter); the latency percentiles cover the requests that finished in the last 60 seconds (`null` when there are none, and `tpot_s` also ignores one-token answers). TTFT counts from when the HTTP request was received. `finished_total` and the latency cover answers that reached their end (EOS, a stop string or `max_tokens`), not requests whose client went away. `output_total` counts every token sampled, including those of a cancelled request still running. `preemptions_total` counts prefill steps of sequences that already had output. `blocks_total` includes the null block 0, so an idle server has `blocks_free` = `blocks_total` - 1.
 
 ### `GET /v1/steps` (Server-Sent Events)
 
-One `event: step` per scheduler step, `data:` holding a step object exactly as above (with `start_s`, `end_s` from server start). The dashboard's batch timeline reads this stream, the same way replay mode reads `steps` of a trace. A client that falls behind may miss steps; `index` shows the gap.
+One `event: step` per scheduler step, `data:` holding a step object exactly as above (with `start_s`, `end_s` from server start). The dashboard's batch timeline reads this stream, the same way replay mode reads `steps` of a trace. A client that falls behind may miss steps; `index` shows the gap. Each subscriber has a queue of 256 steps that drops its oldest entry, so a slow client never holds up the engine; one that stops reading long enough for a socket write to time out (5 s) is disconnected. While no step arrives the server sends a `: keepalive` comment every second, which SSE clients ignore. Every running sequence is in every decode step; a sequence that disappears from the decode steps without being in `finished` was preempted (or, once `Scheduler::cancel` exists, cancelled).
 
 ### `POST /v1/chat/completions`
 
-OpenAI-compatible. Request fields used: `messages` (roles `system`, `user`, `assistant`), `max_tokens`, `temperature`, `top_p`, `stream`, `stop` (string or list), and the extension `top_k`. `model` is accepted and ignored. The prompt is built with the TinyLlama chat template.
+OpenAI-compatible. Request fields used: `messages` (roles `system`, `user`, `assistant`, string `content`), `max_tokens`, `temperature`, `top_p`, `seed`, `stream`, `stop` (string or list), and the extension `top_k`. `model` is accepted and ignored, as are fields not listed here, and a field set to `null` counts as missing. Without `max_tokens` the answer stops at `--max-tokens` (256) or the end of the context; a `max_tokens` that does not fit the context is refused. Without `seed` the seed is random. The prompt is built with the TinyLlama chat template with no BOS, as HF's `apply_chat_template` and `engine generate` do. A malformed request gets `400` with `{"error": {"message": "...", "type": "invalid_request_error"}}`.
 
-With `"stream": true` the response is `text/event-stream`: a first chunk with `{"role": "assistant"}`, one chunk per token with its `text` as `content`, a last chunk with an empty delta and `finish_reason` `"stop"` (EOS or a stop string) or `"length"`, then `data: [DONE]`.
+With `"stream": true` the response is `text/event-stream`: a first chunk with `{"role": "assistant"}` (its `engine` field has only `seq_id`, since no token exists yet), one chunk per token with its `text` as `content` (no chunk for a token that adds no text), a last chunk with an empty delta and `finish_reason` `"stop"` (EOS or a stop string) or `"length"`, then `data: [DONE]`.
 
 ```
 data: {"id":"chatcmpl-341","object":"chat.completion.chunk","created":1793000000,"model":"tinyllama","choices":[{"index":0,"delta":{"content":" the"},"finish_reason":null}],"engine":{"seq_id":341,"step":6118}}
 ```
 
-The `engine` field is an extension: the sequence id and step index of the token, so the playground can highlight its own sequence in the timeline. Without `stream` the response is one `chat.completion` object with `usage` (prompt, completion and total tokens). A client that disconnects cancels its request and frees its blocks.
+The `engine` field is an extension: the sequence id and step index of the token, so the playground can highlight its own sequence in the timeline. Without `stream` the response is one `chat.completion` object with `usage` (prompt, completion and total tokens). Text matching a stop string is not sent, and text that could still become one is held back until it is decided. Greedy output comes from the paged runner, so it equals `engine generate` except where two logits are nearly tied (see `tests/gpu/test_serve.cpp`).
+
+A client that disconnects cancels its request: no more of its tokens go anywhere. Freeing its blocks at once needs `Scheduler::cancel`, which is a Part C stub for now (`src/sched/scheduler.cpp`), so today the sequence keeps decoding with its tokens discarded and frees its blocks when it reaches `max_tokens` or EOS; the same goes for a sequence ended by a stop string. The server prints one warning about it.
 
 ### CORS
 
-The server answers `OPTIONS` preflights and sends `Access-Control-Allow-Origin` for the origins given with `--cors-origin` (default: `http://localhost:3000` and the site's Vercel domain), plus `Access-Control-Allow-Private-Network: true` so a page served over HTTPS can reach a server on localhost where the browser allows it. The server has no authentication: do not expose it publicly.
+The server answers `OPTIONS` preflights and sends `Access-Control-Allow-Origin` on every endpoint for the origins given with `--cors-origin`, repeatable (default: `http://localhost:3000` only; the site's Vercel domain is not set yet, so pass it with `--cors-origin https://<domain>`, which replaces the default). A preflight that carries `Access-Control-Request-Private-Network: true` is answered with `Access-Control-Allow-Private-Network: true` so a page served over HTTPS can reach a server on localhost where the browser allows it. A request whose `Origin` is not on the list gets `403` and starts no work, which keeps other web sites from spending the GPU with a simple `text/plain` POST the browser would not preflight; requests with no `Origin` (curl, scripts) are served. Origins must be a bare scheme and host, and `*` is refused. The server has no authentication: do not expose it publicly or tunnel it.

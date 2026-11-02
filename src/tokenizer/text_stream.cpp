@@ -12,7 +12,7 @@ constexpr std::string_view kReplacementChar = "\xEF\xBF\xBD";
 
 std::string TextStream::push(int32_t token) {
     ids_.push_back(token);
-    const std::string text = tokenizer_->decode(ids_);
+    const std::string text = decode_(ids_);
     if (text.ends_with(kReplacementChar) || text.size() <= emitted_) return {};
     std::string out = text.substr(emitted_);
     emitted_ = text.size();

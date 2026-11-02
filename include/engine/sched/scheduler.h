@@ -33,6 +33,7 @@ public:
     Step schedule();
     void update(std::span<const int32_t> tokens);
     std::vector<Request> take_finished();
+    void cancel(SeqId id);
 
     const Request& request(SeqId id) const;
     const BlockManager& blocks() const;

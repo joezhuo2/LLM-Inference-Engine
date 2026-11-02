@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
     engine::app::add_bench_command(app);
     engine::app::add_checksum_command(app);
     engine::app::add_generate_command(app);
+    engine::app::add_serve_command(app);
     try {
         app.parse(argc, argv);
     } catch (const CLI::ParseError& e) {

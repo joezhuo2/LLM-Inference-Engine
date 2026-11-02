@@ -1458,3 +1458,58 @@
 - **internal fragmentation versus external fragmentation: empty slots inside a block, free blocks that are not next to each other** => 
 - **first-fit allocation of a contiguous range** => 
 - **isometric projection: drawing a 3D grid with 2D canvas paths** => 
+
+## HTTP Server (Branch 73)
+- **one serializer for two consumers: why the trace file and the live stream share step_json** => 
+- **OpenAI chat completions: messages, roles, finish_reason and usage** => 
+- **Server-Sent Events: the data: and event: lines and the blank line that ends an event** => 
+- **HTTP 400 versus 500: whose fault an error is** => 
+- **CORS: the Origin header, Access-Control-Allow-Origin and why the browser, not the server, enforces it** => 
+- **preflight requests: OPTIONS, Access-Control-Request-Method and Access-Control-Request-Headers** => 
+- **Private Network Access: why Chrome asks before a public page calls localhost** => 
+- **Vary: Origin and caches** => 
+- **condition variables: wait_for with a predicate and spurious wakeups** => 
+- **bounded queues: drop-oldest versus blocking the producer (backpressure)** => 
+- **weak_ptr: observing an object without keeping it alive** => 
+- **sliding windows over a deque: trimming old entries on read and write** => 
+- **percentiles over a time window versus over a whole run** => 
+- **stop strings: matching across token boundaries by holding back a partial match** => 
+- **Add 11 todo_joe tests in `tests/todo/unit/test_scheduler_cancel.cpp` (target `todo_unit_tests`). They were validated against a throwaway implementation (all pass) and deliberate mutants of it (blocks not freed, request kept, waiting queue not updated, returned as finished, running list reordered), each caught by at least one test; the reorder mutant needed a new test. (Part C stub)** => 
+- **cancelling a request: what must be undone in the scheduler and the block manager** => 
+- **one thread owns the scheduler: handing work to it through an inbox instead of locking it** => 
+- **std::jthread and std::stop_token** => 
+- **dependency injection: a Backend interface so the GPU can be faked in tests** => 
+- **chunked transfer encoding and why a stream has no Content-Length** => 
+- **detecting a client that went away: failed writes and peeking at the socket** => 
+- **thread pool per connection: why a long-lived SSE stream holds a worker** => 
+- **simple requests: why a text/plain POST skips the preflight and still reaches the server** => 
+- **DNS rebinding: what an Origin check stops and what it does not** => 
+- **Add `make_gpu_backend` (`src/server/gpu_backend.cpp`), which sizes the KV cache as `bench` does and runs `serve_step`, and a GPU test that serves four concurrent streamed greedy completions on an ephemeral port and compares each with `generate` (the short `capital` prompt, since the paged and contiguous paths may differ at near-ties on longer answers). (Part B)** => 
+
+## Dashboard (Branch 75)
+- **`git log -1 --format=%h -- <path>`: the last commit that touched a file** => 
+- **nearest-rank percentile: p99 of 24 values is the largest one** => 
+- **reconciling a client-side model with a server total it can observe** => 
+- **Node type stripping: running a .ts file without compiling it** => 
+- **driving a canvas from a requestAnimationFrame loop outside React state** => 
+- **IntersectionObserver and visibilitychange: stopping work nobody can see** => 
+- **devicePixelRatio: sizing a canvas backing store for sharp lines** => 
+- **exponential smoothing toward a target: 1 - exp(-dt / tau) per frame** => 
+- **focus plus context: a zoomed view next to an overview bar** => 
+- **`direction: rtl` with `<bdi>`: an ellipsis at the start so the newest text stays visible** => 
+- **controlled versus uncontrolled inputs: setting a range input imperatively while it plays** => 
+- **CORS preflight: OPTIONS, Access-Control-Allow-Origin and why a POST with a JSON body needs one** => 
+- **Private Network Access (Local Network Access in newer Chrome): a public HTTPS page reaching localhost** => 
+- **mixed content: an HTTPS page loading plain http** => 
+- **`mode: "no-cors"` and opaque responses: telling a blocked server from a missing one** => 
+- **Server-Sent Events: the event, data and blank-line framing, read from a fetch body stream** => 
+- **AbortController: cancelling a streaming fetch, and the server freeing the request when the connection closes** => 
+- **sprite caching: rasterizing a label once and blitting it with drawImage** => 
+
+## Results Page (Branch 74)
+- **median span versus median busy time: what the idle share of a step measures** => 
+- **revealing an SVG line with an animated `clip-path: inset()` instead of `stroke-dashoffset`** => 
+- **mapping pointer coordinates into an SVG's viewBox with `getScreenCTM()`** => 
+- **`ResizeObserver`: redrawing a chart at its real pixel width so text keeps its size** => 
+- **`aria-live` regions: announcing a changing chart readout to screen readers** => 
+- **static batching against continuous batching: why the baselines' curves differ in more than kernel speed** => 

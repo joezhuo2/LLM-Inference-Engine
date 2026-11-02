@@ -8,20 +8,27 @@ set(ENGINE_TEST_DEFINITIONS
 add_executable(unit_tests
   unit/test_bf16.cpp
   unit/test_bench_metrics.cpp
+  unit/test_broadcaster.cpp
   unit/test_chat_prompts.cpp
   unit/test_block_manager.cpp
   unit/test_chat.cpp
+  unit/test_chat_api.cpp
   unit/test_checksum.cpp
   unit/test_checksum_golden.cpp
   unit/test_config.cpp
+  unit/test_cors.cpp
+  unit/test_http_server.cpp
   unit/test_kv_cache_size.cpp
   unit/test_mapped_file.cpp
+  unit/test_metrics_window.cpp
   unit/test_model_weights.cpp
   unit/test_paged_batch.cpp
   unit/test_reference_golden.cpp
   unit/test_request.cpp
   unit/test_safetensors.cpp
   unit/test_scheduler.cpp
+  unit/test_serving_loop.cpp
+  unit/test_stop_matcher.cpp
   unit/test_sampling_params.cpp
   unit/test_tensor.cpp
   unit/test_text_stream.cpp
@@ -34,7 +41,8 @@ add_executable(unit_tests
 )
 target_include_directories(unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(unit_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
-target_link_libraries(unit_tests PRIVATE engine_core GTest::gtest_main)
+target_link_libraries(unit_tests PRIVATE engine_core engine_server httplib::httplib
+  GTest::gtest_main)
 gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
 
 if(ENGINE_CUDA)
@@ -68,6 +76,7 @@ if(ENGINE_CUDA)
     gpu/test_rope_fast.cpp
     gpu/test_sample.cpp
     gpu/test_serve.cpp
+    gpu/test_server.cpp
     gpu/test_smoke.cpp
     gpu/test_stream.cpp
     gpu/test_swiglu.cpp
@@ -77,9 +86,16 @@ if(ENGINE_CUDA)
   )
   target_include_directories(gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
-  target_link_libraries(gpu_tests PRIVATE engine_runtime GTest::gtest_main)
+  target_link_libraries(gpu_tests PRIVATE engine_runtime engine_server_gpu httplib::httplib
+    GTest::gtest_main)
   gtest_discover_tests(gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS gpu)
 endif()
+
+add_executable(todo_unit_tests
+  todo/unit/test_scheduler_cancel.cpp
+)
+target_link_libraries(todo_unit_tests PRIVATE engine_core GTest::gtest_main)
+gtest_discover_tests(todo_unit_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)

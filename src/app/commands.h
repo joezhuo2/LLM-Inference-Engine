@@ -7,5 +7,6 @@ namespace engine::app {
 void add_bench_command(CLI::App& app);
 void add_checksum_command(CLI::App& app);
 void add_generate_command(CLI::App& app);
+void add_serve_command(CLI::App& app);
 
 }  // namespace engine::app

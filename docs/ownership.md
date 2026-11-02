@@ -46,3 +46,5 @@ For Part C, Claude never writes any of the implementation. It writes a stub that
 | Fused `add_rmsnorm`, vectorized RoPE, fused SwiGLU | M4 | C |
 | CUDA Graph capture and batch buckets | M4 | C |
 | Benchmark harness, CSV metrics, plots | M3 to M5 | A |
+| HTTP server plumbing, chat API, CORS, SSE, metrics windows (`src/server/`, `engine serve`) | Part 2 | A, with the wiring into the runner (`src/server/gpu_backend.cpp`, `serving_loop.cpp`) B |
+| `Scheduler::cancel` | Part 2 | C |
