@@ -7,7 +7,7 @@ export const dynamic = "force-static";
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return ["overview", "dead-ends", ...kernelStories.map((k) => k.slug)].map((name) => ({ card: `${name}.png` }));
+  return ["overview", "results", "dead-ends", ...kernelStories.map((k) => k.slug)].map((name) => ({ card: `${name}.png` }));
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ card: string }> }) {
@@ -19,6 +19,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ car
       title: "what didn't work",
       text: "The changes that did not do what they were meant to, with the measurement that showed it and what was kept.",
       stats: [{ label: "dead ends, each with its source", value: String(deadEnds.length) }],
+    });
+  }
+  if (name === "results") {
+    return ogCard({
+      eyebrow: "results",
+      title: "results",
+      text: "Throughput, time per token, the decode step profile and the roofline, against HuggingFace and llama.cpp.",
+      stats: headlineStats().slice(0, 3),
     });
   }
   if (!story) {

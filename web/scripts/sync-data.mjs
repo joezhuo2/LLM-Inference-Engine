@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,6 +79,14 @@ function readEnvironment() {
   return env;
 }
 
+function recordedIn(path) {
+  try {
+    return execFileSync("git", ["log", "-1", "--format=%h", "--", path], { cwd: web, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 function syncTraces() {
   mkdirSync(tracesOut, { recursive: true });
   const dir = join(results, "traces");
@@ -96,6 +105,7 @@ function syncTraces() {
       steps: steps.length,
       duration_s: steps.length ? steps[steps.length - 1].end_s : 0,
       max_batch_seen: steps.reduce((m, s) => Math.max(m, s.seqs.length), 0),
+      commit: recordedIn(join(dir, name)),
     });
   }
   return index;
@@ -112,14 +122,14 @@ const resultsText = existsSync(resultsPath) ? readFileSync(resultsPath, "utf8") 
 const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsText);
 const resultsDoc = { sections: parseProfiling(resultsText), ceilings: ceilings ? { gbs: Number(ceilings[1]), tflops: Number(ceilings[2]) } : null };
 const decodeSteps = {};
-for (const [key, name] of [["b1", "decode_step.md"], ["b16", "decode_step_b16.md"]]) {
+for (const [key, name] of [["b1", "decode_step.md"], ["b16", "decode_step_b16.md"], ["graphs", "decode_step_graphs.md"]]) {
   const path = join(results, name);
   if (!existsSync(path)) continue;
   const ops = parseProfiling(readFileSync(path, "utf8")).find((s) => s.id === "gpu-time-per-op-in-a-decode-step");
   if (ops?.tables[0]) decodeSteps[key] = { file: `results/${name}`, ...ops.tables[0] };
 }
 const launchGaps = {};
-for (const [key, name] of [["eager", "decode_step.md"], ["graphs", "decode_step_graphs.md"]]) {
+for (const [key, name] of [["eager", "decode_step.md"], ["graphs", "decode_step_graphs.md"], ["b16", "decode_step_b16.md"]]) {
   const path = join(results, name);
   if (!existsSync(path)) continue;
   const gaps = parseLaunchGaps(readFileSync(path, "utf8"));

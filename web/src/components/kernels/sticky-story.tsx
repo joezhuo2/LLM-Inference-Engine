@@ -14,10 +14,12 @@ export function StickyStory({
   steps,
   figure,
   caption,
+  morph = false,
 }: {
   steps: StoryStep[];
   figure: (step: number) => ReactNode;
   caption: (step: number) => ReactNode;
+  morph?: boolean;
 }) {
   const [visits, setVisits] = useState(0);
   const panel = useRef<HTMLDivElement>(null);
@@ -43,7 +45,7 @@ export function StickyStory({
           <div className="grid aspect-[14/10] w-full">
             <AnimatePresence>
               <motion.div
-                key={`${active}-${visits}`}
+                key={morph ? `figure-${visits}` : `${active}-${visits}`}
                 className="col-start-1 row-start-1 min-w-0"
                 initial={reduced ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
