@@ -8,7 +8,8 @@ namespace engine::server {
 
 using HeaderList = std::vector<std::pair<std::string, std::string>>;
 
-inline const std::vector<std::string> kDefaultCorsOrigins = {"http://localhost:3000"};
+inline const std::vector<std::string> kDefaultCorsOrigins = {
+    "http://localhost:3000", "https://llm-inference-engine-jz.vercel.app"};
 
 void validate_origin(const std::string& origin);
 

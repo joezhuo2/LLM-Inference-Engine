@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## server/vercel-origin
+
+- Allow the deployed site, `https://llm-inference-engine-jz.vercel.app`, in `kDefaultCorsOrigins`, link it from the README, and record the live check: from that page in Chrome 156 the dashboard connected to a local `engine serve` and streamed a chat answer once the browser's local network permission was granted (via DevTools protocol, so the permission prompt itself was not seen), and every request was blocked without it. (Part A)
+
 ## server/cancel-host
 
 - Update the README for the finished site and server: a section on the site with four screenshots (`assets/`), the HTTP server in the architecture and design decisions, cpp-httplib in the dependencies, `--allow-host`, `web/` in the layout, and a broken HuggingFace link fixed. The ownership paragraph now says a few core pieces were drafted by Claude at Joe's request. (Part A)

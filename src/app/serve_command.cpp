@@ -144,7 +144,7 @@ void add_serve_command(CLI::App& app) {
     cmd->add_option("--cors-origin", opts->cors_origins,
                     "Origin allowed to call the server from a browser, such as "
                     "https://example.vercel.app; repeat for several (default: "
-                    "http://localhost:3000)");
+                    "http://localhost:3000 and https://llm-inference-engine-jz.vercel.app)");
     cmd->add_option("--allow-host", opts->allow_hosts,
                     "Extra name the server answers to in the Host header, on top of the loopback "
                     "names and --host; repeat for several. Any other name gets 403, which stops "

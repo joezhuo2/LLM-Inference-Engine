@@ -27,12 +27,12 @@ If Vercel builds from a shallow clone, the dashboard's recording label leaves ou
 
 ### Live mode from the deployed site
 
-The site is public but the engine stays on your machine, so each visitor's browser connects to their own `localhost`. Allow the deployed origin exactly, with no trailing slash:
+The site is live at https://llm-inference-engine-jz.vercel.app. It is public but the engine stays on your machine, so each visitor's browser connects to their own `localhost`. `engine serve` allows that origin by default (`kDefaultCorsOrigins` in `include/engine/server/cors.h`; a different domain needs `--cors-origin https://<domain>`, which replaces the list):
 
 ```bash
-build/release/bin/engine serve --model models/tinyllama --graphs --cors-origin https://<your-domain>
+build/release/bin/engine serve --model models/tinyllama --graphs
 ```
 
-`--cors-origin` replaces the default list, so repeat it with `http://localhost:3000` to keep local development working, or add the domain to `kDefaultCorsOrigins` in `include/engine/server/cors.h` to make it the default. Then open `/dashboard`, choose live and connect to `http://localhost:8000`.
+Then open `/dashboard`, choose live and connect to `http://localhost:8000`.
 
-An HTTPS page reaching `localhost` depends on the browser: Chrome may ask for permission to access the local network, and other browsers may refuse. This path has not been tested yet; the dashboard shows a how-to when it is blocked. Never expose or tunnel the server to get around it.
+An HTTPS page reaching `localhost` needs the browser's local network permission. In Chrome 156 the deployed dashboard connected and streamed a chat answer from a local engine once that permission was granted, and without it Chrome blocked every request; the dashboard then shows a how-to. Other browsers may refuse outright, in which case run the site yourself with `npm run dev`. Never expose or tunnel the server to get around it.

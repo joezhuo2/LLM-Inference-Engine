@@ -59,7 +59,7 @@ All numbers are from this one laptop GPU, whose clocks move by 10% to 20% betwee
 
 ## The site
 
-`web/` is a static Next.js site built from the files in this repo, so its numbers cannot drift from the results above: the build fails if the CSV medians disagree with `docs/results.md`. Run it with `cd web && npm ci && npm run dev`; `web/README.md` covers deploying it on Vercel.
+[The site](https://llm-inference-engine-jz.vercel.app) (`web/`) is a static Next.js export built from the files in this repo, so its numbers cannot drift from the results above: the build fails if the CSV medians disagree with `docs/results.md`. Run it with `cd web && npm ci && npm run dev`; `web/README.md` covers deploying it on Vercel.
 
 **`/results`** walks through every measurement as a scroll story, with exact values on hover or by keyboard and, on each chart, the GPU, commit, date and command that produced it.
 
@@ -169,7 +169,7 @@ The answer streams to stdout as it decodes, followed on stderr by the prompt and
 curl -N localhost:8000/v1/chat/completions -H 'Content-Type: application/json' -d '{"messages":[{"role":"user","content":"Write a haiku about GPUs."}],"max_tokens":64,"stream":true}'
 ```
 
-`serve` loads the model and answers on `127.0.0.1:8000` (`--host`, `--port`): an OpenAI-compatible `POST /v1/chat/completions`, streamed or not, `GET /health`, `GET /metrics`, and `GET /v1/steps`, a Server-Sent Events stream of every scheduler step in the format of the trace files. One engine thread runs the scheduler while HTTP threads add requests between steps. `--max-batch` (default 16) and `--graphs` are those of `bench`; `--temperature`, `--top-k`, `--top-p` and `--max-tokens` are the defaults for requests that do not set them; `--cors-origin`, repeatable, lists the browser origins allowed to call it (default `http://localhost:3000`), which is what the site's dashboard needs in live mode; `--allow-host`, repeatable, adds names to the `Host` check below. `docs/api.md` is the contract.
+`serve` loads the model and answers on `127.0.0.1:8000` (`--host`, `--port`): an OpenAI-compatible `POST /v1/chat/completions`, streamed or not, `GET /health`, `GET /metrics`, and `GET /v1/steps`, a Server-Sent Events stream of every scheduler step in the format of the trace files. One engine thread runs the scheduler while HTTP threads add requests between steps. `--max-batch` (default 16) and `--graphs` are those of `bench`; `--temperature`, `--top-k`, `--top-p` and `--max-tokens` are the defaults for requests that do not set them; `--cors-origin`, repeatable, lists the browser origins allowed to call it (default `http://localhost:3000` and the deployed site), which is what the site's dashboard needs in live mode; `--allow-host`, repeatable, adds names to the `Host` check below. `docs/api.md` is the contract.
 
 **Security:** the server has no authentication and no rate limit. It binds to loopback by default for that reason: never expose it publicly, forward its port or tunnel it, since anyone who can reach it can use the GPU and read every prompt's answers through `/v1/steps`. A client that disconnects cancels its request, and its blocks come back before the next step. Requests whose `Host` header is not a loopback name, the `--host` address or an `--allow-host` name get 403, which stops DNS rebinding.
 

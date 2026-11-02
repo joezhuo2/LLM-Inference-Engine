@@ -68,6 +68,7 @@ TEST(CorsPolicy, PreflightFromAnotherOriginAllowsNothing) {
 TEST(CorsPolicy, DefaultsToTheLocalDevServer) {
     const CorsPolicy policy(engine::server::kDefaultCorsOrigins);
     EXPECT_TRUE(policy.allows("http://localhost:3000"));
+    EXPECT_TRUE(policy.allows("https://llm-inference-engine-jz.vercel.app"));
 }
 
 TEST(CorsPolicy, RejectsOriginsThatAreNotSchemeAndHost) {
