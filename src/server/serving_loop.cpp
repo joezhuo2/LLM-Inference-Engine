@@ -119,19 +119,8 @@ void ServingLoop::drop(SeqId id) {
 }
 
 void ServingLoop::release(SeqId id) {
-    try {
-        backend_.scheduler().cancel(id);
-        live_.erase(id);
-    } catch (const std::invalid_argument&) {
-        throw;
-    } catch (const std::logic_error& e) {
-        if (!warned_cancel_)
-            std::fprintf(stderr,
-                         "warning: %s; a cancelled request keeps decoding, with its tokens "
-                         "discarded, and holds its KV blocks until it reaches max_tokens or EOS\n",
-                         e.what());
-        warned_cancel_ = true;
-    }
+    backend_.scheduler().cancel(id);
+    live_.erase(id);
 }
 
 void ServingLoop::handle(const StepResult& result) {

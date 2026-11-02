@@ -2,6 +2,14 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## server/cancel-host
+
+- Update the README for the finished site and server: a section on the site with four screenshots (`assets/`), the HTTP server in the architecture and design decisions, cpp-httplib in the dependencies, `--allow-host`, `web/` in the layout, and a broken HuggingFace link fixed. The ownership paragraph now says a few core pieces were drafted by Claude at Joe's request. (Part A)
+- Write the Vercel steps in `web/README.md`, with live mode from the deployed site and what has not been tested on that path. (Part A)
+- Leave a trace's commit out of its label when the site is built from a shallow clone, as CI and likely Vercel do: `git log -1 -- <file>` there names the clone's boundary commit, not the one that added the file, so a depth-1 build labelled the recording with HEAD instead of e1ec9e7. (Part A)
+- Check the `Host` header on every request of `engine serve` (`src/server/host_check.cpp`): the name must be a loopback name, the `--host` address or one added with the new repeatable `--allow-host`, on any port, or the request gets 403 before any handler runs. A DNS rebinding page is same-origin in the browser, so it sends no `Origin` and passes CORS; before this it could read `/metrics` and `/v1/steps`. Missing, repeated and malformed `Host` headers are refused too. (Part A)
+- Implement `Scheduler::cancel` (`src/sched/scheduler.cpp`), written by Claude at Joe's request: between steps it takes a waiting request out of the queue, or a running one out of the running list with all its blocks freed at once, and forgets it; unknown, finished and pending-step cases throw `invalid_argument` and change nothing. The 11 `todo_joe` tests move to `tests/unit/test_scheduler_cancel.cpp`, `todo_unit_tests` is deleted, and the server drops its warning and "keep decoding" fallback, so a disconnected client or a stop string frees the sequence's blocks and batch row before the next step. The disconnect test now also checks that the run stops well before its 200-token limit. (Part C, drafted by Claude)
+
 ## server/http
 
 - Split the step object out of the trace writer as `step_json`, so the trace file and the server's live step stream (`GET /v1/steps`) write a step through the same function, byte for byte the same shape. (Part A)

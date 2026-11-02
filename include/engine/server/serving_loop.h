@@ -106,7 +106,6 @@ private:
     SeqId next_id_ = 0;
 
     std::map<SeqId, Live> live_;
-    bool warned_cancel_ = false;
 
     std::mutex metrics_mutex_;
     Counters counters_;

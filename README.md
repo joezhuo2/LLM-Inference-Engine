@@ -10,9 +10,9 @@
 <img alt="Model: TinyLlama 1.1B BF16" src="https://img.shields.io/badge/model-TinyLlama%201.1B%20BF16-informational">
 </p>
 
-<p align="center"><a href="#goals">Goals</a> • <a href="#results">Results</a> • <a href="#architecture">Architecture</a> • <a href="#design-decisions">Design decisions</a> • <a href="#building">Building</a> • <a href="#reproducing-the-results">Reproducing</a> • <a href="#repository-layout">Layout</a></p>
+<p align="center"><a href="#goals">Goals</a> • <a href="#results">Results</a> • <a href="#the-site">Site</a> • <a href="#architecture">Architecture</a> • <a href="#design-decisions">Design decisions</a> • <a href="#building">Building</a> • <a href="#reproducing-the-results">Reproducing</a> • <a href="#repository-layout">Layout</a></p>
 
-> A single-GPU LLM inference engine in C++20 and CUDA. It serves [TinyLlama-1.1B-Chat-v1.0](https://huggingface.?co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) in BF16 with FP32 accumulation, matches HuggingFace output token for token, and serves many concurrent requests with a paged KV cache, a paged decode attention kernel, continuous batching, custom fused kernels, sampling on the GPU, and CUDA Graphs. The goal is not to beat vLLM. It is a small engine in which every design decision is measured, explained and reproducible: every performance number comes from a script in this repo that anyone can rerun.
+> A single-GPU LLM inference engine in C++20 and CUDA. It serves [TinyLlama-1.1B-Chat-v1.0](https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) in BF16 with FP32 accumulation, matches HuggingFace output token for token, and serves many concurrent requests with a paged KV cache, a paged decode attention kernel, continuous batching, custom fused kernels, sampling on the GPU, and CUDA Graphs. The goal is not to beat vLLM. It is a small engine in which every design decision is measured, explained and reproducible: every performance number comes from a script in this repo that anyone can rerun.
 
 ## Goals
 
@@ -57,10 +57,30 @@ Decode is bandwidth bound at every batch size here: every point sits left of the
 
 All numbers are from this one laptop GPU, whose clocks move by 10% to 20% between runs; a cloud GPU run was planned and has not been done.
 
+## The site
+
+`web/` is a static Next.js site built from the files in this repo, so its numbers cannot drift from the results above: the build fails if the CSV medians disagree with `docs/results.md`. Run it with `cd web && npm ci && npm run dev`; `web/README.md` covers deploying it on Vercel.
+
+**`/results`** walks through every measurement as a scroll story, with exact values on hover or by keyboard and, on each chart, the GPU, commit, date and command that produced it.
+
+![The results page: tokens per second against max batch, beside the text explaining it](assets/results.png)
+
+**`/kernels`** has a story page for each kernel and engine technique, including the dead ends, each drawn from recorded data with before and after numbers and links to the source. The paged KV page lets you allocate blocks yourself.
+
+![The paged KV story: a request's block table pointing into the shared pool](assets/kernel-story.png)
+
+**`/dashboard`** shows the engine serving requests one scheduler step at a time: metric tiles, a batch timeline, the KV block pool and each request's text. By default it replays a recorded run of 24 chat requests, with play, pause, speed and a scrubber.
+
+![The dashboard replaying the recorded run](assets/dashboard-replay.png)
+
+Its live mode connects to `engine serve` on your own machine and adds a chat playground, whose sequence is highlighted in the timeline and the pool while it streams. Live steps do not carry prompt lengths, so blocks the page cannot yet assign to a request show as gray.
+
+![The dashboard in live mode with a chat answer beside the engine's own timeline and KV pool](assets/dashboard-live.png)
+
 ## Architecture
 
 ```
-CLI / bench harness
+CLI / bench harness / HTTP server
       |  requests
       v
   Scheduler  <---------------------------------+
@@ -78,7 +98,7 @@ CLI / bench harness
   Sampler  ----- one token per sequence -------+
 ```
 
-Each decode step, the scheduler picks the running sequences, the block manager makes sure each has a free cache slot for its next token, the model runner launches one forward pass for the whole batch (replaying a captured CUDA Graph when the batch size matches a captured bucket), the sampler returns one token per sequence, and the scheduler retires finished sequences and admits waiting ones.
+Each decode step, the scheduler picks the running sequences, the block manager makes sure each has a free cache slot for its next token, the model runner launches one forward pass for the whole batch (replaying a captured CUDA Graph when the batch size matches a captured bucket), the sampler returns one token per sequence, and the scheduler retires finished sequences and admits waiting ones. `engine serve` runs this loop on one engine thread; HTTP threads queue new requests and cancellations for it to apply between steps.
 
 ## The model and why decode is memory bound
 
@@ -97,6 +117,7 @@ Decoding one token at batch 1 reads every weight except all but one row of the e
 - **Continuous batching:** waiting, running and finished queues, admission by free blocks, and recompute-style preemption when the cache runs out. Each step is all prefill or all decode; the resulting stall is measured so chunked prefill can fix it later.
 - **Sampling on the GPU:** greedy, Gumbel-max for temperature sampling, and top-k and top-p through binary-searched thresholds instead of a full sort of the vocabulary.
 - **CUDA Graphs:** with `--graphs` decode is captured for batch sizes 1, 2, 4, 8, 16 and so on up to the max batch and replayed from fixed device buffers, which removes per-kernel launch overhead; each batch size that can split its attention also gets one graph per split count, so long contexts replay the split kernel too; prefill runs eagerly.
+- **Serving over HTTP:** one thread owns the scheduler and the GPU, so the kernels and scheduler need no locks. A cancel takes effect between steps because `update` matches tokens to sequences by batch row, and a client that reads slowly loses step events rather than holding up the engine.
 - **Portable headers:** public headers in `include/engine/` contain no CUDA includes, so the pure C++ parts (config, parser, layout planner, checksums) build and test on machines without a GPU, including macOS.
 
 ## Beyond the MVP
@@ -109,7 +130,7 @@ Developed on an RTX 5060 Laptop GPU (Blackwell, compute capability 12.0, 8 GB GD
 
 ## Building
 
-Requires CUDA 12.8 or newer (for `sm_120`), CMake 3.28 or newer, Ninja and a C++20 compiler; GoogleTest, nlohmann/json and CLI11 are found on the system or fetched. Download the model and link the directory that holds it into the repo as `models` (gitignored), or set `ENGINE_MODEL_DIR` to the model directory instead:
+Requires CUDA 12.8 or newer (for `sm_120`), CMake 3.28 or newer, Ninja and a C++20 compiler; GoogleTest, nlohmann/json, CLI11 and cpp-httplib are found on the system or fetched. Download the model and link the directory that holds it into the repo as `models` (gitignored), or set `ENGINE_MODEL_DIR` to the model directory instead:
 
 ```bash
 hf download TinyLlama/TinyLlama-1.1B-Chat-v1.0 --local-dir ~/models/tinyllama
@@ -148,9 +169,9 @@ The answer streams to stdout as it decodes, followed on stderr by the prompt and
 curl -N localhost:8000/v1/chat/completions -H 'Content-Type: application/json' -d '{"messages":[{"role":"user","content":"Write a haiku about GPUs."}],"max_tokens":64,"stream":true}'
 ```
 
-`serve` loads the model and answers on `127.0.0.1:8000` (`--host`, `--port`): an OpenAI-compatible `POST /v1/chat/completions`, streamed or not, `GET /health`, `GET /metrics`, and `GET /v1/steps`, a Server-Sent Events stream of every scheduler step in the format of the trace files. One engine thread runs the scheduler while HTTP threads add requests between steps. `--max-batch` (default 16) and `--graphs` are those of `bench`; `--temperature`, `--top-k`, `--top-p` and `--max-tokens` are the defaults for requests that do not set them; `--cors-origin`, repeatable, lists the browser origins allowed to call it (default `http://localhost:3000`), which is what the site's dashboard needs in live mode. `docs/api.md` is the contract.
+`serve` loads the model and answers on `127.0.0.1:8000` (`--host`, `--port`): an OpenAI-compatible `POST /v1/chat/completions`, streamed or not, `GET /health`, `GET /metrics`, and `GET /v1/steps`, a Server-Sent Events stream of every scheduler step in the format of the trace files. One engine thread runs the scheduler while HTTP threads add requests between steps. `--max-batch` (default 16) and `--graphs` are those of `bench`; `--temperature`, `--top-k`, `--top-p` and `--max-tokens` are the defaults for requests that do not set them; `--cors-origin`, repeatable, lists the browser origins allowed to call it (default `http://localhost:3000`), which is what the site's dashboard needs in live mode; `--allow-host`, repeatable, adds names to the `Host` check below. `docs/api.md` is the contract.
 
-**Security:** the server has no authentication and no rate limit. It binds to loopback by default for that reason: never expose it publicly, forward its port or tunnel it, since anyone who can reach it can use the GPU and read every prompt's answers through `/v1/steps`. A client that disconnects stops receiving tokens, but until `Scheduler::cancel` is implemented (a Part C stub with `todo_joe` tests) its sequence decodes to its limit before its blocks come back.
+**Security:** the server has no authentication and no rate limit. It binds to loopback by default for that reason: never expose it publicly, forward its port or tunnel it, since anyone who can reach it can use the GPU and read every prompt's answers through `/v1/steps`. A client that disconnects cancels its request, and its blocks come back before the next step. Requests whose `Host` header is not a loopback name, the `--host` address or an `--allow-host` name get 403, which stops DNS rebinding.
 
 ## Reproducing the results
 
@@ -206,9 +227,11 @@ src/              the engine_core (pure C++), engine_kernels (CUDA, cuBLAS), eng
 results/          benchmark CSVs, decode-step profiles and plots (results/plots), written by scripts/reproduce.sh
 tests/            unit tests, GPU tests, test helpers and generated golden data
 scripts/          Python reference and golden scripts, profiling (docs/profiling.md), baselines and plots (docs/baselines.md)
-docs/             results, profiling, baselines, hardware notes, ownership, and learning exercises
+docs/             API contract, results, profiling, baselines, hardware notes, ownership, and learning exercises
+web/              the project site (static Next.js export): results, kernel stories and the dashboard
+assets/           images used by this README
 ```
 
 ## Ownership
 
-This is Joe Zhuo's project, built with Claude as tutor, reviewer and writer of the supporting code. The core (kernels, paged attention, the KV block manager, the scheduler, CUDA Graph capture and the safetensors parser) is written by hand; `docs/ownership.md` records who wrote each component.
+This is Joe Zhuo's project, built with Claude as tutor, reviewer and writer of the supporting code. The core (kernels, paged attention, the KV block manager, the scheduler, CUDA Graph capture and the safetensors parser) is written by hand, apart from a few pieces Claude drafted at his request; `docs/ownership.md` and the part tags in `changelog.md` record who wrote what.

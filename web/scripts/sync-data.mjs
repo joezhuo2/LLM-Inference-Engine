@@ -79,9 +79,14 @@ function readEnvironment() {
   return env;
 }
 
+function git(...args) {
+  return execFileSync("git", args, { cwd: web, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+}
+
 function recordedIn(path) {
   try {
-    return execFileSync("git", ["log", "-1", "--format=%h", "--", path], { cwd: web, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || null;
+    if (git("rev-parse", "--is-shallow-repository") === "true") return null;
+    return git("log", "-1", "--format=%h", "--", path) || null;
   } catch {
     return null;
   }

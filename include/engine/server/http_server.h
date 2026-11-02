@@ -10,6 +10,7 @@
 #include "engine/kv/cache_size.h"
 #include "engine/server/chat_api.h"
 #include "engine/server/cors.h"
+#include "engine/server/host_check.h"
 #include "engine/server/serving_loop.h"
 
 namespace engine::server {
@@ -18,6 +19,7 @@ using Encode = std::function<std::vector<int32_t>(const std::string& text)>;
 
 struct HttpOptions {
     std::vector<std::string> cors_origins = kDefaultCorsOrigins;
+    std::vector<std::string> allowed_hosts = kLoopbackHosts;
     SamplingDefaults defaults{};
     std::string model = "tinyllama";
     nlohmann::ordered_json meta = nlohmann::ordered_json::object();

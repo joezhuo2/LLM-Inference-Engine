@@ -29,6 +29,7 @@ add_library(engine_server
   server/broadcaster.cpp
   server/chat_api.cpp
   server/cors.cpp
+  server/host_check.cpp
   server/http_server.cpp
   server/metrics_window.cpp
   server/serving_loop.cpp

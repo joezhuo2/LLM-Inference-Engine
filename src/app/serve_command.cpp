@@ -33,6 +33,7 @@ struct Options {
     int max_batch = 16;
     bool graphs = false;
     std::vector<std::string> cors_origins = server::kDefaultCorsOrigins;
+    std::vector<std::string> allow_hosts;
     server::SamplingDefaults defaults{};
 };
 
@@ -52,6 +53,13 @@ std::string joined(const std::vector<std::string>& items) {
     return out;
 }
 
+std::vector<std::string> allowed_hosts(const Options& o) {
+    std::vector<std::string> hosts = server::kLoopbackHosts;
+    hosts.push_back(o.host.find(':') == std::string::npos ? o.host : "[" + o.host + "]");
+    for (const std::string& host : o.allow_hosts) hosts.push_back(server::host_name(host));
+    return hosts;
+}
+
 server::HttpOptions http_options(const Options& o, const ModelConfig& config) {
     nlohmann::ordered_json meta = {{"engine_version", std::string(version())},
                                    {"gpu", server::gpu_name()},
@@ -59,6 +67,7 @@ server::HttpOptions http_options(const Options& o, const ModelConfig& config) {
                                    {"max_batch", o.max_batch},
                                    {"graphs", o.graphs}};
     return {.cors_origins = o.cors_origins,
+            .allowed_hosts = allowed_hosts(o),
             .defaults = o.defaults,
             .model = model_name(o.model),
             .meta = std::move(meta),
@@ -136,6 +145,10 @@ void add_serve_command(CLI::App& app) {
                     "Origin allowed to call the server from a browser, such as "
                     "https://example.vercel.app; repeat for several (default: "
                     "http://localhost:3000)");
+    cmd->add_option("--allow-host", opts->allow_hosts,
+                    "Extra name the server answers to in the Host header, on top of the loopback "
+                    "names and --host; repeat for several. Any other name gets 403, which stops "
+                    "DNS rebinding");
     cmd->add_option("--temperature", opts->defaults.temperature,
                     "Default temperature when a request sets none; 0 decodes greedily")
         ->capture_default_str()

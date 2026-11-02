@@ -260,6 +260,33 @@ TEST_F(HttpServerTest, StreamsEveryStepToASubscriber) {
     EXPECT_TRUE(wait_for([&] { return !loop->steps().has_subscribers(); }));
 }
 
+TEST_F(HttpServerTest, RefusesAHostHeaderItDoesNotAnswerTo) {
+    start(always_11);
+    const httplib::Headers rebound = {{"Host", "evil.example:8000"}};
+    const auto health = client().Get("/health", rebound);
+    ASSERT_TRUE(health);
+    EXPECT_EQ(health->status, 403);
+    const auto chat =
+        client().Post("/v1/chat/completions", rebound, chat_body(4, false), "application/json");
+    ASSERT_TRUE(chat);
+    EXPECT_EQ(chat->status, 403);
+    const auto preflight = client().Options("/v1/chat/completions", rebound);
+    ASSERT_TRUE(preflight);
+    EXPECT_EQ(preflight->status, 403);
+    const Json m = Json::parse(client().Get("/metrics")->body);
+    EXPECT_EQ(m["steps_total"], 0);
+}
+
+TEST_F(HttpServerTest, AnswersLoopbackHostNames) {
+    start(always_11);
+    for (const std::string host : {"localhost:8000", "127.0.0.1:8000", "[::1]:8000"}) {
+        const httplib::Headers headers = {{"Host", host}};
+        const auto health = client().Get("/health", headers);
+        ASSERT_TRUE(health);
+        EXPECT_EQ(health->status, 200) << host;
+    }
+}
+
 TEST_F(HttpServerTest, AClientThatDisconnectsMidStreamCancelsItsRequest) {
     start(always_11, milliseconds(3));
     int chunks = 0;
@@ -272,4 +299,5 @@ TEST_F(HttpServerTest, AClientThatDisconnectsMidStreamCancelsItsRequest) {
     const Json m = Json::parse(client().Get("/metrics")->body);
     EXPECT_EQ(m["requests"]["finished_total"], 0);
     EXPECT_EQ(m["kv"]["blocks_free"], 63);
+    EXPECT_LT(m["steps_total"].get<int>(), 100);
 }

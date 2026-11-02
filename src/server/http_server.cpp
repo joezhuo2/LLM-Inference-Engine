@@ -106,6 +106,10 @@ struct HttpServer::Impl {
         http.new_task_queue = [] { return new httplib::ThreadPool(kMinThreads, kMaxThreads); };
         http.set_payload_max_length(kMaxBody);
         http.set_pre_routing_handler([this](const httplib::Request& req, httplib::Response& res) {
+            if (!host_ok(req)) {
+                refuse_host(req, res);
+                return httplib::Server::HandlerResponse::Handled;
+            }
             return route_cors(req, res);
         });
         http.Get("/health", [](const httplib::Request&, httplib::Response& res) {
@@ -118,6 +122,21 @@ struct HttpServer::Impl {
                  [this](const httplib::Request&, httplib::Response& res) { stream_steps(res); });
         http.Post("/v1/chat/completions",
                   [this](const httplib::Request& req, httplib::Response& res) { chat(req, res); });
+    }
+
+    bool host_ok(const httplib::Request& req) const {
+        return req.get_header_value_count("Host") == 1 &&
+               host_allowed(req.get_header_value("Host"), options.allowed_hosts);
+    }
+
+    void refuse_host(const httplib::Request& req, httplib::Response& res) const {
+        const std::string origin = req.get_header_value("Origin");
+        if (!origin.empty())
+            for (const auto& [name, value] : cors.response_headers(origin))
+                res.set_header(name, value);
+        send_json(res, 403,
+                  error_json("Host header '" + req.get_header_value("Host") +
+                             "' is not allowed; see --allow-host"));
     }
 
     httplib::Server::HandlerResponse route_cors(const httplib::Request& req,
