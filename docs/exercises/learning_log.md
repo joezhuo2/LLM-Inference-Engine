@@ -1484,3 +1484,4 @@
 - **thread pool per connection: why a long-lived SSE stream holds a worker** => 
 - **simple requests: why a text/plain POST skips the preflight and still reaches the server** => 
 - **DNS rebinding: what an Origin check stops and what it does not** => 
+- **Add `make_gpu_backend` (`src/server/gpu_backend.cpp`), which sizes the KV cache as `bench` does and runs `serve_step`, and a GPU test that serves four concurrent streamed greedy completions on an ephemeral port and compares each with `generate` (the short `capital` prompt, since the paged and contiguous paths may differ at near-ties on longer answers). (Part B)** => 
