@@ -150,7 +150,7 @@ curl -N localhost:8000/v1/chat/completions -H 'Content-Type: application/json' -
 
 `serve` loads the model and answers on `127.0.0.1:8000` (`--host`, `--port`): an OpenAI-compatible `POST /v1/chat/completions`, streamed or not, `GET /health`, `GET /metrics`, and `GET /v1/steps`, a Server-Sent Events stream of every scheduler step in the format of the trace files. One engine thread runs the scheduler while HTTP threads add requests between steps. `--max-batch` (default 16) and `--graphs` are those of `bench`; `--temperature`, `--top-k`, `--top-p` and `--max-tokens` are the defaults for requests that do not set them; `--cors-origin`, repeatable, lists the browser origins allowed to call it (default `http://localhost:3000`), which is what the site's dashboard needs in live mode. `docs/api.md` is the contract.
 
-**Security:** the server has no authentication and no rate limit. It binds to loopback by default for that reason: never expose it publicly, forward its port or tunnel it, since anyone who can reach it can use the GPU and read every prompt's answers through `/v1/steps`. A client that disconnects cancels its request, and its blocks come back before the next step.
+**Security:** the server has no authentication and no rate limit. It binds to loopback by default for that reason: never expose it publicly, forward its port or tunnel it, since anyone who can reach it can use the GPU and read every prompt's answers through `/v1/steps`. A client that disconnects cancels its request, and its blocks come back before the next step. Requests whose `Host` header is not a loopback name, the `--host` address or an `--allow-host` name get 403, which stops DNS rebinding.
 
 ## Reproducing the results
 

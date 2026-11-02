@@ -145,3 +145,7 @@ A client that disconnects cancels its request: `Scheduler::cancel` takes it out 
 ### CORS
 
 The server answers `OPTIONS` preflights and sends `Access-Control-Allow-Origin` on every endpoint for the origins given with `--cors-origin`, repeatable (default: `http://localhost:3000` only; the site's Vercel domain is not set yet, so pass it with `--cors-origin https://<domain>`, which replaces the default). A preflight that carries `Access-Control-Request-Private-Network: true` is answered with `Access-Control-Allow-Private-Network: true` so a page served over HTTPS can reach a server on localhost where the browser allows it. A request whose `Origin` is not on the list gets `403` and starts no work, which keeps other web sites from spending the GPU with a simple `text/plain` POST the browser would not preflight; requests with no `Origin` (curl, scripts) are served. Origins must be a bare scheme and host, and `*` is refused. The server has no authentication: do not expose it publicly or tunnel it.
+
+### Host header
+
+Every request's `Host` must name the server: `localhost`, `127.0.0.1`, `[::1]`, the `--host` address, or a name added with `--allow-host` (repeatable), on any port. Anything else gets `403` before any handler runs. This stops DNS rebinding, where a page on an attacker's domain re-points that domain at 127.0.0.1: the browser then treats its requests as same-origin, so they carry no `Origin` and CORS does not apply, and only the `Host` still shows the attacker's name.

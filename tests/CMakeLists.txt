@@ -17,6 +17,7 @@ add_executable(unit_tests
   unit/test_checksum_golden.cpp
   unit/test_config.cpp
   unit/test_cors.cpp
+  unit/test_host_check.cpp
   unit/test_http_server.cpp
   unit/test_kv_cache_size.cpp
   unit/test_mapped_file.cpp
