@@ -1478,3 +1478,11 @@
 - **Server-Sent Events: the event, data and blank-line framing, read from a fetch body stream** => 
 - **AbortController: cancelling a streaming fetch, and the server freeing the request when the connection closes** => 
 - **sprite caching: rasterizing a label once and blitting it with drawImage** => 
+
+## Results Page (Branch 74)
+- **median span versus median busy time: what the idle share of a step measures** => 
+- **revealing an SVG line with an animated `clip-path: inset()` instead of `stroke-dashoffset`** => 
+- **mapping pointer coordinates into an SVG's viewBox with `getScreenCTM()`** => 
+- **`ResizeObserver`: redrawing a chart at its real pixel width so text keeps its size** => 
+- **`aria-live` regions: announcing a changing chart readout to screen readers** => 
+- **static batching against continuous batching: why the baselines' curves differ in more than kernel speed** => 
