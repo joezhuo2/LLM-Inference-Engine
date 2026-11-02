@@ -29,6 +29,7 @@ add_library(engine_server
   server/broadcaster.cpp
   server/chat_api.cpp
   server/cors.cpp
+  server/metrics_window.cpp
 )
 target_link_libraries(engine_server PUBLIC engine_core)
 

@@ -1471,3 +1471,5 @@
 - **condition variables: wait_for with a predicate and spurious wakeups** => 
 - **bounded queues: drop-oldest versus blocking the producer (backpressure)** => 
 - **weak_ptr: observing an object without keeping it alive** => 
+- **sliding windows over a deque: trimming old entries on read and write** => 
+- **percentiles over a time window versus over a whole run** => 
