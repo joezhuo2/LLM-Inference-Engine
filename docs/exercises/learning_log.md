@@ -1518,3 +1518,4 @@
 - **why a cancel must wait for the step in flight: update's tokens line up with the sequences by batch row** => 
 - **DNS rebinding: why a same-origin request from an attacker's page reaches localhost with no Origin header** => 
 - **the Host header: what it carries and why the browser will not let a page forge it** => 
+- **shallow clones: why `git log` on a file names the boundary commit** => 
