@@ -1474,3 +1474,5 @@
 - **sliding windows over a deque: trimming old entries on read and write** => 
 - **percentiles over a time window versus over a whole run** => 
 - **stop strings: matching across token boundaries by holding back a partial match** => 
+- **Add 11 todo_joe tests in `tests/todo/unit/test_scheduler_cancel.cpp` (target `todo_unit_tests`). They were validated against a throwaway implementation (all pass) and deliberate mutants of it (blocks not freed, request kept, waiting queue not updated, returned as finished, running list reordered), each caught by at least one test; the reorder mutant needed a new test. (Part C stub)** => 
+- **cancelling a request: what must be undone in the scheduler and the block manager** => 

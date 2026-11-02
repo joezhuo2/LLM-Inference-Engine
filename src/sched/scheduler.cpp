@@ -224,4 +224,23 @@ int Scheduler::num_running() const {
     return static_cast<int>(running_list_.size());
 }
 
+/*
+TODO(JOE): Scheduler::cancel
+
+Purpose. The HTTP server (`engine serve`, src/server/serving_loop.cpp) has to take a request out of the scheduler before it finishes: when its client disconnects in the middle of a stream, and when a stop string ends the answer. docs/api.md promises that a client that disconnects cancels its request and frees its blocks. Today a request leaves the scheduler only by EOS or max_new_tokens, so until this exists the server catches the logic_error below, prints one warning, stops sending the request's tokens anywhere and lets it decode until it finishes, holding its KV blocks and a batch row the whole time. With the dashboard's playground and several browser tabs that is real waste: an abandoned 2,000-token answer keeps 125 blocks and a row of every decode step for its whole length.
+
+Interface. void Scheduler::cancel(SeqId id), declared in include/engine/sched/scheduler.h. It is called on the engine thread between steps, like submit: after update (and the take_finished that follows it) and before the next schedule. It removes request id from the scheduler wherever it is. A waiting request (never admitted, or preempted and back in the waiting queue) leaves the waiting queue; it holds no blocks. A running request leaves the running list and every block it holds goes back to the block manager at once. Afterwards request(id) throws, num_waiting() or num_running() is one lower, the id is free to be submitted again, and the request is never returned by take_finished.
+
+What must hold. The other requests do not notice: the waiting queue and the running list keep their relative order, so the next schedule() admits, decodes and preempts exactly as if the cancelled request had never been submitted, and their outputs are unchanged. Blocks are conserved: once every request has finished or been cancelled, blocks().num_free() is num_blocks - 1 again (block 0 stays reserved). A request that was blocking the head of the waiting queue no longer blocks it, so a smaller request behind it can be admitted by the very next schedule().
+
+Errors. Throw std::invalid_argument, naming the id, and change nothing, when id is not held (never submitted, already cancelled, or already returned by take_finished), when it has finished but has not been taken yet (state Finished), and when a step is pending (schedule() returned a non-empty step that update() has not consumed yet; cancelling then would make update's tokens line up with the wrong sequences). invalid_argument is a logic_error, so the server rethrows it instead of treating it as "not implemented".
+
+Edge cases. Cancelling the only running request leaves an idle scheduler whose next schedule() returns an empty step. Cancelling right after submit, before any schedule(), is valid. Cancelling a preempted request while it waits must not free blocks a second time (preemption already freed them). Cancelling two requests in a row, or the one at the back of the running list (the next preemption victim), keeps the order of the rest.
+
+Tests that prove it. tests/todo/unit/test_scheduler_cancel.cpp (target todo_unit_tests, label todo_joe): a waiting request leaves the queue, a running one frees all its blocks at once, only the other blocks stay held, the other requests keep their batch order, a cancelled request is never returned as finished, freeing the front of the queue admits the next request, a preempted request can be cancelled while it waits, unknown, cancelled, finished-but-not-taken and taken ids are rejected, a cancel while a step is pending is rejected and changes nothing, the id can be submitted again, and 20 random runs of 12 requests with random cancels keep every other answer equal to its answer alone and return every block. Run them with ctest --preset cpu -L todo_joe. When they pass, move the file into tests/unit/, add it to unit_tests and delete todo_unit_tests; tests/unit/test_serving_loop.cpp and tests/unit/test_http_server.cpp then exercise the server path where blocks come back right after a disconnect, and the server's warning disappears.
+*/
+void Scheduler::cancel(SeqId) {
+    throw std::logic_error("unimplemented: Scheduler::cancel");
+}
+
 }  // namespace engine
