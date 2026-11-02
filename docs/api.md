@@ -122,11 +122,11 @@ A snapshot; the dashboard polls it about once a second.
 }
 ```
 
-`output_per_s` covers the last 10 seconds (or the time since start when that is shorter); the latency percentiles cover the requests that finished in the last 60 seconds (`null` when there are none, and `tpot_s` also ignores one-token answers). TTFT counts from when the HTTP request was received. `finished_total` and the latency cover answers that reached their end (EOS, a stop string or `max_tokens`), not requests whose client went away. `output_total` counts every token sampled, including those of a cancelled request still running. `preemptions_total` counts prefill steps of sequences that already had output. `blocks_total` includes the null block 0, so an idle server has `blocks_free` = `blocks_total` - 1.
+`output_per_s` covers the last 10 seconds (or the time since start when that is shorter); the latency percentiles cover the requests that finished in the last 60 seconds (`null` when there are none, and `tpot_s` also ignores one-token answers). TTFT counts from when the HTTP request was received. `finished_total` and the latency cover answers that reached their end (EOS, a stop string or `max_tokens`), not requests whose client went away. `output_total` counts every token sampled. `preemptions_total` counts prefill steps of sequences that already had output. `blocks_total` includes the null block 0, so an idle server has `blocks_free` = `blocks_total` - 1.
 
 ### `GET /v1/steps` (Server-Sent Events)
 
-One `event: step` per scheduler step, `data:` holding a step object exactly as above (with `start_s`, `end_s` from server start). The dashboard's batch timeline reads this stream, the same way replay mode reads `steps` of a trace. A client that falls behind may miss steps; `index` shows the gap. Each subscriber has a queue of 256 steps that drops its oldest entry, so a slow client never holds up the engine; one that stops reading long enough for a socket write to time out (5 s) is disconnected. While no step arrives the server sends a `: keepalive` comment every second, which SSE clients ignore. Every running sequence is in every decode step; a sequence that disappears from the decode steps without being in `finished` was preempted (or, once `Scheduler::cancel` exists, cancelled).
+One `event: step` per scheduler step, `data:` holding a step object exactly as above (with `start_s`, `end_s` from server start). The dashboard's batch timeline reads this stream, the same way replay mode reads `steps` of a trace. A client that falls behind may miss steps; `index` shows the gap. Each subscriber has a queue of 256 steps that drops its oldest entry, so a slow client never holds up the engine; one that stops reading long enough for a socket write to time out (5 s) is disconnected. While no step arrives the server sends a `: keepalive` comment every second, which SSE clients ignore. Every running sequence is in every decode step; a sequence that disappears from the decode steps without being in `finished` was preempted or cancelled.
 
 ### `POST /v1/chat/completions`
 
@@ -140,7 +140,7 @@ data: {"id":"chatcmpl-341","object":"chat.completion.chunk","created":1793000000
 
 The `engine` field is an extension: the sequence id and step index of the token, so the playground can highlight its own sequence in the timeline. Without `stream` the response is one `chat.completion` object with `usage` (prompt, completion and total tokens). Text matching a stop string is not sent, and text that could still become one is held back until it is decided. Greedy output comes from the paged runner, so it equals `engine generate` except where two logits are nearly tied (see `tests/gpu/test_serve.cpp`).
 
-A client that disconnects cancels its request: no more of its tokens go anywhere. Freeing its blocks at once needs `Scheduler::cancel`, which is a Part C stub for now (`src/sched/scheduler.cpp`), so today the sequence keeps decoding with its tokens discarded and frees its blocks when it reaches `max_tokens` or EOS; the same goes for a sequence ended by a stop string. The server prints one warning about it.
+A client that disconnects cancels its request: `Scheduler::cancel` takes it out between steps, its blocks go back at once and the other sequences carry on unchanged. A stop string ends a sequence the same way.
 
 ### CORS
 

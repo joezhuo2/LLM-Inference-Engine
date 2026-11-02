@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## server/cancel-host
+
+- Implement `Scheduler::cancel` (`src/sched/scheduler.cpp`), written by Claude at Joe's request: between steps it takes a waiting request out of the queue, or a running one out of the running list with all its blocks freed at once, and forgets it; unknown, finished and pending-step cases throw `invalid_argument` and change nothing. The 11 `todo_joe` tests move to `tests/unit/test_scheduler_cancel.cpp`, `todo_unit_tests` is deleted, and the server drops its warning and "keep decoding" fallback, so a disconnected client or a stop string frees the sequence's blocks and batch row before the next step. The disconnect test now also checks that the run stops well before its 200-token limit. (Part C, drafted by Claude)
+
 ## server/http
 
 - Split the step object out of the trace writer as `step_json`, so the trace file and the server's live step stream (`GET /v1/steps`) write a step through the same function, byte for byte the same shape. (Part A)

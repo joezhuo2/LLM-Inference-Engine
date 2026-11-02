@@ -272,4 +272,5 @@ TEST_F(HttpServerTest, AClientThatDisconnectsMidStreamCancelsItsRequest) {
     const Json m = Json::parse(client().Get("/metrics")->body);
     EXPECT_EQ(m["requests"]["finished_total"], 0);
     EXPECT_EQ(m["kv"]["blocks_free"], 63);
+    EXPECT_LT(m["steps_total"].get<int>(), 100);
 }
