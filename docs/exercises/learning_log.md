@@ -1522,3 +1522,6 @@
 
 ## vLLM Baseline (Branch 80)
 - **Python virtual environments: why a tool with a pinned torch gets its own** => 
+- **Server-Sent Events: how a streaming completion arrives line by line** => 
+- **open-loop load: why a client must send on schedule whether or not the server keeps up** => 
+- **continuous usage stats: counting streamed tokens without trusting chunks** => 
