@@ -54,9 +54,9 @@ The server runs as `vllm serve models/tinyllama --dtype bfloat16 --max-num-seqs 
 Comparability: the same BF16 weights (the script stops if the server's log reports another dtype), the same token ids, arrival times and output lengths, the same GPU, and the same limit of 16 concurrent sequences as `engine bench --max-batch 16`. What differs:
 
 - **HTTP and Python:** every vLLM token goes through a Python server, HTTP and the Python client, and its times are taken in the client. `engine bench` has no HTTP and times requests inside the process, so this overhead counts only against vLLM.
-- **Attention:** vLLM picks its `FLASH_ATTN` backend (FlashAttention 2) here, not FlashInfer, which it uses only for sampling. Decode runs from its own `torch.compile` and CUDA Graph capture, which added about 80 s to the first start.
+- **Attention:** vLLM picks its `FLASH_ATTN` backend (FlashAttention 2) here, not FlashInfer, which it uses only for sampling. Decode runs from its own `torch.compile` and CUDA Graph capture, which made the first start take more than 5 minutes (later starts reuse the compile cache).
 - **Prefill and decode:** vLLM's default chunked prefill mixes prefill and decode in one step with a budget of 2,048 tokens per step on this GPU (its server default), while the engine's steps are all prefill or all decode.
-- **Sampling:** vLLM samples on its own path in a Python step loop; the engine samples on the GPU with its own kernel.
+- **Sampling:** both are greedy, but each uses its own code path; the engine's is its GPU sampling kernel.
 - **Memory:** neither system is short of KV space (0 preemptions in vLLM's runs): vLLM's cache holds 153,888 tokens at 70% of the VRAM.
 - **The limit of 16:** this matches the engine's run but is not vLLM's default for this GPU (128 sequences for the server), so these curves do not show what vLLM does with more concurrency. A sweep of both systems past 16 would be the fairer test at high rates.
 

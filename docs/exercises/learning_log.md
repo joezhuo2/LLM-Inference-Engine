@@ -1540,3 +1540,4 @@
 - **continuous usage stats: counting streamed tokens without trusting chunks** => 
 - **chunked prefill: mixing prefill and decode in one step** => 
 - **FlashAttention 2 against FlashInfer: two decode attention backends** => 
+- **goodput at an SLO: why throughput alone hides missed deadlines** => 

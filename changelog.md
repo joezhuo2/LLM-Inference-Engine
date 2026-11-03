@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## bench/vllm-baseline
 
+- Add vLLM to the QPS sweep in `docs/results.md` and its three plots: goodput 6.1 requests per second against the engine's 3.2, with TPOT p50 of 8.8 to 10.9 ms against 11.0 to 20.1 ms. The cause is not measured separately. Correct two lines of the vLLM section in `docs/baselines.md` as well. (Part A)
 - Add a vLLM section to `docs/baselines.md`: the command, the server flags, what is and is not comparable with `engine bench`, and the measured table. (Part A)
 - Record three runs of vLLM 0.32.0 at 1 to 8 requests per second in `results/load/`, on the RTX 5060 Laptop GPU. (Part A)
 - Add an optional vLLM section to `scripts/reproduce.sh`, with `--skip-vllm` and `VLLM_PYTHON`; skipped when `scripts/setup_vllm.sh` has not run. (Part A)
