@@ -157,6 +157,10 @@ def main(argv=None):
     if "<!-- auto:roofline -->" in text:
         text = replace_block(text, "roofline", roofline_path.read_text() if roofline_path.exists()
                              else "No roofline recorded.\n")
+    load_path = args.results_dir / "load" / "load_table.md"
+    if "<!-- auto:load -->" in text:
+        text = replace_block(text, "load", load_path.read_text() if load_path.exists()
+                             else "No QPS sweep recorded.\n")
     text = replace_block(text, "scoreboard", scoreboard(rows, correctness, args.peak_gb_s))
     text = replace_block(text, "table", plot.table_markdown(rows) if rows else "No summaries found.\n")
     args.doc.write_text(text)

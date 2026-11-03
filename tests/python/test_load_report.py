@@ -1,4 +1,5 @@
 import csv
+import importlib.util
 import math
 import sys
 import tempfile
@@ -61,6 +62,7 @@ class LoadReport(unittest.TestCase):
                          [(1.0, 2.0, 3), (2.0, 5.0, 1)])
         self.assertTrue(math.isnan(points[0]["preemptions"]))
 
+    @unittest.skipUnless(importlib.util.find_spec("matplotlib"), "matplotlib not installed")
     def test_main_writes_the_table_and_plots(self):
         for rate in (1, 2):
             write_run(self.dir, f"engine_q{rate}_r1", "batched_graphs", rate, 10.0, [(0.1, 0.02)])

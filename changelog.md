@@ -6,6 +6,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Add `scripts/load_sweep.sh`: `engine bench --graphs` at Poisson arrivals with mixed lengths at each QPS point, writing to `results/load/` so the new summaries stay out of the batch curves that `plot.py` and the site read from `results/`. (Part A)
 - Add `scripts/load_report.py`: per QPS, the median over runs of p50 and p99 TTFT and TPOT, throughput, SLO attainment, goodput and preemptions, as a table and three plots, for any system in `results/load/`. (Part A)
+- Run the QPS sweep from `scripts/reproduce.sh` (`--skip-load` leaves it out) and fill an `auto:load` block in `docs/results.md` from `make_results.py`. (Part A)
 
 ## server/vercel-origin
 
