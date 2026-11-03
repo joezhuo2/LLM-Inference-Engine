@@ -68,6 +68,34 @@ The engine batches continuously (new requests join a running batch at any step, 
 
 llama.cpp (release b11870, CUDA, the same BF16 weights as a GGUF, flash attention on `auto`, built and converted by `scripts/setup_llamacpp.sh`) is the serious baseline: a mature engine whose batch-1 decode is also bandwidth bound. Its rows come from `llama-batched-bench`, one static batch per size replayed over the 32 requests (`docs/baselines.md`). In this run the engine with CUDA Graphs is ahead at every size: TPOT 7.8 against 8.9 ms at batch 1 (265 against 233 GB/s of weights, 1.16x the tokens/s), 1.20x at batch 4 and 1.21x at batch 16 on the medians, but llama.cpp's three batch-16 runs spread from 953 to 1271 tokens/s (1156 to 1315 in the previous run), so the batch-16 margin is 1.10x against its best run. Eager, without graphs, the engine is ahead up to batch 4, level at batch 8 (791 against 786 tokens/s) and ahead of the median at 16 (1294 against 1154), level with llama.cpp's best batch-16 run. The workload favors static batching (every request has the same length), and llama.cpp never runs a sampler in this tool while the engine samples on the GPU, so neither difference flatters the engine.
 
+## Under load
+
+![Tail time to first token against offered load](../results/load/ttft_p99_vs_qps.png)
+
+![Tail time per output token against offered load](../results/load/tpot_p99_vs_qps.png)
+
+![Goodput at the SLO against offered load](../results/load/goodput_vs_qps.png)
+
+From `scripts/load_sweep.sh` and `scripts/load_report.py`: `engine bench --max-batch 16 --graphs` with 120 requests arriving as a Poisson process at each rate, prompts of 16 to 512 tokens and outputs of 16 to 256 drawn uniformly, greedy, EOS ignored, seed 0, median of 3 runs. Measured at commit 2fec1f3 on 2026-11-03 on the RTX 5060 Laptop GPU. `results/load/` holds the per-request and summary CSVs. The offline runs above submit identical requests at once, which never shows queueing.
+
+<!-- auto:load -->
+SLO: TTFT at most 500 ms and TPOT at most 50 ms; goodput is the requests per second that meet both.
+
+| system | QPS | output tok/s | TTFT p50 ms | TTFT p99 ms | TPOT p50 ms | TPOT p99 ms | SLO met | goodput req/s | preemptions | runs |
+|---|---|---|---|---|---|---|---|---|---|---|
+| engine + graphs | 1 | 167 | 64 | 162 | 11.0 | 14.7 | 100% | 1.13 | 0 | 3 |
+| engine + graphs | 2 | 326 | 62 | 166 | 12.7 | 18.6 | 100% | 2.22 | 0 | 3 |
+| engine + graphs | 3 | 477 | 84 | 777 | 15.9 | 23.0 | 93% | 3.03 | 0 | 3 |
+| engine + graphs | 4 | 605 | 121 | 1653 | 18.5 | 23.4 | 78% | 3.22 | 0 | 3 |
+| engine + graphs | 5 | 667 | 591 | 3328 | 19.7 | 25.8 | 48% | 2.15 | 0 | 3 |
+| engine + graphs | 6 | 685 | 1522 | 5973 | 19.8 | 25.8 | 25% | 1.16 | 0 | 3 |
+| engine + graphs | 8 | 710 | 3027 | 9389 | 20.1 | 25.4 | 23% | 1.13 | 0 | 3 |
+<!-- /auto:load -->
+
+Goodput peaks at 3.2 requests per second at an offered 4, then falls: past that the queue grows faster than it drains, so most requests miss the 500 ms TTFT limit. TPOT does not cause the misses. Its p99 stays at or under 26 ms at every rate, about half the 50 ms limit, and TTFT p99 is what crosses the limit, between 2 and 3 QPS. Output throughput levels off near 700 tokens/s, about half of the 1,402 of the offline batch-16 run, on a workload with longer prompts, longer contexts and 115 prefill steps in a run; this sweep does not separate how much each of those costs. The KV cache was never the limit: the peak was 455 of 12,915 blocks, with 0 preemptions at every rate.
+
+Limits of these numbers. The lengths are uniform, not a real chat distribution such as ShareGPT, and the tokens are random. There is no HTTP in the path, since `engine bench` calls the scheduler directly. With 120 requests a run ends before an overloaded queue reaches any steady state, so TTFT past saturation depends on the run length: read those points as "overloaded", not as stable values. Goodput at 1 and 2 QPS is above the offered rate because this seed's 120 arrivals span about 104 and 52 seconds rather than 120 and 60, so these runs carry slightly more load than their label. The whole sweep was run twice: the first run was discarded because 2 of its 21 runs took more than twice as long as their repeats while other work was running on the machine, and the numbers here come from the second, where repeats agree closely.
+
 ## Batch-1 decode bandwidth
 
 ![Weights read per decode token against the measured peak](../results/plots/batch1_bandwidth.png)

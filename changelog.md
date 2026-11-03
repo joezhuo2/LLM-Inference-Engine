@@ -2,6 +2,14 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/qps-sweep
+
+- Add `scripts/load_sweep.sh`: `engine bench --graphs` at Poisson arrivals with mixed lengths at each QPS point, writing to `results/load/` so the new summaries stay out of the batch curves that `plot.py` and the site read from `results/`. (Part A)
+- Add `scripts/load_report.py`: per QPS, the median over runs of p50 and p99 TTFT and TPOT, throughput, SLO attainment, goodput and preemptions, as a table and three plots, for any system in `results/load/`. (Part A)
+- Run the QPS sweep from `scripts/reproduce.sh` (`--skip-load` leaves it out) and fill an `auto:load` block in `docs/results.md` from `make_results.py`. (Part A)
+- Record the first QPS sweep in `results/load/` and read it in a new "Under load" section of `docs/results.md`: goodput peaks at 3.2 req/s at an offered 4, TTFT p99 crosses 500 ms between 2 and 3 QPS, and TPOT p99 stays at or under 26 ms (#123). (Part A)
+- Correct the sweep's peak KV blocks in `docs/results.md` to 455, the highest of all 21 runs; 446 came from the first run of each rate. (Part A)
+
 ## bench/prefill-ttft
 
 - Add `scripts/prefill_ttft.py`: single-request TTFT against prompt length for the engine, eager and with graphs, and llama.cpp at `-ub 512` and `-ub` of the longest prompt, written to `results/prefill/` as a CSV, a markdown table and a plot, with `--from-csv` to redraw and tests in `tests/python/test_prefill_ttft.py`, whose plot test skips without matplotlib as CI has none (#120). (Part A)
