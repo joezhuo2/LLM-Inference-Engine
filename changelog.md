@@ -7,6 +7,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add `scripts/prefill_ttft.py`: single-request TTFT against prompt length for the engine, eager and with graphs, and llama.cpp at `-ub 512` and `-ub` of the longest prompt, written to `results/prefill/` as a CSV, a markdown table and a plot, with `--from-csv` to redraw and tests in `tests/python/test_prefill_ttft.py` (#120). (Part A)
 - Measure the prefill curve in `scripts/reproduce.sh`, with `--skip-prefill` to leave it out, and refresh an `auto:prefill` block of `docs/results.md` from `make_results.py` when the page has the marker. (Part A)
 - Record the first prefill curve in `results/prefill/` and a section on it in `docs/results.md` (2,048 tokens: engine 1,612 ms, llama.cpp 265 to 271 ms; level at 128 tokens). (Part A)
+
 ## docs/attention-v2-readme
 
 - Correct the README's description of paged attention v2: `paged_attention_v2.cu` launches `dim3 grid_dim(heads, batch_size)`, one block per query head and sequence, so the 8 query heads that share a KV head each read its K and V in their own block. The old wording, one block per KV head reading K and V once, described a design the code does not have (#119). (Part A)
