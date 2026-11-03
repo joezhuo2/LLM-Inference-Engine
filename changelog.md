@@ -8,6 +8,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add `scripts/load_report.py`: per QPS, the median over runs of p50 and p99 TTFT and TPOT, throughput, SLO attainment, goodput and preemptions, as a table and three plots, for any system in `results/load/`. (Part A)
 - Run the QPS sweep from `scripts/reproduce.sh` (`--skip-load` leaves it out) and fill an `auto:load` block in `docs/results.md` from `make_results.py`. (Part A)
 - Record the first QPS sweep in `results/load/` and read it in a new "Under load" section of `docs/results.md`: goodput peaks at 3.2 req/s at an offered 4, TTFT p99 crosses 500 ms between 2 and 3 QPS, and TPOT p99 stays at or under 26 ms (#123). (Part A)
+- Correct the sweep's peak KV blocks in `docs/results.md` to 455, the highest of all 21 runs; 446 came from the first run of each rate. (Part A)
 
 ## bench/prefill-ttft
 
