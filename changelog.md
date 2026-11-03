@@ -8,6 +8,16 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add `scripts/load_report.py`: per QPS, the median over runs of p50 and p99 TTFT and TPOT, throughput, SLO attainment, goodput and preemptions, as a table and three plots, for any system in `results/load/`. (Part A)
 - Run the QPS sweep from `scripts/reproduce.sh` (`--skip-load` leaves it out) and fill an `auto:load` block in `docs/results.md` from `make_results.py`. (Part A)
 
+## bench/prefill-ttft
+
+- Add `scripts/prefill_ttft.py`: single-request TTFT against prompt length for the engine, eager and with graphs, and llama.cpp at `-ub 512` and `-ub` of the longest prompt, written to `results/prefill/` as a CSV, a markdown table and a plot, with `--from-csv` to redraw and tests in `tests/python/test_prefill_ttft.py`, whose plot test skips without matplotlib as CI has none (#120). (Part A)
+- Measure the prefill curve in `scripts/reproduce.sh`, with `--skip-prefill` to leave it out, and refresh an `auto:prefill` block of `docs/results.md` from `make_results.py` when the page has the marker. (Part A)
+- Record the first prefill curve in `results/prefill/` and a section on it in `docs/results.md` (2,048 tokens: engine 1,612 ms, llama.cpp 265 to 271 ms; level at 128 tokens). (Part A)
+
+## docs/attention-v2-readme
+
+- Correct the README's description of paged attention v2: `paged_attention_v2.cu` launches `dim3 grid_dim(heads, batch_size)`, one block per query head and sequence, so the 8 query heads that share a KV head each read its K and V in their own block. The old wording, one block per KV head reading K and V once, described a design the code does not have (#119). (Part A)
+
 ## server/vercel-origin
 
 - Allow the deployed site, `https://llm-inference-engine-jz.vercel.app`, in `kDefaultCorsOrigins`, link it from the README, and record the live check: from that page in Chrome 156 the dashboard connected to a local `engine serve` and streamed a chat answer once the browser's local network permission was granted (via DevTools protocol, so the permission prompt itself was not seen), and every request was blocked without it. (Part A)

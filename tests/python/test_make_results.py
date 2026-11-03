@@ -132,6 +132,17 @@ class Blocks(unittest.TestCase):
             self.assertEqual(mr.main(["--results-dir", str(d), "--doc", str(doc)]), 0)
             self.assertIn("<!-- auto:load -->\nload table\n<!-- /auto:load -->", doc.read_text())
 
+    def test_prefill_block_is_filled_when_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "results" / "prefill").mkdir(parents=True)
+            (d / "results" / "prefill" / "prefill.md").write_text("Measured prefill table\n")
+            doc = d / "results.md"
+            doc.write_text("".join(f"<!-- auto:{n} -->\n<!-- /auto:{n} -->\n"
+                                   for n in ("environment", "profile", "prefill", "scoreboard", "table")))
+            self.assertEqual(mr.main(["--results-dir", str(d / "results"), "--doc", str(doc)]), 0)
+            self.assertIn("Measured prefill table", doc.read_text())
+
     def test_main_updates_a_document(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
