@@ -10,6 +10,24 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add `scripts/baseline_vllm.py` and its tests: starts `vllm serve` with `--dtype bfloat16` and `--max-num-seqs 16`, refuses any other dtype it reads from the server's log, sends the same token ids as `engine bench` on the workload's arrival times through a streaming client, and writes the standard CSVs to `results/load/` with the driver `vllm_online`. Tokens are counted from the usage field of each chunk rather than from the chunks, and each summary records preemptions, the client's lag behind schedule and the chunks that carried more than one token. (Part A)
 - Add `scripts/setup_vllm.sh`: vLLM 0.32.0 in its own `~/.venvs/llmie-vllm`, since vLLM pins its own torch and has to stay out of the llmie venv. (Part A)
 
+## bench/qps-sweep
+
+- Add `scripts/load_sweep.sh`: `engine bench --graphs` at Poisson arrivals with mixed lengths at each QPS point, writing to `results/load/` so the new summaries stay out of the batch curves that `plot.py` and the site read from `results/`. (Part A)
+- Add `scripts/load_report.py`: per QPS, the median over runs of p50 and p99 TTFT and TPOT, throughput, SLO attainment, goodput and preemptions, as a table and three plots, for any system in `results/load/`. (Part A)
+- Run the QPS sweep from `scripts/reproduce.sh` (`--skip-load` leaves it out) and fill an `auto:load` block in `docs/results.md` from `make_results.py`. (Part A)
+- Record the first QPS sweep in `results/load/` and read it in a new "Under load" section of `docs/results.md`: goodput peaks at 3.2 req/s at an offered 4, TTFT p99 crosses 500 ms between 2 and 3 QPS, and TPOT p99 stays at or under 26 ms (#123). (Part A)
+- Correct the sweep's peak KV blocks in `docs/results.md` to 455, the highest of all 21 runs; 446 came from the first run of each rate. (Part A)
+
+## bench/prefill-ttft
+
+- Add `scripts/prefill_ttft.py`: single-request TTFT against prompt length for the engine, eager and with graphs, and llama.cpp at `-ub 512` and `-ub` of the longest prompt, written to `results/prefill/` as a CSV, a markdown table and a plot, with `--from-csv` to redraw and tests in `tests/python/test_prefill_ttft.py`, whose plot test skips without matplotlib as CI has none (#120). (Part A)
+- Measure the prefill curve in `scripts/reproduce.sh`, with `--skip-prefill` to leave it out, and refresh an `auto:prefill` block of `docs/results.md` from `make_results.py` when the page has the marker. (Part A)
+- Record the first prefill curve in `results/prefill/` and a section on it in `docs/results.md` (2,048 tokens: engine 1,612 ms, llama.cpp 265 to 271 ms; level at 128 tokens). (Part A)
+
+## docs/attention-v2-readme
+
+- Correct the README's description of paged attention v2: `paged_attention_v2.cu` launches `dim3 grid_dim(heads, batch_size)`, one block per query head and sequence, so the 8 query heads that share a KV head each read its K and V in their own block. The old wording, one block per KV head reading K and V once, described a design the code does not have (#119). (Part A)
+
 ## server/vercel-origin
 
 - Allow the deployed site, `https://llm-inference-engine-jz.vercel.app`, in `kDefaultCorsOrigins`, link it from the README, and record the live check: from that page in Chrome 156 the dashboard connected to a local `engine serve` and streamed a chat answer once the browser's local network permission was granted (via DevTools protocol, so the permission prompt itself was not seen), and every request was blocked without it. (Part A)

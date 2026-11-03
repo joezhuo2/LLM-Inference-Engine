@@ -4,7 +4,8 @@ cd "$(git rev-parse --show-toplevel)"
 
 usage() {
     cat >&2 <<'USAGE'
-usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp] [--skip-vllm]
+usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp] [--skip-load]
+                           [--skip-prefill] [--skip-vllm]
 
 Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/environment.txt   commit, GPU, driver, CUDA, date, workload
@@ -16,10 +17,13 @@ Rebuilds the release preset and re-measures everything docs/results.md reports:
                             scripts/setup_llamacpp.sh has built it (skipped otherwise)
   results/load/vllm_q*_r*.csv   vLLM's server under Poisson arrivals, REPEATS runs per rate, when
                             scripts/setup_vllm.sh has installed it (skipped otherwise)
+  results/load/            the engine at Poisson arrivals of mixed-length requests, 1 to 8 QPS, from
+                            scripts/load_sweep.sh, reported by scripts/load_report.py
   results/decode_step.md    nsys launch gaps, GPU time per op and bandwidth of a batch-1 decode step
   results/decode_step_graphs.md   the same decode step replayed from a CUDA Graph
   results/decode_step_b16.md   the GPU time per op of a decode step with 16 rows
   results/plots/roofline.*  the ops and the whole decode step on a roofline (scripts/roofline.py)
+  results/prefill/          single-request TTFT against prompt length, engine and llama.cpp
   results/plots/            the plots and summary_table.md
 and then refreshes the measured blocks of docs/results.md.
 
@@ -38,6 +42,8 @@ skip_tests=0
 skip_hf=0
 skip_llamacpp=0
 skip_vllm=0
+skip_load=0
+skip_prefill=0
 for arg in "$@"; do
     case "$arg" in
     --quick) quick=1 ;;
@@ -45,6 +51,8 @@ for arg in "$@"; do
     --skip-hf) skip_hf=1 ;;
     --skip-llamacpp) skip_llamacpp=1 ;;
     --skip-vllm) skip_vllm=1 ;;
+    --skip-load) skip_load=1 ;;
+    --skip-prefill) skip_prefill=1 ;;
     *) usage ;;
     esac
 done
@@ -176,6 +184,26 @@ if [ "$skip_vllm" = 0 ]; then
     fi
 fi
 
+if [ "$skip_load" = 0 ]; then
+    echo "== QPS sweep"
+    if [ "$quick" = 1 ]; then
+        MODEL=$model scripts/load_sweep.sh --quick
+    else
+        MODEL=$model REPEATS=$repeats scripts/load_sweep.sh
+    fi
+fi
+
+if [ "$skip_prefill" = 0 ]; then
+    echo "== prefill TTFT against prompt length"
+    prefill_llama=()
+    if [ "$skip_llamacpp" = 0 ] && [ -x "$llama_batched" ] && [ -s "$llama_gguf" ]; then
+        prefill_llama=(--llama-batched-bench "$llama_batched" --gguf "$llama_gguf")
+    fi
+    "$python" scripts/prefill_ttft.py --engine build/release/bin/engine --model "$model" \
+        --repeats "$repeats" --commit "$(git rev-parse --short HEAD)" --out-dir "$out/prefill" \
+        "${prefill_llama[@]}" > /dev/null
+fi
+
 if command -v nsys > /dev/null; then
     echo "== decode step profile"
     MODEL=$model PEAK_GB_S=$peak scripts/profile.sh nsys decode_step --max-batch 1 \
@@ -195,5 +223,8 @@ echo "== plots and results page"
     --profile "$out/decode_step_b16.md:16" --config "$model/config.json" \
     --context $((prompt + output / 2)) --out-dir "$out/plots" --peak-gb-s "$peak" \
     --peak-tflops "$peak_tflops"
+if ls "$out"/load/*_summary.csv > /dev/null 2>&1; then
+    "$python" scripts/load_report.py --dir "$out/load"
+fi
 "$python" scripts/make_results.py --results-dir "$out" --doc docs/results.md --peak-gb-s "$peak"
 echo "done: review docs/results.md and results/plots, then commit results/ and the doc together"

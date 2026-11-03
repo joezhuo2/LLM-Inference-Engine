@@ -1520,6 +1520,19 @@
 - **the Host header: what it carries and why the browser will not let a page forge it** => 
 - **shallow clones: why `git log` on a file names the boundary commit** => 
 
+## QPS Sweep (Branch 81)
+- **offered load against achieved throughput: what saturation looks like on a latency curve** => 
+- **goodput at an SLO: why it differs from throughput** => 
+- **Poisson arrivals: why requests bunch up even at a low average rate** => 
+
+## Attention v2 README (Branch 78)
+- **one block per query head against one block per KV head: what grouped-query attention could share** => 
+
+## Prefill TTFT (Branch 79)
+- **llama.cpp's logical batch (`-b`) against its physical micro-batch (`-ub`)** => 
+- **bash arrays: why `"${args[@]}"` expands to nothing when the array is empty** => 
+- **why one row per prompt token makes prefill KV reads grow with the square of the length** => 
+
 ## vLLM Baseline (Branch 80)
 - **Python virtual environments: why a tool with a pinned torch gets its own** => 
 - **Server-Sent Events: how a streaming completion arrives line by line** => 
