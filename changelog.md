@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/prefill-ttft
+
+- Add `scripts/prefill_ttft.py`: single-request TTFT against prompt length for the engine, eager and with graphs, and llama.cpp at `-ub 512` and `-ub` of the longest prompt, written to `results/prefill/` as a CSV, a markdown table and a plot, with `--from-csv` to redraw and tests in `tests/python/test_prefill_ttft.py` (#120). (Part A)
+
 ## server/vercel-origin
 
 - Allow the deployed site, `https://llm-inference-engine-jz.vercel.app`, in `kDefaultCorsOrigins`, link it from the README, and record the live check: from that page in Chrome 156 the dashboard connected to a local `engine serve` and streamed a chat answer once the browser's local network permission was granted (via DevTools protocol, so the permission prompt itself was not seen), and every request was blocked without it. (Part A)
