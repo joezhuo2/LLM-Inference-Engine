@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/qps-sweep
+
+- Add `scripts/load_sweep.sh`: `engine bench --graphs` at Poisson arrivals with mixed lengths at each QPS point, writing to `results/load/` so the new summaries stay out of the batch curves that `plot.py` and the site read from `results/`. (Part A)
+
 ## server/vercel-origin
 
 - Allow the deployed site, `https://llm-inference-engine-jz.vercel.app`, in `kDefaultCorsOrigins`, link it from the README, and record the live check: from that page in Chrome 156 the dashboard connected to a local `engine serve` and streamed a chat answer once the browser's local network permission was granted (via DevTools protocol, so the permission prompt itself was not seen), and every request was blocked without it. (Part A)
