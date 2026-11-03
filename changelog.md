@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## docs/attention-v2-readme
+
+- Correct the README's description of paged attention v2: `paged_attention_v2.cu` launches `dim3 grid_dim(heads, batch_size)`, one block per query head and sequence, so the 8 query heads that share a KV head each read its K and V in their own block. The old wording, one block per KV head reading K and V once, described a design the code does not have (#119). (Part A)
+
 ## server/vercel-origin
 
 - Allow the deployed site, `https://llm-inference-engine-jz.vercel.app`, in `kDefaultCorsOrigins`, link it from the README, and record the live check: from that page in Chrome 156 the dashboard connected to a local `engine serve` and streamed a chat answer once the browser's local network permission was granted (via DevTools protocol, so the permission prompt itself was not seen), and every request was blocked without it. (Part A)
