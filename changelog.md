@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## bench/vllm-baseline
 
+- Add a vLLM section to `docs/baselines.md`: the command, the server flags, what is and is not comparable with `engine bench`, and the measured table. (Part A)
 - Record three runs of vLLM 0.32.0 at 1 to 8 requests per second in `results/load/`, on the RTX 5060 Laptop GPU. (Part A)
 - Add an optional vLLM section to `scripts/reproduce.sh`, with `--skip-vllm` and `VLLM_PYTHON`; skipped when `scripts/setup_vllm.sh` has not run. (Part A)
 - Add `scripts/baseline_vllm.py` and its tests: starts `vllm serve` with `--dtype bfloat16` and `--max-num-seqs 16`, refuses any other dtype it reads from the server's log, sends the same token ids as `engine bench` on the workload's arrival times through a streaming client, and writes the standard CSVs to `results/load/` with the driver `vllm_online`. Tokens are counted from the usage field of each chunk rather than from the chunks, and each summary records preemptions, the client's lag behind schedule and the chunks that carried more than one token. (Part A)

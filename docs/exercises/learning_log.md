@@ -1525,3 +1525,5 @@
 - **Server-Sent Events: how a streaming completion arrives line by line** => 
 - **open-loop load: why a client must send on schedule whether or not the server keeps up** => 
 - **continuous usage stats: counting streamed tokens without trusting chunks** => 
+- **chunked prefill: mixing prefill and decode in one step** => 
+- **FlashAttention 2 against FlashInfer: two decode attention backends** => 
