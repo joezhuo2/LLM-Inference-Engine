@@ -1,3 +1,4 @@
+import importlib.util
 import sys
 import tempfile
 import unittest
@@ -52,6 +53,7 @@ class Table(unittest.TestCase):
 
 
 class RoundTrip(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("matplotlib"), "matplotlib is not installed")
     def test_from_csv_redraws_every_output(self):
         rows = [row(pt.ENGINE, n, 1, n * 1e-3) for n in (128, 512)] + [row(pt.LLAMA_FULL, n, 1, 0.1) for n in (128, 512)]
         with tempfile.TemporaryDirectory() as tmp:
