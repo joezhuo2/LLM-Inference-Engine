@@ -1522,4 +1522,5 @@
 
 ## QPS Sweep (Branch 81)
 - **offered load against achieved throughput: what saturation looks like on a latency curve** => 
+- **goodput at an SLO: why it differs from throughput** => 
 - **Poisson arrivals: why requests bunch up even at a low average rate** => 
