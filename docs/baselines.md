@@ -41,6 +41,39 @@ It runs `llama-batched-bench -npp <prompt-len> -ntg <output-len - 1> -npl <sizes
 
 Comparability: the same BF16 weights (not a quantized GGUF), the same prompt and output length, the same GPU, plugged in, several repetitions. The llama.cpp release is stored in the summary's `version` and the flash attention setting in `build` (`fa=auto`, the default). What differs: llama.cpp keeps its KV cache in F16 (the engine in BF16, same size), feeds random tokens instead of the workload's prompts (the timing does not depend on the token values) and does not sample (it computes the logits of every step but never runs a sampler, which the engine does on the GPU).
 
+## vLLM
+
+HuggingFace and llama.cpp run static batches, so neither can serve requests that arrive at their own times. vLLM is the online comparison. `scripts/setup_vllm.sh` installs the pinned release (0.32.0, with torch 2.13.0) into its own environment, `~/.venvs/llmie-vllm`, because vLLM pins its own torch. `scripts/baseline_vllm.py` then starts the server, serves each rate and stops it:
+
+```bash
+~/.venvs/llmie-vllm/bin/python scripts/baseline_vllm.py --model models/tinyllama --rates 1,2,3,4,5,6,8 --run 1
+```
+
+The server runs as `vllm serve models/tinyllama --dtype bfloat16 --max-num-seqs 16 --gpu-memory-utilization 0.7 --max-model-len 2048 --generation-config vllm`. The client sends the workload's token ids to `/v1/completions` at the workload's arrival times (120 requests, prompts of 16 to 512 tokens, outputs of 16 to 256, seed 0, 3 warmup requests per rate), greedy with `ignore_eos`. It writes `results/load/vllm_q<rate>_r<run>.csv` and its summary with the driver `vllm_online`. TTFT counts from the scheduled arrival, and tokens are counted from the `usage` field of each stream chunk instead of from the chunks.
+
+Comparability: the same BF16 weights (the script stops if the server's log reports another dtype), the same token ids, arrival times and output lengths, the same GPU, and the same limit of 16 concurrent sequences as `engine bench --max-batch 16`. What differs:
+
+- **HTTP and Python:** every vLLM token goes through a Python server, HTTP and the Python client, and its times are taken in the client. `engine bench` has no HTTP and times requests inside the process, so this overhead counts only against vLLM.
+- **Attention:** vLLM picks its `FLASH_ATTN` backend (FlashAttention 2) here, not FlashInfer, which it uses only for sampling. Decode runs from its own `torch.compile` and CUDA Graph capture, which made the first start take more than 5 minutes (later starts reuse the compile cache).
+- **Prefill and decode:** vLLM's default chunked prefill mixes prefill and decode in one step with a budget of 2,048 tokens per step on this GPU (its server default), while the engine's steps are all prefill or all decode.
+- **Sampling:** both are greedy, but each uses its own code path; the engine's is its GPU sampling kernel.
+- **Memory:** neither system is short of KV space (0 preemptions in vLLM's runs): vLLM's cache holds 153,888 tokens at 70% of the VRAM.
+- **The limit of 16:** this matches the engine's run but is not vLLM's default for this GPU (128 sequences for the server), so these curves do not show what vLLM does with more concurrency. A sweep of both systems past 16 would be the fairer test at high rates.
+
+Reading (RTX 5060 Laptop GPU, 2026-11-03, median of 3 runs, 0 preemptions, every stream chunk carried exactly one token):
+
+| QPS | output tok/s | TTFT p50 ms | TTFT p99 ms | TPOT p50 ms | TPOT p99 ms |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 167 | 46 | 103 | 8.9 | 10.5 |
+| 2 | 329 | 29 | 39 | 8.8 | 10.4 |
+| 3 | 486 | 32 | 45 | 9.1 | 11.1 |
+| 4 | 630 | 33 | 43 | 10.4 | 11.4 |
+| 5 | 774 | 35 | 194 | 10.5 | 11.2 |
+| 6 | 912 | 36 | 480 | 10.6 | 11.4 |
+| 8 | 1,105 | 42 | 1,010 | 10.9 | 11.4 |
+
+The client's own delay in sending a request reached at most 50 ms (p99 at most 34 ms, in the slower rates) and is in these TTFTs, since they count from the scheduled arrival.
+
 ## Plots
 
 ```bash

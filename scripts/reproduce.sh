@@ -5,7 +5,7 @@ cd "$(git rev-parse --show-toplevel)"
 usage() {
     cat >&2 <<'USAGE'
 usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp] [--skip-load]
-                           [--skip-prefill]
+                           [--skip-prefill] [--skip-vllm]
 
 Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/environment.txt   commit, GPU, driver, CUDA, date, workload
@@ -15,6 +15,8 @@ Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/hf_b*_r*.csv      HuggingFace baseline at max batch 1 4 16, HF_REPEATS runs each
   results/llamacpp_b*_r*_summary.csv   llama.cpp at batch 1 2 4 8 16, REPEATS runs each, when
                             scripts/setup_llamacpp.sh has built it (skipped otherwise)
+  results/load/vllm_q*_r*.csv   vLLM's server under Poisson arrivals, REPEATS runs per rate, when
+                            scripts/setup_vllm.sh has installed it (skipped otherwise)
   results/load/            the engine at Poisson arrivals of mixed-length requests, 1 to 8 QPS, from
                             scripts/load_sweep.sh, reported by scripts/load_report.py
   results/decode_step.md    nsys launch gaps, GPU time per op and bandwidth of a batch-1 decode step
@@ -28,7 +30,8 @@ and then refreshes the measured blocks of docs/results.md.
 Environment: MODEL (default models/tinyllama), PEAK_GB_S (measured DRAM bandwidth, 323.6),
 PEAK_TFLOPS (measured BF16 GEMM peak from scripts/gemm_peak.cu, 34.5),
 REPEATS (3), HF_REPEATS (1), PYTHON (default ~/.venvs/llmie/bin/python, else python3),
-LLAMA_BATCHED_BENCH and LLAMA_GGUF (default where scripts/setup_llamacpp.sh puts them).
+LLAMA_BATCHED_BENCH and LLAMA_GGUF (default where scripts/setup_llamacpp.sh puts them),
+VLLM_PYTHON (default where scripts/setup_vllm.sh puts it).
 Plug the laptop in, use maximum performance mode and close other GPU programs first.
 USAGE
     exit 2
@@ -38,6 +41,7 @@ quick=0
 skip_tests=0
 skip_hf=0
 skip_llamacpp=0
+skip_vllm=0
 skip_load=0
 skip_prefill=0
 for arg in "$@"; do
@@ -46,6 +50,7 @@ for arg in "$@"; do
     --skip-tests) skip_tests=1 ;;
     --skip-hf) skip_hf=1 ;;
     --skip-llamacpp) skip_llamacpp=1 ;;
+    --skip-vllm) skip_vllm=1 ;;
     --skip-load) skip_load=1 ;;
     --skip-prefill) skip_prefill=1 ;;
     *) usage ;;
@@ -60,6 +65,7 @@ hf_repeats=${HF_REPEATS:-1}
 python=${PYTHON:-$HOME/.venvs/llmie/bin/python}
 llama_batched=${LLAMA_BATCHED_BENCH:-$HOME/.cache/llmie/llama.cpp/build/bin/llama-batched-bench}
 llama_gguf=${LLAMA_GGUF:-models/tinyllama-bf16.gguf}
+vllm_python=${VLLM_PYTHON:-$HOME/.venvs/llmie-vllm/bin/python}
 [ -x "$python" ] || python=python3
 requests=32
 prompt=64
@@ -157,6 +163,24 @@ if [ "$skip_llamacpp" = 0 ]; then
             --max-batch 1,2,4,8,16 --num-requests "$requests" --repetitions "$repeats" --out-dir "$out"
     else
         echo "== llama.cpp baseline skipped: run scripts/setup_llamacpp.sh first"
+    fi
+fi
+
+if [ "$skip_vllm" = 0 ]; then
+    if [ -x "$vllm_python" ]; then
+        echo "== vLLM baseline"
+        vllm_requests=120
+        vllm_rates=1,2,3,4,5,6,8
+        if [ "$quick" = 1 ]; then
+            vllm_requests=16
+            vllm_rates=4
+        fi
+        for r in $(seq 1 "$repeats"); do
+            "$vllm_python" scripts/baseline_vllm.py --model "$model" --rates "$vllm_rates" --run "$r" \
+                --num-requests "$vllm_requests" --out-dir "$out/load"
+        done
+    else
+        echo "== vLLM baseline skipped: run scripts/setup_vllm.sh first"
     fi
 fi
 

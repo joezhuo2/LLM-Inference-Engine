@@ -1532,3 +1532,12 @@
 - **llama.cpp's logical batch (`-b`) against its physical micro-batch (`-ub`)** => 
 - **bash arrays: why `"${args[@]}"` expands to nothing when the array is empty** => 
 - **why one row per prompt token makes prefill KV reads grow with the square of the length** => 
+
+## vLLM Baseline (Branch 80)
+- **Python virtual environments: why a tool with a pinned torch gets its own** => 
+- **Server-Sent Events: how a streaming completion arrives line by line** => 
+- **open-loop load: why a client must send on schedule whether or not the server keeps up** => 
+- **continuous usage stats: counting streamed tokens without trusting chunks** => 
+- **chunked prefill: mixing prefill and decode in one step** => 
+- **FlashAttention 2 against FlashInfer: two decode attention backends** => 
+- **goodput at an SLO: why throughput alone hides missed deadlines** => 

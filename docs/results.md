@@ -90,9 +90,18 @@ SLO: TTFT at most 500 ms and TPOT at most 50 ms; goodput is the requests per sec
 | engine + graphs | 5 | 667 | 591 | 3328 | 19.7 | 25.8 | 48% | 2.15 | 0 | 3 |
 | engine + graphs | 6 | 685 | 1522 | 5973 | 19.8 | 25.8 | 25% | 1.16 | 0 | 3 |
 | engine + graphs | 8 | 710 | 3027 | 9389 | 20.1 | 25.4 | 23% | 1.13 | 0 | 3 |
+| vLLM | 1 | 167 | 46 | 103 | 8.9 | 10.5 | 100% | 1.14 | 0 | 3 |
+| vLLM | 2 | 329 | 29 | 39 | 8.8 | 10.4 | 100% | 2.24 | 0 | 3 |
+| vLLM | 3 | 486 | 32 | 45 | 9.1 | 11.1 | 100% | 3.31 | 0 | 3 |
+| vLLM | 4 | 630 | 33 | 43 | 10.4 | 11.4 | 100% | 4.28 | 0 | 3 |
+| vLLM | 5 | 774 | 35 | 194 | 10.5 | 11.2 | 100% | 5.26 | 0 | 3 |
+| vLLM | 6 | 912 | 36 | 480 | 10.6 | 11.4 | 99% | 6.13 | 0 | 3 |
+| vLLM | 8 | 1105 | 42 | 1010 | 10.9 | 11.4 | 78% | 5.83 | 0 | 3 |
 <!-- /auto:load -->
 
-Goodput peaks at 3.2 requests per second at an offered 4, then falls: past that the queue grows faster than it drains, so most requests miss the 500 ms TTFT limit. TPOT does not cause the misses. Its p99 stays at or under 26 ms at every rate, about half the 50 ms limit, and TTFT p99 is what crosses the limit, between 2 and 3 QPS. Output throughput levels off near 700 tokens/s, about half of the 1,402 of the offline batch-16 run, on a workload with longer prompts, longer contexts and 115 prefill steps in a run; this sweep does not separate how much each of those costs. The KV cache was never the limit: the peak was 455 of 12,915 blocks, with 0 preemptions at every rate.
+vLLM 0.32.0 on the same token ids, arrival times, GPU and limit of 16 sequences is well ahead on this workload (`docs/baselines.md`, which lists what differs): its goodput reaches 6.1 requests per second at an offered 6, about 1.9x the engine's 3.2, and its TPOT p50 stays between 8.8 and 10.9 ms where the engine's climbs from 11.0 to 20.1 ms, even though vLLM's times include a Python server and HTTP and the engine's do not. At an offered 4 its TTFT p99 is 43 ms against the engine's 1,653 ms. The likely reason is that vLLM mixes prefill chunks into decode steps while the engine's prefills stop every running decode, but that has not been measured on its own. Against llama.cpp the engine leads on the offline workload above; this offline lead says nothing about serving under load.
+
+The engine's goodput peaks at 3.2 requests per second at an offered 4, then falls: past that the queue grows faster than it drains, so most requests miss the 500 ms TTFT limit. TPOT does not cause the misses. Its p99 stays at or under 26 ms at every rate, about half the 50 ms limit, and TTFT p99 is what crosses the limit, between 2 and 3 QPS. Output throughput levels off near 700 tokens/s, about half of the 1,402 of the offline batch-16 run, on a workload with longer prompts, longer contexts and 115 prefill steps in a run; this sweep does not separate how much each of those costs. The KV cache was never the limit: the peak was 455 of 12,915 blocks, with 0 preemptions at every rate.
 
 Limits of these numbers. The lengths are uniform, not a real chat distribution such as ShareGPT, and the tokens are random. There is no HTTP in the path, since `engine bench` calls the scheduler directly. With 120 requests a run ends before an overloaded queue reaches any steady state, so TTFT past saturation depends on the run length: read those points as "overloaded", not as stable values. Goodput at 1 and 2 QPS is above the offered rate because this seed's 120 arrivals span about 104 and 52 seconds rather than 120 and 60, so these runs carry slightly more load than their label. The whole sweep was run twice: the first run was discarded because 2 of its 21 runs took more than twice as long as their repeats while other work was running on the machine, and the numbers here come from the second, where repeats agree closely.
 

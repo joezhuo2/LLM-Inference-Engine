@@ -2,6 +2,15 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/vllm-baseline
+
+- Add vLLM to the QPS sweep in `docs/results.md` and its three plots: goodput 6.1 requests per second against the engine's 3.2, with TPOT p50 of 8.8 to 10.9 ms against 11.0 to 20.1 ms. The cause is not measured separately. Correct two lines of the vLLM section in `docs/baselines.md` as well. (Part A)
+- Add a vLLM section to `docs/baselines.md`: the command, the server flags, what is and is not comparable with `engine bench`, and the measured table. (Part A)
+- Record three runs of vLLM 0.32.0 at 1 to 8 requests per second in `results/load/`, on the RTX 5060 Laptop GPU. (Part A)
+- Add an optional vLLM section to `scripts/reproduce.sh`, with `--skip-vllm` and `VLLM_PYTHON`; skipped when `scripts/setup_vllm.sh` has not run. (Part A)
+- Add `scripts/baseline_vllm.py` and its tests: starts `vllm serve` with `--dtype bfloat16` and `--max-num-seqs 16`, refuses any other dtype it reads from the server's log, sends the same token ids as `engine bench` on the workload's arrival times through a streaming client, and writes the standard CSVs to `results/load/` with the driver `vllm_online`. Tokens are counted from the usage field of each chunk rather than from the chunks, and each summary records preemptions, the client's lag behind schedule and the chunks that carried more than one token. (Part A)
+- Add `scripts/setup_vllm.sh`: vLLM 0.32.0 in its own `~/.venvs/llmie-vllm`, since vLLM pins its own torch and has to stay out of the llmie venv. (Part A)
+
 ## bench/qps-sweep
 
 - Add `scripts/load_sweep.sh`: `engine bench --graphs` at Poisson arrivals with mixed lengths at each QPS point, writing to `results/load/` so the new summaries stay out of the batch curves that `plot.py` and the site read from `results/`. (Part A)
