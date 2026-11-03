@@ -1524,3 +1524,5 @@
 - **llama.cpp's logical batch (`-b`) against its physical micro-batch (`-ub`)** => 
 - **bash arrays: why `"${args[@]}"` expands to nothing when the array is empty** => 
 - **why one row per prompt token makes prefill KV reads grow with the square of the length** => 
+## Attention v2 README (Branch 78)
+- **one block per query head against one block per KV head: what grouped-query attention could share** => 
