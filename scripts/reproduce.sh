@@ -4,7 +4,7 @@ cd "$(git rev-parse --show-toplevel)"
 
 usage() {
     cat >&2 <<'USAGE'
-usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp]
+usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp] [--skip-prefill]
 
 Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/environment.txt   commit, GPU, driver, CUDA, date, workload
@@ -18,6 +18,7 @@ Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/decode_step_graphs.md   the same decode step replayed from a CUDA Graph
   results/decode_step_b16.md   the GPU time per op of a decode step with 16 rows
   results/plots/roofline.*  the ops and the whole decode step on a roofline (scripts/roofline.py)
+  results/prefill/          single-request TTFT against prompt length, engine and llama.cpp
   results/plots/            the plots and summary_table.md
 and then refreshes the measured blocks of docs/results.md.
 
@@ -34,12 +35,14 @@ quick=0
 skip_tests=0
 skip_hf=0
 skip_llamacpp=0
+skip_prefill=0
 for arg in "$@"; do
     case "$arg" in
     --quick) quick=1 ;;
     --skip-tests) skip_tests=1 ;;
     --skip-hf) skip_hf=1 ;;
     --skip-llamacpp) skip_llamacpp=1 ;;
+    --skip-prefill) skip_prefill=1 ;;
     *) usage ;;
     esac
 done
@@ -150,6 +153,17 @@ if [ "$skip_llamacpp" = 0 ]; then
     else
         echo "== llama.cpp baseline skipped: run scripts/setup_llamacpp.sh first"
     fi
+fi
+
+if [ "$skip_prefill" = 0 ]; then
+    echo "== prefill TTFT against prompt length"
+    prefill_llama=()
+    if [ "$skip_llamacpp" = 0 ] && [ -x "$llama_batched" ] && [ -s "$llama_gguf" ]; then
+        prefill_llama=(--llama-batched-bench "$llama_batched" --gguf "$llama_gguf")
+    fi
+    "$python" scripts/prefill_ttft.py --engine build/release/bin/engine --model "$model" \
+        --repeats "$repeats" --commit "$(git rev-parse --short HEAD)" --out-dir "$out/prefill" \
+        "${prefill_llama[@]}" > /dev/null
 fi
 
 if command -v nsys > /dev/null; then

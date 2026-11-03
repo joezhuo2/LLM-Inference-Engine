@@ -1522,3 +1522,4 @@
 
 ## Prefill TTFT (Branch 79)
 - **llama.cpp's logical batch (`-b`) against its physical micro-batch (`-ub`)** => 
+- **bash arrays: why `"${args[@]}"` expands to nothing when the array is empty** => 
