@@ -167,10 +167,7 @@ ChunkedStep Scheduler::schedule_chunked(int token_budget) {
     while (idx < running_list_.size()) {
         SeqId s = running_list_[idx];
 
-        int cur_progress = prefill_progress_[s];
-        const Request& req = requests_.at(s);
-
-        if (cur_progress < static_cast<int>(req.prompt.size())) {
+        if (prefill_progress_.count(s)) {
             idx++;
             continue;
         }
@@ -213,21 +210,21 @@ ChunkedStep Scheduler::schedule_chunked(int token_budget) {
 
     for (auto it = running_list_.rbegin(); it != running_list_.rend(); ++it) {
         SeqId s = *it;
-        int cur_progress = prefill_progress_[s];
+        auto progress = prefill_progress_.find(s);
 
-        const Request& req = requests_.at(s);
-        int prompt_len = static_cast<int>(req.prompt.size());
-
-        if (cur_progress < prompt_len && budget_remaining > 0) {
-            int rem_tokens = prompt_len - cur_progress;
-            int chunk_size = std::min(budget_remaining, rem_tokens);
+        if (progress != prefill_progress_.end() && budget_remaining > 0) {
+            int total = static_cast<int>(requests_.at(s).length());
+            int cur_progress = progress->second;
+            int chunk_size = std::min(budget_remaining, total - cur_progress);
 
             prefill_chunks.push_back(PrefillChunk{s, cur_progress, chunk_size});
-            prefill_progress_[s] += chunk_size;
             budget_remaining -= chunk_size;
 
-            if (prefill_progress_[s] == prompt_len) {
+            if (cur_progress + chunk_size == total) {
+                prefill_progress_.erase(progress);
                 sampled_seqs.push_back(s);
+            } else {
+                progress->second += chunk_size;
             }
 
             break;
@@ -238,26 +235,26 @@ ChunkedStep Scheduler::schedule_chunked(int token_budget) {
            running_list_.size() < static_cast<size_t>(config_.max_batch) && budget_remaining > 0) {
         SeqId front_id = waiting_queue_.front();
         const Request& req = requests_.at(front_id);
-        int prompt_length = static_cast<int>(req.prompt.size());
+        int req_length = static_cast<int>(req.length());
 
-        if (!block_manager_.can_allocate(prompt_length)) {
+        if (!block_manager_.can_allocate(req_length)) {
             break;
         }
 
         waiting_queue_.pop_front();
-        block_manager_.allocate(front_id, prompt_length);
+        block_manager_.allocate(front_id, req_length);
         Request& r = requests_.at(front_id);
         r.state = RequestState::Running;
         running_list_.push_back(front_id);
 
-        int chunk_size = std::min(budget_remaining, prompt_length);
+        int chunk_size = std::min(budget_remaining, req_length);
         prefill_chunks.push_back(PrefillChunk{front_id, 0, chunk_size});
-        prefill_progress_[front_id] = chunk_size;
         budget_remaining -= chunk_size;
 
-        if (chunk_size == prompt_length) {
+        if (chunk_size == req_length) {
             sampled_seqs.push_back(front_id);
         } else {
+            prefill_progress_[front_id] = chunk_size;
             break;
         }
     }
