@@ -190,7 +190,6 @@ ChunkedStep Scheduler::schedule_chunked(int token_budget) {
             v_req.preemptions++;
             v_req.state = RequestState::Waiting;
 
-            prefill_progress_.erase(victim);
             preempted_this_step.push_back(victim);
 
             if (victim == s) {
