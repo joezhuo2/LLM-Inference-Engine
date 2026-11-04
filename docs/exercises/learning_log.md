@@ -1541,3 +1541,9 @@
 - **chunked prefill: mixing prefill and decode in one step** => 
 - **FlashAttention 2 against FlashInfer: two decode attention backends** => 
 - **goodput at an SLO: why throughput alone hides missed deadlines** => 
+
+## Chunked Prefill (Branch 82)
+- **a per-step token budget: what it bounds and why it bounds decode latency** => 
+- **why a long prefill raises every other sequence's TPOT** => 
+- **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
+- **why a preempted sequence has to rewrite its KV from position 0** => 
