@@ -257,6 +257,8 @@ ChunkedStep Scheduler::schedule_chunked(int token_budget) {
 
         if (chunk_size == prompt_length) {
             sampled_seqs.push_back(front_id);
+        } else {
+            break;
         }
     }
 
