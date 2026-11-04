@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## sched/chunked-prefill-stub
+
+- Add the `Scheduler::schedule_chunked` Part C stub (`include/engine/sched/scheduler.h`, `src/sched/scheduler.cpp`), with `PrefillChunk`, `ChunkedStep` and its TODO(JOE) spec: each step gets a token budget, every decoding sequence gets its row first, and the rest goes to prefill, so a long prompt spreads over several steps (#101). The stub throws `logic_error("unimplemented: Scheduler::schedule_chunked")`, and nothing calls it yet. (Part C stub)
+
 ## bench/vllm-baseline
 
 - Add vLLM to the QPS sweep in `docs/results.md` and its three plots: goodput 6.1 requests per second against the engine's 3.2, with TPOT p50 of 8.8 to 10.9 ms against 11.0 to 20.1 ms. The cause is not measured separately. Correct two lines of the vLLM section in `docs/baselines.md` as well. (Part A)

@@ -25,12 +25,32 @@ struct Step {
     std::vector<SeqId> seqs{};
 };
 
+struct PrefillChunk {
+    SeqId id = 0;
+    int first = 0;
+    int count = 0;
+};
+
+struct ChunkedStep {
+    std::vector<SeqId> decode{};
+    std::vector<PrefillChunk> prefill{};
+    std::vector<SeqId> sampled{};
+
+    bool empty() const { return decode.empty() && prefill.empty(); }
+    int num_tokens() const {
+        int tokens = int(decode.size());
+        for (const PrefillChunk& chunk : prefill) tokens += chunk.count;
+        return tokens;
+    }
+};
+
 class Scheduler {
 public:
     explicit Scheduler(const SchedulerConfig& config);
 
     void submit(Request request);
     Step schedule();
+    ChunkedStep schedule_chunked(int token_budget);
     void update(std::span<const int32_t> tokens);
     std::vector<Request> take_finished();
     void cancel(SeqId id);
