@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## sched/chunked-prefill-stub
 
+- Add 25 todo_joe tests in `tests/todo/unit/test_scheduler_chunked.cpp` (target `todo_unit_tests`). They pass against a throwaway implementation that is not committed, and each of 14 deliberate mutants of it fails at least one test. (Part C stub)
 - Add the `Scheduler::schedule_chunked` Part C stub (`include/engine/sched/scheduler.h`, `src/sched/scheduler.cpp`), with `PrefillChunk`, `ChunkedStep` and its TODO(JOE) spec: each step gets a token budget, every decoding sequence gets its row first, and the rest goes to prefill, so a long prompt spreads over several steps (#101). The stub throws `logic_error("unimplemented: Scheduler::schedule_chunked")`, and nothing calls it yet. (Part C stub)
 
 ## bench/vllm-baseline
