@@ -1547,3 +1547,9 @@
 - **why a long prefill raises every other sequence's TPOT** => 
 - **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
 - **why a preempted sequence has to rewrite its KV from position 0** => 
+
+## Prefill vs. Decode Prologue (Branch 87)
+- **prefill: why all prompt positions can run through the model in one parallel pass** => 
+- **decode: why generation is sequential, one token per step** => 
+- **the KV cache: which tensors it stores and why attention can reuse them** => 
+- **memory-bound against compute-bound: what limits a decode step** => 

@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/prefill-decode-prologue
+
+- Add a prologue "Prefill vs. Decode (the token lifecycle)" before "how it works" on the paged attention page (#136), as its own sticky story with new figures: prefill takes the whole prompt in one pass and fills the KV cache, decode generates one token per step and reads every cached key and value. Times come from `docs/results.md` through `sync-data.mjs`; token counts are labelled illustrative. (Part A)
+
 ## sched/chunked-prefill-impl
 
 - Move the 25 `Scheduler::schedule_chunked` tests to `tests/unit/test_scheduler_chunked.cpp`, add them to `unit_tests` and delete the `todo_unit_tests` target. (Part A)
