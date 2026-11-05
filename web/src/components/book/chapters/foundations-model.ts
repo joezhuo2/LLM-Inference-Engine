@@ -273,7 +273,7 @@ function bytesExhibit(kit: Kit, fonts: Fonts, n: FoundationsNumbers) {
         mesh.scale.x = length;
         mesh.position.x = barX + length / 2;
       }
-      const rounded = Math.round(now);
+      const rounded = Math.round(now / 5) * 5;
       if (rounded !== shown) {
         shown = rounded;
         elapsed = rounded;

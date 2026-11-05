@@ -1774,3 +1774,4 @@
 - **extruding a 2D shape into a solid with ExtrudeGeometry** => 
 - **mapping a log scale onto a length** => 
 - **inverting a log scale to turn a drag position back into a value** => 
+- **throttling canvas texture redraws by quantizing the value drawn** => 
