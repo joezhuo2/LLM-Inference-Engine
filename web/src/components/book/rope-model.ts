@@ -386,7 +386,7 @@ function gridExhibit(kit: Kit, fonts: Fonts, numbers: RopeNumbers) {
 
   let mode: "serial" | "parallel" = "serial";
   let clockValue = 0;
-  const clockCard = createCard(kit, 0.32, 0.09, (ctx, W, H) => {
+  const clockCard = createCard(kit, 0.27, 0.09, (ctx, W, H) => {
     ctx.fillStyle = kit.palette.faint;
     ctx.font = `${H * 0.22}px ${fonts.sans}`;
     ctx.fillText(mode === "serial" ? "first draft, one token" : "fast kernel, one token", W * 0.04, H * 0.28);
@@ -397,7 +397,7 @@ function gridExhibit(kit: Kit, fonts: Fonts, numbers: RopeNumbers) {
     ctx.font = `${H * 0.22}px ${fonts.sans}`;
     ctx.fillText(`naive: ${numbers.naive.toFixed(1)} µs`, W * 0.56, H * 0.78);
   });
-  clockCard.group.position.set(0.8, 0, 0.17);
+  clockCard.group.position.set(0.845, 0, 0.17);
   root.add(clockCard.group);
   const threadCard = createCard(kit, 0.5, 0.05, (ctx, W, H) => {
     ctx.fillStyle = kit.palette.ink;
