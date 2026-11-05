@@ -117,7 +117,7 @@ export function SharedMemoryFigure({ points, cap, limit }: { points: SharedBytes
   );
 }
 
-const chunkScores = [0.3, 0.45, 0.2, 0.5, 0.35, 0.4, 0.25, 0.38, 0.55, 0.7, 0.4, 0.62, 0.5, 0.3, 0.66, 0.45, 0.35, 0.5, 0.6, 0.42, 0.3, 0.55, 0.48, 0.36, 0.82, 0.6, 0.7, 0.5, 0.65, 0.4, 0.58, 0.45];
+export const chunkScores = [0.3, 0.45, 0.2, 0.5, 0.35, 0.4, 0.25, 0.38, 0.55, 0.7, 0.4, 0.62, 0.5, 0.3, 0.66, 0.45, 0.35, 0.5, 0.6, 0.42, 0.3, 0.55, 0.48, 0.36, 0.82, 0.6, 0.7, 0.5, 0.65, 0.4, 0.58, 0.45];
 
 const chunkMaxes = Array.from({ length: 4 }, (_, c) => ({
   prev: c === 0 ? 0 : Math.max(...chunkScores.slice(0, c * 8)),

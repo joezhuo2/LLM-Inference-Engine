@@ -17,7 +17,7 @@ const fullBlocks = fullContext / B;
 
 export const reqs = replay.requests;
 export const first = reqs[0];
-const lender = reqs.find((q) => q.id !== first.id && q.finished >= 0 && q.blocks.some((b) => b.id === first.blocks[3].id && b.step < first.blocks[3].step));
+export const lender = reqs.find((q) => q.id !== first.id && q.finished >= 0 && q.blocks.some((b) => b.id === first.blocks[3].id && b.step < first.blocks[3].step));
 
 export type HeldBlock = { id: number; req: number; fill: number };
 

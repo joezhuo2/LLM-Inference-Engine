@@ -6,7 +6,7 @@ import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 
-const logits = [1.2, 2.6, 0.4, 3.1, 1.8, 0.9, 2.2, 0.1, 1.5, 2.9, 0.7, 1.1];
+export const logits = [1.2, 2.6, 0.4, 3.1, 1.8, 0.9, 2.2, 0.1, 1.5, 2.9, 0.7, 1.1];
 const top = Math.max(...logits);
 const bx = 40;
 const bw = 36;
@@ -51,7 +51,7 @@ export function ArgmaxFigure({ us }: { us: number }) {
   );
 }
 
-function mulberry(seed: number) {
+export function mulberry(seed: number) {
   let a = seed;
   return () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -61,7 +61,7 @@ function mulberry(seed: number) {
   };
 }
 
-const gumbel = (u: number) => -Math.log(-Math.log(u));
+export const gumbel = (u: number) => -Math.log(-Math.log(u));
 const temperature = 1;
 const softmax = (() => {
   const e = logits.map((l) => Math.exp((l - top) / temperature));
@@ -181,12 +181,12 @@ export function PhiloxFigure() {
   );
 }
 
-const keys = Array.from({ length: 40 }, (_, i) => {
+export const keys = Array.from({ length: 40 }, (_, i) => {
   const r = mulberry(11 + i)();
   return Number((Math.sin(i * 1.7) * 1.4 + r * 2.2).toFixed(2));
 });
 
-function searchSteps(target: (cut: number) => boolean, lo0: number, hi0: number, n: number) {
+export function searchSteps(target: (cut: number) => boolean, lo0: number, hi0: number, n: number) {
   const out: number[] = [];
   let lo = lo0;
   let hi = hi0;

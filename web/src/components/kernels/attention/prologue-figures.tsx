@@ -5,7 +5,7 @@ import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 import { others, table } from "./figures";
 
-const words = ["The", "cat", "sat", "on", "the", "mat", "and", "purrs", "at", "dawn", "then", "slept"];
+export const words = ["The", "cat", "sat", "on", "the", "mat", "and", "purrs", "at", "dawn", "then", "slept"];
 const pitch = 66;
 const wide = 43.5;
 

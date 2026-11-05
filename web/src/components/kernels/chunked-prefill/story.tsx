@@ -6,7 +6,8 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { AllPrefillFigure, BudgetBarFigure, PreemptFigure, SampledFigure, SpreadFigure } from "./figures";
 
-const alone = prefillMs("engine", "2,048");
+const aloneTokens = "2,048";
+const alone = prefillMs("engine", aloneTokens);
 const decoders = 3;
 const prompt = 96;
 const budgets = ["16", "32", "64"];
@@ -126,6 +127,25 @@ const captions = [
   "the running list and waiting queue of Scheduler; the sizes are a sketch",
   "the sampled list of ChunkedStep; the sizes are a sketch",
 ];
+
+export const chunkedPrefillSteps = steps;
+export const chunkedPrefillCaptions = captions;
+export const chunkedPrefillNumbers = {
+  alone,
+  aloneTokens: Number(aloneTokens.replace(",", "")),
+  decoders,
+  prompt,
+  budgets: budgets.map(Number),
+  largestGap: largestGap("engine + graphs", "4"),
+  medianGap: medianGap("engine + graphs", "4"),
+  stallPrompt,
+  stallDecoding,
+  chunkBudget: Number(chunkBudget),
+  gapNone: stallMs("none", "largest gap ms"),
+  gapBudget: stallMs(chunkBudget, "largest gap ms"),
+  ttftNone: stallMs("none", "TTFT of the long prompt ms"),
+  ttftBudget: stallMs(chunkBudget, "TTFT of the long prompt ms"),
+};
 
 export function ChunkedPrefillStory() {
   return (

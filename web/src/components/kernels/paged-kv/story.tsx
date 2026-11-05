@@ -36,7 +36,7 @@ const path = replay.steps.map((s, i) => `${i ? "L" : "M"}${tx(s[0]).toFixed(1)},
 const tint = ["fill-accent", "fill-accent/55", "fill-baseline"];
 const speed = 0.5;
 
-function stepAt(t: number) {
+export function stepAt(t: number) {
   let lo = 0;
   let hi = replay.steps.length - 1;
   while (lo < hi) {
@@ -162,7 +162,7 @@ function ReplayPlayer() {
 
 const reqBlocks = first.blocks.length;
 
-const steps: StoryStep[] = [
+export const pagedKvSteps: StoryStep[] = [
   {
     id: "why",
     title: "memory for a context nobody knows yet",
@@ -271,7 +271,7 @@ const steps: StoryStep[] = [
   },
 ];
 
-const captions = [
+export const pagedKvCaptions = [
   `the four requests' real lengths from ${replay.file}; blocks are ${B} tokens`,
   `block table of request ${first.id} and the pool at that step, both from the build-time replay of ${replay.file}`,
   "TinyLlama: 32 query heads and 4 KV heads of 64 dims; time from results/decode_step.md (GPU time per op)",
@@ -283,8 +283,8 @@ const captions = [
 export function PagedKvStory() {
   return (
     <StickyStory
-      steps={steps}
-      caption={(i) => captions[i]}
+      steps={pagedKvSteps}
+      caption={(i) => pagedKvCaptions[i]}
       figure={(i) => {
         switch (i) {
           case 0:
@@ -311,7 +311,7 @@ const gt = batchGrids.tight;
 const tightPreemptions = gt.evictions.reduce((n, e) => n + e, 0);
 const batchingSlots = gs.slots;
 
-const batchingSteps: StoryStep[] = [
+export const batchingSteps: StoryStep[] = [
   {
     id: "static",
     title: "static: wait for the longest",
@@ -368,7 +368,7 @@ const batchingSteps: StoryStep[] = [
     body: (
       <>
         <p>
-          The visualizer below runs the same two rules on a real block pool. Add requests and watch two numbers. <span className="text-accent">requests running</span> is how many requests the
+          The visualizer runs the same two rules on a real block pool. Add requests and watch two numbers. <span className="text-accent">requests running</span> is how many requests the
           scheduler steps together right now: it rises as requests are admitted and falls as they finish.
         </p>
         <p>
@@ -380,7 +380,7 @@ const batchingSteps: StoryStep[] = [
   },
 ];
 
-const batchingCaptions = [
+export const batchingCaptions = [
   `illustrative request lengths in steps, ${batchingSlots} slots; the same 10 requests in every figure`,
   "illustrative lengths; a pool that never runs out; a prefill and a decode step are drawn as one cell",
   "illustrative lengths; blocks of 2 steps instead of 16 tokens; rules from src/sched/scheduler.cpp: first come first served up to max_batch, preempt from the back of the running list",

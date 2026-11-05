@@ -23,6 +23,7 @@ const first = (row: string, column: string) => measured(graphs, { "decode step a
 export const cudaGraphs: KernelStory = {
   slug: "cuda-graphs",
   index: 6,
+  book: true,
   title: "CUDA Graphs",
   short: "Not a kernel: the whole decode step captured once and replayed with one launch, so the GPU stops waiting for the CPU.",
   formula: "decode step = stage(batch) + cudaGraphLaunch(graph[bucket, splits])",
