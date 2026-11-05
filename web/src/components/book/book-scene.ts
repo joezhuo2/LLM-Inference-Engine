@@ -296,7 +296,6 @@ export class BookScene {
     const coverFace = new THREE.Mesh(new THREE.PlaneGeometry(PAGE_W + 0.03, PAGE_D + 0.05), new THREE.MeshLambertMaterial({ map: coverTexture }));
     coverFace.rotation.x = Math.PI / 2;
     coverFace.rotation.z = Math.PI;
-    coverFace.scale.x = -1;
     coverFace.position.set(-(PAGE_W + 0.03) / 2, -BLOCK - 0.0225, 0);
     coverFace.material.side = THREE.DoubleSide;
     this.leftHalf.add(coverFace);
