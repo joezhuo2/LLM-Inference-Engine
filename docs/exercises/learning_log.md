@@ -1664,3 +1664,4 @@
 - **inter-token latency (the gap between two tokens of one request) against TPOT (the mean of those gaps)** => 
 - **why a request's mean TPOT hides one long stall** => 
 - **interleaving repeats across configurations so drift on the machine hits each one alike** => 
+- **what splitting one prompt into chunks costs when nothing else is running** => 
