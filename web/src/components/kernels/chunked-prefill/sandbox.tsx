@@ -2,9 +2,9 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
-import { animate, type AnimationPlaybackControls } from "motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";
+import { glide, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { prefillMs } from "@/content/kernels/chunked-prefill";
 import { EasedBar } from "../eased-bar";
@@ -222,7 +222,7 @@ export function ChunkedPrefillSandbox() {
 
   const prediction = guess ? predict("roomy", 2048, 256) : null;
   const reduced = usePrefersReducedMotion();
-  const tweens = useRef<AnimationPlaybackControls[]>([]);
+  const tweens = useRef<Tween[]>([]);
   const cancelTween = () => {
     tweens.current.forEach((t) => t.stop());
     tweens.current = [];
@@ -232,10 +232,10 @@ export function ChunkedPrefillSandbox() {
       set(to);
       return done?.();
     }
-    tweens.current.push(animate(from, to, { duration: 0.6, ease: [0.77, 0, 0.175, 1], onUpdate: (x) => set(round(x)), onComplete: () => {
+    tweens.current.push(glide(from, to, (x) => set(round(x)), () => {
         set(to);
         done?.();
-      } }));
+      }));
   };
   const tryIt = () => {
     setGuess(guessed);

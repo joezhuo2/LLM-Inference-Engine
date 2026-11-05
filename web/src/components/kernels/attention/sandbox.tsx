@@ -2,9 +2,9 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
-import { animate, type AnimationPlaybackControls } from "motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";
+import { glide, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
@@ -36,7 +36,7 @@ export function PagedAttentionSandbox() {
   const [playing, setPlaying] = useState(false);
   const [guess, setGuess] = useState<string | null>(null);
   const reduced = usePrefersReducedMotion();
-  const tween = useRef<AnimationPlaybackControls | null>(null);
+  const tween = useRef<Tween | null>(null);
 
   useEffect(() => () => tween.current?.stop(), []);
 
@@ -64,7 +64,7 @@ export function PagedAttentionSandbox() {
   const reset = () => {
     tween.current?.stop();
     if (reduced || context === defaults.context) setContext(defaults.context);
-    else tween.current = animate(context, defaults.context, { duration: 0.6, ease: [0.77, 0, 0.175, 1], onUpdate: (v) => setContext(Math.round(v)) });
+    else tween.current = glide(context, defaults.context, (v) => setContext(Math.round(v)));
     setBlock(defaults.block);
     setSeed(defaults.seed);
     setStep(0);

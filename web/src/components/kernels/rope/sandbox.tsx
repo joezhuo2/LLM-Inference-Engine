@@ -2,9 +2,9 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
-import { animate } from "motion";
 import { useEffect, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";
+import { glide as tween, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { Toggle } from "../toggle";
 import { MAX_POS, PAIRS, angle, invFreq, rotatePair, score, seededVector, wavelength } from "./rotation";
@@ -28,7 +28,6 @@ const button = "pressable rounded border border-border px-2.5 py-1 text-text";
 const slider = "w-full accent-[var(--accent)]";
 
 const defaults = { pos: 300, pair: 0, qPos: 300, kPos: 280 };
-const resetEase = [0.77, 0, 0.175, 1] as const;
 
 type Guess = "changes" | "stays the same" | null;
 
@@ -42,10 +41,10 @@ export function RopeSandbox() {
   const [guess, setGuess] = useState<Guess>(null);
 
   const reduced = usePrefersReducedMotion();
-  const tween = useRef<ReturnType<typeof animate> | null>(null);
+  const run = useRef<Tween | null>(null);
   const stop = () => {
-    tween.current?.stop();
-    tween.current = null;
+    run.current?.stop();
+    run.current = null;
   };
   useEffect(() => stop, []);
 
@@ -63,24 +62,24 @@ export function RopeSandbox() {
     }
     const mix = (key: keyof typeof from, t: number) => from[key] + (target[key] - from[key]) * t;
     const at = (key: keyof typeof from, t: number) => Math.round(mix(key, t));
-    tween.current = animate(0, 1, {
-      duration: 0.6,
-      ease: resetEase,
-      onUpdate: (t) => {
+    run.current = tween(
+      0,
+      1,
+      (t) => {
         setPos(at("pos", t));
         setPair(at("pair", t));
         setPairF(mix("pair", t));
         setQPos(at("qPos", t));
         setKPos(at("kPos", t));
       },
-      onComplete: () => {
-        tween.current = null;
+      () => {
+        run.current = null;
       },
-    });
+    );
   };
 
   const reset = () => {
-    if (tween.current) return stop();
+    if (run.current) return stop();
     setLock("locked");
     setGuess(null);
     glide(defaults);

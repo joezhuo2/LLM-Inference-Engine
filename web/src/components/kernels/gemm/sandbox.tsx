@@ -4,8 +4,8 @@ import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { animate } from "motion";
 import { SmoothRange } from "@/components/smooth-range";
+import { glide, type Tween } from "@/lib/glide";
 import { ceilings, hardware } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
@@ -66,7 +66,7 @@ export function TilingSandbox() {
   const [playing, setPlaying] = useState(false);
   const [guess, setGuess] = useState<"yes" | "no" | null>(null);
 
-  const tween = useRef<{ stop: () => void } | null>(null);
+  const tween = useRef<Tween | null>(null);
   const shape = ops[opNames.indexOf(op)].shape;
   const m = Number(rows);
   const tile = tileSizes[tileIdx];
@@ -107,13 +107,9 @@ export function TilingSandbox() {
     }
     const fromTile = tileIdx;
     const fromDone = done;
-    tween.current = animate(0, 1, {
-      duration: 0.6,
-      ease: [0.77, 0, 0.175, 1],
-      onUpdate: (x) => {
-        setTileIdx(Math.round(fromTile + (start.tile - fromTile) * x));
-        setDone(Math.round(fromDone * (1 - x)));
-      },
+    tween.current = glide(0, 1, (x) => {
+      setTileIdx(Math.round(fromTile + (start.tile - fromTile) * x));
+      setDone(Math.round(fromDone * (1 - x)));
     });
   };
 

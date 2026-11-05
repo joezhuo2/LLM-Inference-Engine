@@ -1,7 +1,7 @@
 "use client";
 
-import { animate, type AnimationPlaybackControls } from "motion";
 import { useEffect, useRef, type ComponentProps } from "react";
+import { glide, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 
 type Props = Omit<ComponentProps<"input">, "type" | "onChange"> & { onValue: (v: number) => void };
@@ -11,26 +11,22 @@ export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCanc
   const down = useRef(0);
   const from = useRef(0);
   const target = useRef<number | null>(null);
-  const tween = useRef<AnimationPlaybackControls | null>(null);
+  const tween = useRef<Tween | null>(null);
   const held = () => performance.now() - down.current > 250;
 
   useEffect(() => () => tween.current?.stop(), []);
 
-  const glide = (el: HTMLInputElement, to: number) => {
+  const glideTo = (el: HTMLInputElement, to: number) => {
     const min = Number(el.min || 0);
     const step = el.step === "any" ? 0 : Number(el.step || 1);
     const snap = (x: number) => (step ? min + Math.round((x - min) / step) * step : x);
     let last = from.current;
-    tween.current = animate(from.current, to, {
-      duration: 0.6,
-      ease: [0.77, 0, 0.175, 1],
-      onUpdate: (x) => {
-        const v = snap(x);
-        if (v === last) return;
-        last = v;
-        el.value = String(v);
-        onValue(v);
-      },
+    tween.current = glide(from.current, to, (x) => {
+      const v = snap(x);
+      if (v === last) return;
+      last = v;
+      el.value = String(v);
+      onValue(v);
     });
   };
 
@@ -58,7 +54,7 @@ export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCanc
         const to = target.current;
         if (to !== null && to !== from.current) {
           if (held()) onValue(to);
-          else glide(e.currentTarget, to);
+          else glideTo(e.currentTarget, to);
         }
         down.current = 0;
         target.current = null;

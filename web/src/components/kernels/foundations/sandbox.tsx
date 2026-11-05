@@ -2,9 +2,9 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
-import { animate, type AnimationPlaybackControls } from "motion";
 import { useEffect, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";
+import { glide as tween, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { ceilings, environment, modelShape, profilingTable } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
@@ -101,7 +101,7 @@ export function FoundationsSandbox() {
   const [context, setContext] = useState(start.context);
   const [guess, setGuess] = useState<Guess>(null);
   const reduced = usePrefersReducedMotion();
-  const tweens = useRef<AnimationPlaybackControls[]>([]);
+  const tweens = useRef<Tween[]>([]);
   useEffect(() => () => tweens.current.forEach((t) => t.stop()), []);
   const rows = rowsAt(step);
   const cost = opCost(shape, op, rows, context);
@@ -123,7 +123,7 @@ export function FoundationsSandbox() {
   const glide = (from: number, to: number, set: (v: number) => void, round: (v: number) => number) => {
     if (from === to) return;
     if (reduced) return set(to);
-    tweens.current.push(animate(from, to, { duration: 0.6, ease: [0.77, 0, 0.175, 1], onUpdate: (x) => set(round(x)) }));
+    tweens.current.push(tween(from, to, (x) => set(round(x))));
   };
   const reset = () => {
     stop();

@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-perf
+
+- Add `web/src/lib/glide.ts` with one `glide(from, to, onUpdate, onComplete)` helper and its duration and ease, and use it for the `SmoothRange` click glide and every sandbox tween (foundations reset and presets, paged attention reset, sampling reset and preset, chunked prefill "run it", GEMM reset, RoPE reset, shifts and pair picks), replacing seven copies of the same 600 ms ease-in-out literals. Behaviour is unchanged. (Part A)
+
 ## web/sandbox-sampling
 
 - Add `scripts/dump_logits.py` and its output `results/sampling_logits.json`: the next-token logits of TinyLlama on the CPU in BF16 (no GPU) for three contexts (a one-answer question, an open haiku start, a story start where many names fit), as the 200 largest logits per context plus the other 31,800 binned by 0.25 so the whole softmax can be rebuilt at any temperature. `web/scripts/sync-data.mjs` copies it into `web/src/data/` and `samplingLogits()` in `web/src/lib/data.ts` reads it. (Part A)
