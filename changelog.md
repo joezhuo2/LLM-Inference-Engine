@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## web/sandbox-foundations
 
 - Parse the TinyLlama config fixture of `tests/unit/test_config.cpp` and the mean attended context of `docs/results.md` in `web/scripts/model-shape.mjs` (with tests), write them to `web/src/data/model_shape.json` from `web/scripts/sync-data.mjs` and expose them as `modelShape()` in `web/src/lib/data.ts`, so the roofline sandbox counts FLOPs and bytes from the model's real shapes instead of copied constants. (Part A)
+- Add `web/src/components/kernels/foundations/roofline.ts`: the roofline sandbox's pure model. It counts FLOPs and DRAM bytes per decode step (all layers) of the qkv, o_proj, gate/up and down matmuls and of attention exactly as `scripts/roofline.py` does, adds RMSNorm, SwiGLU and RoPE with stated FLOPs per element, and derives the memory and compute times at the measured ceilings, the bound, and the row count where an op first crosses the ridge. `web/scripts/roofline.test.mjs` checks FLOP/byte against every measured row of the roofline table in `docs/results.md`, the GEMV times against the measured ones within 10%, the log-scale row steps and the crossover. (Part A)
 
 ## web/memory-wall-story
 

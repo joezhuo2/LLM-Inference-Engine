@@ -1583,3 +1583,10 @@
 - **prefill against decode** => 
 - **kernel fusion and why it removes a round trip to global memory** => 
 - **kernel launch and the intermediate tensor written between two kernels** => 
+
+## Roofline sandbox (Branch 91)
+- **ridge point of the roofline as peak FLOP/s over peak bytes/s** => 
+- **FLOPs and DRAM bytes of a matmul with weights read once and activations per row** => 
+- **why batching raises arithmetic intensity of a matmul but not of attention** => 
+- **grouped-query attention and the ratio of query heads to KV heads** => 
+- **time at the ceiling as the larger of bytes over bandwidth and FLOPs over peak** => 
