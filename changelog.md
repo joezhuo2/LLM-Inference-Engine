@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-chunked-prefill
 
+- Part A: serve chunked prefill as chapter 12 of the 3D book at `/kernels/chunked-prefill`: five pop-up models (schedule()'s whole-prompt step with A, B and C waiting and the measured 2,048-token time and longest gap; a 16-slot budget tray filled by the decode rows before the chunk; the 96-token prompt spread over steps with a draggable budget from 16 to 64 and the measured gaps without and with a budget of 256; preemption of the sequence in prefill from the back of the running list to the front of the waiting queue; the sampled lists of two steps), each with a camera tour and an instruction, and the sandbox as two try-it-yourself spreads, predict and compare, and the lanes.
 - Part A: let the chunked prefill sandbox render its two parts (predict and compare, the lanes) into two given elements through portals (`pages` prop), keeping its normal layout for the reading view, and export the story steps, captions and measured numbers so the book can reuse them.
 
 ## web/book-rope

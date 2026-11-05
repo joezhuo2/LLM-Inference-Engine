@@ -1770,3 +1770,6 @@
 
 ## 3D book: chunked prefill (Branch 112)
 - **a ref callback into state so an effect reruns when the element changes** => 
+- **scaling a group on one axis to grow a bar from its left edge** => 
+- **easing between two layouts when a dragged input changes the target** => 
+- **snapping a dragged value to the nearest marked stop on release** => 
