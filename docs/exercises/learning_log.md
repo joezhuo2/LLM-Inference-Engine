@@ -1770,3 +1770,4 @@
 
 ## 3D book: sampling (Branch 110)
 - **sharing story data between a scroll page and a 3D view through module exports** => 
+- **rendering the same JSX element into two portals bound to one state** => 

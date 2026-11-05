@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-sampling
 
+- Part A: let the sampling sandbox render two parts into two given elements through portals (`pages` prop): the knobs and the bars, and the knobs with the draws and the predict box; export the sampling figures' example logits, keys, random generator and search helper.
 - Part A: export the sampling story steps, captions, measured numbers and the row picker so the book can reuse them.
 
 ## web/book-rope
