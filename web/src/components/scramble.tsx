@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { useIntroDone } from "@/lib/intro";
 
@@ -78,9 +79,12 @@ export function Scramble({
   }, [start, text, numeric, durationMs, delayMs, replay]);
 
   return (
-    <span className={className}>
+    <span className={clsx("relative inline-block", className)}>
       <span className="sr-only">{text}</span>
-      <span ref={ref} aria-hidden="true">
+      <span aria-hidden="true" className="invisible">
+        {text}
+      </span>
+      <span ref={ref} aria-hidden="true" className="absolute inset-0 overflow-hidden">
         {text}
       </span>
     </span>

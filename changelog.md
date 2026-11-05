@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/palette
 
+- Part A: reserve the final text size under the scramble effect so proportional titles no longer rewrap or shift the layout while they resolve.
 - Part A: set Open Graph card titles in Instrument Serif and record the new type choices in the web plan.
 - Part A: separate the dark theme request colors so beige, pink and blue pass the color vision checks.
 - Part A: replace the brown chart and request colors with blue, pink and beige families (the allocate-it-yourself blocks use these), and draw labels on those marks in dark ink where the mark is pale.

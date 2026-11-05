@@ -1737,3 +1737,4 @@
 - **all-pairs versus adjacent-pairs checks for a categorical palette** => 
 - **lightness difference as the separator that survives color blindness** => 
 - **embedding a font file for a server-side image renderer** => 
+- **reserving layout with an invisible copy of the final text** => 
