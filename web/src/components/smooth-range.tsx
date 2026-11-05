@@ -4,9 +4,9 @@ import { useEffect, useRef, type ComponentProps } from "react";
 import { glide, hold, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 
-type Props = Omit<ComponentProps<"input">, "type" | "onChange"> & { onValue: (v: number) => void };
+type Props = Omit<ComponentProps<"input">, "type" | "onChange"> & { onValue: (v: number) => void; continuous?: boolean };
 
-export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCancel, ...props }: Props) {
+export function SmoothRange({ onValue, continuous = false, onPointerDown, onPointerUp, onPointerCancel, ...props }: Props) {
   const reduced = usePrefersReducedMotion();
   const down = useRef(0);
   const from = useRef(0);
@@ -30,7 +30,7 @@ export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCanc
   const glideTo = (el: HTMLInputElement, to: number) => {
     const min = Number(el.min || 0);
     const step = el.step === "any" ? 0 : Number(el.step || 1);
-    const snap = (x: number) => (step ? min + Math.round((x - min) / step) * step : x);
+    const snap = (x: number) => (step && !continuous ? min + Math.round((x - min) / step) * step : x);
     let last = from.current;
     tween.current = glide(from.current, to, (x) => {
       const v = snap(x);
