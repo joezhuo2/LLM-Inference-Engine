@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { measured } from "@/content/kernels/types";
 import { kvReplay } from "@/lib/data";
@@ -80,7 +79,6 @@ function ReplayPlayer() {
   const [t, , blocks] = replay.steps[step];
   const running = new Set(held.map((b) => b.req)).size;
   const tokens = Math.round(held.reduce((n, b) => n + b.fill * B, 0));
-  const ease = { duration: reduced ? 0 : 0.35, ease: "easeInOut" as const };
   const stats = [
     { label: "requests running", value: running, cls: "text-text" },
     { label: "blocks held", value: blocks, cls: "text-accent" },
@@ -134,19 +132,7 @@ function ReplayPlayer() {
           return (
             <g key={id}>
               <rect x={x} y={y} width={cw - 3} height={ch} rx={2} className={id === 0 ? "fill-warn/20 stroke-warn/50" : "fill-bg stroke-border"} strokeWidth={0.75} />
-              <motion.rect
-                x={x}
-                y={y}
-                height={ch}
-                rx={2}
-                className={b ? tint[b.req % 3] : "fill-accent"}
-                initial={false}
-                animate={{
-                  width: b ? (cw - 3) * b.fill : 0,
-                  opacity: b ? 1 : 0,
-                }}
-                transition={ease}
-              />
+              {b && <rect x={x} y={y} width={(cw - 3) * b.fill} height={ch} rx={2} className={tint[b.req % 3]} />}
               {b && (
                 <text x={x + 4} y={y + 15} className="pointer-events-none fill-bg text-[10px]">
                   {b.req}
@@ -158,7 +144,7 @@ function ReplayPlayer() {
         <text x={20} y={chartTop - 6} className="fill-muted text-[11px]">{`blocks held over the ${tEnd.toFixed(1)} s run (peak ${maxHeld})`}</text>
         <path d={path} className="fill-none stroke-accent" strokeWidth={1.25} />
         <line x1={20} x2={540} y1={chartTop + chartH} y2={chartTop + chartH} className="stroke-border" />
-        <motion.line y1={chartTop - 2} y2={chartTop + chartH} className="stroke-text" strokeWidth={1} initial={false} animate={{ x1: tx(t), x2: tx(t) }} transition={{ duration: 0 }} />
+        <line x1={tx(t)} x2={tx(t)} y1={chartTop - 2} y2={chartTop + chartH} className="stroke-text" strokeWidth={1} />
       </svg>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-2 tabular-nums sm:grid-cols-4">
         {stats.map((r) => (

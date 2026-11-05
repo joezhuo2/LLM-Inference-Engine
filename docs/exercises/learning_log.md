@@ -1660,6 +1660,52 @@
 - **why the token budget must be at least the max batch** => 
 - **why a smaller token budget delays the first token of a long prompt but steadies everyone else's TPOT** => 
 
+## On-chip Memory Speeds (Branch 90)
+
+### The microbenchmark
+- **pointer chasing: measuring latency with a chain of dependent loads** => 
+- **Sattolo's algorithm: a random permutation that is a single cycle** => 
+- **`__ldcg` and `ld.global.cg`: loads cached in L2 but not L1** => 
+- **`clock64()` against `%globaltimer`: SM cycles and nanoseconds from inside a kernel** => 
+- **shared memory banks and bank-conflict-free access** => 
+- **dependent FMA latency against FMA throughput** => 
+- **register file size per SM (`regsPerMultiprocessor`)** => 
+- **keeping a benchmark loop from being optimized away (live results, runtime operands, checking SASS)** => 
+- **`cuobjdump -sass`: reading the machine code a kernel compiled to** => 
+- **sizing a grid to one wave with `cudaOccupancyMaxActiveBlocksPerMultiprocessor`** => 
+
+### The numbers
+- **a working-set sweep: the L2 plateau and the drop to DRAM past the cache size** => 
+- **copy bandwidth against read bandwidth** => 
+- **load/store unit throughput: why 32-bit shared loads reach half the bank bandwidth** => 
+- **address translation (TLB) misses in a pointer chase over a large buffer** => 
+- **clock domains: SM clock against the L2 and memory clocks** => 
+
+### On the site
+- **a latency ladder: cycles per dependent load at each tier** => 
+
+## Navigation Speed (Branch 99)
+- **time-sliced rendering: why a busy main thread stretches a React transition render** => 
+- **main-thread animations on SVG elements against compositor-only animations** => 
+- **pausing offscreen animations with IntersectionObserver** => 
+- **font subsets and unicode-range: when the browser downloads a face** => 
+- **why a view transition waits for fonts that start loading during the commit** => 
+- **browser scroll restoration on back and forward, and how scroll-behavior applies to it** => 
+- **popstate on fragment navigation** => 
+
+## Sandbox performance (Branch 98)
+- **one shared tween helper instead of copied duration and easing literals** => 
+- **forced synchronous layout: reading getBoundingClientRect after a DOM write** => 
+- **FLIP animation and why it measures layout on every update** => 
+- **useSyncExternalStore for a module-level store shared by many components** => 
+- **retargeting a CSS transition every frame and why an ease-in-out curve then lags** => 
+- **interpolating geometrically between two values on a log axis** => 
+- **getSnapshot of useSyncExternalStore runs on every render, so it must be cheap** => 
+- **pausing off-screen animation with IntersectionObserver** => 
+- **layout shift: reserving space so changing content does not move its neighbours** => 
+- **ease-out for user-initiated motion: why the first frames decide how responsive it feels** => 
+- **lazy initial state in useState instead of work at module import** => 
+
 ## Chunked Prefill Under Load (Branch 84)
 - **inter-token latency (the gap between two tokens of one request) against TPOT (the mean of those gaps)** => 
 - **why a request's mean TPOT hides one long stall** => 

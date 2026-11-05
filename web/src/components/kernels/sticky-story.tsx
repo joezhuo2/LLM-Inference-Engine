@@ -22,6 +22,7 @@ export function StickyStory({
   morph?: boolean;
 }) {
   const [visits, setVisits] = useState(0);
+  const [inView, setInView] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const { active, refs } = useActiveStep(panel);
   const reduced = usePrefersReducedMotion();
@@ -33,6 +34,7 @@ export function StickyStory({
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting && !shown) setVisits((v) => v + 1);
       shown = entry.isIntersecting;
+      setInView(shown);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -44,16 +46,18 @@ export function StickyStory({
         <div className="mx-auto max-w-md rounded border border-border bg-surface p-3 sm:p-4 md:max-w-none">
           <div className="grid aspect-[14/10] w-full">
             <AnimatePresence>
-              <motion.div
-                key={morph ? `figure-${visits}` : `${active}-${visits}`}
-                className="col-start-1 row-start-1 min-w-0"
-                initial={reduced ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: reduced ? 0 : 0.3, ease }}
-              >
-                {figure(active)}
-              </motion.div>
+              {inView && (
+                <motion.div
+                  key={morph ? `figure-${visits}` : `${active}-${visits}`}
+                  className="col-start-1 row-start-1 min-w-0"
+                  initial={reduced ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: reduced ? 0 : 0.3, ease }}
+                >
+                  {figure(active)}
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
           <div className="mt-3 min-h-10 border-t border-border pt-3 font-mono text-[11px] leading-relaxed text-muted">

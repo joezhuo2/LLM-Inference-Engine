@@ -1,10 +1,10 @@
 "use client";
 
-import NumberFlow from "@number-flow/react";
+import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
-import { animate, type AnimationPlaybackControls } from "motion";
 import { useEffect, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";
+import { glide as tween, type Tween } from "@/lib/glide";
 import { samplingLogits } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
@@ -60,7 +60,7 @@ function Slider({ label, value, min, max, step, onChange, children }: { label: s
     <label className="flex items-center gap-3">
       <span className="w-14 shrink-0 text-muted">{label}</span>
       <SmoothRange min={min} max={max} step={step} value={value} onValue={onChange} className="w-full accent-[var(--accent)]" />
-      <span className="w-14 shrink-0 text-right tabular-nums text-text">{children}</span>
+      <span className="flex h-5 w-14 shrink-0 items-center justify-end tabular-nums text-text">{children}</span>
     </label>
   );
 }
@@ -77,11 +77,11 @@ export function SamplingSandbox() {
   const [guess, setGuess] = useState<string | null>(null);
 
   const reduced = usePrefersReducedMotion();
-  const tween = useRef<AnimationPlaybackControls | null>(null);
-  useEffect(() => () => tween.current?.stop(), []);
+  const run = useRef<Tween | null>(null);
+  useEffect(() => () => run.current?.stop(), []);
 
   const glide = (to: { temperature: number; k: number; p: number }) => {
-    tween.current?.stop();
+    run.current?.stop();
     if (reduced) {
       setTemperature(to.temperature);
       setK(to.k);
@@ -89,19 +89,15 @@ export function SamplingSandbox() {
       return;
     }
     const from = { temperature, k, p };
-    tween.current = animate(0, 1, {
-      duration: 0.6,
-      ease: [0.77, 0, 0.175, 1],
-      onUpdate: (x) => {
-        setTemperature(snap(from.temperature + (to.temperature - from.temperature) * x, 0.05));
-        setK(Math.round(from.k + (to.k - from.k) * x));
-        setP(snap(from.p + (to.p - from.p) * x, 0.05));
-      },
+    run.current = tween(0, 1, (x) => {
+      setTemperature(snap(from.temperature + (to.temperature - from.temperature) * x, 0.05));
+      setK(Math.round(from.k + (to.k - from.k) * x));
+      setP(snap(from.p + (to.p - from.p) * x, 0.05));
     });
   };
 
   const user = (set: (v: number) => void) => (v: number) => {
-    tween.current?.stop();
+    run.current?.stop();
     set(v);
   };
 
@@ -197,7 +193,7 @@ export function SamplingSandbox() {
                     <EasedBar fraction={r.cum} className={r.kept ? "bg-accent/50" : "bg-muted/40"} />
                     <div
                       aria-hidden
-                      className="absolute inset-0 bg-text transition-[clip-path,opacity] duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-[opacity]"
+                      className="glide-snap absolute inset-0 bg-text transition-[clip-path,opacity] duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-[opacity]"
                       style={{ clipPath: `inset(0 calc(${(1 - p) * 100}% - 1px) 0 calc(${p * 100}% - 1px))`, opacity: p < 1 && !greedy ? 1 : 0 }}
                     />
                   </div>

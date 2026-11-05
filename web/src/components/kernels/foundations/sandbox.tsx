@@ -1,15 +1,15 @@
 "use client";
 
-import NumberFlow from "@number-flow/react";
+import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
-import { animate, type AnimationPlaybackControls } from "motion";
 import { useEffect, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";
+import { glide as tween, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { ceilings, environment, modelShape, profilingTable } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { Frame, Label } from "../frame";
-import { type Op, analyse, crossoverRows, opCost, ops, rowSteps, rowsAt, stepOf } from "./roofline";
+import { type Op, analyse, crossoverRows, opCost, ops, rowSteps, rowsAt, rowsBetween, stepOf } from "./roofline";
 
 const shape = modelShape();
 const peak = ceilings();
@@ -101,18 +101,19 @@ export function FoundationsSandbox() {
   const [context, setContext] = useState(start.context);
   const [guess, setGuess] = useState<Guess>(null);
   const reduced = usePrefersReducedMotion();
-  const tweens = useRef<AnimationPlaybackControls[]>([]);
+  const tweens = useRef<Tween[]>([]);
   useEffect(() => () => tweens.current.forEach((t) => t.stop()), []);
-  const rows = rowsAt(step);
+  const rows = rowsAt(Math.round(step));
   const cost = opCost(shape, op, rows, context);
   const a = analyse(cost, peak);
+  const shown = analyse(opCost(shape, op, rowsBetween(step), context), peak);
   const m = measuredPoint(op, rows, context);
   const crosses = crossoverRows(shape, op, context, peak);
   const far = analyse(opCost(shape, op, rowsAt(rowSteps), context), peak);
   const barMax = Math.max(far.memUs, far.computeUs);
   const flop = scaled(cost.flops, flopUnits);
   const byte = scaled(cost.bytes, byteUnits);
-  const dot = { x: lx(a.intensity), y: ly(a.tflops) };
+  const dot = { x: lx(shown.intensity), y: ly(shown.tflops) };
   const mdot = m ? { x: lx(m.intensity), y: ly(m.tflops) } : dot;
   const text = verdict(guess, crosses);
   const gpu = String(environment.gpu ?? "").replace("NVIDIA GeForce ", "");
@@ -123,13 +124,13 @@ export function FoundationsSandbox() {
   const glide = (from: number, to: number, set: (v: number) => void, round: (v: number) => number) => {
     if (from === to) return;
     if (reduced) return set(to);
-    tweens.current.push(animate(from, to, { duration: 0.6, ease: [0.77, 0, 0.175, 1], onUpdate: (x) => set(round(x)) }));
+    tweens.current.push(tween(from, to, (x) => set(round(x))));
   };
   const reset = () => {
     stop();
     setOp(start.op);
     setGuess(null);
-    glide(step, start.step, setStep, Math.round);
+    glide(step, start.step, setStep, (v) => v);
     glide(context, start.context, setContext, (v) => 16 * Math.round(v / 16));
   };
 
@@ -195,6 +196,7 @@ export function FoundationsSandbox() {
             min={0}
             max={rowSteps}
             value={step}
+            continuous
             onValue={setStep}
             onPointerDown={stop}
             onKeyDown={stop}
@@ -213,7 +215,7 @@ export function FoundationsSandbox() {
                 aria-pressed={rows === p}
                 onClick={() => {
                   stop();
-                  glide(step, stepOf(p), setStep, Math.round);
+                  glide(step, stepOf(p), setStep, (v) => v);
                 }}
                 title={measuredRows.includes(String(p)) ? "has a measured point" : undefined}
                 className={clsx("pressable rounded border px-2.5 py-1 tabular-nums", rows === p ? "border-accent bg-accent-dim text-accent" : "border-border text-text")}
@@ -311,13 +313,13 @@ export function FoundationsSandbox() {
         <div className="space-y-1.5">
           <div className="text-muted">time if limited by only one thing</div>
           {[
-            { label: "memory", us: a.memUs, bound: a.bound === "memory" },
-            { label: "compute", us: a.computeUs, bound: a.bound === "compute" },
+            { label: "memory", us: a.memUs, bar: shown.memUs, bound: a.bound === "memory" },
+            { label: "compute", us: a.computeUs, bar: shown.computeUs, bound: a.bound === "compute" },
           ].map((b) => (
             <div key={b.label} className="grid grid-cols-[4.5rem_1fr_5.5rem] items-center gap-2">
               <span className={b.bound ? "text-accent" : "text-muted"}>{b.label}</span>
               <div className="h-3 min-w-0 rounded-full bg-border">
-                <EasedBar fraction={b.us / barMax} className={b.bound ? "bg-accent" : "bg-baseline/70"} />
+                <EasedBar fraction={b.bar / barMax} className={b.bound ? "bg-accent" : "bg-baseline/70"} />
               </div>
               <span className="text-right text-muted">
                 <NumberFlow value={b.us} suffix=" µs" format={one} />
@@ -326,34 +328,31 @@ export function FoundationsSandbox() {
           ))}
         </div>
 
-        <table className="w-full tabular-nums">
-          <thead className="text-left text-muted">
-            <tr>
-              <th colSpan={2} className="pb-1 font-normal">{`measured: ${gpu}, commit ${environment.commit}, ${String(environment.date).slice(0, 10)}`}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {m ? (
-              [
-                { label: "time", value: <NumberFlow value={m.us} suffix=" µs" format={one} /> },
-                { label: "of the roof", value: <NumberFlow value={m.pct} suffix="%" /> },
-                { label: "bandwidth", value: <NumberFlow value={m.gbs} suffix=" GB/s" /> },
-                { label: "compute", value: <NumberFlow value={m.tflops} suffix=" TFLOP/s" format={{ maximumFractionDigits: 2 }} /> },
-              ].map((r) => (
-                <tr key={r.label} className="border-t border-border">
-                  <td className="py-1 text-muted">{r.label}</td>
-                  <td className="py-1 text-right text-text">{r.value}</td>
-                </tr>
-              ))
-            ) : (
-              <tr className="border-t border-border">
-                <td colSpan={2} className="py-1 leading-relaxed text-muted">
-                  {`no measured point here: ${op === "attention" ? `attention was measured at ${shape.roofline_context} tokens of context and ` : ""}the profiles cover ${measuredRows.join(" and ")} rows${["rmsnorm", "swiglu", "rope"].includes(op) ? ", and not this op" : ""}. Only the computed dot is drawn.`}
-                </td>
-              </tr>
+        <div>
+          <div className="pb-1 text-muted">{`measured: ${gpu}, commit ${environment.commit}, ${String(environment.date).slice(0, 10)}`}</div>
+          <div className="grid">
+            <table className={clsx("col-start-1 row-start-1 w-full tabular-nums", !m && "invisible")} aria-hidden={!m}>
+              <tbody>
+                {[
+                  { label: "time", value: <NumberFlow value={m?.us ?? 0} suffix=" µs" format={one} /> },
+                  { label: "of the roof", value: <NumberFlow value={m?.pct ?? 0} suffix="%" /> },
+                  { label: "bandwidth", value: <NumberFlow value={m?.gbs ?? 0} suffix=" GB/s" /> },
+                  { label: "compute", value: <NumberFlow value={m?.tflops ?? 0} suffix=" TFLOP/s" format={{ maximumFractionDigits: 2 }} /> },
+                ].map((r) => (
+                  <tr key={r.label} className="border-t border-border">
+                    <td className="py-1 text-muted">{r.label}</td>
+                    <td className="py-1 text-right text-text">{r.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!m && (
+              <p className="col-start-1 row-start-1 self-start border-t border-border py-1 leading-relaxed text-muted">
+                {`no measured point here: ${op === "attention" ? `attention was measured at ${shape.roofline_context} tokens of context and ` : ""}the profiles cover ${measuredRows.join(" and ")} rows${["rmsnorm", "swiglu", "rope"].includes(op) ? ", and not this op" : ""}. Only the computed dot is drawn.`}
+              </p>
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </div>
   );

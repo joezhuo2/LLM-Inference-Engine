@@ -10,6 +10,11 @@ const rowList = [...new Set(Array.from({ length: 91 }, (_, i) => Math.round(2 **
 
 export const rowSteps = rowList.length - 1;
 export const rowsAt = (step: number) => rowList[step];
+export const rowsBetween = (step: number) => {
+  const lo = Math.floor(step);
+  const hi = Math.min(lo + 1, rowSteps);
+  return rowList[lo] * (rowList[hi] / rowList[lo]) ** (step - lo);
+};
 export const stepOf = (rows: number) => rowList.indexOf(rows);
 
 function gemm(rows: number, nIn: number, nOut: number, count: number): Cost {

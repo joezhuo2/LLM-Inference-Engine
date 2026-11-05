@@ -1,36 +1,43 @@
 "use client";
 
-import { animate, type AnimationPlaybackControls } from "motion";
 import { useEffect, useRef, type ComponentProps } from "react";
+import { glide, hold, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 
-type Props = Omit<ComponentProps<"input">, "type" | "onChange"> & { onValue: (v: number) => void };
+type Props = Omit<ComponentProps<"input">, "type" | "onChange"> & { onValue: (v: number) => void; continuous?: boolean };
 
-export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCancel, ...props }: Props) {
+export function SmoothRange({ onValue, continuous = false, onPointerDown, onPointerUp, onPointerCancel, ...props }: Props) {
   const reduced = usePrefersReducedMotion();
   const down = useRef(0);
   const from = useRef(0);
   const target = useRef<number | null>(null);
-  const tween = useRef<AnimationPlaybackControls | null>(null);
+  const tween = useRef<Tween | null>(null);
   const held = () => performance.now() - down.current > 250;
 
   useEffect(() => () => tween.current?.stop(), []);
 
-  const glide = (el: HTMLInputElement, to: number) => {
+  const holdUntilRelease = () => {
+    const release = hold();
+    const end = new AbortController();
+    const done = () => {
+      release();
+      end.abort();
+    };
+    window.addEventListener("pointerup", done, { signal: end.signal });
+    window.addEventListener("pointercancel", done, { signal: end.signal });
+  };
+
+  const glideTo = (el: HTMLInputElement, to: number) => {
     const min = Number(el.min || 0);
     const step = el.step === "any" ? 0 : Number(el.step || 1);
-    const snap = (x: number) => (step ? min + Math.round((x - min) / step) * step : x);
+    const snap = (x: number) => (step && !continuous ? min + Math.round((x - min) / step) * step : x);
     let last = from.current;
-    tween.current = animate(from.current, to, {
-      duration: 0.6,
-      ease: [0.77, 0, 0.175, 1],
-      onUpdate: (x) => {
-        const v = snap(x);
-        if (v === last) return;
-        last = v;
-        el.value = String(v);
-        onValue(v);
-      },
+    tween.current = glide(from.current, to, (x) => {
+      const v = snap(x);
+      if (v === last) return;
+      last = v;
+      el.value = String(v);
+      onValue(v);
     });
   };
 
@@ -40,6 +47,7 @@ export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCanc
       type="range"
       onPointerDown={(e) => {
         tween.current?.stop();
+        holdUntilRelease();
         down.current = performance.now();
         from.current = Number(e.currentTarget.value);
         target.current = null;
@@ -58,7 +66,7 @@ export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCanc
         const to = target.current;
         if (to !== null && to !== from.current) {
           if (held()) onValue(to);
-          else glide(e.currentTarget, to);
+          else glideTo(e.currentTarget, to);
         }
         down.current = 0;
         target.current = null;

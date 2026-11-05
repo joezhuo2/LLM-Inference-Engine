@@ -46,7 +46,7 @@ export const chunkedPrefill: KernelStory = {
   },
   sandbox: {
     title: "play with the budget",
-    intro: "A TypeScript port of Scheduler::schedule() and Scheduler::schedule_chunked() in src/sched/scheduler.cpp runs the same arrivals under both rules: four sequences already decoding, a pool of 16-token KV blocks, first come first served, decode rows before prefill, preemption from the back of the running list. Drop prompts, drag the budget, and watch which decoders lose their row. The model counts steps and tokens, it does not time anything. Choose the tight pool and a small budget to see the prompt in prefill preempted and started again.",
+    intro: "A TypeScript port of Scheduler::schedule() and Scheduler::schedule_chunked() in src/sched/scheduler.cpp runs the same arrivals under both rules: four sequences already decoding, a pool of 16-token KV blocks, first come first served, decode rows before prefill, preemption from the back of the running list. Drop prompts, pick the budget, and watch which decoders lose their row. The model counts steps and tokens, it does not time anything. Choose the tight pool and a small budget to see the prompt in prefill preempted and started again.",
   },
   sources: [
     { path: "src/sched/scheduler.cpp", label: "Scheduler::schedule_chunked" },
