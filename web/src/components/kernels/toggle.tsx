@@ -7,12 +7,14 @@ import { radioKeyDown } from "@/lib/radio-keys";
 export function Toggle({ label, choices, value, onChange }: { label: string; choices: string[]; value: string; onChange: (v: string) => void }) {
   const group = useRef<HTMLDivElement>(null);
   const [clip, setClip] = useState<string | null>(null);
+  const index = choices.indexOf(value);
+  const labels = choices.join("\n");
 
   useLayoutEffect(() => {
     const el = group.current;
     if (!el) return;
     const measure = () => {
-      const button = el.querySelectorAll<HTMLElement>('[role="radio"]')[choices.indexOf(value)];
+      const button = el.querySelectorAll<HTMLElement>('[role="radio"]')[index];
       if (!button) return setClip(null);
       const g = el.getBoundingClientRect();
       const b = button.getBoundingClientRect();
@@ -23,7 +25,7 @@ export function Toggle({ label, choices, value, onChange }: { label: string; cho
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [choices, value]);
+  }, [index, labels]);
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
