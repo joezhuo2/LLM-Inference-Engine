@@ -1,6 +1,7 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
+import Link from "next/link";
 import { useState } from "react";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { measured } from "@/content/kernels/types";
@@ -8,7 +9,7 @@ import { ceilings, hardware } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
-import { ContrastFigure, HierarchyFigure, type Lane, MemoryFigure, RooflineFigure, type Tier } from "./figures";
+import { ContrastFigure, FusionFigure, HierarchyFigure, type Lane, MemoryFigure, RooflineFigure, type Tier } from "./figures";
 
 const hw = hardware();
 const peak = ceilings();
@@ -37,6 +38,14 @@ const lanes: Lane[] = [
   { title: "decode: one token, a matrix-vector product", rows: 1, flopPerByte: flopPerByte1, memUs: readUs, computeUs: mathUs(1), note: `the arithmetic needs ${((mathUs(1) / readUs) * 100).toFixed(1)}% of the read time` },
   { title: "prefill: a long prompt, a matrix product", rows: prefillRows, flopPerByte: flopPerByte1 * prefillRows, memUs: readUs, computeUs: mathUs(prefillRows), note: `the read needs ${((readUs / mathUs(prefillRows)) * 100).toFixed(0)}% of the arithmetic time` },
 ];
+
+const fusedSection = "fused-add-rmsnorm-branch-30";
+const fusionTokens = 64;
+const fusion = {
+  tokens: fusionTokens,
+  unfusedKb: measured(fusedSection, { tokens: String(fusionTokens) }, "naive DRAM (KB)"),
+  fusedKb: measured(fusedSection, { tokens: String(fusionTokens) }, "fast DRAM (KB)"),
+};
 
 const mb = (kb: number) => `${(kb / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 })} MB`;
 
@@ -200,6 +209,38 @@ const steps: StoryStep[] = [
       </>
     ),
   },
+  {
+    id: "fusion",
+    title: "fewer trips to memory",
+    body: (
+      <>
+        <p>
+          Each separate kernel starts by reading its inputs from global memory and ends by writing its outputs back, so two
+          kernels in a row pay for the data between them twice. Fusing them keeps that intermediate in registers or shared
+          memory. For add + RMSNorm that is the sum: the naive pair writes it and reads it back twice, the fused kernel does
+          not, and the DRAM traffic at {fusion.tokens} tokens drops from{" "}
+          <span className="font-mono text-text">{fusion.unfusedKb} KB</span> to{" "}
+          <span className="font-mono text-accent">{fusion.fusedKb} KB</span>.
+        </p>
+        <p>
+          The kernel stories that follow are this idea at work, each on one small operation of a layer:{" "}
+          <Link href="/kernels/add-rmsnorm" transitionTypes={["nav-forward"]} className="link-underline text-accent">
+            add + RMSNorm
+          </Link>{" "}
+          fuses two kernels into one,{" "}
+          <Link href="/kernels/swiglu" transitionTypes={["nav-forward"]} className="link-underline text-accent">
+            SwiGLU
+          </Link>{" "}
+          moves the gate/up row once with 16-byte loads, and{" "}
+          <Link href="/kernels/rope" transitionTypes={["nav-forward"]} className="link-underline text-accent">
+            RoPE
+          </Link>{" "}
+          touches only the Q and K slices. Each is under 2% of a decode step; the step is mostly the GEMVs, already at the
+          roof.
+        </p>
+      </>
+    ),
+  },
 ];
 
 const captions = [
@@ -208,6 +249,7 @@ const captions = [
   `bytes and FLOPs of the gate/up weights from config.json, ceilings from docs/results.md; ${prefillRows} rows is computed from the ceilings, not measured`,
   "docs/results.md, Roofline: gate/up at 1 and 16 rows measured; the ring follows the two ceilings",
   "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
+  `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, docs/profiling.md; each packet stands for a whole tensor, not to scale`,
 ];
 
 export function MemoryWallStory() {
@@ -235,8 +277,10 @@ export function MemoryWallStory() {
                 ]}
               />
             );
-          default:
+          case 4:
             return <RowsPicker />;
+          default:
+            return <FusionFigure numbers={fusion} />;
         }
       }}
     />

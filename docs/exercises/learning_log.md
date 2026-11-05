@@ -1561,3 +1561,5 @@
 - **the roofline model, slope, flat top and ridge** => 
 - **matrix-vector product (GEMV) against matrix product (GEMM)** => 
 - **prefill against decode** => 
+- **kernel fusion and why it removes a round trip to global memory** => 
+- **kernel launch and the intermediate tensor written between two kernels** => 

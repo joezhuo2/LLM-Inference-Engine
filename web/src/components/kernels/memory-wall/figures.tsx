@@ -235,3 +235,71 @@ export function RooflineFigure({ gbs, tflops, rowsPath, measured }: { gbs: numbe
     </Frame>
   );
 }
+
+export type FusionNumbers = { tokens: number; unfusedKb: number; fusedKb: number };
+
+const trip = 40;
+
+export function FusionFigure({ numbers }: { numbers: FusionNumbers }) {
+  const { move, on, pulse } = useLoop(16);
+  const pace = 0.14;
+  const begin = 0.04;
+  const at = (k: number) => [begin + k * pace, begin + k * pace + pace * 0.8] as const;
+  const dram = (y: number, label: string) => (
+    <g>
+      <rect x={20} y={y} width={520} height={22} rx={3} className="fill-baseline/20 stroke-baseline" strokeWidth={0.75} />
+      <Label x={30} y={y + 15} className="fill-text">{label}</Label>
+    </g>
+  );
+  const kernel = (x: number, y: number, w: number, label: string, labelY = 24) => (
+    <g>
+      <rect x={x} y={y} width={w} height={40} rx={3} className="fill-surface stroke-accent" strokeWidth={0.75} />
+      <Label x={x + w / 2} y={y + labelY} anchor="middle" className="fill-text">{label}</Label>
+    </g>
+  );
+  const packet = (k: number, x: number, y: number, up: boolean, name: string, cls = "fill-accent") => {
+    const [s, e] = at(k);
+    return (
+      <g key={`${name}-${k}`}>
+        <motion.rect x={x} y={y} width={16} height={10} rx={2} className={cls} {...move(s, e, 0, up ? -trip : trip, false)} />
+        <Label x={x + 20} y={y + (up ? -trip / 2 : trip / 2) + 8}>{name}</Label>
+      </g>
+    );
+  };
+  const ticks = (count: number, y: number) =>
+    Array.from({ length: count }, (_, k) => <motion.rect key={k} x={20 + k * 20} y={y} width={14} height={8} rx={2} className="fill-accent" {...on(at(k)[1], 0.95, true)} />);
+  const topDram = 120;
+  const topKernel = 40;
+  const lowDram = 292;
+  const lowKernel = 212;
+  return (
+    <Frame label="Unfused, an add kernel and an RMSNorm kernel make six transfers to and from global memory, because the sum is written out and read back twice; fused, one kernel makes four transfers and keeps the sum in registers between the two steps">
+      <Label x={20} y={22} className="fill-text">unfused: two kernels, the sum goes out to DRAM and back</Label>
+      {kernel(150, topKernel, 100, "add")}
+      {kernel(330, topKernel, 120, "RMSNorm")}
+      {dram(topDram, "global memory")}
+      {packet(0, 160, topDram - 4, true, "x")}
+      {packet(1, 200, topDram - 4, true, "r")}
+      {packet(2, 232, topKernel + 44, false, "sum")}
+      {packet(3, 344, topDram - 4, true, "sum")}
+      {packet(4, 384, topDram - 4, true, "sum")}
+      {packet(5, 424, topKernel + 44, false, "norm")}
+      {ticks(6, topDram + 30)}
+      <Label x={150} y={topDram + 38}>6 transfers</Label>
+      <Label x={20} y={196} className="fill-text">fused: one kernel, the sum never leaves the chip</Label>
+      {kernel(175, lowKernel, 190, "add + RMSNorm", 16)}
+      <motion.g {...pulse(0)}>
+        <Label x={270} y={lowKernel + 32} anchor="middle" className="fill-accent">sum stays in registers</Label>
+      </motion.g>
+      {dram(lowDram, "global memory")}
+      {packet(0, 200, lowDram - 4, true, "x")}
+      {packet(1, 240, lowDram - 4, true, "r")}
+      {packet(2, 280, lowKernel + 44, false, "sum")}
+      {packet(3, 320, lowKernel + 44, false, "norm")}
+      {ticks(4, lowDram + 30)}
+      <Label x={110} y={lowDram + 38}>4 transfers</Label>
+      <Label x={20} y={352}>{`${numbers.tokens} tokens, Nsight Compute: ${numbers.unfusedKb} KB of DRAM traffic became ${numbers.fusedKb} KB`}</Label>
+      <Label x={20} y={368}>the naive pair reads the sum twice, once for the squares, once to scale</Label>
+    </Frame>
+  );
+}
