@@ -11,7 +11,7 @@ export const eagerLayer: Kernel[] = trace.eager.kernels_in_layer;
 export const graphLayer: Kernel[] = trace.graphs.kernels_in_layer;
 export const layerIndex = trace.eager.layer;
 
-const short: Record<string, string> = {
+export const short: Record<string, string> = {
   add2_norm1: "add+norm",
   qkv: "QKV",
   rope: "rope",
@@ -24,7 +24,7 @@ const short: Record<string, string> = {
   down: "down",
 };
 
-const gemm = new Set(["qkv", "o_proj", "gate_up", "down"]);
+export const gemm = new Set(["qkv", "o_proj", "gate_up", "down"]);
 
 const x0 = 20;
 const lane = 520;
@@ -201,7 +201,7 @@ export function GapFigure({ boundaries, gapsOver, idleUs }: { boundaries: number
 
 const gemmNode = (n: string) => ["QKV", "O", "gate/up", "down"].includes(n);
 
-const nodes = ["add+norm", "QKV", "rope", "write_kv", "attn", "O", "add+norm", "gate/up", "swiglu", "down"];
+export const nodes = ["add+norm", "QKV", "rope", "write_kv", "attn", "O", "add+norm", "gate/up", "swiglu", "down"];
 
 export function CaptureFigure({ kernels }: { kernels: number }) {
   const { on, move } = useLoop(12);
@@ -251,16 +251,18 @@ export function CaptureFigure({ kernels }: { kernels: number }) {
   );
 }
 
-const fields = ["token", "position", "slot", "context", "block table"];
+export const fields = ["token", "position", "slot", "context", "block table"];
+
+export const stageRows = [
+  { name: "request A", v: ["417", "88", "1,432", "89", "12 4 31 …"], pad: false },
+  { name: "request B", v: ["29", "7", "520", "8", "2 …"], pad: false },
+  { name: "request C", v: ["1,863", "301", "4,925", "302", "8 9 17 …"], pad: false },
+  { name: "padding", v: ["0", "0", "-1", "0", "0 0 0 …"], pad: true },
+];
 
 export function StageFigure() {
   const { on } = useLoop(12);
-  const rows = [
-    { name: "request A", v: ["417", "88", "1,432", "89", "12 4 31 …"], pad: false },
-    { name: "request B", v: ["29", "7", "520", "8", "2 …"], pad: false },
-    { name: "request C", v: ["1,863", "301", "4,925", "302", "8 9 17 …"], pad: false },
-    { name: "padding", v: ["0", "0", "-1", "0", "0 0 0 …"], pad: true },
-  ];
+  const rows = stageRows;
   const cx = (j: number) => 112 + j * 86;
   return (
     <Frame label="A decode batch of three requests padded to the bucket of four rows, then copied by stage into one device buffer whose five arrays sit at offsets fixed by the row count, where the captured kernels read them on every replay">
@@ -322,10 +324,10 @@ export function StageFigure() {
   );
 }
 
-const buckets = [1, 2, 4, 8, 16];
-const splitCounts = [1, 2, 4, 8];
-const captured: Record<number, number[]> = { 1: [1, 2, 4, 8], 2: [1, 2, 4], 4: [1, 2], 8: [1], 16: [1] };
-const thresholds = [
+export const buckets = [1, 2, 4, 8, 16];
+export const splitCounts = [1, 2, 4, 8];
+export const captured: Record<number, number[]> = { 1: [1, 2, 4, 8], 2: [1, 2, 4], 4: [1, 2], 8: [1], 16: [1] };
+export const thresholds = [
   { context: 0, splits: 1 },
   { context: 512, splits: 2 },
   { context: 1024, splits: 4 },

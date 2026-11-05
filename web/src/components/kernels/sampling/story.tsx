@@ -36,7 +36,7 @@ const floatRuns = (() => {
 
 const costModes: Mode[] = columns.map((c) => ({ label: c.label, us: one(c.column), accent: c.column === "top-k 50", warn: c.warn }));
 
-function ModePicker() {
+export function ModePicker() {
   const [rows, setRows] = useState("1");
   const times = columns.map((c) => ({ ...c, us: at(rows, c.column) }));
   const max = Math.max(...times.map((t) => t.us));
@@ -206,6 +206,19 @@ const captions = [
   "Nsight Compute on one temperature-only launch; float times from a throwaway copy",
   "µs per call, first of two runs; blue is faster than sorting the row alone",
 ];
+
+export const samplingSteps = steps;
+export const samplingCaptions = captions;
+export const samplingNumbers = {
+  modes: columns.map((c) => ({ column: c.column, label: c.label, sort: c.column === "full sort alone", us: { "1": one(c.column), "16": at("16", c.column) } })),
+  greedy: one("greedy"),
+  temperature: one("temperature"),
+  topK: one("top-k 50"),
+  sort: one("full sort alone"),
+  busy,
+  share,
+  float: [Math.min(...floatRuns), Math.max(...floatRuns)] as [number, number],
+};
 
 export function SamplingStory() {
   return (

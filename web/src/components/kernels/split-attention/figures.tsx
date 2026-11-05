@@ -225,7 +225,7 @@ export function ScratchFigure({ splits, bytes }: { splits: number; bytes: number
   );
 }
 
-const partials = [
+export const mergePartials = [
   { m: 2.1, l: 41.7 },
   { m: 3.4, l: 18.2 },
   { m: 1.7, l: 63.0 },
@@ -234,11 +234,11 @@ const partials = [
 
 export function MergeFigure() {
   const { on } = useLoop(7);
-  const M = Math.max(...partials.map((p) => p.m));
+  const M = Math.max(...mergePartials.map((p) => p.m));
   return (
     <Frame label="The merge rescales every split's partial result to the largest running maximum and adds them in split order">
       <Label x={20} y={24}>partial results in the scratch buffer (example values)</Label>
-      {partials.map((p, i) => {
+      {mergePartials.map((p, i) => {
         const x = 20 + i * 132;
         const top = p.m === M;
         return (

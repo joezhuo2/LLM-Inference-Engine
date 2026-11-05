@@ -11,6 +11,7 @@ export const attentionV2: KernelStory = {
   slug: "attention-v2",
   index: 9,
   title: "attention v1 → v2",
+  book: true,
   short: "The first paged attention kept every score in shared memory and made three passes. An online softmax made it one pass over constant shared memory, with eight lanes per key.",
   formula: "m′ = max(m, mₖ), l′ = l·eᵐ⁻ᵐ′ + Σ eˢ⁻ᵐ′",
   headline: {
