@@ -1559,3 +1559,4 @@
 - **a stall measured in steps against a stall measured in tokens** => 
 - **head-of-line blocking in a FCFS waiting queue** => 
 - **preemption thrash: a restarted prefill that is preempted again** => 
+- **a token budget against max_prefill_tokens: two different caps on a step** => 
