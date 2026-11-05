@@ -1731,3 +1731,4 @@
 - **deepening a pastel for text while keeping it pale for fills** => 
 - **tinting neutrals toward one undertone color** => 
 - **keeping hard-coded colors outside the CSS in step with theme tokens** => 
+- **next/font self-hosting a Google font at build time** => 

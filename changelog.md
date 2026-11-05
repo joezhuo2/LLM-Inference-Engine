@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/palette
 
+- Part A: load Instrument Serif as a heading font and put Segoe UI first in the sans stack, with Inter as the fallback on systems without it.
 - Part A: carry the beige undertone into the Open Graph cards, favicon, KV block shading, kernel card shadow and the web plan.
 - Part A: replace the light brown undertone with the moodboard beige (#e7e2d6) as the light background and dark text, with beige-tinted neutrals for surfaces, borders and muted ink.
 - Part A: name the pink highlight in the hero copy and record the undertone and highlights in the web plan.
