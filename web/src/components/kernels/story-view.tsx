@@ -2,6 +2,7 @@
 
 import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PrologueStory } from "./attention/prologue-story";
+import { PagedAttentionSandbox } from "./attention/sandbox";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
@@ -49,6 +50,15 @@ export function KernelLeadView({ slug }: { slug: string }) {
       return <PrologueStory />;
     case "paged-kv":
       return <KvVisualizer />;
+    default:
+      return null;
+  }
+}
+
+export function KernelSandboxView({ slug }: { slug: string }) {
+  switch (slug) {
+    case "paged-attention":
+      return <PagedAttentionSandbox />;
     default:
       return null;
   }

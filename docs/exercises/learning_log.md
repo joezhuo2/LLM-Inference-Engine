@@ -1590,3 +1590,4 @@
 - **numerically stable softmax (subtracting the maximum)** => 
 - **block table (logical block to physical block)** => 
 - **float32 rounding and why two summation orders differ in the last bits** => 
+- **grouped reads: why a kernel reads a block at a time instead of one key** => 
