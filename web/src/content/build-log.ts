@@ -306,7 +306,7 @@ export const milestones: Milestone[] = [
   {
     id: "M5",
     name: "shipped",
-    dates: "Oct 25 to Nov 4",
+    dates: "Oct 25",
     goal: "Measure it against the tools people actually use.",
     entries: [
       {
@@ -343,6 +343,14 @@ export const milestones: Milestone[] = [
         title: "A recording for this page",
         text: "A trace format for every scheduler step, and a run of 24 chat requests arriving four per second. It is the rain at the top of this page.",
       },
+    ],
+  },
+  {
+    id: "M6",
+    name: "refinements",
+    dates: "Nov 4",
+    goal: "Refine how the engine serves requests now that it has shipped.",
+    entries: [
       {
         date: "Nov 4",
         prs: [133, 134],
