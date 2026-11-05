@@ -1767,3 +1767,6 @@
 - **replaying an effect by changing a component key** => 
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
+
+## 3D book: paged KV cache (Branch 104)
+- **reusing one story's steps in two views by exporting the step array** => 
