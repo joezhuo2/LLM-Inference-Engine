@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { kvDemo, kvReplay } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { Toggle } from "../toggle";
@@ -130,8 +131,8 @@ const order = Array.from({ length: NB }, (_, i) => i).sort((p, q) => {
 
 type Colors = { text: string; muted: string; border: string; warn: string; bg: string; mono: string; series: string[] };
 
-function readColors(): Colors {
-  const s = getComputedStyle(document.documentElement);
+function readColors(el: Element): Colors {
+  const s = getComputedStyle(el);
   const v = (n: string) => s.getPropertyValue(n).trim();
   return { text: v("--text"), muted: v("--text-muted"), border: v("--border"), warn: v("--warn"), bg: v("--bg"), mono: v("--font-jetbrains") || "monospace", series: seriesVar.map(v) };
 }
@@ -232,7 +233,7 @@ function drawPool(ctx: CanvasRenderingContext2D, g: Geo, shown: Shown[], hovered
   ctx.fillText(g.width < 520 ? "height = slots written, 16 per block" : "block id = row start + column; height = slots written, 16 per block", g.width / 2, 12);
 }
 
-export function KvVisualizer() {
+export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; tables: HTMLElement | null } } = {}) {
   const reduced = usePrefersReducedMotion();
   const [sim, setSim] = useState(() => new Sim(true));
   const [, setVersion] = useState(0);
@@ -240,7 +241,7 @@ export function KvVisualizer() {
   const [playing, setPlaying] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
   const [width, setWidth] = useState(0);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const [wrap, setWrap] = useState<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shown = useRef<Shown[]>(Array.from({ length: NB }, () => ({ h: 0, ghost: 0, kind: 0, seq: -1 })));
   const colors = useRef<Colors | null>(null);
@@ -261,7 +262,7 @@ export function KvVisualizer() {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!canvas || !ctx || !canvas.clientWidth) return;
-      colors.current ??= readColors();
+      colors.current ??= readColors(canvas);
       const geo = geometry(canvas.clientWidth);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       if (canvas.width !== Math.round(geo.width * dpr)) {
@@ -312,8 +313,8 @@ export function KvVisualizer() {
   });
 
   useEffect(() => {
-    const wrap = wrapRef.current;
     if (!wrap) return;
+    colors.current = null;
     const resize = new ResizeObserver(() => setWidth(wrap.clientWidth));
     resize.observe(wrap);
     const seen = new IntersectionObserver(([entry]) => {
@@ -324,7 +325,7 @@ export function KvVisualizer() {
     });
     seen.observe(wrap);
     const theme = new MutationObserver(() => {
-      colors.current = readColors();
+      colors.current = null;
       kick();
     });
     theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
@@ -335,7 +336,7 @@ export function KvVisualizer() {
       cancelAnimationFrame(raf.current);
       raf.current = 0;
     };
-  }, [kick]);
+  }, [kick, wrap]);
 
   useEffect(() => {
     if (!playing) return;
@@ -355,8 +356,9 @@ export function KvVisualizer() {
 
   const pick = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const p: Pt = [e.clientX - rect.left, e.clientY - rect.top];
-    const geo = geometry(rect.width);
+    const scale = e.currentTarget.clientWidth / rect.width;
+    const p: Pt = [(e.clientX - rect.left) * scale, (e.clientY - rect.top) * scale];
+    const geo = geometry(e.currentTarget.clientWidth);
     for (let k = order.length - 1; k >= 0; k--) {
       const id = order[k];
       const s = shown.current[id];
@@ -384,167 +386,211 @@ export function KvVisualizer() {
   const tipAt = hover === null ? null : corners(g, hover, cells[hover] ? 1 : 0).T;
   const tipW = Math.min(288, g.width - 16);
 
+  const adders = (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-muted">add a request</span>
+      {kinds.map((k, i) => (
+        <button
+          key={k.label}
+          type="button"
+          onClick={() => {
+            sim.add(i);
+            setVersion((v) => v + 1);
+            setPlaying(true);
+          }}
+          title={`"${k.prompt}": ${k.shape.prompt} prompt tokens, ${k.shape.output} generated`}
+          className="pressable flex items-center gap-1.5 rounded border border-border px-2.5 py-1 text-text"
+        >
+          <span aria-hidden className="size-2 rounded-sm" style={{ background: `var(${seriesVar[i]})` }} />
+          {`+ ${k.label} · ${k.shape.prompt + k.shape.output} tokens`}
+        </button>
+      ))}
+    </div>
+  );
+  const controls = (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <Toggle label="cache" choices={["paged", "contiguous"]} value={mode} onChange={(v) => setMode(v as Mode)} />
+      <div className="flex gap-2">
+        <button type="button" disabled={!busy} onClick={() => setPlaying(!playing)} aria-pressed={playing} className="pressable rounded border border-border px-2.5 py-1 text-accent disabled:opacity-40">
+          {playing ? "pause" : "play"}
+        </button>
+        <button
+          type="button"
+          disabled={!busy || playing}
+          onClick={() => {
+            sim.advance();
+            setVersion((v) => v + 1);
+          }}
+          className="pressable rounded border border-border px-2.5 py-1 text-text disabled:opacity-40"
+        >
+          step
+        </button>
+        <button type="button" onClick={() => restart(true)} className="pressable rounded border border-border px-2.5 py-1 text-text">
+          replay demo
+        </button>
+        <button type="button" onClick={() => restart(false)} className="pressable rounded border border-border px-2.5 py-1 text-text">
+          clear
+        </button>
+      </div>
+    </div>
+  );
+  const poolView = (
+    <div ref={setWrap} className="relative">
+      <canvas
+        ref={canvasRef}
+        className="block w-full touch-manipulation"
+        style={{ height: g.height }}
+        role="img"
+        aria-label={`A ${NB}-block KV pool drawn in 3D, ${mode} allocation, step ${sim.t}: ${totals[mode].running} requests hold ${totals[mode].held} blocks with ${totals[mode].written} slots written; the block tables are listed beside it`}
+        onPointerMove={pick}
+        onPointerDown={pick}
+        onPointerLeave={(e) => e.pointerType === "mouse" && setHover(null)}
+      />
+      {hover !== null && tipAt && (
+        <div
+          className="pointer-events-none absolute z-10 space-y-1.5 rounded border border-border bg-surface p-2.5 shadow-sm"
+          style={{
+            width: tipW,
+            left: Math.max(0, Math.min(tipAt[0] - tipW / 2, g.width - tipW)),
+            ...(tipAt[1] > g.height / 2 ? { bottom: g.height - tipAt[1] + 8 } : { top: tipAt[1] + g.th + 8 }),
+          }}
+        >
+          <BlockDetails id={hover} cell={cells[hover]} pool={pool} />
+        </div>
+      )}
+    </div>
+  );
+  const legend = (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted">
+      {kinds.map((k, i) => (
+        <span key={k.label} className="flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-sm" style={{ background: `var(${seriesVar[i]})` }} />
+          {`${k.label} ${k.name}: ${k.shape.prompt} + ${k.shape.output}`}
+        </span>
+      ))}
+      <span className="flex items-center gap-1.5">
+        <span aria-hidden className="size-2 rounded-sm border border-dashed border-warn" />
+        held, not written
+      </span>
+    </div>
+  );
+  const table = (
+    <table className="w-full tabular-nums">
+      <thead className="text-left text-muted">
+        <tr>
+          <th className="pb-1 font-normal">{`step ${sim.t}`}</th>
+          {(["paged", "contiguous"] as const).map((m) => (
+            <th key={m} className={clsx("pb-1 text-right font-normal", m === mode ? "text-accent" : "text-muted")}>
+              {m}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.label} className="border-t border-border">
+            <td className="py-1 text-muted">{r.label}</td>
+            {(["paged", "contiguous"] as const).map((m) => {
+              const v = r.value(totals[m]);
+              return (
+                <td key={m} className={clsx("py-1 text-right", r.warn && !v.startsWith("0") ? "text-warn" : m === mode ? "text-text" : "text-muted")}>
+                  {v}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+  const tables = (
+    <div className="space-y-2">
+      <div className="text-muted">{mode === "paged" ? "block tables, logical block → physical block" : "reservations, prompt + 256 tokens each"}</div>
+      <ul className={clsx("space-y-2", !pages && "max-h-72 overflow-y-auto pr-1")}>
+        {pool.running.map((id) => {
+          const s = pool.seqs.get(id)!;
+          const k = kinds[s.kind];
+          return (
+            <li key={id} className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <span aria-hidden className="size-2 rounded-sm" style={{ background: `var(${seriesVar[s.kind]})` }} />
+                <span className="text-text">{`#${id} ${k.label}`}</span>
+                <span className="text-muted">{`${s.slots} / ${k.shape.prompt + k.shape.output} tokens`}</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {(mode === "paged" ? s.table : [s.table[0], s.table[s.table.length - 1]]).map((b, j) => (
+                  <button
+                    key={`${j}-${b}`}
+                    type="button"
+                    onMouseEnter={() => setHover(b)}
+                    onMouseLeave={() => setHover(null)}
+                    onFocus={() => setHover(b)}
+                    onBlur={() => setHover(null)}
+                    aria-label={`request ${id}, logical block ${mode === "paged" ? j : j * (s.table.length - 1)}: physical block ${b}`}
+                    className={clsx("rounded border px-1.5 py-0.5 tabular-nums", hover === b ? "border-text text-text" : "border-border text-muted")}
+                  >
+                    {mode === "paged" ? b : j ? `to ${b}` : b}
+                  </button>
+                ))}
+              </div>
+            </li>
+          );
+        })}
+        {pool.waiting.map((id) => {
+          const s = pool.seqs.get(id)!;
+          return (
+            <li key={id} className="text-warn">
+              {`#${id} ${kinds[s.kind].label} waits: needs ${pool.need(s)} ${mode === "paged" ? `free blocks, ${pool.numFree()} free` : `blocks in a row, longest free run ${pool.longestRun()} (${pool.numFree()} free in all)`}`}
+            </li>
+          );
+        })}
+        {!pool.running.length && !pool.waiting.length && <li className="text-muted">nothing running; add a request</li>}
+      </ul>
+    </div>
+  );
+
+  if (pages) {
+    return (
+      <>
+        {pages.pool &&
+          createPortal(
+            <div className="space-y-3 tabular-nums text-xs">
+              {adders}
+              {controls}
+              {poolView}
+              {legend}
+            </div>,
+            pages.pool,
+          )}
+        {pages.tables &&
+          createPortal(
+            <div className="space-y-5 tabular-nums text-xs">
+              {controls}
+              {table}
+              {tables}
+            </div>,
+            pages.tables,
+          )}
+      </>
+    );
+  }
   return (
     <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted">add a request</span>
-          {kinds.map((k, i) => (
-            <button
-              key={k.label}
-              type="button"
-              onClick={() => {
-                sim.add(i);
-                setVersion((v) => v + 1);
-                setPlaying(true);
-              }}
-              title={`"${k.prompt}": ${k.shape.prompt} prompt tokens, ${k.shape.output} generated`}
-              className="pressable flex items-center gap-1.5 rounded border border-border px-2.5 py-1 text-text"
-            >
-              <span aria-hidden className="size-2 rounded-sm" style={{ background: `var(${seriesVar[i]})` }} />
-              {`+ ${k.label} · ${k.shape.prompt + k.shape.output} tokens`}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Toggle label="cache" choices={["paged", "contiguous"]} value={mode} onChange={(v) => setMode(v as Mode)} />
-          <div className="flex gap-2">
-            <button type="button" disabled={!busy} onClick={() => setPlaying(!playing)} aria-pressed={playing} className="pressable rounded border border-border px-2.5 py-1 text-accent disabled:opacity-40">
-              {playing ? "pause" : "play"}
-            </button>
-            <button
-              type="button"
-              disabled={!busy || playing}
-              onClick={() => {
-                sim.advance();
-                setVersion((v) => v + 1);
-              }}
-              className="pressable rounded border border-border px-2.5 py-1 text-text disabled:opacity-40"
-            >
-              step
-            </button>
-            <button type="button" onClick={() => restart(true)} className="pressable rounded border border-border px-2.5 py-1 text-text">
-              replay demo
-            </button>
-            <button type="button" onClick={() => restart(false)} className="pressable rounded border border-border px-2.5 py-1 text-text">
-              clear
-            </button>
-          </div>
-        </div>
-        <div ref={wrapRef} className="relative">
-          <canvas
-            ref={canvasRef}
-            className="block w-full touch-manipulation"
-            style={{ height: g.height }}
-            role="img"
-            aria-label={`A ${NB}-block KV pool drawn in 3D, ${mode} allocation, step ${sim.t}: ${totals[mode].running} requests hold ${totals[mode].held} blocks with ${totals[mode].written} slots written; the block tables are listed beside it`}
-            onPointerMove={pick}
-            onPointerDown={pick}
-            onPointerLeave={(e) => e.pointerType === "mouse" && setHover(null)}
-          />
-          {hover !== null && tipAt && (
-            <div
-              className="pointer-events-none absolute z-10 space-y-1.5 rounded border border-border bg-surface p-2.5 shadow-sm"
-              style={{
-                width: tipW,
-                left: Math.max(0, Math.min(tipAt[0] - tipW / 2, g.width - tipW)),
-                ...(tipAt[1] > g.height / 2 ? { bottom: g.height - tipAt[1] + 8 } : { top: tipAt[1] + g.th + 8 }),
-              }}
-            >
-              <BlockDetails id={hover} cell={cells[hover]} pool={pool} />
-            </div>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted">
-          {kinds.map((k, i) => (
-            <span key={k.label} className="flex items-center gap-1.5">
-              <span aria-hidden className="size-2 rounded-sm" style={{ background: `var(${seriesVar[i]})` }} />
-              {`${k.label} ${k.name}: ${k.shape.prompt} + ${k.shape.output}`}
-            </span>
-          ))}
-          <span className="flex items-center gap-1.5">
-            <span aria-hidden className="size-2 rounded-sm border border-dashed border-warn" />
-            held, not written
-          </span>
-        </div>
+        {adders}
+        {controls}
+        {poolView}
+        {legend}
       </div>
 
       <div className="space-y-5">
-        <table className="w-full tabular-nums">
-          <thead className="text-left text-muted">
-            <tr>
-              <th className="pb-1 font-normal">{`step ${sim.t}`}</th>
-              {(["paged", "contiguous"] as const).map((m) => (
-                <th key={m} className={clsx("pb-1 text-right font-normal", m === mode ? "text-accent" : "text-muted")}>
-                  {m}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} className="border-t border-border">
-                <td className="py-1 text-muted">{r.label}</td>
-                {(["paged", "contiguous"] as const).map((m) => {
-                  const v = r.value(totals[m]);
-                  return (
-                    <td key={m} className={clsx("py-1 text-right", r.warn && !v.startsWith("0") ? "text-warn" : m === mode ? "text-text" : "text-muted")}>
-                      {v}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="space-y-2">
-          <div className="text-muted">{mode === "paged" ? "block tables, logical block → physical block" : "reservations, prompt + 256 tokens each"}</div>
-          <ul className="max-h-72 space-y-2 overflow-y-auto pr-1">
-            {pool.running.map((id) => {
-              const s = pool.seqs.get(id)!;
-              const k = kinds[s.kind];
-              return (
-                <li key={id} className="space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <span aria-hidden className="size-2 rounded-sm" style={{ background: `var(${seriesVar[s.kind]})` }} />
-                    <span className="text-text">{`#${id} ${k.label}`}</span>
-                    <span className="text-muted">{`${s.slots} / ${k.shape.prompt + k.shape.output} tokens`}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {(mode === "paged" ? s.table : [s.table[0], s.table[s.table.length - 1]]).map((b, j) => (
-                      <button
-                        key={`${j}-${b}`}
-                        type="button"
-                        onMouseEnter={() => setHover(b)}
-                        onMouseLeave={() => setHover(null)}
-                        onFocus={() => setHover(b)}
-                        onBlur={() => setHover(null)}
-                        aria-label={`request ${id}, logical block ${mode === "paged" ? j : j * (s.table.length - 1)}: physical block ${b}`}
-                        className={clsx("rounded border px-1.5 py-0.5 tabular-nums", hover === b ? "border-text text-text" : "border-border text-muted")}
-                      >
-                        {mode === "paged" ? b : j ? `to ${b}` : b}
-                      </button>
-                    ))}
-                  </div>
-                </li>
-              );
-            })}
-            {pool.waiting.map((id) => {
-              const s = pool.seqs.get(id)!;
-              return (
-                <li key={id} className="text-warn">
-                  {`#${id} ${kinds[s.kind].label} waits: needs ${pool.need(s)} ${mode === "paged" ? `free blocks, ${pool.numFree()} free` : `blocks in a row, longest free run ${pool.longestRun()} (${pool.numFree()} free in all)`}`}
-                </li>
-              );
-            })}
-            {!pool.running.length && !pool.waiting.length && <li className="text-muted">nothing running; add a request</li>}
-          </ul>
-        </div>
+        {table}
+        {tables}
       </div>
     </div>
   );
 }
+
 
 function BlockDetails({ id, cell, pool }: { id: number; cell: Cell | null; pool: Pool }) {
   if (id === 0) return <p className="text-muted">block 0, the null block: never handed out, so a table entry of 0 can mean nothing here</p>;
