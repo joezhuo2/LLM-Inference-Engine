@@ -71,9 +71,11 @@ function tools(kit: Kit, fonts: Fonts) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), material);
     mesh.castShadow = true;
     mesh.scale.y = 0.0001;
+    mesh.visible = false;
     return put(root, mesh, x, z);
   };
   const level = (mesh: THREE.Object3D, height: number, base = 0) => {
+    mesh.visible = height > 0.0005;
     mesh.scale.y = Math.max(0.0001, height);
     mesh.position.y = base + Math.max(0.0001, height) / 2;
   };
@@ -138,11 +140,13 @@ function prefillExhibit(kit: Kit, t: Tools, n: PagedNumbers): Exhibit {
   const root = new THREE.Group();
   t.put(root, washPlane(t.blue, 1, 0.9, 0.14), 0.52, -0.2, 0.002);
   const xs = Array.from({ length: 8 }, (_, i) => 0.2 + i * 0.095);
-  t.card(root, 0.54, -0.61, 0.76, 0.04, () => [{ text: "the prompt: 8 tokens, all known up front (illustrative)", y: 0.7, size: 0.5, color: t.faint }], -0.5);
+  t.card(root, 0.54, -0.62, 0.76, 0.06, () => [
+    { text: "the prompt: 8 tokens, all known up front (illustrative)", y: 0.42, size: 0.33, color: t.faint },
+    { text: "model: one wide pass, every position side by side", y: 0.86, size: 0.33 },
+  ], -0.5);
   xs.forEach((x, i) => t.card(root, x, -0.5, 0.085, 0.042, () => [{ text: words[i], y: 0.7, size: 0.5, serif: true, align: "center" }]));
   t.box(root, 0.533, -0.31, 0.78, 0.04, 0.08);
   const glow = t.liquid(root, 0.533, -0.31, 0.76, 0.06, kit.blue);
-  t.card(root, 0.533, -0.255, 0.7, 0.036, () => [{ text: "model: one wide pass, every position side by side", y: 0.7, size: 0.52, align: "center" }], -0.5);
   const kz = -0.13;
   const vz = -0.04;
   t.card(root, 0.1, kz - 0.01, 0.05, 0.036, () => [{ text: "K", y: 0.75, size: 0.62, serif: true, align: "center" }]);
@@ -306,10 +310,10 @@ function cacheExhibit(kit: Kit, t: Tools, n: PagedNumbers): Exhibit {
     return { set: t.trough(root, 0.13, bz, 0.8, material, 1), share: ms / n.ttft2048 };
   });
   const grow = 3;
-  const looper = looped(9, 8, (time) => {
+  const looper = looped(12, 11, (time) => {
     t.fly(written, { x: 0.3, y: 0.04, z }, { x: 0.43, y: 0.04, z }, smooth(0.3, 1.2, time), 0.03);
     read.forEach((b, i) => t.fly(b, { x: 0.63, y: 0.04, z }, { x: 0.76, y: 0.04, z }, smooth(1.4 + i * 1.6, 2.3 + i * 1.6, time), 0.03));
-    for (const g of growers) g.set(Math.min(g.share, smooth(1.4, 1.4 + grow, time)) * (1 - smooth(8.4, 9, time)));
+    for (const g of growers) g.set(Math.min(g.share, smooth(1.4, 1.4 + grow, time)) * (1 - smooth(11.4, 12, time)));
   });
   return { root, ...looper };
 }
@@ -317,7 +321,10 @@ function cacheExhibit(kit: Kit, t: Tools, n: PagedNumbers): Exhibit {
 function homeExhibit(kit: Kit, t: Tools): Exhibit {
   const root = new THREE.Group();
   t.put(root, washPlane(t.blue, 1, 0.9, 0.12), 0.52, -0.15, 0.002);
-  t.card(root, 0.53, -0.62, 0.8, 0.04, () => [{ text: "one sequence's cache, growing a token per step", y: 0.7, size: 0.5 }], -0.5);
+  t.card(root, 0.53, -0.62, 0.8, 0.06, () => [
+    { text: "one sequence's cache, growing a token per step", y: 0.42, size: 0.33 },
+    { text: "16 tokens per block, 6 blocks = 96 tokens", y: 0.86, size: 0.3, color: t.faint },
+  ], -0.5);
   const slotX = (k: number) => 0.18 + k * 0.135;
   const sz = -0.5;
   const fills = table.map((_, k) => {
@@ -326,8 +333,6 @@ function homeExhibit(kit: Kit, t: Tools): Exhibit {
     fill.castShadow = true;
     return t.put(root, fill, slotX(k), sz, 0.019);
   });
-  t.card(root, 0.53, -0.44, 0.8, 0.034, () => [{ text: "16 tokens per block, 6 blocks = 96 tokens", y: 0.72, size: 0.56, color: t.faint }], -0.5);
-  t.card(root, 0.53, -0.34, 0.8, 0.034, () => [{ text: "KV pool on the GPU, shared by every request", y: 0.72, size: 0.56 }], -0.5);
   const tile = (id: number) => ({ x: 0.22 + (id % 4) * 0.2, z: -0.22 + Math.floor(id / 4) * 0.095 });
   for (let id = 0; id < 16; id++) {
     const { x, z } = tile(id);
@@ -340,11 +345,12 @@ function homeExhibit(kit: Kit, t: Tools): Exhibit {
     root.add(mesh);
     return mesh;
   });
-  t.card(root, 0.53, 0.18, 0.8, 0.075, () => [
-    { text: "blue: this sequence", y: 0.4, size: 0.34, color: t.blue },
-    { text: "raised: other requests", y: 0.4, size: 0.34, color: t.ink, x: 0.38 },
-    { text: "flat: free", y: 0.4, size: 0.34, color: t.faint, x: 0.75 },
-    { text: "placed in whichever blocks are free, in any order", y: 0.86, size: 0.34, color: t.faint },
+  t.card(root, 0.53, 0.18, 0.8, 0.1, () => [
+    { text: "KV pool on the GPU, shared by every request", y: 0.3, size: 0.25 },
+    { text: "blue: this sequence", y: 0.6, size: 0.24, color: t.blue },
+    { text: "raised: other requests", y: 0.6, size: 0.24, color: t.ink, x: 0.38 },
+    { text: "flat: free", y: 0.6, size: 0.24, color: t.faint, x: 0.75 },
+    { text: "placed in whichever blocks are free, in any order", y: 0.88, size: 0.24, color: t.faint },
   ]);
   const per = 1.1;
   const looper = looped(10, 9, (time) => {
@@ -370,15 +376,15 @@ function homeExhibit(kit: Kit, t: Tools): Exhibit {
 function jobExhibit(kit: Kit, t: Tools): Exhibit {
   const root = new THREE.Group();
   t.put(root, washPlane(t.blue, 1, 0.9, 0.12), 0.52, -0.15, 0.002);
-  const cx = (i: number) => 0.3 + i * 0.042;
+  const cx = (i: number) => 0.33 + i * 0.038;
   const qz = -0.52;
-  for (let i = 0; i < 8; i++) t.box(root, cx(i), qz, 0.036, 0.03, 0.04, kit.blue);
-  t.card(root, 0.13, qz - 0.01, 0.15, 0.05, () => [
+  for (let i = 0; i < 8; i++) t.box(root, cx(i), qz, 0.033, 0.03, 0.04, kit.blue);
+  t.card(root, 0.18, qz - 0.01, 0.2, 0.075, () => [
     { text: "q", y: 0.45, size: 0.42, serif: true },
     { text: "the new token", y: 0.86, size: 0.28, color: t.faint },
   ]);
-  t.card(root, 0.73, qz - 0.01, 0.11, 0.034, () => [{ text: "q · k", y: 0.74, size: 0.62, serif: true }]);
-  t.card(root, 0.88, qz - 0.01, 0.12, 0.034, () => [{ text: "softmax", y: 0.74, size: 0.55 }]);
+  t.card(root, 0.72, qz - 0.01, 0.14, 0.05, () => [{ text: "q · k", y: 0.74, size: 0.6, serif: true }]);
+  t.card(root, 0.88, qz - 0.01, 0.15, 0.05, () => [{ text: "softmax", y: 0.74, size: 0.52 }]);
   const probs = (() => {
     const e = scores.map((s) => Math.exp(4 * s));
     const sum = e.reduce((a, b) => a + b, 0);
@@ -387,7 +393,7 @@ function jobExhibit(kit: Kit, t: Tools): Exhibit {
   const maxP = Math.max(...probs);
   const rz = (r: number) => -0.4 + r * 0.055;
   const bars = scores.map((s, r) => {
-    for (let i = 0; i < 8; i++) t.box(root, cx(i), rz(r), 0.036, 0.01, 0.04);
+    for (let i = 0; i < 8; i++) t.box(root, cx(i), rz(r), 0.033, 0.01, 0.04);
     const score = new THREE.Mesh(new THREE.BoxGeometry(1, 0.014, 0.03), kit.ink);
     score.castShadow = true;
     t.put(root, score, 0.67, rz(r), 0.007);
@@ -396,17 +402,17 @@ function jobExhibit(kit: Kit, t: Tools): Exhibit {
     t.put(root, weight, 0.82, rz(r), 0.008);
     return { score, weight, s: s * 0.13, p: (probs[r] / maxP) * 0.13 };
   });
-  t.card(root, 0.13, rz(4), 0.15, 0.05, () => [
+  t.card(root, 0.18, rz(4), 0.2, 0.075, () => [
     { text: "K", y: 0.45, size: 0.42, serif: true },
     { text: "cached keys", y: 0.86, size: 0.28, color: t.faint },
   ]);
-  const sweep = t.outline(root, 0.36, 0.048, kit.pink);
+  const sweep = t.outline(root, 0.32, 0.048, kit.pink);
   const oz = 0.2;
   const out = Array.from({ length: 8 }, (_, i) => {
-    t.box(root, cx(i), oz, 0.036, 0.006, 0.04);
-    return t.liquid(root, cx(i), oz, 0.03, 0.034, kit.pink);
+    t.box(root, cx(i), oz, 0.033, 0.006, 0.04);
+    return t.liquid(root, cx(i), oz, 0.027, 0.034, kit.pink);
   });
-  t.card(root, 0.13, oz - 0.01, 0.15, 0.05, () => [
+  t.card(root, 0.18, oz - 0.01, 0.2, 0.075, () => [
     { text: "out = Σ p · v", y: 0.5, size: 0.34, serif: true },
     { text: "weighted values", y: 0.88, size: 0.26, color: t.faint },
   ]);
@@ -423,7 +429,7 @@ function jobExhibit(kit: Kit, t: Tools): Exhibit {
     const fade = 1 - smooth(8.4, 9, time);
     const row = (time - 0.3) / 0.35;
     sweep.visible = row >= 0 && row < scores.length;
-    sweep.position.set(0.3 + 3.5 * 0.042, 0.016, rz(Math.min(scores.length - 1, Math.max(0, Math.floor(row)))));
+    sweep.position.set(cx(3.5), 0.016, rz(Math.min(scores.length - 1, Math.max(0, Math.floor(row)))));
     bars.forEach((b, r) => {
       setBar(b.score, 0.645, b.s * smooth(0, 1, row - r) * fade);
       setBar(b.weight, 0.81, b.p * smooth(4.0, 5.0, time) * fade);
@@ -458,19 +464,9 @@ function blocksExhibit(kit: Kit, t: Tools) {
   const logicalRing = t.outline(root, 0.135, 0.07, kit.blue);
   const tableRing = t.outline(root, 0.135, 0.065, kit.blue);
   const poolRing = t.outline(root, 0.19, 0.08, kit.blue);
-  const links = table.map((phys, k) => {
-    const end = tile(phys);
-    const from = new THREE.Vector3(lx(k), 0.014, tz + 0.03);
-    const to = new THREE.Vector3(end.x, 0.012, end.z - 0.036);
-    const mid = new THREE.Vector3((from.x + to.x) / 2, 0.16, (from.z + to.z) / 2);
-    const tube = ribbonTube([from, mid, to], 0.0025, kit.blue);
-    tube.visible = false;
-    root.add(tube);
-    return tube;
-  });
   const row = new THREE.Mesh(new THREE.BoxGeometry(0.009, 0.012, 0.016), kit.pink);
   root.add(row);
-  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.022, 28, 22), kit.pink);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.017, 28, 22), kit.pink);
   knob.castShadow = true;
   root.add(knob);
   const xOf = (pos: number) => lx(0) - 0.0625 + ((pos + 0.5) / 96) * 0.81;
@@ -490,14 +486,11 @@ function blocksExhibit(kit: Kit, t: Tools) {
     const p = Math.floor(position);
     const k = Math.floor(p / 16);
     const end = tile(table[k]);
-    knob.position.set(xOf(position), 0.045, lz);
+    knob.position.set(xOf(position), 0.017, lz - 0.046);
     logicalRing.position.set(lx(k), 0.02, lz);
     tableRing.position.set(lx(k), 0.014, tz);
     const h = others.has(table[k]) ? 0.03 : 0.008;
     poolRing.position.set(end.x, h + 0.002, end.z);
-    links.forEach((l, i) => {
-      l.visible = i === k;
-    });
     row.position.set(end.x - 0.08 + ((p % 16) + 0.5) * 0.01, h + 0.006, end.z + 0.024);
     if (p !== shown) {
       shown = p;
@@ -581,9 +574,8 @@ function versionsExhibit(kit: Kit, t: Tools, n: PagedNumbers): Exhibit {
     ["v1", n.stepV1, kit.pink, t.pink, 0.1],
     ["v2", n.stepV2, kit.blue, t.blue, 0.27],
   ];
-  t.card(root, 0.53, -0.04, 0.8, 0.034, () => [{ text: "attention per decode step, eager profile, contexts of at most 64 tokens", y: 0.72, size: 0.46, color: t.faint }], -0.5);
   for (const [name, us, material, color, z] of timeBars) {
-    t.card(root, 0.53, z - 0.1, 0.8, 0.045, () => [{ text: `${name}: ${us} µs`, y: 0.74, size: 0.6, serif: true, color }], -0.5);
+    t.card(root, 0.53, z - 0.1, 0.8, 0.045, () => [{ text: `${name}: ${us} µs of attention per decode step`, y: 0.74, size: 0.6, serif: true, color }], -0.5);
     t.trough(root, 0.14, z, 0.76, material, us / n.stepV1);
   }
   const looper = looped(9, 6.5, (time) => {
