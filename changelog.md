@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-engine
+
+- Part A: lay the turning leaf on the page curve (the dip at the spine) at the start and end of a page turn, so it lifts off and lands exactly where the page sits instead of floating flat above the book and snapping down when the turn ends.
+
 ## web/book-cover
 
 - Part A: count the bar's page number over the whole book (cover, contents, every registered chapter, Errata), taking each chapter's length from its `ChapterDef` (steps plus try-it spreads) without building its model, so the total stays right as chapters load and as new registry entries arrive.

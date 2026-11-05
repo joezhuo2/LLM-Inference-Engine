@@ -853,9 +853,9 @@ export class BookScene {
     let x = 0;
     let y = 0.002;
     for (let j = 0; j < columns; j++) {
-      xs.push(x);
-      ys.push(y);
       const phi = Math.PI * clamp01(t * 1.4 - 0.4 * (j / 40));
+      xs.push(x);
+      ys.push(y + Math.abs(Math.cos(phi)) * pageHeight(Math.abs(x)));
       x += Math.cos(phi) * ds;
       y += Math.sin(phi) * ds;
     }

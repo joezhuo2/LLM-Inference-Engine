@@ -1784,3 +1784,7 @@
 ## 3D book: text size (Branch 114)
 
 - **fit-to-box text sizing with a maximum size** => 
+
+## 3D book: engine fixes (Branch 113)
+
+- **blending a bent mesh into a resting shape by how flat each segment lies** => 
