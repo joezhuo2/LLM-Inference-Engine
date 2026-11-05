@@ -1859,3 +1859,4 @@
 - **numbering pages from lazily loaded chapter lengths** => 
 - **painting clickable rows on a canvas page with hit boxes in page coordinates** => 
 - **a 2D canvas context keeps its transform between draws** => 
+- **a deferred flag that must be cleared when the state it waits for is abandoned** => 

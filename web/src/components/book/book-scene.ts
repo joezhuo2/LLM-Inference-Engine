@@ -682,6 +682,7 @@ export class BookScene {
     const to = this.options.stops[stop];
     this.overlayKey = "";
     this.frozen = false;
+    this.frozenSoon = false;
     this.options.onOverlay(null);
     const exhibitChanges = from.exhibit !== to.exhibit || from.spread !== to.spread;
     if (exhibitChanges && from.exhibit !== null) await this.foldDown(from.exhibit);
