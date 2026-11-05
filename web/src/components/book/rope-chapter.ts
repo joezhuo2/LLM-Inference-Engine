@@ -54,7 +54,7 @@ export function ropeStops(chapter: { index: number; title: string; formula: stri
     const flat = i >= 5;
     return {
       exhibit: flat ? null : exhibits[i],
-      spread: flat ? 1 : 0,
+      spread: i,
       page: pageFor(i, i === 0 ? chapter.formula : undefined),
       figure: `Fig. ${chapter.index}.${i + 1}`,
       caption: captions[i],

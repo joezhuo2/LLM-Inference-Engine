@@ -566,7 +566,7 @@ export class BookScene {
     this.overlayKey = "";
     this.frozen = false;
     this.options.onOverlay(null);
-    const exhibitChanges = from.exhibit !== to.exhibit;
+    const exhibitChanges = from.exhibit !== to.exhibit || from.spread !== to.spread;
     if (exhibitChanges && from.exhibit !== null) await this.foldDown(from.exhibit);
     this.setCamGoal(this.beatOf(stop, beat)!, 1.9);
     if (from.spread !== to.spread) {
@@ -644,7 +644,7 @@ export class BookScene {
     this.setLeaf(forward ? 0 : 1);
     if (!forward) zeroActive();
     this.leftText.meshes[this.leftText.active].material.opacity = forward ? this.leftText.meshes[this.leftText.active].material.opacity : 1;
-    await this.tween(1.5, (t) => this.setLeaf(forward ? easeInOut(t) : 1 - easeInOut(t)));
+    await this.tween(1.8, (t) => this.setLeaf(forward ? easeInOut(t) : 1 - easeInOut(t)));
     this.leaf.front.visible = false;
     this.leaf.back.visible = false;
     if (forward) {

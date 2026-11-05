@@ -1754,3 +1754,4 @@
 - **why a ref callback written inline runs on every render** => 
 - **lazy-loading a large library with a dynamic import** => 
 - **a shadow-only object (colorWrite off) in three.js** => 
+- **a pop-up fold as a scale on one axis** => 
