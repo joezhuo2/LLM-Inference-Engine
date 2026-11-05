@@ -9,19 +9,13 @@ import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
 import { Scramble } from "@/components/scramble";
 import { repoUrl } from "@/content/build-log";
-import { kernelStories, kernelStory } from "@/content/kernels";
+import { kernelStory } from "@/content/kernels";
 import { docPath, docSections, environment, profilingTable } from "@/lib/data";
 import { loadExcerpt } from "@/lib/excerpt";
 import { ogImage } from "@/lib/og";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return kernelStories.map((k) => ({ slug: k.slug }));
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const story = kernelStory((await params).slug);
+export async function kernelMetadata(slug: string): Promise<Metadata> {
+  const story = kernelStory(slug);
   if (!story) return {};
   return {
     title: story.title,
@@ -43,13 +37,13 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 const numeric = /^[\d,.\s/x%n/a-]+$|^\d/;
 
-export default async function KernelPage({ params }: { params: Promise<{ slug: string }> }) {
-  const story = kernelStory((await params).slug);
+export async function ReadingView({ slug }: { slug: string }) {
+  const story = kernelStory(slug);
   if (!story) notFound();
   const excerpts = await Promise.all(story.excerpts.map(loadExcerpt));
   return (
     <PageTransition>
-      <article className="space-y-20">
+      <article className="mx-auto w-full max-w-5xl space-y-20 px-4 py-10 sm:px-6">
         <header className="space-y-4">
           <div className="tabular-nums text-xs text-muted">
             <Link href="/kernels" transitionTypes={["nav-back"]} className="link-underline">
@@ -60,7 +54,7 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
           <PageTitle text={story.title} />
           <p className="max-w-2xl text-muted">{story.short}</p>
           {story.book && (
-            <Link href={`/book/${story.slug}`} className="link-underline inline-block text-sm text-accent">
+            <Link href={`/kernels/${story.slug}`} className="link-underline inline-block text-sm text-accent">
               open this chapter as a 3D book
             </Link>
           )}

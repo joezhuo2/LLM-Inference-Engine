@@ -1765,3 +1765,5 @@
 - **a glass panel with backdrop-filter blur and a translucent fill** => 
 - **animating to an auto width by measuring the content and transitioning a fixed width** => 
 - **replaying an effect by changing a component key** => 
+- **route groups to give some pages a different layout under the same URL prefix** => 
+- **a lazy registry of dynamic imports keyed by slug** => 

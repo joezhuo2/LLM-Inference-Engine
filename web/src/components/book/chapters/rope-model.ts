@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { angle, MAX_POS, wavelength } from "@/components/kernels/rope/rotation";
-import { createCard, type Kit, liquidMaterial, ribbonTube, washPlane } from "./ink";
-import type { BookModel } from "./book-scene";
-import type { Fonts } from "./typeset";
+import { createCard, type Kit, liquidMaterial, ribbonTube, washPlane } from "../ink";
+import type { BookModel } from "../book-scene";
+import type { Fonts } from "../typeset";
 
 export type RopeNumbers = { naive: number; draft: number; fast: number };
 

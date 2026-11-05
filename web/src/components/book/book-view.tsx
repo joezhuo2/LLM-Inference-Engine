@@ -6,11 +6,8 @@ import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { Scramble } from "@/components/scramble";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookScene, OverlayRect, Rect, Stop } from "./book-scene";
-import { createRopeModel } from "./rope-model";
-import { ropeStops, ropeWorkbench } from "./rope-chapter";
+import { type ChapterDef, chapterStops, chapterTitles } from "./chapter";
 import { loadFonts, readFonts, readRuns } from "./typeset";
-import { RopeSandbox } from "@/components/kernels/rope/sandbox";
-import { ropeCaptions, ropeNumbers, ropeSteps, TokensPicker } from "@/components/kernels/rope/story";
 
 type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number };
 
@@ -94,7 +91,7 @@ function FitPage({ rect, width, children, onElement }: { rect: Rect; width: numb
 
 const PAGE_DESIGN_WIDTH = 460;
 
-export function BookView() {
+export function BookView({ chapter }: { chapter: ChapterDef }) {
   const reduced = usePrefersReducedMotion();
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -129,8 +126,9 @@ export function BookView() {
   }, []);
 
 
-  const total = ropeSteps.length + ropeWorkbench.length;
-  const titles = useMemo(() => [...ropeSteps.map((s) => s.title), ...ropeWorkbench.map((w) => w.title)], []);
+  const titles = useMemo(() => chapterTitles(chapter), [chapter]);
+  const total = titles.length;
+  const readHref = `/kernels/${chapter.slug}/read`;
 
   useEffect(() => {
     const canvasEl = canvas.current;
@@ -148,19 +146,19 @@ export function BookView() {
       const fonts = readFonts();
       const [{ BookScene: Scene }] = await Promise.all([import("./book-scene"), loadFonts(fonts)]);
       if (cancelled) return;
-      const text = [...bodiesEl.children].map((el, i) => ({ title: ropeSteps[i].title, paragraphs: readRuns(el) }));
-      const chapterStops = ropeStops({ index: 3, title: "RoPE", formula: "x′ᵢ = xᵢ cos pθᵢ − xᵢ₊d/₂ sin pθᵢ,   θᵢ = 10000^(−2i/d)" }, text, ropeCaptions, ropeWorkbench);
-      setStops(chapterStops);
+      const text = [...bodiesEl.children].map((el, i) => ({ title: chapter.steps[i].title, paragraphs: readRuns(el) }));
+      const builtStops = chapterStops(chapter, text);
+      setStops(builtStops);
       try {
         instance = new Scene({
           canvas: canvasEl,
           host: hostEl,
-          stops: chapterStops,
+          stops: builtStops,
           coverTitle: "Every Byte",
           coverSubtitle: "an inference engine, kernel by kernel",
           fonts,
           reduced,
-          buildModel: (kit) => createRopeModel(kit, fonts, ropeNumbers),
+          buildModel: (kit) => chapter.buildModel(kit, fonts),
           onOverlay: setOverlay,
           onLens: setLens,
           onPageClick: (side) => hostEl.dispatchEvent(new CustomEvent("bookpage", { detail: side })),
@@ -179,7 +177,7 @@ export function BookView() {
       instance?.dispose();
       scene.current = null;
     };
-  }, [reduced]);
+  }, [reduced, chapter]);
 
   const go = useCallback(
     (next: number) => {
@@ -243,7 +241,9 @@ export function BookView() {
   }, [go, stop]);
 
   const caption = beats[beat]?.caption ?? titles[stop];
-  const step = ropeSteps[stop];
+  const step = chapter.steps[stop];
+  const bench = chapter.workbench[stop - chapter.steps.length];
+  const Overlay = chapter.Overlay;
 
   if (failed) {
     return (
@@ -251,7 +251,7 @@ export function BookView() {
         <h1 className="font-serif text-4xl">This book needs WebGL</h1>
         <p className="text-muted">
           Your browser could not start 3D graphics. The{" "}
-          <Link href="/kernels/rope" className="link-underline text-text">
+          <Link href={readHref} className="link-underline text-text">
             reading view
           </Link>{" "}
           has the same text, figures and sandbox.
@@ -263,7 +263,7 @@ export function BookView() {
   return (
     <div className="flex h-[calc(100dvh-3rem)] flex-col overflow-hidden">
       <div ref={bodies} hidden>
-        {ropeSteps.map((s) => (
+        {chapter.steps.map((s) => (
           <div key={s.id}>{s.body}</div>
         ))}
       </div>
@@ -299,30 +299,22 @@ export function BookView() {
             <button type="button" aria-label="next page" disabled={stop === total - 1} onClick={() => go(stop + 1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
               <Icon d="M6 3l5 5-5 5" />
             </button>
-            <Link href="/kernels/rope" className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
+            <Link href={readHref} className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
               reading view
             </Link>
             </div>
           </nav>
         {overlay && narrow && (
           <div data-theme="light" className="book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]">
-            {overlay.kind === "tokens" ? <TokensPicker /> : <div ref={setPageEl} />}
+            <div ref={setPageEl} />
           </div>
         )}
         {overlay && !narrow && (
           <div data-theme="light" key={overlay.kind} className="book-overlay touch-auto text-[var(--text)]">
-            {overlay.kind === "tokens" ? (
-              <FitPage rect={overlay.rect} width={PAGE_DESIGN_WIDTH}>
-                <div className="h-[34rem]">
-                  <TokensPicker />
-                </div>
-              </FitPage>
-            ) : (
-              <FitPage rect={overlay.rect} width={PAGE_DESIGN_WIDTH} onElement={setPageEl} />
-            )}
+            <FitPage rect={overlay.rect} width={PAGE_DESIGN_WIDTH} onElement={setPageEl} />
           </div>
         )}
-        {stop >= ropeSteps.length && <RopeSandbox pages={{ one: overlay?.kind === "sandbox-one" ? pageEl : null, two: overlay?.kind === "sandbox-two" ? pageEl : null }} />}
+        {Overlay && <Overlay kind={overlay?.kind ?? null} target={overlay ? pageEl : null} narrow={narrow} />}
       </div>
       <div className="relative border-border bg-surface max-[720px]:border-t">
         <article aria-live="polite" className="max-h-[32dvh] overflow-y-auto px-4 py-3 text-sm leading-relaxed text-muted min-[721px]:sr-only">
@@ -335,8 +327,8 @@ export function BookView() {
             <>
               <h1 className="font-serif text-2xl text-text">{titles[stop]}</h1>
               <div className="mt-2 space-y-2">
-                {ropeWorkbench[stop - ropeSteps.length]?.paragraphs.map((p, i) => (
-                  <p key={i}>{p.map((r) => r.text).join("")}</p>
+                {bench?.paragraphs.map((p) => (
+                  <p key={p}>{p}</p>
                 ))}
               </div>
             </>
