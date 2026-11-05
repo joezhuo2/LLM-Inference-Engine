@@ -9,7 +9,7 @@ import type { BookScene, OverlayRect, Rect, Stop } from "./book-scene";
 import { type ChapterDef, chapterStops, chapterTitles } from "./chapter";
 import { loadFonts, readFonts, readRuns } from "./typeset";
 
-type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number };
+export type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number };
 
 const LENS_SIZE = 190;
 const beatMs = 6500;
@@ -22,8 +22,10 @@ function Icon({ d }: { d: string }) {
   );
 }
 
-function Magnifier({ lens }: { lens: Lens | null }) {
+export function Magnifier({ lens }: { lens: Lens | null }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const [at, setAt] = useState({ x: 0, y: 0 });
+  if (lens && (lens.x !== at.x || lens.y !== at.y)) setAt({ x: lens.x, y: lens.y });
   useEffect(() => {
     const c = canvas.current;
     if (!c || !lens) return;
@@ -41,13 +43,13 @@ function Magnifier({ lens }: { lens: Lens | null }) {
       aria-hidden
       width={LENS_SIZE * 2}
       height={LENS_SIZE * 2}
-      style={{ width: LENS_SIZE, height: LENS_SIZE, left: (lens?.x ?? 0) - LENS_SIZE / 2, top: (lens?.y ?? 0) - LENS_SIZE / 2, opacity: lens ? 1 : 0 }}
+      style={{ width: LENS_SIZE, height: LENS_SIZE, left: at.x - LENS_SIZE / 2, top: at.y - LENS_SIZE / 2, opacity: lens ? 1 : 0 }}
       className="pointer-events-none absolute z-10 rounded-full border border-[var(--book-faint)] bg-[var(--book-paper)] shadow-lg transition-opacity duration-300"
     />
   );
 }
 
-function FitPage({ rect, width, children, onElement }: { rect: Rect; width: number; children?: ReactNode; onElement?: (el: HTMLDivElement | null) => void }) {
+export function FitPage({ rect, width, children, onElement }: { rect: Rect; width: number; children?: ReactNode; onElement?: (el: HTMLDivElement | null) => void }) {
   const inner = useRef<HTMLDivElement | null>(null);
   const attach = useCallback(
     (el: HTMLDivElement | null) => {
@@ -89,7 +91,7 @@ function FitPage({ rect, width, children, onElement }: { rect: Rect; width: numb
   );
 }
 
-const PAGE_DESIGN_WIDTH = 460;
+export const PAGE_DESIGN_WIDTH = 460;
 
 export function BookView({ chapter }: { chapter: ChapterDef }) {
   const reduced = usePrefersReducedMotion();

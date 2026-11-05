@@ -11,6 +11,7 @@ const bench =
 export const addRmsnorm: KernelStory = {
   slug: "add-rmsnorm",
   index: 2,
+  book: true,
   title: "fused add + RMSNorm",
   short: "Two kernels and a round trip to memory become one, then 128-bit loads and the row kept in registers.",
   formula: "sum = x + r,  norm = w · sum / √(mean(sum²) + ε)",
