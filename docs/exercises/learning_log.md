@@ -1552,3 +1552,7 @@
 - **streaming multiprocessor (SM) and how many a GPU has** => 
 - **shared memory per SM** => 
 - **L2 cache** => 
+- **grid, block, warp and thread, and which runs on which hardware** => 
+- **warp divergence** => 
+- **global memory, L2, shared memory and registers: size and speed order** => 
+- **GDDR against HBM** => 

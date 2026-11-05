@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/memory-wall-story
 
+- Add the story page `/kernels/memory-wall`, "the memory wall and GPU foundations", as number 00, with its first two steps: a grid, block, warp and thread drill-down and the GPU memory tiers (sizes from `docs/hardware.md`, DRAM bandwidth from `docs/results.md`). Cards in `/kernels` now show each story's own `index`, so the new page is 00 and every existing story keeps its number; the page template skips the timeline, tested and code sections a story has no content for. (Part A)
 - Parse `docs/hardware.md` in `web/scripts/sync-data.mjs` into `web/src/data/hardware.json` (SM count, shared memory per SM, L2, VRAM, compute capability) with a `hardware()` accessor in `web/src/lib/data.ts`, so the memory wall story takes its GPU figures from the repo. (Part A)
 
 ## sched/chunked-prefill-impl

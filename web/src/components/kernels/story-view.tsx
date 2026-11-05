@@ -5,6 +5,7 @@ import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
+import { MemoryWallStory } from "./memory-wall/story";
 import { PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
 import { RopeStory } from "./rope/story";
@@ -14,6 +15,8 @@ import { SwigluStory } from "./swiglu/story";
 
 export function KernelStoryView({ slug }: { slug: string }) {
   switch (slug) {
+    case "memory-wall":
+      return <MemoryWallStory />;
     case "paged-attention":
       return <PagedAttentionStory />;
     case "add-rmsnorm":

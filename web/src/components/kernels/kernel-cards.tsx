@@ -28,7 +28,7 @@ export function KernelCards() {
         const body = (
           <>
             <div className="font-mono text-sm">
-              <span className="text-muted">{String(kernelCards.length - i).padStart(2, "0")} </span>
+              <span className="text-muted">{String(k.index).padStart(2, "0")} </span>
               <Scramble
                 text={k.title}
                 trigger="view"
