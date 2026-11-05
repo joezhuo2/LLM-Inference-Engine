@@ -35,8 +35,8 @@ One scheduler step: one forward pass over the batch and one sampled token per se
 | --- | --- |
 | `index` | Step number, from 0, in order |
 | `start_s`, `end_s` | When the step started (before scheduling) and ended (tokens copied back to the host) |
-| `kind` | `"prefill"` or `"decode"`; a step is all one or the other |
-| `seqs` | The sequences in the batch, in batch row order |
+| `kind` | `"prefill"` or `"decode"`. Without `--token-budget` a step is all one or the other; with it a step can hold decode rows and prefill chunks together, and `kind` is `"prefill"` only for a step without decode rows |
+| `seqs` | The sequences that got a token in this step, in batch row order. With `--token-budget`, a step whose prefill chunks all stop before the end of their prompts samples nothing, and `seqs` and `tokens` are empty |
 | `tokens` | One entry per entry of `seqs`, same order: the sampled token id and the text it adds to its sequence. `text` is the incremental UTF-8 text, so it starts with a space where SentencePiece puts one (except the first token of a sequence, whose leading space decoding drops), and it is `""` when the token completes no character yet or is EOS |
 | `finished` | Sequences that finished in this step (their last token is in `tokens`) |
 | `waiting`, `running` | Queue sizes after the step |
@@ -60,6 +60,7 @@ Written by `engine bench --trace out.json` (batched mode only, the timed run onl
     "model": "tinyllama",
     "max_batch": 16,
     "graphs": true,
+    "token_budget": 0,
     "kv_blocks": 12915,
     "block_size": 16,
     "num_requests": 24,
