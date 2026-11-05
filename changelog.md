@@ -15,6 +15,10 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: let a stop paint its own pages (`paint.left`, `paint.right`, a `PagePainter` that gets the canvas, palette and fonts) and carry clickable regions (`links`, boxes in page fractions with an `href`), reported through `onLink` with a pointer cursor; stops without them draw as before.
 - Part A: let the book engine rest closed on the desk (`showClosed`), report a click on the closed cover (`onCoverClick`), close the book again with the cover swinging back (`close`), and take a cover camera frame (`coverFrame`); chapters still open on load as before.
 
+## web/book-type
+
+- Part A: start the book's left-page body text at 30 units instead of 40, so short steps (RoPE pages 2, 4 and 7) no longer set larger than the rest; long steps still shrink to fit as before.
+
 ## web/book-rope
 
 - Part A: make the book engine chapter-agnostic: a `ChapterDef` (steps, captions, exhibits, overlays, tour beats, try-it-yourself spreads, model builder, overlay component) with `chapterStops` and frame helpers in `components/book/chapter.ts`, a lazy chapter registry in `components/book/chapters/`, and RoPE moved to `chapters/rope.tsx`; a chapter with `book: true` is now served as its book at `/kernels/<slug>` (full width, `(book)` route group), every chapter's scroll page moves to `/kernels/<slug>/read` as the reading view, and `/book/rope` is gone.

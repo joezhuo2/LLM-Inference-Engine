@@ -1780,3 +1780,7 @@
 - **history.pushState inside the Next.js App Router** => 
 - **a composite object that routes calls to the part that owns them** => 
 - **loading a module on demand and caching its promise** => 
+
+## 3D book: text size (Branch 114)
+
+- **fit-to-box text sizing with a maximum size** => 
