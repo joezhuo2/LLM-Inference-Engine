@@ -1830,3 +1830,11 @@
 - **a lid that closes over a group as a pop-up scale** => 
 - **a draggable knob that maps page x to a value range** => 
 - **requestAnimationFrame throttling in a background tab** => 
+
+## 3D book: paged attention (Branch 105)
+- **splitting one component's JSX into named fragments shared by two layouts** => 
+- **joining a prologue story and a main story into one run of spreads** => 
+- **laying a label card flat on top of a model** => 
+- **growing a bar from one end by scaling and shifting it together** => 
+- **animating two durations side by side to scale** => 
+- **getBoundingClientRect measures after CSS transforms, while clip-path insets use layout pixels** => 
