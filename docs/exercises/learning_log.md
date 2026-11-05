@@ -1651,6 +1651,39 @@
 - **why measured attention sits far under its roofline** => 
 - **cancelling a running tween when the user takes over the control** => 
 
+## Chunked Prefill Wiring (Branch 83)
+- **the row order of a mixed batch: decode rows first, then prefill chunks** => 
+- **why a chunk that stops before the end of its prompt needs no logits** => 
+- **a forward pass that samples nothing: why the layers still have to run** => 
+- **why the same prompt can give different greedy tokens at different chunk sizes (GEMM kernels picked by row count)** => 
+- **why mixed steps run eager while pure decode steps keep their CUDA Graph** => 
+- **why the token budget must be at least the max batch** => 
+- **why a smaller token budget delays the first token of a long prompt but steadies everyone else's TPOT** => 
+
+## On-chip Memory Speeds (Branch 90)
+
+### The microbenchmark
+- **pointer chasing: measuring latency with a chain of dependent loads** => 
+- **Sattolo's algorithm: a random permutation that is a single cycle** => 
+- **`__ldcg` and `ld.global.cg`: loads cached in L2 but not L1** => 
+- **`clock64()` against `%globaltimer`: SM cycles and nanoseconds from inside a kernel** => 
+- **shared memory banks and bank-conflict-free access** => 
+- **dependent FMA latency against FMA throughput** => 
+- **register file size per SM (`regsPerMultiprocessor`)** => 
+- **keeping a benchmark loop from being optimized away (live results, runtime operands, checking SASS)** => 
+- **`cuobjdump -sass`: reading the machine code a kernel compiled to** => 
+- **sizing a grid to one wave with `cudaOccupancyMaxActiveBlocksPerMultiprocessor`** => 
+
+### The numbers
+- **a working-set sweep: the L2 plateau and the drop to DRAM past the cache size** => 
+- **copy bandwidth against read bandwidth** => 
+- **load/store unit throughput: why 32-bit shared loads reach half the bank bandwidth** => 
+- **address translation (TLB) misses in a pointer chase over a large buffer** => 
+- **clock domains: SM clock against the L2 and memory clocks** => 
+
+### On the site
+- **a latency ladder: cycles per dependent load at each tier** => 
+
 ## Navigation Speed (Branch 99)
 - **time-sliced rendering: why a busy main thread stretches a React transition render** => 
 - **main-thread animations on SVG elements against compositor-only animations** => 

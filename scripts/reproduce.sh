@@ -5,7 +5,7 @@ cd "$(git rev-parse --show-toplevel)"
 usage() {
     cat >&2 <<'USAGE'
 usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp] [--skip-load]
-                           [--skip-prefill] [--skip-vllm]
+                           [--skip-prefill] [--skip-vllm] [--skip-onchip]
 
 Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/environment.txt   commit, GPU, driver, CUDA, date, workload
@@ -24,6 +24,8 @@ Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/decode_step_b16.md   the GPU time per op of a decode step with 16 rows
   results/plots/roofline.*  the ops and the whole decode step on a roofline (scripts/roofline.py)
   results/prefill/          single-request TTFT against prompt length, engine and llama.cpp
+  results/onchip/           L2, shared memory, register and DRAM latency microbenchmarks
+                            (scripts/onchip_bench.cu, REPEATS runs, scripts/onchip_report.py)
   results/plots/            the plots and summary_table.md
 and then refreshes the measured blocks of docs/results.md.
 
@@ -44,6 +46,7 @@ skip_llamacpp=0
 skip_vllm=0
 skip_load=0
 skip_prefill=0
+skip_onchip=0
 for arg in "$@"; do
     case "$arg" in
     --quick) quick=1 ;;
@@ -53,6 +56,7 @@ for arg in "$@"; do
     --skip-vllm) skip_vllm=1 ;;
     --skip-load) skip_load=1 ;;
     --skip-prefill) skip_prefill=1 ;;
+    --skip-onchip) skip_onchip=1 ;;
     *) usage ;;
     esac
 done
@@ -215,6 +219,13 @@ if command -v nsys > /dev/null; then
     MODEL=$model PEAK_GB_S=$peak scripts/profile.sh nsys decode_step_b16 --max-batch 16 \
         --num-requests 16 --prompt-len "$prompt" --output-len "$output" > /dev/null
     cp results/profile/decode_step_b16.md "$out/decode_step_b16.md"
+fi
+
+if [ "$skip_onchip" = 0 ]; then
+    echo "== on-chip memory"
+    nvcc -std=c++20 -O3 -arch=native scripts/onchip_bench.cu -o build/onchip_bench
+    "$python" scripts/onchip_report.py --bench build/onchip_bench --repeats "$repeats" \
+        --commit "$(git rev-parse --short HEAD)" --out-dir "$out/onchip" > /dev/null
 fi
 
 echo "== plots and results page"

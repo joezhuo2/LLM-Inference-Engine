@@ -90,7 +90,7 @@ void PagedRunner::stage(const PagedBatch& batch) {
     const int64_t t = batch.num_tokens();
     const int64_t s = batch.num_seqs;
     require(t > 0 && t <= max_tokens_, "the number of tokens must be between 1 and max_tokens");
-    require(s > 0 && s <= max_seqs_, "the number of sequences must be between 1 and max_seqs");
+    require(s >= 0 && s <= max_seqs_, "the number of sequences must be between 0 and max_seqs");
     require(batch.max_blocks == max_blocks_, "the block table width must equal max_blocks");
     require(int64_t(batch.positions.size()) == t && int64_t(batch.slot_mapping.size()) == t &&
                 int64_t(batch.context_lens.size()) == t,
@@ -118,8 +118,8 @@ void PagedRunner::stage(const PagedBatch& batch) {
 
 Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> logit_rows) {
     require(t > 0 && t <= max_tokens_, "the number of tokens must be between 1 and max_tokens");
-    require(s > 0 && s <= max_seqs_, "the number of sequences must be between 1 and max_seqs");
-    const bool identity = logit_rows.empty();
+    require(s >= 0 && s <= max_seqs_, "the number of sequences must be between 0 and max_seqs");
+    const bool identity = logit_rows.empty() && s > 0;
     require(!identity || t == s, "without logit_rows every token must be its own sequence");
     require(identity || int64_t(logit_rows.size()) == s,
             "logit_rows must have one entry per sequence");
@@ -178,6 +178,8 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
             ranged("add2", [&] { naive::add(x, x, proj, stream_); });
         }
     }
+
+    if (s == 0) return Tensor(logits_.data(), DType::BF16, {0, c.vocab});
 
     Tensor last(x_.data(), DType::BF16, {s, c.hidden});
     if (!identity) {

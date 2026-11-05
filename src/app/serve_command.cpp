@@ -32,6 +32,7 @@ struct Options {
     int port = 8000;
     int max_batch = 16;
     bool graphs = false;
+    int token_budget = 0;
     std::vector<std::string> cors_origins = server::kDefaultCorsOrigins;
     std::vector<std::string> allow_hosts;
     server::SamplingDefaults defaults{};
@@ -65,7 +66,8 @@ server::HttpOptions http_options(const Options& o, const ModelConfig& config) {
                                    {"gpu", server::gpu_name()},
                                    {"model", model_name(o.model)},
                                    {"max_batch", o.max_batch},
-                                   {"graphs", o.graphs}};
+                                   {"graphs", o.graphs},
+                                   {"token_budget", o.token_budget}};
     return {.cors_origins = o.cors_origins,
             .allowed_hosts = allowed_hosts(o),
             .defaults = o.defaults,
@@ -85,8 +87,8 @@ void run(const Options& o) {
 
     const Tokenizer tokenizer(o.model / "tokenizer.model");
     const DeviceWeights w = load_weights(o.model, nullptr);
-    const auto backend =
-        server::make_gpu_backend(w, {.max_batch = o.max_batch, .graphs = o.graphs});
+    const auto backend = server::make_gpu_backend(
+        w, {.max_batch = o.max_batch, .graphs = o.graphs, .token_budget = o.token_budget});
     server::ServingLoop loop(
         *backend, [&](std::span<const int32_t> ids) { return tokenizer.decode(ids); },
         w.config.eos_id);
@@ -141,6 +143,12 @@ void add_serve_command(CLI::App& app) {
     cmd->add_flag("--graphs", opts->graphs,
                   "Replay CUDA Graphs of the decode step (one per power-of-two batch size up to "
                   "--max-batch)");
+    cmd->add_option("--token-budget", opts->token_budget,
+                    "Chunked prefill: at most this many tokens per step, decode rows first and "
+                    "prompts split across steps; at least --max-batch; 0 keeps whole-prompt "
+                    "prefill steps")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
     cmd->add_option("--cors-origin", opts->cors_origins,
                     "Origin allowed to call the server from a browser, such as "
                     "https://example.vercel.app; repeat for several (default: "
