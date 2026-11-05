@@ -99,8 +99,8 @@ export function RopeSandbox() {
             </span>
             <input type="range" min={0} max={PAIRS - 1} value={pair} onChange={(e) => setPair(Number(e.target.value))} aria-label="dimension pair i" className={slider} />
           </label>
-          <div className="grid grid-cols-[10rem_minmax(0,1fr)] items-center gap-4">
-            <svg viewBox="0 0 200 200" className="w-full" role="img" aria-label={`Pair ${pair} of the query, drawn as a 2D vector, rotated by ${deg(turned).toFixed(0)} degrees`}>
+          <div className="grid items-center gap-4 sm:grid-cols-[11rem_minmax(0,1fr)]">
+            <svg viewBox="0 0 200 200" className="mx-auto w-full max-w-[11rem]" role="img" aria-label={`Pair ${pair} of the query, drawn as a 2D vector, rotated by ${deg(turned).toFixed(0)} degrees`}>
               <circle cx={100} cy={100} r={80} className="fill-none stroke-border" />
               <line x1={20} y1={100} x2={180} y2={100} className="stroke-border" />
               <line x1={100} y1={20} x2={100} y2={180} className="stroke-border" />
@@ -109,8 +109,8 @@ export function RopeSandbox() {
                 <line x1={100} y1={100} x2={100 + lo * scale} y2={100 - hi * scale} className="stroke-accent" strokeWidth={2} />
                 <circle cx={100 + lo * scale} cy={100 - hi * scale} r={3.5} className="fill-accent" />
               </g>
-              <text x={176} y={94} textAnchor="end" className="fill-muted text-[10px]">{`x${pair}`}</text>
-              <text x={104} y={30} className="fill-muted text-[10px]">{`x${pair + PAIRS}`}</text>
+              <text x={176} y={94} textAnchor="end" className="fill-muted text-[13px]">{`x${pair}`}</text>
+              <text x={104} y={30} className="fill-muted text-[13px]">{`x${pair + PAIRS}`}</text>
             </svg>
             <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 tabular-nums">
               <dt className="text-muted">θ{"ᵢ"}</dt>
@@ -218,7 +218,7 @@ export function RopeSandbox() {
             <path d={curvePath} className="fill-none stroke-muted" strokeWidth={1} />
             <line x1={curveX(gap)} y1={0} x2={curveX(gap)} y2={CURVE_H} className="stroke-accent" />
             <circle cx={curveX(gap)} cy={curveY(now)} r={4} className="fill-accent" />
-            <text x={4} y={12} className="fill-muted text-[10px]">{`score for every gap, ${-MAX_POS} to ${MAX_POS} (same vectors)`}</text>
+            <text x={4} y={14} className="fill-muted text-[12px]">{`score for every gap, ${-MAX_POS} to ${MAX_POS} (same vectors)`}</text>
           </svg>
           <p className="text-muted">The dot depends on the gap alone. Drag both positions with the gap locked and it does not move; unlock the gap and move one position and it slides along the curve.</p>
         </div>
