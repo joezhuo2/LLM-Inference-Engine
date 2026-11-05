@@ -1,0 +1,586 @@
+"use client";
+
+import clsx from "clsx";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import type { Group } from "three";
+import { Scramble } from "@/components/scramble";
+import { kindLabel } from "@/content/dead-ends";
+import { usePrefersReducedMotion } from "@/lib/reduced-motion";
+import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
+import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
+import { type ChapterDef, chapterStops } from "./chapter";
+import { bookChapters } from "./chapters";
+import { bookOrder, bookParts, chapterPage, chapterTitle, contentsStop, errataIntro, errataPage, errataSpreads, errataStops, errataTitle } from "./front-matter";
+import type { Kit } from "./ink";
+import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
+
+const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
+const beatMs = 6500;
+
+type Meta = { key: string; local: number; slug?: string; exhibit: number | null };
+type Place = { closed: true } | { closed: false; key: string; local: number };
+
+const urlOf = (key: string) => (key === "contents" ? "/kernels/contents" : key === "errata" ? "/kernels/contents#errata" : `/kernels/${key}`);
+
+function parsePlace(): Place {
+  const path = window.location.pathname.replace(/\/$/, "");
+  if (path === "/kernels") return { closed: true };
+  const slug = path.split("/")[2];
+  if (slug && chapterSlugs.includes(slug)) return { closed: false, key: slug, local: 0 };
+  return { closed: false, key: window.location.hash === "#errata" ? "errata" : "contents", local: 0 };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+function Icon({ d }: { d: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-none stroke-current" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
+}
+
+function compose(raw: Record<string, Stop[]>) {
+  const keys = ["contents", ...chapterSlugs.filter((s) => raw[s]), "errata"];
+  const stops: Stop[] = [];
+  const meta: Meta[] = [];
+  for (const key of keys) {
+    const slug = key === "contents" || key === "errata" ? undefined : key;
+    raw[key].forEach((s, local) => {
+      meta.push({ key, local, slug, exhibit: slug ? s.exhibit : null });
+      stops.push({ ...s, spread: stops.length, exhibit: slug && s.exhibit !== null ? chapterSlugs.indexOf(slug) : null });
+    });
+  }
+  return { stops, meta };
+}
+
+const base: Record<string, Stop[]> = { contents: [contentsStop()], errata: errataStops(0) };
+const initial = compose(base);
+
+export function EveryByte() {
+  const reduced = usePrefersReducedMotion();
+  const router = useRouter();
+  const host = useRef<HTMLDivElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const bodies = useRef<HTMLDivElement>(null);
+  const scene = useRef<BookScene | null>(null);
+  const raw = useRef<Record<string, Stop[]>>({ ...base });
+  const book = useRef(initial);
+  const models = useRef<Record<string, BookModel>>({});
+  const containers = useRef<Group[]>([]);
+  const kit = useRef<{ kit: Kit; fonts: Fonts } | null>(null);
+  const queue = useRef(Promise.resolve());
+  const ready = useRef<Record<string, Promise<void>>>({});
+  const readyResolve = useRef<Record<string, () => void>>({});
+  const sceneReady = useRef(deferred<BookScene>());
+  const defsRef = useRef<Record<string, ChapterDef>>({});
+  const queued = useRef(new Set<string>());
+  const stopRef = useRef(0);
+  const [defs, setDefs] = useState<Record<string, ChapterDef>>({});
+  const [layout, setLayout] = useState(initial);
+  const stops = layout.stops;
+  const [open, setOpen] = useState(false);
+  const [stop, setStop] = useState(0);
+  const [beat, setBeat] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [overlay, setOverlay] = useState<OverlayRect | null>(null);
+  const [lens, setLens] = useState<Lens | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
+  const [narrow, setNarrow] = useState(false);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    for (const slug of chapterSlugs) void bookChapters[slug]().then((c) => setCounts((n) => ({ ...n, [slug]: c.steps.length + c.workbench.length })));
+  }, []);
+
+  const meta = layout.meta[stop];
+  const segment = meta?.key ?? "contents";
+  const keys = ["contents", ...chapterSlugs, "errata"];
+  const lengthOf = (key: string) => (key === "contents" || key === "errata" ? base[key].length : counts[key]);
+  const counted = chapterSlugs.every((slug) => counts[slug] !== undefined);
+  const total = 1 + keys.reduce((sum, key) => sum + (lengthOf(key) ?? 0), 0);
+  const page = open && meta ? 2 + keys.slice(0, keys.indexOf(meta.key)).reduce((sum, key) => sum + (lengthOf(key) ?? 0), 0) + meta.local : 1;
+  const def = meta?.slug ? defs[meta.slug] : undefined;
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 720px)");
+    const update = () => setNarrow(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  const attach = useCallback((slug: string) => {
+    const c = defsRef.current[slug];
+    if (!c || !kit.current || models.current[slug]) return;
+    const model = c.buildModel(kit.current.kit, kit.current.fonts);
+    models.current[slug] = model;
+    const container = containers.current[chapterSlugs.indexOf(slug)];
+    for (const exhibit of model.exhibits) {
+      exhibit.visible = false;
+      container.add(exhibit);
+    }
+  }, []);
+
+  const ensure = useCallback((slug: string): Promise<void> => {
+    if (!chapterSlugs.includes(slug)) return Promise.resolve();
+    if (!ready.current[slug]) {
+      ready.current[slug] = new Promise((resolve) => (readyResolve.current[slug] = resolve));
+      void bookChapters[slug]().then((c) => {
+        defsRef.current = { ...defsRef.current, [slug]: c };
+        setDefs(defsRef.current);
+      });
+    }
+    return ready.current[slug];
+  }, []);
+
+  useEffect(() => {
+    const el = bodies.current;
+    if (!el) return;
+    for (const [slug, c] of Object.entries(defs)) {
+      if (raw.current[slug] || queued.current.has(slug)) continue;
+      const box = el.querySelector(`[data-chapter="${slug}"]`);
+      if (!box) continue;
+      const text = [...box.children].map((child, i) => ({ title: c.steps[i].title, paragraphs: readRuns(child) }));
+      const chapterRaw = chapterStops(c, text);
+      queued.current.add(slug);
+      queue.current = queue.current.then(async () => {
+        const s = await sceneReady.current.promise;
+        await s.idle();
+        attach(slug);
+        const before = book.current.meta.map((m) => `${m.key}:${m.local}`);
+        raw.current[slug] = chapterRaw;
+        book.current = compose(raw.current);
+        const index = new Map(book.current.meta.map((m, i) => [`${m.key}:${m.local}`, i]));
+        const map = (i: number) => index.get(before[i]) ?? i;
+        s.setStops(book.current.stops, map);
+        stopRef.current = map(stopRef.current);
+        setStop(stopRef.current);
+        setLayout(book.current);
+        readyResolve.current[slug]?.();
+      });
+    }
+  }, [defs, attach]);
+
+  const firstOf = (key: string, last = false) => {
+    const all = book.current.meta.map((m, i) => (m.key === key ? i : -1)).filter((i) => i >= 0);
+    return last ? all[all.length - 1] : all[0];
+  };
+
+  const setUrl = useCallback((index: number, push: boolean) => {
+    const key = book.current.meta[index]?.key;
+    if (!key || !push) return;
+    const url = urlOf(key);
+    if (window.location.pathname + window.location.hash !== url) window.history.pushState(null, "", url);
+  }, []);
+
+  const preload = useCallback(
+    (index: number) => {
+      const slug = book.current.meta[index]?.slug;
+      const at = slug ? chapterSlugs.indexOf(slug) : book.current.meta[index]?.key === "errata" ? chapterSlugs.length : -1;
+      for (const n of [chapterSlugs[at - 1], chapterSlugs[at + 1]]) if (n) void ensure(n);
+    },
+    [ensure],
+  );
+
+  const go = useCallback(
+    (next: number, riffle = false, push = true) => {
+      const clamped = Math.min(book.current.stops.length - 1, Math.max(0, next));
+      stopRef.current = clamped;
+      setStop(clamped);
+      setBeat(0);
+      setPlaying(false);
+      setLens(null);
+      scene.current?.goTo(clamped, 0, riffle);
+      setUrl(clamped, push);
+      preload(clamped);
+    },
+    [setUrl, preload],
+  );
+
+  const goKey = useCallback(
+    async (key: string, riffle: boolean, push = true, last = false) => {
+      await ensure(key);
+      const index = firstOf(key, last);
+      if (scene.current && !scene.current.isOpen) {
+        stopRef.current = index;
+        setStop(index);
+        setOpen(true);
+        setUrl(index, push);
+        preload(index);
+        void scene.current.open(index);
+        return;
+      }
+      go(index, riffle, push);
+    },
+    [ensure, go, setUrl, preload],
+  );
+
+  const closeBook = useCallback(
+    (push = true) => {
+      if (!scene.current?.isOpen) return;
+      setOpen(false);
+      setPlaying(false);
+      stopRef.current = 0;
+      setStop(0);
+      void scene.current.close();
+      if (push && window.location.pathname !== "/kernels") window.history.pushState(null, "", "/kernels");
+    },
+    [],
+  );
+
+  const step = useCallback(
+    (delta: 1 | -1) => {
+      const i = stopRef.current;
+      const m = book.current.meta[i];
+      const edge = book.current.meta[i + delta]?.key !== m.key;
+      if (edge) {
+        const keys = ["contents", ...chapterSlugs, "errata"];
+        const nextKey = keys[keys.indexOf(m.key) + delta];
+        if (nextKey && chapterSlugs.includes(nextKey) && !raw.current[nextKey]) {
+          void goKey(nextKey, false, true, delta < 0);
+          return;
+        }
+      }
+      if (i === 0 && delta < 0) closeBook();
+      else go(i + delta);
+    },
+    [go, goKey, closeBook],
+  );
+
+  const onLinkHref = useCallback(
+    (href: string) => {
+      if (href === "#errata") return void goKey("errata", true);
+      const slug = href.startsWith("/kernels/") ? href.slice(9) : "";
+      if (chapterSlugs.includes(slug)) return void goKey(slug, true);
+      router.push(href);
+    },
+    [goKey, router],
+  );
+
+  useEffect(() => {
+    const canvasEl = canvas.current;
+    const hostEl = host.current;
+    if (!canvasEl || !hostEl) return;
+    let cancelled = false;
+    let instance: BookScene | null = null;
+    const place = parsePlace();
+    if (!place.closed) void ensure(place.key);
+    const start = async () => {
+      if (!document.createElement("canvas").getContext("webgl2")) {
+        setFailed(true);
+        return;
+      }
+      const fonts = readFonts();
+      const [{ BookScene: Scene }, { Group: ThreeGroup }] = await Promise.all([import("./book-scene"), import("three"), loadFonts(fonts)]);
+      if (cancelled) return;
+      containers.current = chapterSlugs.map(() => new ThreeGroup());
+      models.current = {};
+      let active: string | undefined;
+      const composite: BookModel = {
+        exhibits: containers.current,
+        handles: [],
+        dragStart: (h) => (active ? models.current[active]?.dragStart?.(h) : undefined),
+        drag: (x) => (active ? models.current[active]?.drag?.(x) : undefined),
+        dragEnd: () => (active ? models.current[active]?.dragEnd?.() : undefined),
+        enter: (i) => {
+          const m = book.current.meta[i];
+          active = m?.slug;
+          if (!m?.slug) return;
+          containers.current[chapterSlugs.indexOf(m.slug)].children.forEach((child, k) => (child.visible = k === m.exhibit));
+          models.current[m.slug]?.enter?.(m.local);
+        },
+        update: (dt, _exhibit, i, isReduced) => {
+          const m = book.current.meta[i];
+          if (m?.slug && m.exhibit !== null) models.current[m.slug]?.update(dt, m.exhibit, m.local, isReduced);
+        },
+      };
+      try {
+        instance = new Scene({
+          canvas: canvasEl,
+          host: hostEl,
+          stops: book.current.stops,
+          coverTitle: "Every Byte",
+          coverSubtitle: "an inference engine, kernel by kernel",
+          fonts,
+          reduced,
+          buildModel: (k) => {
+            kit.current = { kit: k, fonts };
+            return composite;
+          },
+          onOverlay: setOverlay,
+          onLens: setLens,
+          onPageClick: (side) => hostEl.dispatchEvent(new CustomEvent("bookpage", { detail: side })),
+          onCoverClick: () => hostEl.dispatchEvent(new CustomEvent("bookcover")),
+          onLink: (link) => hostEl.dispatchEvent(new CustomEvent("booklink", { detail: link.href })),
+        });
+      } catch (error) {
+        console.error(error);
+        setFailed(true);
+        return;
+      }
+      const built = instance;
+      const addModels = () => {
+        for (const slug of Object.keys(raw.current)) attach(slug);
+        composite.handles.splice(0, composite.handles.length, ...Object.values(models.current).flatMap((m) => m.handles));
+      };
+      addModels();
+      scene.current = built;
+      sceneReady.current.resolve(built);
+      queue.current = queue.current.then(addModels);
+      built.showClosed();
+      if (!place.closed) void goKey(place.key, false, false);
+    };
+    void start();
+    return () => {
+      cancelled = true;
+      instance?.dispose();
+      scene.current = null;
+      kit.current = null;
+      sceneReady.current = deferred();
+      setOpen(false);
+    };
+  }, [reduced, ensure, goKey, attach]);
+
+  useEffect(() => {
+    const hostEl = host.current;
+    if (!hostEl) return;
+    const onPage = (event: Event) => step((event as CustomEvent<"prev" | "next">).detail === "next" ? 1 : -1);
+    const onCover = () => void goKey("contents", false);
+    const onLink = (event: Event) => onLinkHref((event as CustomEvent<string>).detail);
+    hostEl.addEventListener("bookpage", onPage);
+    hostEl.addEventListener("bookcover", onCover);
+    hostEl.addEventListener("booklink", onLink);
+    return () => {
+      hostEl.removeEventListener("bookpage", onPage);
+      hostEl.removeEventListener("bookcover", onCover);
+      hostEl.removeEventListener("booklink", onLink);
+    };
+  }, [step, goKey, onLinkHref]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const place = parsePlace();
+      if (place.closed) closeBook(false);
+      else void goKey(place.key, true, false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [closeBook, goKey]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("input, textarea, select, [role='radiogroup'], [role='radio']")) return;
+      if (event.key === "ArrowRight") {
+        if (open) step(1);
+        else void goKey("contents", false);
+      }
+      if (event.key === "ArrowLeft" && open) step(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, step, goKey]);
+
+  const beats = stops[stop]?.beats ?? [];
+  const beatCount = beats.length;
+
+  const pickBeat = useCallback(
+    (next: number) => {
+      setBeat(next);
+      scene.current?.goTo(stopRef.current, next);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!playing || beatCount < 2) return;
+    const id = window.setTimeout(() => {
+      const next = (beat + 1) % beatCount;
+      pickBeat(next);
+      if (next === 0) setPlaying(false);
+    }, beatMs);
+    return () => window.clearTimeout(id);
+  }, [playing, beat, beatCount, pickBeat]);
+
+  const togglePlay = () => {
+    if (playing) return setPlaying(false);
+    setPlaying(true);
+    pickBeat((beat + 1) % beatCount);
+  };
+
+  const inBook = (event: MouseEvent, key: string) => {
+    event.preventDefault();
+    void goKey(key, true);
+  };
+
+  const title = stops[stop]?.page?.title ?? "";
+  const caption = open ? (beats[beat]?.caption ?? title) : "Every Byte: click the cover to open the book";
+  const spread = segment === "errata" && meta ? errataSpreads[meta.local] : null;
+  const chapterStep = def && meta ? def.steps[meta.local] : undefined;
+  const bench = def && meta ? def.workbench[meta.local - def.steps.length] : undefined;
+  const otherHref = def ? `/kernels/${def.slug}/read` : "/kernels/list";
+
+  if (failed) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-3 px-4 py-20">
+        <h1 className="font-serif text-4xl">This book needs WebGL</h1>
+        <p className="text-muted">
+          Your browser could not start 3D graphics. The{" "}
+          <Link href="/kernels/list" className="link-underline text-text">
+            list of kernels
+          </Link>{" "}
+          has every chapter as a scroll page.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-[calc(100dvh-3rem)] flex-col overflow-hidden">
+      <div ref={bodies} hidden>
+        {Object.values(defs).map((c) => (
+          <div key={c.slug} data-chapter={c.slug}>
+            {c.steps.map((s) => (
+              <div key={s.id}>{s.body}</div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
+        <canvas ref={canvas} role="img" aria-label={open ? `3D book "Every Byte", open at ${title}. ${caption}` : "3D book \"Every Byte\", closed on the desk"} className="absolute inset-0 size-full" />
+        <Magnifier lens={lens} />
+        <nav
+          aria-label="book"
+          className="absolute bottom-4 left-1/2 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/30 bg-surface/55 py-1 pl-1.5 pr-4 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
+        >
+          <button type="button" aria-label={stop === 0 ? "close the book" : "previous page"} disabled={!open} onClick={() => step(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <Icon d="M10 3 5 8l5 5" />
+          </button>
+          <button type="button" aria-label={playing ? "pause the tour" : "play the tour"} disabled={!open || beatCount < 2} onClick={togglePlay} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <Icon d={playing ? "M5 3v10M11 3v10" : "M5 3l8 5-8 5z"} />
+          </button>
+          {counted && (
+            <span className="shrink-0 text-text">
+              <Scramble key={page} text={`${page} / ${total}`} numeric durationMs={700} />
+            </span>
+          )}
+          <span className="min-w-0 max-w-[22rem] truncate">
+            <Scramble key={caption} text={caption} durationMs={900} />
+          </span>
+          <span className="flex shrink-0 items-center gap-0.5">
+            {open &&
+              beats.length > 1 &&
+              beats.map((b, i) => (
+                <button key={b.caption} type="button" aria-label={b.caption} aria-current={i === beat} onClick={() => pickBeat(i)} className="p-1.5">
+                  <span className={clsx("block size-1.5 rounded-full transition-colors duration-300", i === beat ? "bg-accent" : "bg-border")} />
+                </button>
+              ))}
+          </span>
+          <button type="button" aria-label={open ? "next page" : "open the book"} disabled={open && stop === stops.length - 1} onClick={() => (open ? step(1) : void goKey("contents", false))} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <Icon d="M6 3l5 5-5 5" />
+          </button>
+          <Link href={otherHref} className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
+            {def ? "reading view" : "list view"}
+          </Link>
+        </nav>
+        {overlay && narrow && (
+          <div data-theme="light" className="book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]">
+            <div ref={setPageEl} />
+          </div>
+        )}
+        {overlay && !narrow && (
+          <div data-theme="light" key={overlay.kind} className="book-overlay touch-auto text-[var(--text)]">
+            <FitPage rect={overlay.rect} width={PAGE_DESIGN_WIDTH} onElement={setPageEl} />
+          </div>
+        )}
+        {Object.values(defs).map(
+          (c) => c.Overlay && <c.Overlay key={c.slug} kind={c.slug === def?.slug ? (overlay?.kind ?? null) : null} target={c.slug === def?.slug && overlay ? pageEl : null} narrow={narrow} />,
+        )}
+      </div>
+      <div className="relative border-border bg-surface max-[720px]:border-t">
+        <article aria-live="polite" className="max-h-[32dvh] overflow-y-auto px-4 py-3 text-sm leading-relaxed text-muted min-[721px]:sr-only">
+          {!open ? (
+            <p>
+              Every Byte, an inference engine kernel by kernel.{" "}
+              <button type="button" onClick={() => void goKey("contents", false)} className="link-underline text-text">
+                Open the book
+              </button>
+            </p>
+          ) : chapterStep ? (
+            <>
+              <h1 className="font-serif text-2xl text-text">{chapterStep.title}</h1>
+              <div className="mt-2 space-y-2">{chapterStep.body}</div>
+            </>
+          ) : bench ? (
+            <>
+              <h1 className="font-serif text-2xl text-text">{bench.title}</h1>
+              <div className="mt-2 space-y-2">
+                {bench.paragraphs.map((p) => (
+                  <p key={p}>{p}</p>
+                ))}
+              </div>
+            </>
+          ) : spread ? (
+            <>
+              {!spread.left && (
+                <>
+                  <h1 className="font-serif text-2xl text-text">Errata</h1>
+                  <p className="mt-1">{errataIntro}</p>
+                </>
+              )}
+              {[spread.left, spread.right].map(
+                (d) =>
+                  d && (
+                    <section key={d.title} className="mt-3 space-y-1">
+                      <div className="text-xs">
+                        {`${d.date} · ${kindLabel[d.kind]} · `}
+                        <Link href={`/kernels/${d.slug}`} onClick={chapterSlugs.includes(d.slug) ? (e) => inBook(e, d.slug) : undefined} className="link-underline text-accent">
+                          {d.kernel}
+                        </Link>
+                      </div>
+                      <h2 className="font-serif text-xl text-text">{d.title}</h2>
+                      <p>{d.tried}</p>
+                      <p className="text-text">{d.happened}</p>
+                      <p>{d.kept}</p>
+                    </section>
+                  ),
+              )}
+            </>
+          ) : (
+            <>
+              <h1 className="font-serif text-2xl text-text">Contents</h1>
+              {bookParts.map((part) => (
+                <div key={part.numeral} className="mt-2">
+                  <h2 className="text-xs">{`Part ${part.numeral} · ${part.title}`}</h2>
+                  <ol>
+                    {part.slugs.map((slug) => (
+                      <li key={slug} className="flex gap-2">
+                        <span className="w-5 tabular-nums">{bookOrder.indexOf(slug) + 1}</span>
+                        <Link href={`/kernels/${slug}`} onClick={chapterSlugs.includes(slug) ? (e) => inBook(e, slug) : undefined} className="link-underline text-text">
+                          {chapterTitle(slug)}
+                        </Link>
+                        <span className="ml-auto tabular-nums">{chapterPage(slug)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+              <button type="button" onClick={() => void goKey("errata", true)} className="link-underline mt-2 flex w-full text-text">
+                {`Errata: ${errataTitle}`}
+                <span className="ml-auto tabular-nums text-muted">{errataPage}</span>
+              </button>
+            </>
+          )}
+        </article>
+      </div>
+    </div>
+  );
+}

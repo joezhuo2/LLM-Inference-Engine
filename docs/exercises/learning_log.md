@@ -1768,6 +1768,77 @@
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
 
+## 3D book: cover and contents (Branch 101)
+- **raycasting a whole group to hit-test a closed object** => 
+- **serialising async animations so a new request waits for the current one** => 
+- **mapping a raycast hit's UV coordinates back to a canvas region** => 
+- **painting text pages onto a canvas with a scaled transform and manual line wrapping** => 
+- **static route segments taking precedence over a dynamic segment** => 
+- **staggering several tweens from one eased clock** => 
+- **copying a mutated BufferGeometry's attributes into other meshes** => 
+- **remapping indices when a list grows in the middle** => 
+- **history.pushState inside the Next.js App Router** => 
+- **a composite object that routes calls to the part that owns them** => 
+- **loading a module on demand and caching its promise** => 
+
+## 3D book: text size (Branch 114)
+
+- **fit-to-box text sizing with a maximum size** => 
+
+## 3D book: engine fixes (Branch 113)
+
+- **blending a bent mesh into a resting shape by how flat each segment lies** => 
+
+## 3D book: polish (Branch 115)
+
+- **one type size across pages instead of fitting each page alone** => 
+- **adjusting state while rendering to remember the last prop value** => 
+
+## 3D book: add and RMSNorm (Branch 108)
+- **scale invariance of RMSNorm** => 
+- **a signed bar chart hung above and below a floating rail** => 
+- **animating a bar height by scaling a unit box on one axis** => 
+- **getBoundingClientRect returns transformed sizes, offsetWidth does not** => 
+
+## 3D book: sampling (Branch 110)
+- **sharing story data between a scroll page and a 3D view through module exports** => 
+- **rendering the same JSX element into two portals bound to one state** => 
+- **a horizontal cut plane as a threshold in a binary search** => 
+- **routing a drag to one of several handles by the picked mesh** => 
+- **framing a close-up camera so foreground cards do not cover the model** => 
+
+## 3D book: split attention (Branch 107)
+- **exporting a story's data so another view can reuse it** => 
+- **instanced meshes for many identical blocks** => 
+- **mapping a drag position to the nearest of a few stops** => 
+
+## 3D book: paged KV cache (Branch 104)
+- **reusing one story's steps in two views by exporting the step array** => 
+- **a callback ref stored in state so an effect reruns when the element changes** => 
+- **reading CSS custom properties from the element instead of the document root** => 
+- **mapping pointer coordinates on a CSS-scaled element back to layout pixels** => 
+- **shrinking text to fit a width with measureText** => 
+- **instanced meshes with per-instance color for many small boxes** => 
+- **an extruded Shape as a 3D area chart** => 
+- **a transparent canvas texture on a horizontal plane as printed floor text** => 
+- **hiding an instance by scaling it to almost zero** => 
+- **one drag callback routed to whichever handle was picked** => 
+
+## 3D book: CUDA Graphs (Branch 111)
+- **sharing data between a 2D figure and a 3D model through named exports** => 
+- **a timeline drawn to scale as a row of boxes on a time axis** => 
+- **a lid that closes over a group as a pop-up scale** => 
+- **a draggable knob that maps page x to a value range** => 
+- **requestAnimationFrame throttling in a background tab** => 
+
+## 3D book: paged attention (Branch 105)
+- **splitting one component's JSX into named fragments shared by two layouts** => 
+- **joining a prologue story and a main story into one run of spreads** => 
+- **laying a label card flat on top of a model** => 
+- **growing a bar from one end by scaling and shifting it together** => 
+- **animating two durations side by side to scale** => 
+- **getBoundingClientRect measures after CSS transforms, while clip-path insets use layout pixels** => 
+
 ## 3D book: chunked prefill (Branch 112)
 - **a ref callback into state so an effect reruns when the element changes** => 
 - **scaling a group on one axis to grow a bar from its left edge** => 
