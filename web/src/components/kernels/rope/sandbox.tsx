@@ -2,7 +2,9 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
-import { useState } from "react";
+import { animate } from "motion";
+import { useEffect, useRef, useState } from "react";
+import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { Toggle } from "../toggle";
 import { MAX_POS, PAIRS, angle, invFreq, rotatePair, score, seededVector, wavelength } from "./rotation";
 
@@ -24,6 +26,9 @@ const curvePath = curve.map(([gap, s], i) => `${i ? "L" : "M"}${curveX(gap).toFi
 const button = "pressable rounded border border-border px-2.5 py-1 text-text";
 const slider = "w-full accent-[var(--accent)]";
 
+const defaults = { pos: 300, pair: 0, qPos: 300, kPos: 280 };
+const resetEase = [0.77, 0, 0.175, 1] as const;
+
 type Guess = "changes" | "stays the same" | null;
 
 export function RopeSandbox() {
@@ -34,13 +39,40 @@ export function RopeSandbox() {
   const [lock, setLock] = useState("locked");
   const [guess, setGuess] = useState<Guess>(null);
 
+  const reduced = usePrefersReducedMotion();
+  const tween = useRef<ReturnType<typeof animate> | null>(null);
+  const stop = () => {
+    tween.current?.stop();
+    tween.current = null;
+  };
+  useEffect(() => stop, []);
+
   const reset = () => {
-    setPos(300);
-    setPair(0);
-    setQPos(300);
-    setKPos(280);
+    if (tween.current) return stop();
     setLock("locked");
     setGuess(null);
+    if (reduced) {
+      setPos(defaults.pos);
+      setPair(defaults.pair);
+      setQPos(defaults.qPos);
+      setKPos(defaults.kPos);
+      return;
+    }
+    const from = { pos, pair, qPos, kPos };
+    const at = (key: keyof typeof from, t: number) => Math.round(from[key] + (defaults[key] - from[key]) * t);
+    tween.current = animate(0, 1, {
+      duration: 0.6,
+      ease: resetEase,
+      onUpdate: (t) => {
+        setPos(at("pos", t));
+        setPair(at("pair", t));
+        setQPos(at("qPos", t));
+        setKPos(at("kPos", t));
+      },
+      onComplete: () => {
+        tween.current = null;
+      },
+    });
   };
 
   const theta = invFreq(pair);
@@ -56,16 +88,19 @@ export function RopeSandbox() {
   const moved = score(q, qPos + direction, k, kPos + direction);
 
   const moveQ = (v: number) => {
+    stop();
     const d = lock === "locked" ? Math.max(-kPos, Math.min(MAX_POS - kPos, v - qPos)) : v - qPos;
     setQPos(qPos + d);
     if (lock === "locked") setKPos(kPos + d);
   };
   const moveK = (v: number) => {
+    stop();
     const d = lock === "locked" ? Math.max(-qPos, Math.min(MAX_POS - qPos, v - kPos)) : v - kPos;
     setKPos(kPos + d);
     if (lock === "locked") setQPos(qPos + d);
   };
   const shift = (d: number) => {
+    stop();
     const s = Math.max(-Math.min(qPos, kPos), Math.min(MAX_POS - Math.max(qPos, kPos), d));
     setQPos(qPos + s);
     setKPos(kPos + s);
@@ -90,14 +125,20 @@ export function RopeSandbox() {
               <span>position m</span>
               <NumberFlow value={pos} className="text-text" />
             </span>
-            <input type="range" min={0} max={MAX_POS} value={pos} onChange={(e) => setPos(Number(e.target.value))} aria-label="position m" className={slider} />
+            <input type="range" min={0} max={MAX_POS} value={pos} onChange={(e) => {
+                stop();
+                setPos(Number(e.target.value));
+              }} aria-label="position m" className={slider} />
           </label>
           <label className="block space-y-1">
             <span className="flex justify-between text-muted">
               <span>dimension pair i (dims i and i + 32)</span>
               <NumberFlow value={pair} className="text-text" />
             </span>
-            <input type="range" min={0} max={PAIRS - 1} value={pair} onChange={(e) => setPair(Number(e.target.value))} aria-label="dimension pair i" className={slider} />
+            <input type="range" min={0} max={PAIRS - 1} value={pair} onChange={(e) => {
+                stop();
+                setPair(Number(e.target.value));
+              }} aria-label="dimension pair i" className={slider} />
           </label>
           <div className="grid items-center gap-4 sm:grid-cols-[11rem_minmax(0,1fr)]">
             <svg viewBox="0 0 200 200" className="mx-auto w-full max-w-[11rem]" role="img" aria-label={`Pair ${pair} of the query, drawn as a 2D vector, rotated by ${deg(turned).toFixed(0)} degrees`}>
@@ -149,7 +190,10 @@ export function RopeSandbox() {
               <button
                 key={i}
                 type="button"
-                onClick={() => setPair(i)}
+                onClick={() => {
+                  stop();
+                  setPair(i);
+                }}
                 aria-pressed={pair === i}
                 aria-label={`pair ${i}, ${Math.round(deg(angle(i, pos)))} degrees`}
                 className={clsx("pressable rounded border p-0.5", pair === i ? "border-accent bg-accent-dim" : "border-border")}
@@ -172,7 +216,10 @@ export function RopeSandbox() {
             <div className="text-text">Predict first: move the query and the key together by {SHIFT} positions, keeping the gap. Does the score q·k change?</div>
             <div className="flex flex-wrap items-center gap-2">
               {(["changes", "stays the same"] as const).map((g) => (
-                <button key={g} type="button" onClick={() => setGuess(g)} aria-pressed={guess === g} className={clsx("pressable rounded border px-2.5 py-1", guess === g ? "border-accent text-accent" : "border-border text-text")}>
+                <button key={g} type="button" onClick={() => {
+                    stop();
+                    setGuess(g);
+                  }} aria-pressed={guess === g} className={clsx("pressable rounded border px-2.5 py-1", guess === g ? "border-accent text-accent" : "border-border text-text")}>
                   {g}
                 </button>
               ))}
@@ -183,7 +230,10 @@ export function RopeSandbox() {
               </p>
             )}
           </div>
-          <Toggle label="gap" choices={["locked", "free"]} value={lock} onChange={setLock} />
+          <Toggle label="gap" choices={["locked", "free"]} value={lock} onChange={(v) => {
+            stop();
+            setLock(v);
+          }} />
           <label className="block space-y-1">
             <span className="flex justify-between text-muted">
               <span>query position</span>
