@@ -1725,3 +1725,4 @@
 - **canvas colors read from CSS custom properties at draw time** => 
 - **why Open Graph cards hard-code colors instead of reading CSS variables** => 
 - **copy that names a color as a hidden dependency on the theme** => 
+- **keeping a design record in step with a theme change** => 

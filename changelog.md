@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/palette
 
+- Part A: record the moodboard palette in the web plan.
 - Part A: rename the colors the copy points at (green to blue, amber to clay) to match the new palette.
 - Part A: redraw the Open Graph cards and favicon in the slate and pale blue of the dark theme.
 - Part A: read the token rain and glitch highlights from the on-mark token, and tint the KV block faces and kernel card shadow with the slate of the dark background instead of black.
