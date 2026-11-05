@@ -25,8 +25,12 @@ function measured(system: string, batch: number) {
   return medianOf(system, batch, "output_throughput") ?? 0;
 }
 
-function prefillMs(system: string, prompt: string) {
-  return tableValue("prefill-against-prompt-length", { system }, prompt, 0, "results");
+function largestGap(system: string) {
+  return tableValue("under-load", { system, QPS: "4" }, "largest gap ms", 1, "results");
+}
+
+function goodputAt(system: string, qps: string) {
+  return tableValue("under-load", { system, QPS: qps }, "goodput req/s", 0, "results");
 }
 
 export const milestones: Milestone[] = [
@@ -348,17 +352,27 @@ export const milestones: Milestone[] = [
   {
     id: "M6",
     name: "refinements",
-    dates: "Nov 4",
+    dates: "Nov 4 to 5",
     goal: "Refine how the engine serves requests now that it has shipped.",
     entries: [
       {
-        date: "Nov 4",
-        prs: [133, 134],
-        branch: "sched/chunked-prefill-impl",
+        date: "Nov 5",
+        prs: [133, 134, 149],
+        branch: "bench/chunked-prefill",
         scene: "chunked",
         title: "A token budget for every step",
-        text: "Every step used to be all prefill or all decode, so one long prompt stopped every running sequence. Now a step has a token budget: decode rows first, the rest for the one prompt in prefill. Joe wrote the scheduler; the runner does not use it yet, so the effect is not measured.",
-        metric: { kind: "value", value: `${prefillMs("engine", "2,048")} ms`, label: "to prefill one 2,048-token prompt alone, while every running sequence waits" },
+        text: `Every step used to be all prefill or all decode, so one long prompt stopped every running sequence. Now a step has a token budget: decode rows first, the rest for prompts in chunks. Joe wrote the scheduler, and engine bench and engine serve take the budget as a flag. Under Poisson arrivals a budget of 256 lifts goodput at 6 requests per second from ${goodputAt("engine + graphs", "6").toFixed(2)} to ${goodputAt("engine + graphs, budget 256", "6").toFixed(2)}. vLLM, at ${goodputAt("vLLM", "6").toFixed(2)}, is still ahead.`,
+        metric: {
+          kind: "bars",
+          label: "longest wait between two tokens of a request at 4 requests/s",
+          unit: "ms",
+          digits: 0,
+          bars: [
+            { label: "whole prompts", value: largestGap("engine + graphs") },
+            { label: "budget 2,048", value: largestGap("engine + graphs, budget 2048") },
+            { label: "budget 256", value: largestGap("engine + graphs, budget 256"), highlight: true },
+          ],
+        },
       },
     ],
   },

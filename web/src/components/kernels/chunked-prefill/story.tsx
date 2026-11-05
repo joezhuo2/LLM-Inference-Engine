@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { chunkedSteps, goodput, prefillMs } from "@/content/kernels/chunked-prefill";
+import { chunkBudget, chunked, chunkedSteps, fmt, largestGap, medianGap, peakGoodput, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { AllPrefillFigure, BudgetBarFigure, PreemptFigure, SampledFigure, SpreadFigure } from "./figures";
@@ -36,9 +36,9 @@ const steps: StoryStep[] = [
           <span className="font-mono text-warn">{alone} ms</span>.
         </p>
         <p>
-          Under Poisson arrivals vLLM reaches {goodput("vLLM", "6").toFixed(1)} requests per second of goodput against
-          the engine&apos;s {goodput("engine + graphs", "4").toFixed(1)}. Prefill stalls are the likely cause, not measured on
-          their own.
+          Measured under Poisson arrivals at 4 requests per second, the longest wait between two tokens of one request is{" "}
+          <span className="font-mono text-warn">{largestGap("engine + graphs", "4")} ms</span> with whole-prompt steps, against a
+          median gap of {medianGap("engine + graphs", "4")} ms.
         </p>
       </>
     ),
@@ -69,7 +69,19 @@ const steps: StoryStep[] = [
           means more steps, so the prompt&apos;s first token comes later: the budget trades the prompt&apos;s wait against
           everyone else&apos;s.
         </p>
-        <p>Pick a budget on the right. The prompt and the three decoders are an example, not a benchmark.</p>
+        <p>
+          Measured with a {fmt(stallPrompt)}-token prompt arriving among {stallDecoding} decoding requests: with no budget the longest gap is{" "}
+          <span className="font-mono text-text">{fmt(stallMs("none", "largest gap ms"))} ms</span> and the prompt&apos;s first
+          token comes after <span className="font-mono text-text">{fmt(stallMs("none", "TTFT of the long prompt ms"))} ms</span>; with
+          a budget of {chunkBudget} the gap is <span className="font-mono text-text">{fmt(stallMs(chunkBudget, "largest gap ms"))} ms</span> and
+          the first token <span className="font-mono text-text">{fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms</span>.
+        </p>
+        <p>
+          Under load the same budget moves peak goodput from {peakGoodput("engine + graphs").value.toFixed(2)} to{" "}
+          {peakGoodput(chunked).value.toFixed(2)} requests per second; vLLM reaches {peakGoodput("vLLM").value.toFixed(2)}, so the
+          stalls were only part of the gap. Pick a budget on the right; the prompt and the three decoders there are an
+          example, not a benchmark.
+        </p>
       </>
     ),
   },
@@ -108,9 +120,9 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `TTFT of one 2,048-token prompt alone and the QPS sweep, docs/results.md; step widths are drawn, not measured`,
+  `TTFT of one 2,048-token prompt alone and the largest gap in the QPS sweep, docs/results.md; step widths are drawn, not measured`,
   "an illustrative step of 16 token slots; the engine's budget is a parameter",
-  "an example of 3 decoders and a 96-token prompt, computed by the same rule as the scheduler",
+  "an example of 3 decoders and a 96-token prompt, computed by the same rule as the scheduler; the numbers in the text are measured, docs/results.md",
   "the running list and waiting queue of Scheduler; the sizes are a sketch",
   "the sampled list of ChunkedStep; the sizes are a sketch",
 ];

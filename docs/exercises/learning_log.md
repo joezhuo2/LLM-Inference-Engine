@@ -1671,3 +1671,4 @@
 - **why chunked prefill shortens stalls but does not reduce prefill work** => 
 - **reading a chart's provenance (commit, date, GPU) from a generated line of a doc at build time** => 
 - **a log axis for tail latency against a linear axis for goodput** => 
+- **a headline metric as a before and after pair from one controlled experiment** => 

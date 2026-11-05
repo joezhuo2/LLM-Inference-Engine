@@ -6,7 +6,7 @@ import { animate, type AnimationPlaybackControls } from "motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
-import { prefillMs } from "@/content/kernels/chunked-prefill";
+import { chunkBudget, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { type Cell, decoders, type Lane, maxPrompt, type Mode, Playground, type PoolSize, predict, type Run } from "./scheduler-model";
@@ -21,6 +21,8 @@ const guessSteps = ["1", "4", "9", "16"];
 const guessStall = ["0 steps", "1 step", "9 steps"];
 const aloneSmall = prefillMs("engine", "128");
 const aloneLarge = prefillMs("engine", "2,048");
+const stallWhole = stallMs("none", "largest gap ms");
+const stallChunked = stallMs(chunkBudget, "largest gap ms");
 
 const fmt = (v: number) => v.toLocaleString("en-US");
 const promptTint = (id: number) => (id - decoders) % 2 === 0 ? "bg-series-2" : "bg-series-3";
@@ -353,7 +355,7 @@ export function ChunkedPrefillSandbox() {
           {summary}
         </p>
         <p className="max-w-2xl text-muted">
-          {`For scale, measured on this engine (docs/results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms. A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds.`}
+          {`For scale, measured on this engine (docs/results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms. A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}.`}
         </p>
       </div>
 
