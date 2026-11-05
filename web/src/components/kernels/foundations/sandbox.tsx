@@ -3,6 +3,7 @@
 import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SmoothRange } from "@/components/smooth-range";
 import { glide as tween, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
@@ -95,7 +96,7 @@ function verdict(guess: Guess, actual: number | null) {
 
 const start = { op: "gate_up" as Op, step: 0, context: shape.roofline_context };
 
-export function FoundationsSandbox() {
+export function FoundationsSandbox({ pages }: { pages?: { one: HTMLElement | null; two: HTMLElement | null } } = {}) {
   const [op, setOp] = useState<Op>(start.op);
   const [step, setStep] = useState(start.step);
   const [context, setContext] = useState(start.context);
@@ -143,8 +144,7 @@ export function FoundationsSandbox() {
     { label: "time at the ceiling", value: <NumberFlow value={a.timeUs} suffix=" µs" format={one} /> },
   ];
 
-  return (
-    <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
+  const partOne = (
       <div className="space-y-4">
         <div className="space-y-2 rounded border border-border p-3 leading-relaxed">
           <div className="text-accent">predict first</div>
@@ -284,7 +284,8 @@ export function FoundationsSandbox() {
           </span>
         </div>
       </div>
-
+  );
+  const partTwo = (
       <div className="space-y-5">
         <div className="flex items-center justify-between gap-2">
           <span className="text-text">{`${labels[op]}, ${rows} row${rows > 1 ? "s" : ""}`}</span>
@@ -354,6 +355,19 @@ export function FoundationsSandbox() {
           </div>
         </div>
       </div>
+  );
+  if (pages) {
+    return (
+      <>
+        {pages.one && createPortal(<div className="tabular-nums text-xs">{partOne}</div>, pages.one)}
+        {pages.two && createPortal(<div className="tabular-nums text-xs">{partTwo}</div>, pages.two)}
+      </>
+    );
+  }
+  return (
+    <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
+      {partOne}
+      {partTwo}
     </div>
   );
 }

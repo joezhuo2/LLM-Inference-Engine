@@ -7,6 +7,7 @@ const demo = kvDemo();
 export const pagedKv: KernelStory = {
   slug: "paged-kv",
   index: 7,
+  book: true,
   title: "paged KV cache",
   short: "write_kv and the block manager: one pool of 16-token blocks on the GPU, handed out as requests grow and taken back when they finish.",
   formula: "slot = table[pos / 16] · 16 + pos mod 16",

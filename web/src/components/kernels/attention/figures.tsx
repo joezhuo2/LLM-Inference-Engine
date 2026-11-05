@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 
-const scores = [0.42, 0.7, 0.25, 0.9, 0.55, 0.33, 0.78, 0.5, 0.62, 0.2];
+export const scores = [0.42, 0.7, 0.25, 0.9, 0.55, 0.33, 0.78, 0.5, 0.62, 0.2];
 const probs = (() => {
   const e = scores.map((s) => Math.exp(4 * s));
   const sum = e.reduce((a, b) => a + b, 0);

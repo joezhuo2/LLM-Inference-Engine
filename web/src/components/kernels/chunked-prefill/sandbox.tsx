@@ -3,6 +3,7 @@
 import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SmoothRange } from "@/components/smooth-range";
 import { glide, hold, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
@@ -61,15 +62,14 @@ function status(run: Run, lane: Lane) {
   return { text: `decoding, ${fmt(r.prompt + r.output)} tokens`, warn: false };
 }
 
-function useColumns(ref: React.RefObject<HTMLDivElement | null>) {
+function useColumns(el: HTMLDivElement | null) {
   const [columns, setColumns] = useState(24);
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const resize = new ResizeObserver(() => setColumns(el.clientWidth < 520 ? 14 : 28));
     resize.observe(el);
     return () => resize.disconnect();
-  }, [ref]);
+  }, [el]);
   return columns;
 }
 
@@ -180,7 +180,7 @@ const rows: Readout[] = [
   { label: "preemptions", value: (r) => r.stats().preemptions, warn: (v) => v > 0 },
 ];
 
-export function ChunkedPrefillSandbox() {
+export function ChunkedPrefillSandbox({ pages }: { pages?: { predict: HTMLElement | null; lanes: HTMLElement | null } } = {}) {
   const [pool, setPool] = useState<PoolSize>("roomy");
   const [pg, setPg] = useState(() => new Playground("roomy"));
   const [, setVersion] = useState(0);
@@ -190,8 +190,8 @@ export function ChunkedPrefillSandbox() {
   const [playing, setPlaying] = useState(false);
   const [guess, setGuess] = useState<{ steps: string; stall: string } | null>(null);
   const [guessed, setGuessed] = useState({ steps: "", stall: "" });
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const columns = useColumns(wrapRef);
+  const [wrap, setWrap] = useState<HTMLDivElement | null>(null);
+  const columns = useColumns(wrap);
   const budget = Number(budgetName);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -259,172 +259,238 @@ export function ChunkedPrefillSandbox() {
   const last = (m: Mode) => pg.runs[m].steps[pg.runs[m].steps.length - 1]?.tokens ?? 0;
   const summary = `${mode}, step ${run.steps.length}: longest decode stall ${run.stats().longestStall} steps, biggest step ${run.stats().biggest} tokens`;
 
+  const predictBox = (
+    <div className="space-y-2 rounded border border-border p-3">
+      <div className="text-text">predict first</div>
+      <p className="text-muted">
+        Four sequences are decoding. You drop a 2,048-token prompt and the engine runs schedule_chunked() with a budget of 256 tokens. How many steps until the prompt gets its first token? Under schedule(), how many steps do the decoders go without a row?
+      </p>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <Toggle label="first token" choices={guessSteps} value={guessed.steps} onChange={(v) => setGuessed({ ...guessed, steps: v })} />
+        <Toggle label="stall" choices={guessStall} value={guessed.stall} onChange={(v) => setGuessed({ ...guessed, stall: v })} />
+        <button type="button" onClick={tryIt} className="pressable rounded border border-border px-2.5 py-1 text-accent">
+          run it
+        </button>
+      </div>
+      {guess && prediction && (
+        <p aria-live="polite" className="text-muted">
+          <span className="text-text">{`schedule_chunked() at budget 256: first token after ${prediction.chunked.ttft!.steps} steps, decoders never stall; schedule(): first token after ${prediction.legacy.ttft!.steps} step, decoders stall ${prediction.legacy.longestStall} step.`}</span>
+          {` ${guess.steps ? (guess.steps === String(prediction.chunked.ttft!.steps) ? "Your first-token guess was right." : `You guessed ${guess.steps} for the first token.`) : "You gave no first-token guess."} ${guess.stall ? (guess.stall.startsWith(`${prediction.legacy.longestStall} `) ? "Your stall guess was right." : `You guessed ${guess.stall} for the stall.`) : "You gave no stall guess."} The catch is the size of that one schedule() step: ${fmt(prediction.legacy.biggest)} tokens against at most 256 per step with the budget. Compare the two columns ${pages ? "below" : "on the right"}.`}
+        </p>
+      )}
+    </div>
+  );
+
+  const dropControls = (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted">drop a prompt</span>
+        {quick.map((q) => (
+          <button key={q} type="button" onClick={() => drop(q)} className="pressable rounded border border-border px-2.5 py-1 text-text">
+            {`+${fmt(q)}`}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <label htmlFor="cp-length" className="w-14 shrink-0 text-muted">
+          length
+        </label>
+        <SmoothRange id="cp-length" min={16} max={maxPrompt} step={16} value={length} onValue={(v) => { cancelTween(); setLength(v); }} onKeyDown={cancelTween} aria-valuetext={`${length} tokens`} className="min-w-32 flex-1 accent-[var(--accent)]" />
+        <span className="w-14 text-right tabular-nums text-text">
+          <NumberFlow value={length} />
+        </span>
+        <button type="button" onClick={() => drop(length)} className="pressable rounded border border-border px-2.5 py-1 text-text">
+          drop it
+        </button>
+      </div>
+      <div inert={mode === "schedule()"} className={clsx("flex flex-wrap items-center gap-3", mode === "schedule()" && "opacity-40")}>
+        <Toggle label="budget" choices={budgets} value={budgetName} onChange={setBudgetName} />
+        <span className="text-muted">tokens per step</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Toggle label="rule" choices={modes} value={mode} onChange={(v) => setMode(v as Mode)} />
+        <Toggle
+          label="KV pool"
+          choices={pools}
+          value={pool}
+          onChange={(v) => {
+            setPool(v as PoolSize);
+            fresh(v as PoolSize);
+          }}
+        />
+      </div>
+    </>
+  );
+
+  const playControls = (
+    <div className="flex flex-wrap gap-2">
+      <button type="button" disabled={!busy} onClick={() => setPlaying(!playing)} aria-pressed={playing} className="pressable rounded border border-border px-2.5 py-1 text-accent disabled:opacity-40">
+        {playing ? "pause" : "play"}
+      </button>
+      <button
+        type="button"
+        disabled={playing}
+        onClick={() => {
+          pg.advance(budget);
+          bump();
+        }}
+        className="pressable rounded border border-border px-2.5 py-1 text-text disabled:opacity-40"
+      >
+        step
+      </button>
+      <button type="button" disabled={!busy} onClick={toFirstToken} className="pressable rounded border border-border px-2.5 py-1 text-text disabled:opacity-40">
+        run to first token
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          fresh(pool);
+          setBudgetName(defaultBudget);
+        }}
+        className="pressable rounded border border-border px-2.5 py-1 text-text"
+      >
+        reset
+      </button>
+    </div>
+  );
+
+  const lanes = (
+    <div ref={setWrap} className="space-y-3">
+      <Lanes run={run} budget={budget} columns={columns} />
+      <Legend />
+    </div>
+  );
+
+  const statusLine = (
+    <p role="status" className="sr-only">
+      {summary}
+    </p>
+  );
+
+  const scale = (
+    <p className="max-w-2xl text-muted">
+      {`For scale, measured on this engine (docs/results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms. A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}.`}
+    </p>
+  );
+
+  const table = (
+    <>
+      <table className="w-full tabular-nums">
+        <thead className="text-left text-muted">
+          <tr>
+            <th className="pb-1 font-normal">{`step ${run.steps.length}`}</th>
+            {modes.map((m) => (
+              <th key={m} className={clsx("pb-1 text-right font-normal", m === mode ? "text-accent" : "text-muted")}>
+                {m.replace("schedule_chunked()", "chunked").replace("schedule()", "legacy")}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label} className="border-t border-border">
+              <td className="py-1 pr-2 text-muted">{r.label}</td>
+              {modes.map((m) => {
+                const v = r.value(pg.runs[m]);
+                return (
+                  <td key={m} className={clsx("py-1 text-right", v !== null && r.warn?.(v) ? "text-warn" : m === mode ? "text-text" : "text-muted")}>
+                    {v === null ? "none yet" : <NumberFlow value={v} suffix={r.suffix?.(pg.runs[m])} format={{ minimumFractionDigits: r.digits ?? 0, maximumFractionDigits: r.digits ?? 0 }} />}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-muted">a + after the first-token count means the prompt is still waiting</p>
+    </>
+  );
+
+  const latest = (
+    <div className="space-y-2">
+      <div className="text-muted">latest step, tokens (full bar is {fmt(maxPrompt)})</div>
+      {modes.map((m) => (
+        <div key={m} className="space-y-1">
+          <div className="flex justify-between">
+            <span className={m === mode ? "text-text" : "text-muted"}>{m}</span>
+            <span className="tabular-nums text-text">
+              <NumberFlow value={last(m)} />
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-border">
+            <EasedBar fraction={last(m) / maxPrompt} className={m === mode ? "bg-accent" : "bg-muted"} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const sequences = (
+    <div className="space-y-2">
+      <div className="text-muted">{`sequences under ${mode}`}</div>
+      <ul className={clsx("space-y-1", !pages && "max-h-64 overflow-y-auto pr-1")}>
+        {run.lanes.map((lane) => {
+          const s = status(run, lane);
+          return (
+            <li key={lane.id} className="flex items-baseline gap-1.5">
+              <span aria-hidden className={clsx("size-2 shrink-0 rounded-sm", lane.kind === "prompt" ? promptTint(lane.id) : "bg-accent")} />
+              <span className="text-text">{lane.kind === "prompt" ? `${lane.label} ${fmt(lane.prompt)}` : lane.label}</span>
+              <span className={s.warn ? "text-warn" : "text-muted"}>{s.text}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-muted">{`${run.sched.blocks.held()} of ${run.sched.config.numBlocks - 1} KV blocks held, ${run.sched.waiting.length} waiting`}</p>
+    </div>
+  );
+
+  if (pages) {
+    return (
+      <>
+        {pages.predict &&
+          createPortal(
+            <div className="space-y-5 tabular-nums text-xs">
+              {predictBox}
+              {playControls}
+              {table}
+              {latest}
+              {scale}
+            </div>,
+            pages.predict,
+          )}
+        {pages.lanes &&
+          createPortal(
+            <div className="space-y-4 tabular-nums text-xs">
+              <div className="space-y-3">
+                {dropControls}
+                {playControls}
+              </div>
+              {lanes}
+              {sequences}
+              {statusLine}
+            </div>,
+            pages.lanes,
+          )}
+      </>
+    );
+  }
+
   return (
     <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="min-w-0 space-y-4">
-        <div className="space-y-2 rounded border border-border p-3">
-          <div className="text-text">predict first</div>
-          <p className="text-muted">
-            Four sequences are decoding. You drop a 2,048-token prompt and the engine runs schedule_chunked() with a budget of 256 tokens. How many steps until the prompt gets its first token? Under schedule(), how many steps do the decoders go without a row?
-          </p>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <Toggle label="first token" choices={guessSteps} value={guessed.steps} onChange={(v) => setGuessed({ ...guessed, steps: v })} />
-            <Toggle label="stall" choices={guessStall} value={guessed.stall} onChange={(v) => setGuessed({ ...guessed, stall: v })} />
-            <button type="button" onClick={tryIt} className="pressable rounded border border-border px-2.5 py-1 text-accent">
-              run it
-            </button>
-          </div>
-          {guess && prediction && (
-            <p aria-live="polite" className="text-muted">
-              <span className="text-text">{`schedule_chunked() at budget 256: first token after ${prediction.chunked.ttft!.steps} steps, decoders never stall; schedule(): first token after ${prediction.legacy.ttft!.steps} step, decoders stall ${prediction.legacy.longestStall} step.`}</span>
-              {` ${guess.steps ? (guess.steps === String(prediction.chunked.ttft!.steps) ? "Your first-token guess was right." : `You guessed ${guess.steps} for the first token.`) : "You gave no first-token guess."} ${guess.stall ? (guess.stall.startsWith(`${prediction.legacy.longestStall} `) ? "Your stall guess was right." : `You guessed ${guess.stall} for the stall.`) : "You gave no stall guess."} The catch is the size of that one schedule() step: ${fmt(prediction.legacy.biggest)} tokens against at most 256 per step with the budget. Compare the two columns on the right.`}
-            </p>
-          )}
-        </div>
-
+        {predictBox}
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted">drop a prompt</span>
-            {quick.map((q) => (
-              <button key={q} type="button" onClick={() => drop(q)} className="pressable rounded border border-border px-2.5 py-1 text-text">
-                {`+${fmt(q)}`}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label htmlFor="cp-length" className="w-14 shrink-0 text-muted">
-              length
-            </label>
-            <SmoothRange id="cp-length" min={16} max={maxPrompt} step={16} value={length} onValue={(v) => { cancelTween(); setLength(v); }} onKeyDown={cancelTween} aria-valuetext={`${length} tokens`} className="min-w-32 flex-1 accent-[var(--accent)]" />
-            <span className="w-14 text-right tabular-nums text-text">
-              <NumberFlow value={length} />
-            </span>
-            <button type="button" onClick={() => drop(length)} className="pressable rounded border border-border px-2.5 py-1 text-text">
-              drop it
-            </button>
-          </div>
-          <div inert={mode === "schedule()"} className={clsx("flex flex-wrap items-center gap-3", mode === "schedule()" && "opacity-40")}>
-            <Toggle label="budget" choices={budgets} value={budgetName} onChange={setBudgetName} />
-            <span className="text-muted">tokens per step</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Toggle label="rule" choices={modes} value={mode} onChange={(v) => setMode(v as Mode)} />
-            <Toggle
-              label="KV pool"
-              choices={pools}
-              value={pool}
-              onChange={(v) => {
-                setPool(v as PoolSize);
-                fresh(v as PoolSize);
-              }}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={!busy} onClick={() => setPlaying(!playing)} aria-pressed={playing} className="pressable rounded border border-border px-2.5 py-1 text-accent disabled:opacity-40">
-              {playing ? "pause" : "play"}
-            </button>
-            <button
-              type="button"
-              disabled={playing}
-              onClick={() => {
-                pg.advance(budget);
-                bump();
-              }}
-              className="pressable rounded border border-border px-2.5 py-1 text-text disabled:opacity-40"
-            >
-              step
-            </button>
-            <button type="button" disabled={!busy} onClick={toFirstToken} className="pressable rounded border border-border px-2.5 py-1 text-text disabled:opacity-40">
-              run to first token
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                fresh(pool);
-                setBudgetName(defaultBudget);
-              }}
-              className="pressable rounded border border-border px-2.5 py-1 text-text"
-            >
-              reset
-            </button>
-          </div>
+          {dropControls}
+          {playControls}
         </div>
-
-        <div ref={wrapRef} className="space-y-3">
-          <Lanes run={run} budget={budget} columns={columns} />
-          <Legend />
-        </div>
-        <p role="status" className="sr-only">
-          {summary}
-        </p>
-        <p className="max-w-2xl text-muted">
-          {`For scale, measured on this engine (docs/results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms. A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}.`}
-        </p>
+        {lanes}
+        {statusLine}
+        {scale}
       </div>
-
       <div className="min-w-0 space-y-5">
-        <table className="w-full tabular-nums">
-          <thead className="text-left text-muted">
-            <tr>
-              <th className="pb-1 font-normal">{`step ${run.steps.length}`}</th>
-              {modes.map((m) => (
-                <th key={m} className={clsx("pb-1 text-right font-normal", m === mode ? "text-accent" : "text-muted")}>
-                  {m.replace("schedule_chunked()", "chunked").replace("schedule()", "legacy")}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} className="border-t border-border">
-                <td className="py-1 pr-2 text-muted">{r.label}</td>
-                {modes.map((m) => {
-                  const v = r.value(pg.runs[m]);
-                  return (
-                    <td key={m} className={clsx("py-1 text-right", v !== null && r.warn?.(v) ? "text-warn" : m === mode ? "text-text" : "text-muted")}>
-                      {v === null ? "none yet" : <NumberFlow value={v} suffix={r.suffix?.(pg.runs[m])} format={{ minimumFractionDigits: r.digits ?? 0, maximumFractionDigits: r.digits ?? 0 }} />}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="text-muted">a + after the first-token count means the prompt is still waiting</p>
-
-        <div className="space-y-2">
-          <div className="text-muted">latest step, tokens (full bar is {fmt(maxPrompt)})</div>
-          {modes.map((m) => (
-            <div key={m} className="space-y-1">
-              <div className="flex justify-between">
-                <span className={m === mode ? "text-text" : "text-muted"}>{m}</span>
-                <span className="tabular-nums text-text">
-                  <NumberFlow value={last(m)} />
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-border">
-                <EasedBar fraction={last(m) / maxPrompt} className={m === mode ? "bg-accent" : "bg-muted"} />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-2">
-          <div className="text-muted">{`sequences under ${mode}`}</div>
-          <ul className="max-h-64 space-y-1 overflow-y-auto pr-1">
-            {run.lanes.map((lane) => {
-              const s = status(run, lane);
-              return (
-                <li key={lane.id} className="flex items-baseline gap-1.5">
-                  <span aria-hidden className={clsx("size-2 shrink-0 rounded-sm", lane.kind === "prompt" ? promptTint(lane.id) : "bg-accent")} />
-                  <span className="text-text">{lane.kind === "prompt" ? `${lane.label} ${fmt(lane.prompt)}` : lane.label}</span>
-                  <span className={s.warn ? "text-warn" : "text-muted"}>{s.text}</span>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="text-muted">{`${run.sched.blocks.held()} of ${run.sched.config.numBlocks - 1} KV blocks held, ${run.sched.waiting.length} waiting`}</p>
-        </div>
+        {table}
+        {latest}
+        {sequences}
       </div>
     </div>
   );

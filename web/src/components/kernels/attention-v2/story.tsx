@@ -55,7 +55,7 @@ const limit = 48 * 1024;
 const rowsChoices = ["1", "16"];
 const contextChoices = ["128", "512", "2,048", "8,192"];
 
-function V1V2Picker() {
+export function V1V2Picker() {
   const [rows, setRows] = useState("1");
   const [context, setContext] = useState("2,048");
   const { header, rows: table } = profilingTable(v2Section, 0);
@@ -230,6 +230,18 @@ const captions = [
   "µs per launch from the bench loop, every row at the full context",
 ];
 
+export const attentionV2Steps = steps;
+export const attentionV2Captions = captions;
+export const attentionV2Numbers = { v1At2048, v2At2048, sharedPoints, cap, limit };
+
+export function AttentionV2Profile() {
+  return <ProfileFigure pairs={profilePairs} dram={dram} />;
+}
+
+export function AttentionV2Step() {
+  return <StepFigure pairs={stepPairs} />;
+}
+
 export function AttentionV2Story() {
   return (
     <StickyStory
@@ -246,9 +258,9 @@ export function AttentionV2Story() {
           case 3:
             return <LanesFigure />;
           case 4:
-            return <ProfileFigure pairs={profilePairs} dram={dram} />;
+            return <AttentionV2Profile />;
           case 5:
-            return <StepFigure pairs={stepPairs} />;
+            return <AttentionV2Step />;
           default:
             return <V1V2Picker />;
         }
