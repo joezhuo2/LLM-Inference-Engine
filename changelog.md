@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## sched/chunked-prefill-impl
 
+- Move the 25 `Scheduler::schedule_chunked` tests to `tests/unit/test_scheduler_chunked.cpp`, add them to `unit_tests` and delete the `todo_unit_tests` target. (Part A)
 - Fix `Scheduler::schedule_chunked` replay after preemption: admission and chunks now cover `Request::length()` instead of the prompt alone, so a preempted decoder rewrites its prompt and output, and `prefill_progress_` holds an entry only while a sequence is in prefill. The fix was written by Claude at Joe's request. (Part C)
 
 ## sched/chunked-prefill-stub
