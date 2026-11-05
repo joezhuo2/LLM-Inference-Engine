@@ -202,7 +202,7 @@ html {
 }
 
 .toggle-thumb {
-  transition: clip-path 500ms var(--ease-in-out);
+  transition: clip-path var(--duration-glide) var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
