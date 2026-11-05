@@ -105,7 +105,7 @@ function Lanes({ run, budget, columns }: { run: Run; budget: number; columns: nu
               {layers.map((l, k) => (
                 <div
                   key={k}
-                  className={clsx("absolute inset-0 origin-bottom transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none", l.cls)}
+                  className={clsx("glide-snap absolute inset-0 origin-bottom transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none", l.cls)}
                   style={{ transform: `scaleY(${Math.max(0.03, Math.min(1, l.frac))})`, zIndex: layers.length - k }}
                 />
               ))}

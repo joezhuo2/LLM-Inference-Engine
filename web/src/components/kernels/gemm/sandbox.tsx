@@ -189,12 +189,12 @@ export function TilingSandbox() {
             <Frame label={`One thread block computing a ${tile} by ${tile} output tile of ${op} at ${m} rows: k step ${done} of ${t.kIters} loaded, ${fmt(Math.round(blockLoadBytes(m, tile, Number(bk), done, shape.in) / 1024))} KB brought in from DRAM so far`}>
               <Label x={20} y={24}>{`A panel: ${live} row${live > 1 ? "s" : ""} of x, K = ${fmt(shape.in)} wide`}</Label>
               <rect x={20} y={32} width={stripW} height={20} rx={3} className="fill-border" />
-              <rect x={20} y={32} width={stripW} height={20} rx={3} className="fill-accent-dim" style={{ ...box, ...slide("transform"), transform: `scaleX(${p})` }} />
-              <rect x={20} y={32} width={Math.max(3, chunk)} height={20} className="fill-accent" style={{ ...slide("transform"), transform: `translateX(${Math.max(0, done - 1) * chunk}px)`, opacity: done > 0 ? 1 : 0 }} />
+              <rect x={20} y={32} width={stripW} height={20} rx={3} className="glide-snap fill-accent-dim" style={{ ...box, ...slide("transform"), transform: `scaleX(${p})` }} />
+              <rect x={20} y={32} width={Math.max(3, chunk)} height={20} className="glide-snap fill-accent" style={{ ...slide("transform"), transform: `translateX(${Math.max(0, done - 1) * chunk}px)`, opacity: done > 0 ? 1 : 0 }} />
               <Label x={20} y={76}>{`B panel: ${tile} rows of W, K = ${fmt(shape.in)} wide`}</Label>
               <rect x={20} y={84} width={stripW} height={20} rx={3} className="fill-border" />
-              <rect x={20} y={84} width={stripW} height={20} rx={3} className="fill-accent-dim" style={{ ...box, ...slide("transform"), transform: `scaleX(${p})` }} />
-              <rect x={20} y={84} width={Math.max(3, chunk)} height={20} className="fill-accent" style={{ ...slide("transform"), transform: `translateX(${Math.max(0, done - 1) * chunk}px)`, opacity: done > 0 ? 1 : 0 }} />
+              <rect x={20} y={84} width={stripW} height={20} rx={3} className="glide-snap fill-accent-dim" style={{ ...box, ...slide("transform"), transform: `scaleX(${p})` }} />
+              <rect x={20} y={84} width={Math.max(3, chunk)} height={20} className="glide-snap fill-accent" style={{ ...slide("transform"), transform: `translateX(${Math.max(0, done - 1) * chunk}px)`, opacity: done > 0 ? 1 : 0 }} />
               <rect x={20} y={128} width={340} height={150} rx={4} fill="none" strokeDasharray="4 3" className={over ? "stroke-warn" : "stroke-border"} />
               <Label x={30} y={146} className={over ? "fill-warn" : "fill-muted"}>{`shared memory: ${kb(t.sharedBytes)} KB of ${kb(sharedLimit)} KB, 2 stages`}</Label>
               <rect x={40} y={158} width={tileW} height={tileH} className="stroke-border" fill="none" strokeDasharray="3 2" />
@@ -206,7 +206,7 @@ export function TilingSandbox() {
               <Label x={374} y={146}>{`output tile ${tile} × ${tile}`}</Label>
               <rect x={374} y={158} width={tileH} height={tileH} className="stroke-border" fill="none" strokeDasharray="3 2" />
               <rect x={374} y={158} width={tileH} height={Math.max(2, live * px)} className="fill-border" />
-              <rect x={374} y={158} width={tileH} height={Math.max(2, live * px)} className="fill-accent" style={{ clipPath: accumClip, transition: reduced ? "none" : `clip-path 600ms ${ease}` }} />
+              <rect x={374} y={158} width={tileH} height={Math.max(2, live * px)} className="glide-snap fill-accent" style={{ clipPath: accumClip, transition: reduced ? "none" : `clip-path 600ms ${ease}` }} />
               <Label x={374} y={158 + tileH + 16}>accumulators, in registers</Label>
               <Label x={20} y={304} className="fill-text">{`k step ${done} of ${t.kIters}: ${fmt(Math.round(kb(blockLoadBytes(m, tile, Number(bk), done, shape.in))))} KB loaded by this block`}</Label>
               <Label x={20} y={324}>{`each loaded x value feeds ${tile} outputs, each W value feeds ${live}`}</Label>

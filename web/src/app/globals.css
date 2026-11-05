@@ -306,3 +306,8 @@ main:focus {
     transition: opacity 300ms ease;
   }
 }
+
+[data-gliding] :is(.bar-ease, .dot-move, .glide-snap) {
+  transition-duration: 150ms !important;
+  transition-timing-function: var(--ease-out) !important;
+}

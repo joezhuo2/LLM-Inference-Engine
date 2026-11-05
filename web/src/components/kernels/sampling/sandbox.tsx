@@ -193,7 +193,7 @@ export function SamplingSandbox() {
                     <EasedBar fraction={r.cum} className={r.kept ? "bg-accent/50" : "bg-muted/40"} />
                     <div
                       aria-hidden
-                      className="absolute inset-0 bg-text transition-[clip-path,opacity] duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-[opacity]"
+                      className="glide-snap absolute inset-0 bg-text transition-[clip-path,opacity] duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-[opacity]"
                       style={{ clipPath: `inset(0 calc(${(1 - p) * 100}% - 1px) 0 calc(${p * 100}% - 1px))`, opacity: p < 1 && !greedy ? 1 : 0 }}
                     />
                   </div>

@@ -1656,3 +1656,4 @@
 - **forced synchronous layout: reading getBoundingClientRect after a DOM write** => 
 - **FLIP animation and why it measures layout on every update** => 
 - **useSyncExternalStore for a module-level store shared by many components** => 
+- **retargeting a CSS transition every frame and why an ease-in-out curve then lags** => 

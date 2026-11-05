@@ -16,13 +16,18 @@ function subscribe(onChange: () => void) {
   };
 }
 
+function notify() {
+  document.documentElement.toggleAttribute("data-gliding", holds > 0);
+  listeners.forEach((l) => l());
+}
+
 export function hold(): () => void {
-  if (holds++ === 0) listeners.forEach((l) => l());
+  if (holds++ === 0) notify();
   let held = true;
   return () => {
     if (!held) return;
     held = false;
-    if (--holds === 0) listeners.forEach((l) => l());
+    if (--holds === 0) notify();
   };
 }
 
