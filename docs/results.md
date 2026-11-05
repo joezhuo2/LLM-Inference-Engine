@@ -70,40 +70,121 @@ llama.cpp (release b11870, CUDA, the same BF16 weights as a GGUF, flash attentio
 
 ## Under load
 
+![Goodput at the SLO against offered load](../results/load/goodput_vs_qps.png)
+
 ![Tail time to first token against offered load](../results/load/ttft_p99_vs_qps.png)
+
+![Longest gap between two tokens of a request against offered load](../results/load/gap_max_vs_qps.png)
 
 ![Tail time per output token against offered load](../results/load/tpot_p99_vs_qps.png)
 
-![Goodput at the SLO against offered load](../results/load/goodput_vs_qps.png)
+From `scripts/load_sweep.sh` and `scripts/load_report.py`: `engine bench --max-batch 16 --graphs` with 120 requests arriving as a Poisson process at each rate, prompts of 16 to 512 tokens and outputs of 16 to 256 drawn uniformly, greedy, EOS ignored, seed 0, median of 3 runs, once with whole-prompt prefill steps and once each with `--token-budget` 256, 512 and 2,048 (chunked prefill, #101). The four configurations were interleaved run by run (run 1 of each, then run 2 of each), so drift on the machine hits them alike, and every run wrote a step trace, from which `load_report.py --traces` takes the gap between every two consecutive tokens of a request. Measured on 2026-11-05 on the RTX 5060 Laptop GPU, release build, at commit 1693c46 (the engine code is that of main at 2eb2f91). The 1-minute load average stayed between 1.0 and 4.8 as the median over a run (median of runs 1.6, highest sample 5.3, including about 0.7 from the engine itself), no other GPU program ran, and every run agreed with its repeats: no TPOT p50 differed from the median of its three runs by more than 3.5%, so none was redone. `results/load/` holds the per-request and summary CSVs and `token_gaps.csv`; the traces themselves are not committed. The offline runs above submit identical requests at once, which never shows queueing.
 
-From `scripts/load_sweep.sh` and `scripts/load_report.py`: `engine bench --max-batch 16 --graphs` with 120 requests arriving as a Poisson process at each rate, prompts of 16 to 512 tokens and outputs of 16 to 256 drawn uniformly, greedy, EOS ignored, seed 0, median of 3 runs. Measured at commit 2fec1f3 on 2026-11-03 on the RTX 5060 Laptop GPU. `results/load/` holds the per-request and summary CSVs. The offline runs above submit identical requests at once, which never shows queueing.
+These files supersede the 2026-11-03 sweep under the same names. That sweep measured the same scheduler path 35% slower: the 2fec1f3 binary it used, rerun today at 4 and 6 QPS, gives TPOT p50 12.3 and 15.3 ms, the same as the new build (12.4 and 15.3 ms) and far from its 18.5 and 19.6 ms of 2026-11-03, so the machine, not the code, was slower then (the GPU clock was not logged, so the cause is not known). vLLM was therefore rerun on the same day as the engine, with the same setup as before (`docs/baselines.md`); its TPOT p50 at 4 QPS moved from 10.4 to 8.1 ms. Load average during the vLLM runs: median 1.3, highest 2.8; its repeats agree within 1% on TPOT p50.
 
 <!-- auto:load -->
+Engine runs measured 2026-11-05 at commit 1693c46 on NVIDIA GeForce RTX 5060 Laptop GPU; vLLM runs measured 2026-11-05 (vllm 0.32.0, torch 2.13.0).
+
 SLO: TTFT at most 500 ms and TPOT at most 50 ms; goodput is the requests per second that meet both.
 
 | system | QPS | output tok/s | TTFT p50 ms | TTFT p99 ms | TPOT p50 ms | TPOT p99 ms | SLO met | goodput req/s | preemptions | runs |
 |---|---|---|---|---|---|---|---|---|---|---|
-| engine + graphs | 1 | 167 | 64 | 162 | 11.0 | 14.7 | 100% | 1.13 | 0 | 3 |
-| engine + graphs | 2 | 326 | 62 | 166 | 12.7 | 18.6 | 100% | 2.22 | 0 | 3 |
-| engine + graphs | 3 | 477 | 84 | 777 | 15.9 | 23.0 | 93% | 3.03 | 0 | 3 |
-| engine + graphs | 4 | 605 | 121 | 1653 | 18.5 | 23.4 | 78% | 3.22 | 0 | 3 |
-| engine + graphs | 5 | 667 | 591 | 3328 | 19.7 | 25.8 | 48% | 2.15 | 0 | 3 |
-| engine + graphs | 6 | 685 | 1522 | 5973 | 19.8 | 25.8 | 25% | 1.16 | 0 | 3 |
-| engine + graphs | 8 | 710 | 3027 | 9389 | 20.1 | 25.4 | 23% | 1.13 | 0 | 3 |
-| vLLM | 1 | 167 | 46 | 103 | 8.9 | 10.5 | 100% | 1.14 | 0 | 3 |
-| vLLM | 2 | 329 | 29 | 39 | 8.8 | 10.4 | 100% | 2.24 | 0 | 3 |
-| vLLM | 3 | 486 | 32 | 45 | 9.1 | 11.1 | 100% | 3.31 | 0 | 3 |
-| vLLM | 4 | 630 | 33 | 43 | 10.4 | 11.4 | 100% | 4.28 | 0 | 3 |
-| vLLM | 5 | 774 | 35 | 194 | 10.5 | 11.2 | 100% | 5.26 | 0 | 3 |
-| vLLM | 6 | 912 | 36 | 480 | 10.6 | 11.4 | 99% | 6.13 | 0 | 3 |
-| vLLM | 8 | 1105 | 42 | 1010 | 10.9 | 11.4 | 78% | 5.83 | 0 | 3 |
+| engine + graphs | 1 | 168 | 46 | 102 | 8.4 | 11.2 | 100% | 1.14 | 0 | 3 |
+| engine + graphs | 2 | 330 | 46 | 115 | 9.4 | 12.9 | 100% | 2.24 | 0 | 3 |
+| engine + graphs | 3 | 486 | 48 | 123 | 10.7 | 15.6 | 100% | 3.30 | 0 | 3 |
+| engine + graphs | 4 | 635 | 64 | 605 | 12.3 | 17.8 | 98% | 4.21 | 0 | 3 |
+| engine + graphs | 5 | 765 | 80 | 1192 | 14.1 | 17.2 | 85% | 4.42 | 0 | 3 |
+| engine + graphs | 6 | 839 | 240 | 1991 | 15.3 | 19.7 | 64% | 3.66 | 0 | 3 |
+| engine + graphs | 8 | 885 | 1415 | 5007 | 15.5 | 19.9 | 25% | 1.50 | 0 | 3 |
+| engine + graphs, budget 256 | 1 | 168 | 52 | 121 | 8.3 | 10.3 | 100% | 1.14 | 0 | 3 |
+| engine + graphs, budget 256 | 2 | 330 | 56 | 136 | 9.2 | 12.1 | 100% | 2.24 | 0 | 3 |
+| engine + graphs, budget 256 | 3 | 486 | 57 | 146 | 10.2 | 14.0 | 100% | 3.30 | 0 | 3 |
+| engine + graphs, budget 256 | 4 | 635 | 70 | 413 | 11.5 | 16.2 | 99% | 4.28 | 0 | 3 |
+| engine + graphs, budget 256 | 5 | 776 | 80 | 1033 | 13.2 | 16.4 | 87% | 4.57 | 0 | 3 |
+| engine + graphs, budget 256 | 6 | 862 | 116 | 1642 | 14.2 | 17.5 | 69% | 4.05 | 0 | 3 |
+| engine + graphs, budget 256 | 8 | 919 | 1117 | 4316 | 14.6 | 18.6 | 26% | 1.61 | 0 | 3 |
+| engine + graphs, budget 512 | 1 | 168 | 46 | 107 | 8.3 | 10.8 | 100% | 1.14 | 0 | 3 |
+| engine + graphs, budget 512 | 2 | 330 | 48 | 117 | 9.2 | 12.3 | 100% | 2.24 | 0 | 3 |
+| engine + graphs, budget 512 | 3 | 486 | 52 | 138 | 10.3 | 14.6 | 100% | 3.30 | 0 | 3 |
+| engine + graphs, budget 512 | 4 | 635 | 67 | 477 | 11.7 | 16.9 | 99% | 4.28 | 0 | 3 |
+| engine + graphs, budget 512 | 5 | 772 | 74 | 1087 | 13.6 | 17.2 | 86% | 4.50 | 0 | 3 |
+| engine + graphs, budget 512 | 6 | 854 | 119 | 1755 | 14.5 | 18.8 | 68% | 3.97 | 0 | 3 |
+| engine + graphs, budget 512 | 8 | 912 | 1147 | 4466 | 14.8 | 19.2 | 26% | 1.60 | 0 | 3 |
+| engine + graphs, budget 2048 | 1 | 168 | 46 | 106 | 8.4 | 10.8 | 100% | 1.14 | 0 | 3 |
+| engine + graphs, budget 2048 | 2 | 330 | 48 | 120 | 9.2 | 12.3 | 100% | 2.24 | 0 | 3 |
+| engine + graphs, budget 2048 | 3 | 486 | 51 | 130 | 10.4 | 14.6 | 100% | 3.30 | 0 | 3 |
+| engine + graphs, budget 2048 | 4 | 635 | 65 | 506 | 11.8 | 17.3 | 98% | 4.25 | 0 | 3 |
+| engine + graphs, budget 2048 | 5 | 769 | 80 | 1105 | 13.6 | 17.2 | 85% | 4.44 | 0 | 3 |
+| engine + graphs, budget 2048 | 6 | 853 | 139 | 1761 | 14.5 | 18.7 | 68% | 3.96 | 0 | 3 |
+| engine + graphs, budget 2048 | 8 | 916 | 1153 | 4397 | 14.9 | 18.9 | 26% | 1.61 | 0 | 3 |
+| vLLM | 1 | 168 | 42 | 68 | 7.6 | 8.5 | 100% | 1.14 | 0 | 3 |
+| vLLM | 2 | 331 | 28 | 48 | 7.5 | 8.1 | 100% | 2.25 | 0 | 3 |
+| vLLM | 3 | 489 | 29 | 39 | 7.6 | 8.3 | 100% | 3.33 | 0 | 3 |
+| vLLM | 4 | 641 | 30 | 41 | 8.1 | 8.4 | 100% | 4.36 | 0 | 3 |
+| vLLM | 5 | 789 | 31 | 55 | 8.2 | 8.7 | 100% | 5.36 | 0 | 3 |
+| vLLM | 6 | 933 | 31 | 90 | 8.3 | 8.7 | 100% | 6.34 | 0 | 3 |
+| vLLM | 8 | 1208 | 34 | 507 | 8.5 | 8.8 | 98% | 8.07 | 0 | 3 |
+
+Gaps between consecutive output tokens of one request, from the engine's step traces: every token of every request, medians of the runs' p50, p99 and largest gap.
+
+| system | QPS | gap p50 ms | gap p99 ms | largest gap ms | runs |
+|---|---|---|---|---|---|
+| engine + graphs | 1 | 8.0 | 9.6 | 158 | 3 |
+| engine + graphs | 2 | 8.5 | 51.1 | 161 | 3 |
+| engine + graphs | 3 | 9.1 | 75.8 | 178 | 3 |
+| engine + graphs | 4 | 9.9 | 86.8 | 201 | 3 |
+| engine + graphs | 5 | 11.0 | 96.5 | 212 | 3 |
+| engine + graphs | 6 | 11.4 | 99.3 | 182 | 3 |
+| engine + graphs | 8 | 11.5 | 101.7 | 173 | 3 |
+| engine + graphs, budget 256 | 1 | 8.0 | 26.4 | 65 | 3 |
+| engine + graphs, budget 256 | 2 | 8.5 | 36.4 | 65 | 3 |
+| engine + graphs, budget 256 | 3 | 9.1 | 39.8 | 66 | 3 |
+| engine + graphs, budget 256 | 4 | 9.8 | 44.9 | 67 | 3 |
+| engine + graphs, budget 256 | 5 | 10.8 | 49.9 | 68 | 3 |
+| engine + graphs, budget 256 | 6 | 11.3 | 54.4 | 70 | 3 |
+| engine + graphs, budget 256 | 8 | 11.5 | 59.0 | 71 | 3 |
+| engine + graphs, budget 512 | 1 | 8.0 | 10.8 | 97 | 3 |
+| engine + graphs, budget 512 | 2 | 8.5 | 44.7 | 98 | 3 |
+| engine + graphs, budget 512 | 3 | 9.1 | 67.8 | 98 | 3 |
+| engine + graphs, budget 512 | 4 | 9.8 | 76.8 | 100 | 3 |
+| engine + graphs, budget 512 | 5 | 10.9 | 81.8 | 103 | 3 |
+| engine + graphs, budget 512 | 6 | 11.4 | 84.8 | 105 | 3 |
+| engine + graphs, budget 512 | 8 | 11.5 | 86.9 | 106 | 3 |
+| engine + graphs, budget 2048 | 1 | 8.1 | 10.9 | 96 | 3 |
+| engine + graphs, budget 2048 | 2 | 8.5 | 44.9 | 100 | 3 |
+| engine + graphs, budget 2048 | 3 | 9.1 | 68.8 | 102 | 3 |
+| engine + graphs, budget 2048 | 4 | 9.9 | 78.4 | 116 | 3 |
+| engine + graphs, budget 2048 | 5 | 10.9 | 85.6 | 163 | 3 |
+| engine + graphs, budget 2048 | 6 | 11.4 | 91.1 | 158 | 3 |
+| engine + graphs, budget 2048 | 8 | 11.5 | 92.5 | 160 | 3 |
 <!-- /auto:load -->
 
-vLLM 0.32.0 on the same token ids, arrival times, GPU and limit of 16 sequences is well ahead on this workload (`docs/baselines.md`, which lists what differs): its goodput reaches 6.1 requests per second at an offered 6, about 1.9x the engine's 3.2, and its TPOT p50 stays between 8.8 and 10.9 ms where the engine's climbs from 11.0 to 20.1 ms, even though vLLM's times include a Python server and HTTP and the engine's do not. At an offered 4 its TTFT p99 is 43 ms against the engine's 1,653 ms. The likely reason is that vLLM mixes prefill chunks into decode steps while the engine's prefills stop every running decode, but that has not been measured on its own. Against llama.cpp the engine leads on the offline workload above; this offline lead says nothing about serving under load.
+Chunked prefill does what it is for: it shortens the stalls. With whole-prompt steps, every prompt is one step and every running sequence waits for it, so the longest gap between two tokens of a request is 158 to 212 ms at every rate, against a median gap of 8 to 12 ms. A budget of 256 caps that at 65 to 71 ms, 512 at about 100 ms, and 2,048 at 96 to 163 ms (at 2,048 several prompts still fit in one step). The gap p99 falls with it at 4 QPS and above, from 87 to 45 ms at 4 QPS with a budget of 256. The TTFT tail improves too, because a waiting prompt no longer queues behind a whole prefill step: TTFT p99 at 4 QPS falls from 605 ms to 413 (256), 477 (512) and 506 ms (2,048).
 
-The engine's goodput peaks at 3.2 requests per second at an offered 4, then falls: past that the queue grows faster than it drains, so most requests miss the 500 ms TTFT limit. TPOT does not cause the misses. Its p99 stays at or under 26 ms at every rate, about half the 50 ms limit, and TTFT p99 is what crosses the limit, between 2 and 3 QPS. Output throughput levels off near 700 tokens/s, about half of the 1,402 of the offline batch-16 run, on a workload with longer prompts, longer contexts and 115 prefill steps in a run; this sweep does not separate how much each of those costs. The KV cache was never the limit: the peak was 455 of 12,915 blocks, with 0 preemptions at every rate.
+The gain in goodput is small. The engine's peak moves from 4.42 to 4.57 requests per second (budget 256; 4.50 at 512, 4.44 at 2,048), both at an offered 5, and past the peak the budgets hold up better (4.05 against 3.66 at an offered 6) but the queue still grows. vLLM, rerun on the same day with the same token ids, arrival times and limit of 16 sequences, reaches 6.34 at an offered 6 and 8.07 at 8, still meeting the SLO for 98% of requests, about 1.8x the engine's best. TPOT p99 hides all of this: it is the per-request mean of the gaps, so a 200 ms stall spread over a 200-token answer adds 1 ms, and it stays under 20 ms for every engine configuration.
 
-Limits of these numbers. The lengths are uniform, not a real chat distribution such as ShareGPT, and the tokens are random. There is no HTTP in the path, since `engine bench` calls the scheduler directly. With 120 requests a run ends before an overloaded queue reaches any steady state, so TTFT past saturation depends on the run length: read those points as "overloaded", not as stable values. Goodput at 1 and 2 QPS is above the offered rate because this seed's 120 arrivals span about 104 and 52 seconds rather than 120 and 60, so these runs carry slightly more load than their label. The whole sweep was run twice: the first run was discarded because 2 of its 21 runs took more than twice as long as their repeats while other work was running on the machine, and the numbers here come from the second, where repeats agree closely.
+What chunking does not change is how much work there is. In the whole-prompt run at 8 QPS (run 1, from its trace), 114 prefill steps take 5.3 of the 19.7 seconds, 0.17 ms per prompt token, and the 1,374 decode steps average 10.5 ms, close to vLLM's whole TPOT of 8.5 ms with its prefill included. A budget only moves the prefill rows into mixed steps (that run takes 18.8 seconds), and every one of those rows still runs through the paged decode attention kernel, the same cost the prefill curve below shows growing with the square of the prompt. So the remaining gap to vLLM is kernel speed, mostly prefill ([#103](https://github.com/joezhuo2/LLM-Inference-Engine/issues/103)), not scheduling. Mixed steps also run eager, since `DecodeGraphs` only covers pure decode.
+
+Small budgets have a cost at low load. At 1 to 3 QPS a budget of 256 adds 6 to 10 ms to the TTFT p50 (52 to 57 against 46 to 48 ms), since a prompt longer than what is left of the budget after the decode rows takes two or three steps, and the gap p99 at 1 QPS rises from 9.6 to 26.4 ms, because more decode steps share a step with a chunk instead of replaying a graph alone. 512 costs almost nothing there and keeps most of the tail benefit, which makes it the better default for this workload; 256 gives the shortest stalls.
+
+Limits of these numbers. The lengths are uniform, not a real chat distribution such as ShareGPT, and the tokens are random. There is no HTTP in the engine's path, since `engine bench` calls the scheduler directly, while vLLM's times include its Python server and HTTP. With 120 requests a run ends before an overloaded queue reaches any steady state, so TTFT past saturation depends on the run length: read those points as "overloaded", not as stable values. Goodput at 1 and 2 QPS is above the offered rate because this seed's 120 arrivals span about 104 and 52 seconds rather than 120 and 60. The KV cache was never the limit: 0 preemptions at every rate and budget.
+
+### A long prompt among running requests
+
+From `scripts/stall_probe.py`: 15 short chat prompts from `scripts/prompts.json` and then one long prompt (a sentence repeated, 1,917 tokens with the chat template) arrive as Poisson arrivals at 16 per second, each asking for 128 tokens, through `engine bench --max-batch 16 --graphs --prompts --trace`, 3 runs per budget. In every run the long prompt arrived while all 15 short ones were decoding, and the table shows what that costs them and what it costs the prompt.
+
+<!-- auto:stall -->
+Measured 2026-11-05T07:05:42Z at commit 1693c46: a 1917-token prompt arrives among short requests, medians of the runs.
+
+| token budget | long prompt tokens | decoding when it arrives | TTFT of the long prompt ms | gap p99 ms | largest gap ms | runs |
+|---|---|---|---|---|---|---|
+| none | 1917 | 15 | 1030 | 76 | 1043 | 3 |
+| 256 | 1917 | 15 | 1081 | 207 | 223 | 3 |
+| 512 | 1917 | 15 | 1055 | 344 | 388 | 3 |
+| 2048 | 1917 | 15 | 1040 | 14 | 1033 | 3 |
+<!-- /auto:stall -->
+
+With whole-prompt steps the 15 decoding requests wait 1,043 ms for the long prompt, one step as long as the prompt's own TTFT. A budget of 256 cuts the longest wait to 223 ms and 512 to 388 ms, while the long prompt's first token comes only 25 to 51 ms later (1,081 and 1,055 against 1,030 ms). A budget of 2,048 changes nothing here: the prompt fits in one step, so it is one mixed step instead of one prefill step. The waits do not shrink in proportion to the budget. A chunk of 241 rows (256 minus the 15 decode rows) late in the prompt still takes over 200 ms, because each of its rows runs the decode attention kernel over up to 1,917 tokens of context, so the cost of a chunk grows with its position as well as its size. The gap p99 rises with the small budgets (207 and 344 ms against 76 ms with no budget) for the same reason the gaps above do: the long prompt now spreads over 8 or 4 slow steps instead of one, so more tokens of the short requests wait behind a chunk, each for less time.
 
 ## Batch-1 decode bandwidth
 
@@ -295,30 +376,34 @@ Reading it. Every kernel ran at 2,790 to 2,812 MHz (the boost clock under load; 
 From `scripts/prefill_ttft.py`: one request per run at each prompt length, output length 1, with warmup requests of the same length first, so TTFT is the prefill of a warm process. The published throughput runs use 64-token prompts, which hides this curve.
 
 <!-- auto:prefill -->
-Measured 2026-11-03T13:48:36Z at commit 2fec1f3: one request per run, median of 5 runs.
+Measured 2026-11-05T07:07:06Z at commit 1693c46: one request per run, median of 5 runs.
 
 TTFT in ms against prompt tokens, median (min to max):
 
 | system | 128 | 512 | 1,024 | 2,048 |
 |---|---|---|---|---|
-| engine | 18.3 (17.2 to 20.8) | 123.5 (118.4 to 126.6) | 456.7 (446.6 to 498.9) | 1611.6 (1591.7 to 1844.6) |
-| engine + graphs | 19.9 (18.2 to 21.6) | 119.1 (118.2 to 127.9) | 471.3 (443.5 to 569.0) | 1593.2 (1555.1 to 1867.4) |
-| llama.cpp -ub 512 | 19.5 (17.1 to 40.8) | 62.3 (53.8 to 100.8) | 129.2 (116.1 to 151.4) | 264.5 (234.2 to 279.3) |
-| llama.cpp -ub 2048 | 16.2 (15.1 to 17.9) | 52.1 (50.9 to 54.8) | 104.0 (101.9 to 114.4) | 271.0 (261.6 to 302.1) |
+| engine | 15.7 (15.7 to 15.8) | 97.8 (97.3 to 98.2) | 337.0 (334.8 to 338.2) | 1152.2 (1150.5 to 1161.9) |
+| engine + graphs | 15.7 (15.6 to 15.7) | 97.8 (97.3 to 98.4) | 339.6 (338.1 to 342.0) | 1157.2 (1152.7 to 1184.1) |
+| engine + graphs, budget 256 | 15.7 (15.6 to 15.9) | 101.1 (100.8 to 102.5) | 351.9 (351.3 to 353.5) | 1181.6 (1178.6 to 1195.6) |
+| llama.cpp -ub 512 | 16.1 (14.9 to 17.1) | 44.0 (43.7 to 45.5) | 95.0 (94.8 to 95.7) | 179.5 (177.0 to 182.1) |
+| llama.cpp -ub 2048 | 15.8 (15.4 to 17.7) | 44.0 (43.7 to 46.7) | 87.0 (86.0 to 87.5) | 185.3 (184.4 to 186.6) |
 
 Median TTFT in ms per prompt token:
 
 | system | 128 | 512 | 1,024 | 2,048 |
 |---|---|---|---|---|
-| engine | 0.143 | 0.241 | 0.446 | 0.787 |
-| engine + graphs | 0.155 | 0.233 | 0.460 | 0.778 |
-| llama.cpp -ub 512 | 0.152 | 0.122 | 0.126 | 0.129 |
-| llama.cpp -ub 2048 | 0.127 | 0.102 | 0.102 | 0.132 |
+| engine | 0.123 | 0.191 | 0.329 | 0.563 |
+| engine + graphs | 0.123 | 0.191 | 0.332 | 0.565 |
+| engine + graphs, budget 256 | 0.123 | 0.197 | 0.344 | 0.577 |
+| llama.cpp -ub 512 | 0.126 | 0.086 | 0.093 | 0.088 |
+| llama.cpp -ub 2048 | 0.124 | 0.086 | 0.085 | 0.090 |
 <!-- /auto:prefill -->
 
-The engine's curve bends and llama.cpp's does not. At 128 tokens the two are level (18.3 ms against 16.2 to 19.5 ms). From 128 to 2,048 tokens, 16 times the tokens, the engine's TTFT grows 88 times, from 18.3 to 1,611.6 ms, and its cost per token grows from 0.143 to 0.787 ms, while llama.cpp stays between 0.102 and 0.152 ms per token at either micro-batch size. At 2,048 tokens the engine takes about 6 times as long as llama.cpp (1,611.6 against 264.5 and 271.0 ms). This fits how prefill runs: `build_paged_batch` makes one row per prompt token, each with a full copy of the block table, and each row runs the paged decode attention over its own context, so the KV reads grow with the square of the length. These runs do not separate that cost from the rest of the step, so the profile for [#103](https://github.com/joezhuo2/LLM-Inference-Engine/issues/103) still has to confirm it.
+The engine's curve bends and llama.cpp's does not. At 128 tokens the two are level (15.7 ms against 15.8 and 16.1 ms). From 128 to 2,048 tokens, 16 times the tokens, the engine's TTFT grows 73 times, from 15.7 to 1,152.2 ms, and its cost per token grows from 0.123 to 0.563 ms, while llama.cpp stays between 0.085 and 0.126 ms per token at either micro-batch size. At 2,048 tokens the engine takes about 6 times as long as llama.cpp (1,152.2 against 179.5 and 185.3 ms). This fits how prefill runs: `build_paged_batch` makes one row per prompt token, each with a full copy of the block table, and each row runs the paged decode attention over its own context, so the KV reads grow with the square of the length. These runs do not separate that cost from the rest of the step, so the profile for [#103](https://github.com/joezhuo2/LLM-Inference-Engine/issues/103) still has to confirm it.
 
-Graphs make no difference here: `DecodeGraphs::covers` refuses prefill batches, so both engine series run the same eager path and differ only by noise. What differs between the systems: the engine's TTFT includes sampling the first token and its host work, while llama.cpp's is `t_pp` from `llama-batched-bench`, the time of the prompt's decode calls with no sampler. llama.cpp feeds its own tokens rather than the engine's workload, runs at its default flash attention setting (`auto`) and keeps its KV cache in F16, with a context of the prompt plus one token, which at 2,048 is one over the model's position limit. Longer prompts cannot be measured on this model, since the bench refuses more than TinyLlama's 2,048 positions. All of it is from this one laptop GPU, whose clocks move between runs, so the table shows the spread of the runs as well as the median; the engine's spread, largest to smallest run, reaches 27% of the median at 1,024 tokens and 20% at 2,048, far less than the gap to llama.cpp at those lengths.
+Graphs make no difference here: `DecodeGraphs::covers` refuses prefill batches, so both engine series run the same eager path and differ only by noise. What differs between the systems: the engine's TTFT includes sampling the first token and its host work, while llama.cpp's is `t_pp` from `llama-batched-bench`, the time of the prompt's decode calls with no sampler. llama.cpp feeds its own tokens rather than the engine's workload, runs at its default flash attention setting (`auto`) and keeps its KV cache in F16, with a context of the prompt plus one token, which at 2,048 is one over the model's position limit. Longer prompts cannot be measured on this model, since the bench refuses more than TinyLlama's 2,048 positions. All of it is from this one laptop GPU, whose clocks move between runs, so the table shows the spread of the runs as well as the median. This run (2026-11-05, the same session as the sweep above) is faster for every system than the 2026-11-03 run it replaces, by 28% for the engine and 32% for llama.cpp at 2,048 tokens, with a spread under 3% of the median for the engine, so the ratios hold while the absolute times moved with the machine.
+
+The `engine + graphs, budget 256` row is the same prompt alone under `--token-budget 256`, so a 2,048-token prompt runs as 8 chunks in 8 steps. It costs 2.1% more at 2,048 tokens (1,181.6 against 1,157.2 ms) and 3% to 4% more at 512 and 1,024: the extra steps add host work and smaller GEMMs, but the attention work is the same, since every chunk row still reads its whole context so far. Chunking spreads prefill out; it does not make it cheaper.
 
 ## Kernels
 

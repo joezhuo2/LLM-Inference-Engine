@@ -55,24 +55,24 @@ Comparability: the same BF16 weights (the script stops if the server's log repor
 
 - **HTTP and Python:** every vLLM token goes through a Python server, HTTP and the Python client, and its times are taken in the client. `engine bench` has no HTTP and times requests inside the process, so this overhead counts only against vLLM.
 - **Attention:** vLLM picks its `FLASH_ATTN` backend (FlashAttention 2) here, not FlashInfer, which it uses only for sampling. Decode runs from its own `torch.compile` and CUDA Graph capture, which made the first start take more than 5 minutes (later starts reuse the compile cache).
-- **Prefill and decode:** vLLM's default chunked prefill mixes prefill and decode in one step with a budget of 2,048 tokens per step on this GPU (its server default), while the engine's steps are all prefill or all decode.
+- **Prefill and decode:** vLLM's default chunked prefill mixes prefill and decode in one step with a budget of 2,048 tokens per step on this GPU (its server default). The engine's steps are all prefill or all decode unless it runs with `--token-budget`; `docs/results.md` compares it with no budget and with budgets of 256, 512 and 2,048.
 - **Sampling:** both are greedy, but each uses its own code path; the engine's is its GPU sampling kernel.
 - **Memory:** neither system is short of KV space (0 preemptions in vLLM's runs): vLLM's cache holds 153,888 tokens at 70% of the VRAM.
 - **The limit of 16:** this matches the engine's run but is not vLLM's default for this GPU (128 sequences for the server), so these curves do not show what vLLM does with more concurrency. A sweep of both systems past 16 would be the fairer test at high rates.
 
-Reading (RTX 5060 Laptop GPU, 2026-11-03, median of 3 runs, 0 preemptions, every stream chunk carried exactly one token):
+Reading (RTX 5060 Laptop GPU, 2026-11-05, rerun on the same day as the engine's budget sweep because the machine measured both systems faster than on 2026-11-03; median of 3 runs, 0 preemptions, every stream chunk carried exactly one token):
 
 | QPS | output tok/s | TTFT p50 ms | TTFT p99 ms | TPOT p50 ms | TPOT p99 ms |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 167 | 46 | 103 | 8.9 | 10.5 |
-| 2 | 329 | 29 | 39 | 8.8 | 10.4 |
-| 3 | 486 | 32 | 45 | 9.1 | 11.1 |
-| 4 | 630 | 33 | 43 | 10.4 | 11.4 |
-| 5 | 774 | 35 | 194 | 10.5 | 11.2 |
-| 6 | 912 | 36 | 480 | 10.6 | 11.4 |
-| 8 | 1,105 | 42 | 1,010 | 10.9 | 11.4 |
+| 1 | 168 | 42 | 68 | 7.6 | 8.5 |
+| 2 | 331 | 28 | 48 | 7.5 | 8.1 |
+| 3 | 489 | 29 | 39 | 7.6 | 8.3 |
+| 4 | 641 | 30 | 41 | 8.1 | 8.4 |
+| 5 | 789 | 31 | 55 | 8.2 | 8.7 |
+| 6 | 933 | 31 | 90 | 8.3 | 8.7 |
+| 8 | 1,208 | 34 | 507 | 8.5 | 8.8 |
 
-The client's own delay in sending a request reached at most 50 ms (p99 at most 34 ms, in the slower rates) and is in these TTFTs, since they count from the scheduled arrival.
+The client's own delay in sending a request reached at most 8 ms (p99 at most 5.4 ms) and is in these TTFTs, since they count from the scheduled arrival.
 
 ## Plots
 

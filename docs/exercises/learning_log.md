@@ -1705,3 +1705,16 @@
 - **layout shift: reserving space so changing content does not move its neighbours** => 
 - **ease-out for user-initiated motion: why the first frames decide how responsive it feels** => 
 - **lazy initial state in useState instead of work at module import** => 
+
+## Chunked Prefill Under Load (Branch 84)
+- **inter-token latency (the gap between two tokens of one request) against TPOT (the mean of those gaps)** => 
+- **why a request's mean TPOT hides one long stall** => 
+- **interleaving repeats across configurations so drift on the machine hits each one alike** => 
+- **what splitting one prompt into chunks costs when nothing else is running** => 
+- **why the cost of a prefill chunk grows with its position in the prompt, not only with its size** => 
+- **a probe workload: one long request among short ones to isolate a stall** => 
+- **an A/B rerun of an old binary to tell a code change from a machine change** => 
+- **why chunked prefill shortens stalls but does not reduce prefill work** => 
+- **reading a chart's provenance (commit, date, GPU) from a generated line of a doc at build time** => 
+- **a log axis for tail latency against a linear axis for goodput** => 
+- **a headline metric as a before and after pair from one controlled experiment** => 

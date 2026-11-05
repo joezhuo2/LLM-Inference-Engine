@@ -161,6 +161,10 @@ def main(argv=None):
     if "<!-- auto:load -->" in text:
         text = replace_block(text, "load", load_path.read_text() if load_path.exists()
                              else "No QPS sweep recorded.\n")
+    stall_path = args.results_dir / "load" / "stall.md"
+    if "<!-- auto:stall -->" in text:
+        text = replace_block(text, "stall", stall_path.read_text() if stall_path.exists()
+                             else "No stall probe recorded.\n")
     prefill_path = args.results_dir / "prefill" / "prefill.md"
     if "<!-- auto:prefill -->" in text:
         text = replace_block(text, "prefill", prefill_path.read_text() if prefill_path.exists()
