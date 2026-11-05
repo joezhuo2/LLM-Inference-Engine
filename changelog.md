@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/continuous-batching-prologue
+
+- Add `web/src/components/kernels/paged-kv/batching.ts`: a small deterministic simulation of static batching and of the scheduler's continuous batching (first come first served admission up to the slot count, preemption from the back of the running list when the block pool runs out) over ten illustrative request lengths, with the wasted slot-steps of each. It throws if a grid does not hold exactly the work of its requests. (Part A)
+- Add `BatchingFigure` in `web/src/components/kernels/paged-kv/figures.tsx`: a grid of batch slots against steps that fills one column at a time with the request queue above it and live counters (steps, requests running, preemptions, wasted slot-steps), drawn with opacity and scale only and shown complete under reduced motion. (Part A)
+- Add a continuous batching prologue to the paged KV cache page, between its header and "allocate it yourself": a four-step sticky story (static batching waits for the longest, continuous batching revisits the batch every step, the engine's admission and preemption rules, and what to watch in the visualizer: requests running and preemptions), with `prologue` on `KernelStory` and `KernelPrologueView`. The request lengths are illustrative and say so. (Part A)
+
 ## web/prefill-decode-prologue
 
 - Add a prologue "Prefill vs. Decode (the token lifecycle)" before "how it works" on the paged attention page (#136), as its own sticky story with new figures: prefill takes the whole prompt in one pass and fills the KV cache, decode generates one token per step and reads every cached key and value. Times come from `docs/results.md` through `sync-data.mjs`; token counts are labelled illustrative. (Part A)

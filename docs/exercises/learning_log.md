@@ -1556,3 +1556,10 @@
 - **decoding without a KV cache: why every token would redo the work of all earlier tokens** => 
 - **reserving the worst-case length per request: why it strands memory** => 
 - **fixed-size blocks drawn from one shared pool** => 
+
+## Continuous Batching Prologue (Branch 88)
+- **static batching: why a batch waits for its longest sequence** => 
+- **continuous batching (iteration-level scheduling): revisiting the batch every step** => 
+- **wasted slot-steps: idle batch slots as a cost of static batching** => 
+- **first come first served admission up to max_batch** => 
+- **preemption from the back of the running list when blocks run out** => 

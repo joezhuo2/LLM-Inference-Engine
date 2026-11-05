@@ -6,7 +6,7 @@ import { measured } from "@/content/kernels/types";
 import { kvReplay } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { useLoop } from "../loop";
-import { AppendFigure, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
+import { AppendFigure, BatchingFigure, batchGrids, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, tightBlocks, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
 
 const replay = kvReplay();
 const B = replay.meta.block_size;
@@ -315,6 +315,98 @@ export function PagedKvStory() {
             return <ReplayPlayer />;
         }
       }}
+    />
+  );
+}
+
+const gs = batchGrids.static;
+const gr = batchGrids.roomy;
+const gt = batchGrids.tight;
+const tightPreemptions = gt.evictions.reduce((n, e) => n + e, 0);
+const batchingSlots = gs.slots;
+
+const batchingSteps: StoryStep[] = [
+  {
+    id: "static",
+    title: "static: wait for the longest",
+    body: (
+      <>
+        <p>
+          A static batch takes the first {batchingSlots} requests, runs them together, and takes the next {batchingSlots} only when every one of them is done. A request that stops after 2 steps
+          keeps its slot until the longest request in its batch finishes.
+        </p>
+        <p>
+          Here request 1 runs for 9 steps while requests 0, 2 and 3 are done by step 3. The dashed cells are slots that go through every forward pass and produce nothing: the 10 requests take{" "}
+          {gs.steps} steps and waste <span className="font-mono text-warn">{gs.wasted}</span> slot-steps.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "continuous",
+    title: "continuous: look again every step",
+    body: (
+      <>
+        <p>
+          Continuous batching, also called iteration-level scheduling, runs the scheduler before every step instead of before every batch. A finished request leaves at once, and the request at the
+          front of the queue takes its slot on the next step.
+        </p>
+        <p>
+          Same queue, room for every request: the 10 requests take {gr.steps} steps and waste <span className="font-mono text-accent">{gr.wasted}</span> slot-steps, all of them at the end, when the
+          queue is empty and the last requests drain.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "rules",
+    title: "the engine's two rules",
+    body: (
+      <>
+        <p>
+          The engine&apos;s scheduler (src/sched/scheduler.cpp) has two rules. Admission is first come first served: while a slot is free, the front of the queue joins if blocks for its whole length
+          are free, and nothing skips ahead of it. Preemption: when a running request needs a new block and none is free, the request at the back of the running list gives its blocks back and returns
+          to the front of the queue.
+        </p>
+        <p>
+          Here the pool is {tightBlocks} blocks of 2 steps each (the engine uses 16 tokens) and <span className="font-mono text-warn">{tightPreemptions}</span> preemptions follow:
+          the crossed cells are evictions and the shaded cells are steps recomputed after one. The 10 requests take {gt.steps} steps and waste {gt.wasted} slot-steps, still well under static
+          batching&apos;s {gs.wasted}.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "watch",
+    title: "watch it run",
+    body: (
+      <>
+        <p>
+          The visualizer below runs the same two rules on a real block pool. Add requests and watch two numbers. <span className="font-mono text-accent">requests running</span> is how many requests the
+          scheduler steps together right now: it rises as requests are admitted and falls as they finish.
+        </p>
+        <p>
+          <span className="font-mono text-accent">preemptions</span> counts every time the pool ran out and the newest running request went back to the queue. Together they are the scheduler at
+          work: requests join and leave between steps, and a full pool pushes one back instead of stalling the batch.
+        </p>
+      </>
+    ),
+  },
+];
+
+const batchingCaptions = [
+  `illustrative request lengths in steps, ${batchingSlots} slots; the same 10 requests in every figure`,
+  "illustrative lengths; a pool that never runs out; a prefill and a decode step are drawn as one cell",
+  "illustrative lengths; blocks of 2 steps instead of 16 tokens; rules from src/sched/scheduler.cpp: first come first served up to max_batch, preempt from the back of the running list",
+  "the same run; the two highlighted counters are the visualizer's \"requests running\" and \"preemptions\"",
+];
+
+export function BatchingStory() {
+  return (
+    <StickyStory
+      steps={batchingSteps}
+      caption={(i) => batchingCaptions[i]}
+      figure={(i) => <BatchingFigure kind={(["static", "roomy", "tight", "tight"] as const)[i]} focus={i === 3} />}
     />
   );
 }
