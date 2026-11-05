@@ -7,7 +7,7 @@ import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { START_MAX, directAttention, makeProblem, maxDiff, pagedAttention } from "./online-softmax";
 
-const defaults = { context: 100, block: "16", seed: 7 };
+const defaults = { context: 100, block: "16", seed: 15 };
 const engineHeadDim = 64;
 const playMs = 900;
 const sizes = ["8", "16", "32"];
