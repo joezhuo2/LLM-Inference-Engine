@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/chunked-prefill
+
+- `scripts/load_sweep.sh` takes `TOKEN_BUDGET=N` (runs `engine bench --token-budget N` and names the files `engine_budget<N>_q<rate>_r<run>`), `RUNS` (which run numbers to write, so budgets can be interleaved run by run) and `TRACES=<dir>` (one step trace per run). `scripts/load_report.py` labels a budgeted run as its own system (`engine + graphs, budget N`), orders and colors the series by system and budget, writes a provenance line (dates, `--commit`, GPU, vLLM version) above the table, and with `--traces` summarizes the gaps between consecutive tokens of every request into `token_gaps.csv`, a second table (p50, p99 and largest gap per QPS) and `gap_max_vs_qps.png` (#101). (Part A)
+
 ## sched/chunked-prefill-wiring
 
 - Add `--token-budget N` to `engine serve` through `GpuBackendOptions::token_budget` (at least `--max-batch`; 0 keeps whole-prompt prefill); the HTTP `meta` reports it. README and `docs/api.md` list the flag. (Part A)

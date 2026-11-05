@@ -1659,3 +1659,8 @@
 - **why mixed steps run eager while pure decode steps keep their CUDA Graph** => 
 - **why the token budget must be at least the max batch** => 
 - **why a smaller token budget delays the first token of a long prompt but steadies everyone else's TPOT** => 
+
+## Chunked Prefill Under Load (Branch 84)
+- **inter-token latency (the gap between two tokens of one request) against TPOT (the mean of those gaps)** => 
+- **why a request's mean TPOT hides one long stall** => 
+- **interleaving repeats across configurations so drift on the machine hits each one alike** => 
