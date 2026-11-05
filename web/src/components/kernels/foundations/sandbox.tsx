@@ -328,34 +328,31 @@ export function FoundationsSandbox() {
           ))}
         </div>
 
-        <table className="w-full tabular-nums">
-          <thead className="text-left text-muted">
-            <tr>
-              <th colSpan={2} className="pb-1 font-normal">{`measured: ${gpu}, commit ${environment.commit}, ${String(environment.date).slice(0, 10)}`}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {m ? (
-              [
-                { label: "time", value: <NumberFlow value={m.us} suffix=" µs" format={one} /> },
-                { label: "of the roof", value: <NumberFlow value={m.pct} suffix="%" /> },
-                { label: "bandwidth", value: <NumberFlow value={m.gbs} suffix=" GB/s" /> },
-                { label: "compute", value: <NumberFlow value={m.tflops} suffix=" TFLOP/s" format={{ maximumFractionDigits: 2 }} /> },
-              ].map((r) => (
-                <tr key={r.label} className="border-t border-border">
-                  <td className="py-1 text-muted">{r.label}</td>
-                  <td className="py-1 text-right text-text">{r.value}</td>
-                </tr>
-              ))
-            ) : (
-              <tr className="border-t border-border">
-                <td colSpan={2} className="py-1 leading-relaxed text-muted">
-                  {`no measured point here: ${op === "attention" ? `attention was measured at ${shape.roofline_context} tokens of context and ` : ""}the profiles cover ${measuredRows.join(" and ")} rows${["rmsnorm", "swiglu", "rope"].includes(op) ? ", and not this op" : ""}. Only the computed dot is drawn.`}
-                </td>
-              </tr>
+        <div>
+          <div className="pb-1 text-muted">{`measured: ${gpu}, commit ${environment.commit}, ${String(environment.date).slice(0, 10)}`}</div>
+          <div className="grid">
+            <table className={clsx("col-start-1 row-start-1 w-full tabular-nums", !m && "invisible")} aria-hidden={!m}>
+              <tbody>
+                {[
+                  { label: "time", value: <NumberFlow value={m?.us ?? 0} suffix=" µs" format={one} /> },
+                  { label: "of the roof", value: <NumberFlow value={m?.pct ?? 0} suffix="%" /> },
+                  { label: "bandwidth", value: <NumberFlow value={m?.gbs ?? 0} suffix=" GB/s" /> },
+                  { label: "compute", value: <NumberFlow value={m?.tflops ?? 0} suffix=" TFLOP/s" format={{ maximumFractionDigits: 2 }} /> },
+                ].map((r) => (
+                  <tr key={r.label} className="border-t border-border">
+                    <td className="py-1 text-muted">{r.label}</td>
+                    <td className="py-1 text-right text-text">{r.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!m && (
+              <p className="col-start-1 row-start-1 self-start border-t border-border py-1 leading-relaxed text-muted">
+                {`no measured point here: ${op === "attention" ? `attention was measured at ${shape.roofline_context} tokens of context and ` : ""}the profiles cover ${measuredRows.join(" and ")} rows${["rmsnorm", "swiglu", "rope"].includes(op) ? ", and not this op" : ""}. Only the computed dot is drawn.`}
+              </p>
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </div>
   );

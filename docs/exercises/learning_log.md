@@ -1660,3 +1660,4 @@
 - **interpolating geometrically between two values on a log axis** => 
 - **getSnapshot of useSyncExternalStore runs on every render, so it must be cheap** => 
 - **pausing off-screen animation with IntersectionObserver** => 
+- **layout shift: reserving space so changing content does not move its neighbours** => 

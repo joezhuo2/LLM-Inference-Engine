@@ -60,7 +60,7 @@ function Slider({ label, value, min, max, step, onChange, children }: { label: s
     <label className="flex items-center gap-3">
       <span className="w-14 shrink-0 text-muted">{label}</span>
       <SmoothRange min={min} max={max} step={step} value={value} onValue={onChange} className="w-full accent-[var(--accent)]" />
-      <span className="w-14 shrink-0 text-right tabular-nums text-text">{children}</span>
+      <span className="flex h-5 w-14 shrink-0 items-center justify-end tabular-nums text-text">{children}</span>
     </label>
   );
 }

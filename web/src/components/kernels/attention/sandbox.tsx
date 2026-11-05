@@ -149,7 +149,7 @@ export function PagedAttentionSandbox() {
           </div>
           <div className="space-y-1.5">
             <div className="text-muted">block table, logical → physical (click to jump)</div>
-            <ul className="grid max-h-56 grid-cols-2 gap-1 overflow-y-auto pr-1 sm:grid-cols-3">
+            <ul className="grid h-56 grid-cols-2 content-start gap-1 overflow-y-auto pr-1 sm:grid-cols-3">
               {problem.table.map((physical, logical) => (
                 <li key={logical}>
                   <button
