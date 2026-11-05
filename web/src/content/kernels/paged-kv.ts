@@ -14,6 +14,10 @@ export const pagedKv: KernelStory = {
     value: `${replay.peak.blocks} / ${replay.meta.kv_blocks.toLocaleString("en-US")}`,
     label: `KV blocks held at the busiest step of a recorded ${replay.meta.num_requests}-request chat run, ${replay.peak.running} requests at once`,
   },
+  prologue: {
+    title: "continuous batching",
+    intro: "Serving many requests from one pool needs a scheduler that decides, step by step, which requests run together. This is what it does that a fixed batch cannot. The request lengths in the diagrams are illustrative, not measured.",
+  },
   lead: {
     title: "allocate it yourself",
     intro: `Three real chat requests, answered greedily by the engine on the ${demo.gpu.replace("NVIDIA GeForce ", "")} and recorded in results/kv_demo.json, served from a 64-block pool by the rules of the BlockManager and the scheduler: a request is admitted when blocks for its whole length are free, every decode step appends one slot, a full pool preempts the newest request. Add requests, then switch to contiguous to run the same arrivals with every request reserving its prompt plus the ${demo.max_new_tokens} tokens it may generate. Hover a block for its tokens and where it sits in memory.`,
