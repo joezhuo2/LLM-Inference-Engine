@@ -53,7 +53,7 @@ const lx = (v: number) => pad.l + ((Math.log10(v) - Math.log10(xr[0])) / (Math.l
 const ly = (v: number) => H - pad.b - ((Math.log10(v) - Math.log10(yr[0])) / (Math.log10(yr[1]) - Math.log10(yr[0]))) * (H - pad.t - pad.b);
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
 
-function RooflinePicker() {
+export function RooflinePicker() {
   const [rows, setRows] = useState("1");
   const { reduced } = useLoop(1);
   const ease = { duration: reduced ? 0 : 0.7, ease: "easeInOut" as const };

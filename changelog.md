@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-gemm
 
+- Part A: turn the GEMM story into chapter 2 of the book (`/kernels/gemm`): five hatched ink pop-up models (the five projections as towers of bytes and time, one row of W in memory, row-major and column-major, the batch-1 GEMV streaming weight rows past x, the five GEMVs under a glass roof at the measured bandwidth, and one weight row shared by up to 16 rows with a draggable batch), the roofline picker as a flat overlay, and the tiling sandbox's two parts on their own try-it-yourself spreads.
 - Part A: let the GEMM tiling sandbox render its two parts (the prediction, controls and thread block; the controls and the byte readouts) into two given elements through portals (`pages` prop), and export the GEMM story steps, captions and measured numbers so the book can reuse them.
 
 ## web/book-rope
