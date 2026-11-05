@@ -1770,3 +1770,6 @@
 
 ## 3D book: SwiGLU (Branch 109)
 - **sharing one module's helpers between a figure and a 3D model** => 
+- **dragging between several handles in one scene by remembering the grabbed one** => 
+- **instanced meshes with per-instance colour for stacked blocks** => 
+- **round-robin placement of blocks onto SMs** => 
