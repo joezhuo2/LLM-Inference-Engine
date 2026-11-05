@@ -2,6 +2,7 @@
 
 import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PrologueStory } from "./attention/prologue-story";
+import { PagedAttentionSandbox } from "./attention/sandbox";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
 import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
@@ -80,6 +81,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <FoundationsSandbox />;
     case "gemm":
       return <GemmSandbox />;
+    case "paged-attention":
+      return <PagedAttentionSandbox />;
     default:
       return null;
   }
