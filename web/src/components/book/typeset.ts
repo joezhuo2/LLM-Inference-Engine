@@ -93,7 +93,7 @@ export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, p
     ctx.font = `${30 * unit}px ${fonts.sans}`;
     y = drawParagraph(ctx, [{ text: page.note, accent: false }], marginX, y, textW, 42 * unit, palette.blue, palette.blue, false) + 20 * unit;
   }
-  let size = 40;
+  let size = 26;
   const bottom = h - 170 * unit;
   for (; size > 24; size -= 1) {
     ctx.font = `${size * unit}px ${fonts.sans}`;

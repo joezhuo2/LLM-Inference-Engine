@@ -1768,6 +1768,45 @@
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
 
+## 3D book: cover and contents (Branch 101)
+- **raycasting a whole group to hit-test a closed object** => 
+- **serialising async animations so a new request waits for the current one** => 
+- **mapping a raycast hit's UV coordinates back to a canvas region** => 
+- **painting text pages onto a canvas with a scaled transform and manual line wrapping** => 
+- **static route segments taking precedence over a dynamic segment** => 
+- **staggering several tweens from one eased clock** => 
+- **copying a mutated BufferGeometry's attributes into other meshes** => 
+- **remapping indices when a list grows in the middle** => 
+- **history.pushState inside the Next.js App Router** => 
+- **a composite object that routes calls to the part that owns them** => 
+- **loading a module on demand and caching its promise** => 
+
+## 3D book: text size (Branch 114)
+
+- **fit-to-box text sizing with a maximum size** => 
+
+## 3D book: engine fixes (Branch 113)
+
+- **blending a bent mesh into a resting shape by how flat each segment lies** => 
+
+## 3D book: polish (Branch 115)
+
+- **one type size across pages instead of fitting each page alone** => 
+- **adjusting state while rendering to remember the last prop value** => 
+
+## 3D book: add and RMSNorm (Branch 108)
+- **scale invariance of RMSNorm** => 
+- **a signed bar chart hung above and below a floating rail** => 
+- **animating a bar height by scaling a unit box on one axis** => 
+- **getBoundingClientRect returns transformed sizes, offsetWidth does not** => 
+
+## 3D book: sampling (Branch 110)
+- **sharing story data between a scroll page and a 3D view through module exports** => 
+- **rendering the same JSX element into two portals bound to one state** => 
+- **a horizontal cut plane as a threshold in a binary search** => 
+- **routing a drag to one of several handles by the picked mesh** => 
+- **framing a close-up camera so foreground cards do not cover the model** => 
+
 ## 3D book: split attention (Branch 107)
 - **exporting a story's data so another view can reuse it** => 
 - **instanced meshes for many identical blocks** => 
