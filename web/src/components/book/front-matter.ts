@@ -1,7 +1,7 @@
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { kernelStory } from "@/content/kernels";
 import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
-import { frames } from "./chapter";
+import { type ChapterDef, chapterTitles, frames } from "./chapter";
 import type { BookPalette } from "./ink";
 import type { Fonts } from "./typeset";
 
@@ -15,8 +15,18 @@ export const bookParts = [
 export const bookOrder = bookParts.flatMap((p) => p.slugs);
 
 export const chapterTitle = (slug: string) => kernelStory(slug)?.title ?? slug;
-export const chapterPage = (slug: string) => (bookOrder.indexOf(slug) + 1) * 20 + 1;
-export const errataPage = (bookOrder.length + 1) * 20 + 1;
+const firstPage: Record<string, number> = {};
+export const chapterPage = (key: string): number | undefined => firstPage[key];
+
+export function numberPages(spreads: Record<string, number>): number {
+  let page = 3;
+  for (const key of ["contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "errata"]) {
+    firstPage[key] = page;
+    page += 2 * (key === "contents" ? 1 : key === "errata" ? errataSpreads.length : spreads[key]);
+  }
+  return page - 1;
+}
+
 export const errataTitle = "what didn't work";
 export const errataIntro = `${deadEnds.length} changes that did not do what they were meant to, from the profiling notes, the changelog and the PRs. Each one says what was tried, what the measurement or the test showed, and what was kept. Numbers are as measured at the time.`;
 
@@ -83,7 +93,7 @@ function contentsRows(parts: typeof bookParts, withErrata: boolean) {
     }
     y += 40;
   }
-  if (withErrata) rows.push({ kind: "entry", y: y + 20, text: `Errata: ${errataTitle}`, page: errataPage, href: "#errata" });
+  if (withErrata) rows.push({ kind: "entry", y: y + 20, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
   return rows;
 }
 
@@ -113,6 +123,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       const tx = x0 + 70;
       ctx.fillText(row.text, tx, row.y);
       const end = tx + ctx.measureText(row.text).width + 18;
+      if (row.page === undefined) continue;
       ctx.font = `30px ${fonts.sans}`;
       const page = String(row.page);
       const pw = ctx.measureText(page).width;
@@ -149,10 +160,10 @@ function errataTitlePage(canvas: HTMLCanvasElement, palette: BookPalette, fonts:
   ctx.fillStyle = palette.ink;
   ctx.font = `36px ${fonts.sans}`;
   paragraph(ctx, errataIntro, x0, 450, x1 - x0, 54);
-  folio(ctx, String(errataPage), "left", x0, x1, palette, fonts);
+  folio(ctx, String(chapterPage("errata")), "left", x0, x1, palette, fonts);
 }
 
-function deadEndPage(d: DeadEnd, side: Side, page: number) {
+function deadEndPage(d: DeadEnd, side: Side, offset: number) {
   const link: PageLink = { side, box: [0, 0, 0, 0], href: `/kernels/${d.slug}`, label: d.kernel };
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
@@ -197,7 +208,7 @@ function deadEndPage(d: DeadEnd, side: Side, page: number) {
     };
     while (size > 24 && layout(false) > bottom) size -= 1;
     layout(true);
-    folio(ctx, String(page), side, x0, x1, palette, fonts);
+    folio(ctx, String((chapterPage("errata") ?? 0) + offset), side, x0, x1, palette, fonts);
   };
   return { paint, link };
 }
@@ -234,9 +245,8 @@ export const errataSpreads: ErrataSpread[] = Array.from({ length: Math.ceil((dea
 
 export function errataStops(firstSpread: number): Stop[] {
   return errataSpreads.map(({ left, right }, k) => {
-    const leftPage = errataPage + 2 * k;
-    const l = left ? deadEndPage(left, "left", leftPage) : null;
-    const r = right ? deadEndPage(right, "right", leftPage + 1) : null;
+    const l = left ? deadEndPage(left, "left", 2 * k) : null;
+    const r = right ? deadEndPage(right, "right", 2 * k + 1) : null;
     const shown = [left, right].filter((d): d is DeadEnd => d !== null);
     return {
       ...flatStop(firstSpread + k, k === 0 ? `Errata: ${errataTitle}` : `Errata: ${shown.map((d) => d.kernel).join(" and ")}`, left?.title ?? "Errata", left ? [left.tried, left.happened, left.kept] : [errataIntro]),
@@ -244,4 +254,87 @@ export function errataStops(firstSpread: number): Stop[] {
       links: [l?.link, r?.link].filter((x): x is PageLink => !!x),
     };
   });
+}
+
+function introRows(def: ChapterDef) {
+  const titles = chapterTitles(def);
+  const steps = def.steps.length;
+  const step = Math.min(ROW, (H - 700) / (titles.length + (titles.length > steps ? 1.5 : 0)));
+  const rows: { y: number; text: string; number?: string; k?: number }[] = [];
+  let y = 380;
+  titles.forEach((text, k) => {
+    if (k === steps) {
+      rows.push({ y: y + step * 0.2, text: "try it yourself" });
+      y += step * 1.5;
+    }
+    rows.push({ y, text, number: k < steps ? String(k + 1) : undefined, k });
+    y += step;
+  });
+  return { rows, step };
+}
+
+export function introStop(def: ChapterDef): Stop {
+  const part = bookParts.find((p) => p.slugs.includes(def.slug));
+  const title = chapterTitle(def.slug);
+  const summary = kernelStory(def.slug)?.short ?? "";
+  const { rows, step } = introRows(def);
+  const page = (k: number) => (chapterPage(def.slug) ?? 0) + k;
+  const left = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, "left");
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(part ? `Part ${part.numeral} · ${part.title}` : "Every Byte", x0, 150);
+    ctx.font = `44px ${fonts.serif}`;
+    ctx.fillText(`Chapter ${def.number}`, x0, 420);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    const y = paragraph(ctx, title, x0, 530, x1 - x0, 100);
+    ctx.font = `36px ${fonts.sans}`;
+    paragraph(ctx, summary, x0, y + 50, x1 - x0, 54);
+    folio(ctx, String(page(0)), "left", x0, x1, palette, fonts);
+  };
+  const right = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, "right");
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`chapter ${def.number} · ${title}`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText("in this chapter", x0, 260);
+    for (const row of rows) {
+      if (row.k === undefined) {
+        ctx.fillStyle = palette.faint;
+        ctx.font = `26px ${fonts.sans}`;
+        ctx.fillText(row.text, x0, row.y);
+        continue;
+      }
+      ctx.fillStyle = palette.faint;
+      ctx.font = `${Math.round(step * 0.43)}px ${fonts.serif}`;
+      if (row.number) ctx.fillText(row.number, x0, row.y);
+      const target = String(page(2 * (row.k + 1)));
+      ctx.font = `30px ${fonts.sans}`;
+      const pw = ctx.measureText(target).width;
+      ctx.fillText(target, x1 - pw, row.y);
+      const tx = x0 + 70;
+      let size = Math.round(step * 0.5);
+      ctx.font = `${size}px ${fonts.serif}`;
+      while (size > 26 && ctx.measureText(row.text).width > x1 - pw - 40 - tx) ctx.font = `${--size}px ${fonts.serif}`;
+      ctx.fillStyle = palette.ink;
+      ctx.fillText(row.text, tx, row.y);
+      ctx.fillStyle = palette.faint;
+      for (let x = tx + ctx.measureText(row.text).width + 18; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
+    }
+    ctx.fillStyle = palette.blue;
+    ctx.font = `40px ${fonts.serif}`;
+    paragraph(ctx, "Click a step to turn to it.", x0, H - 250, x1 - x0, 48);
+    folio(ctx, String(page(1)), "right", x0, x1, palette, fonts);
+  };
+  const links: PageLink[] = rows
+    .filter((r) => r.k !== undefined)
+    .map((r) => ({ side: "right", box: [170 / W, (r.y - step * 0.65) / H, (W - 130) / W, (r.y + step * 0.32) / H], href: `/kernels/${def.slug}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : `try it yourself, ${r.text}` }));
+  return {
+    ...flatStop(0, `Chapter ${def.number}: ${title}`, title, [summary]),
+    paint: { left, right },
+    links,
+  };
 }

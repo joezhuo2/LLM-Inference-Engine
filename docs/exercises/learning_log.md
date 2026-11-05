@@ -1853,3 +1853,8 @@
 - **extrapolating a measured linear cost past the last data point** => 
 - **shrinking canvas text to fit by measuring its width** => 
 - **why a standing label is hidden by taller objects in front at low camera elevations** => 
+
+## 3D book: chapter intros (Branch 117)
+
+- **numbering pages from lazily loaded chapter lengths** => 
+- **painting clickable rows on a canvas page with hit boxes in page coordinates** => 
