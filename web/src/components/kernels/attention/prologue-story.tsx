@@ -98,6 +98,10 @@ const captions = [
   "an illustrative 96-token sequence in a 16-block pool; the blocks and their order are made up",
 ];
 
+export const prologueSteps = steps;
+export const prologueCaptions = captions;
+export const prologueNumbers = { ttft128, ttft2048, perToken128, perToken2048, gbs, percent, stepMs, ratio };
+
 export function PrologueStory() {
   return (
     <StickyStory

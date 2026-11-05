@@ -96,6 +96,10 @@ const captions = [
   `${v2Loop} µs → ${split8} µs, one row at 2,048 tokens, from docs/profiling.md; the busy SMs are an illustration`,
 ];
 
+export const attentionSteps = steps;
+export const attentionCaptions = captions;
+export const attentionNumbers = { stepV1, stepV2, v2Loop, split8, poolBlocks };
+
 export function PagedAttentionStory() {
   return (
     <StickyStory
