@@ -2,7 +2,10 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
-import { useState } from "react";
+import { animate, type AnimationPlaybackControls } from "motion";
+import { useEffect, useRef, useState } from "react";
+import { SmoothRange } from "@/components/smooth-range";
+import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { ceilings, environment, modelShape, profilingTable } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { Frame, Label } from "../frame";
@@ -97,6 +100,9 @@ export function FoundationsSandbox() {
   const [step, setStep] = useState(start.step);
   const [context, setContext] = useState(start.context);
   const [guess, setGuess] = useState<Guess>(null);
+  const reduced = usePrefersReducedMotion();
+  const tweens = useRef<AnimationPlaybackControls[]>([]);
+  useEffect(() => () => tweens.current.forEach((t) => t.stop()), []);
   const rows = rowsAt(step);
   const cost = opCost(shape, op, rows, context);
   const a = analyse(cost, peak);
@@ -110,11 +116,21 @@ export function FoundationsSandbox() {
   const mdot = m ? { x: lx(m.intensity), y: ly(m.tflops) } : dot;
   const text = verdict(guess, crosses);
   const gpu = String(environment.gpu ?? "").replace("NVIDIA GeForce ", "");
+  const stop = () => {
+    tweens.current.forEach((t) => t.stop());
+    tweens.current = [];
+  };
+  const glide = (from: number, to: number, set: (v: number) => void, round: (v: number) => number) => {
+    if (from === to) return;
+    if (reduced) return set(to);
+    tweens.current.push(animate(from, to, { duration: 0.6, ease: [0.77, 0, 0.175, 1], onUpdate: (x) => set(round(x)) }));
+  };
   const reset = () => {
+    stop();
     setOp(start.op);
-    setStep(start.step);
-    setContext(start.context);
     setGuess(null);
+    glide(step, start.step, setStep, Math.round);
+    glide(context, start.context, setContext, (v) => 16 * Math.round(v / 16));
   };
 
   const readouts: { label: string; value: React.ReactNode }[] = [
@@ -174,13 +190,14 @@ export function FoundationsSandbox() {
           <label htmlFor="roofline-rows" className="text-muted">
             batch rows
           </label>
-          <input
+          <SmoothRange
             id="roofline-rows"
-            type="range"
             min={0}
             max={rowSteps}
             value={step}
-            onChange={(e) => setStep(Number(e.target.value))}
+            onValue={setStep}
+            onPointerDown={stop}
+            onKeyDown={stop}
             aria-valuetext={`${rows} rows`}
             className="w-full accent-[var(--accent)]"
           />
@@ -194,7 +211,10 @@ export function FoundationsSandbox() {
                 key={p}
                 type="button"
                 aria-pressed={rows === p}
-                onClick={() => setStep(stepOf(p))}
+                onClick={() => {
+                  stop();
+                  glide(step, stepOf(p), setStep, Math.round);
+                }}
                 title={measuredRows.includes(String(p)) ? "has a measured point" : undefined}
                 className={clsx("pressable rounded border px-2.5 py-1 tabular-nums", rows === p ? "border-accent bg-accent-dim text-accent" : "border-border text-text")}
               >
@@ -205,15 +225,16 @@ export function FoundationsSandbox() {
           <label htmlFor="roofline-context" className={clsx(op === "attention" ? "text-muted" : "text-muted/50")}>
             context
           </label>
-          <input
+          <SmoothRange
             id="roofline-context"
-            type="range"
             min={16}
             max={shape.max_positions}
             step={16}
             value={context}
             disabled={op !== "attention"}
-            onChange={(e) => setContext(Number(e.target.value))}
+            onValue={setContext}
+            onPointerDown={stop}
+            onKeyDown={stop}
             aria-valuetext={`${context} tokens`}
             className="w-full accent-[var(--accent)] disabled:opacity-40"
           />

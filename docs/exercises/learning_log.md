@@ -1597,3 +1597,4 @@
 - **log-log axes and why a power law is a straight line on them** => 
 - **reading a roofline plot: the slope, the flat top and the distance of a measured dot below the roof** => 
 - **why measured attention sits far under its roofline** => 
+- **cancelling a running tween when the user takes over the control** => 
