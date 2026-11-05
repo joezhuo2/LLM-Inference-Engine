@@ -33,7 +33,7 @@ const defaults = { pos: 300, pair: 0, qPos: 300, kPos: 280 };
 
 type Guess = "changes" | "stays the same" | null;
 
-export function RopeSandbox({ pages }: { pages?: { left: HTMLElement; right: HTMLElement } } = {}) {
+export function RopeSandbox({ pages }: { pages?: { one: HTMLElement | null; two: HTMLElement | null } } = {}) {
   const [pos, setPos] = useState(300);
   const [pair, setPair] = useState(0);
   const [pairF, setPairF] = useState(0);
@@ -297,16 +297,31 @@ export function RopeSandbox({ pages }: { pages?: { left: HTMLElement; right: HTM
         </div>
   );
   if (pages) {
+    const resetButton = (
+      <div className="flex justify-end">
+        <button type="button" onClick={reset} className={button}>
+          reset
+        </button>
+      </div>
+    );
     return (
       <>
-        {createPortal(
-          <div className="space-y-8 tabular-nums text-xs">
-            {intro}
-            {partOne}
-          </div>,
-          pages.left,
-        )}
-        {createPortal(<div className="tabular-nums text-xs">{partTwo}</div>, pages.right)}
+        {pages.one &&
+          createPortal(
+            <div className="space-y-6 tabular-nums text-xs">
+              {resetButton}
+              {partOne}
+            </div>,
+            pages.one,
+          )}
+        {pages.two &&
+          createPortal(
+            <div className="space-y-6 tabular-nums text-xs">
+              {resetButton}
+              {partTwo}
+            </div>,
+            pages.two,
+          )}
       </>
     );
   }

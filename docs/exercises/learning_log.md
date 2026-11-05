@@ -1758,3 +1758,5 @@
 - **a page curve that dips at the spine and what it hides at a viewing angle** => 
 - **sizing a texture to the pixels it covers on screen** => 
 - **texture memory: width x height x 4 bytes plus a third for mipmaps** => 
+- **rendering into a DOM node outside the component tree with a React portal** => 
+- **keeping component state while its portal target changes** => 

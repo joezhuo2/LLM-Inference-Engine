@@ -6,8 +6,9 @@ import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookScene, OverlayRect, Rect, Stop } from "./book-scene";
 import { createRopeModel } from "./rope-model";
-import { ropeStops } from "./rope-chapter";
+import { ropeStops, ropeWorkbench } from "./rope-chapter";
 import { loadFonts, readFonts, readRuns } from "./typeset";
+import { RopeSandbox } from "@/components/kernels/rope/sandbox";
 import { ropeCaptions, ropeNumbers, ropeSteps, TokensPicker } from "@/components/kernels/rope/story";
 
 type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number };
@@ -105,6 +106,7 @@ export function BookView() {
   const [overlay, setOverlay] = useState<OverlayRect | null>(null);
   const [lens, setLens] = useState<Lens | null>(null);
   const [failed, setFailed] = useState(false);
+  const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(false);
 
   useEffect(() => {
@@ -116,8 +118,8 @@ export function BookView() {
   }, []);
 
 
-  const total = ropeSteps.length;
-  const titles = useMemo(() => ropeSteps.map((s) => s.title), []);
+  const total = ropeSteps.length + ropeWorkbench.length;
+  const titles = useMemo(() => [...ropeSteps.map((s) => s.title), ...ropeWorkbench.map((w) => w.title)], []);
 
   useEffect(() => {
     const canvasEl = canvas.current;
@@ -136,7 +138,7 @@ export function BookView() {
       const [{ BookScene: Scene }] = await Promise.all([import("./book-scene"), loadFonts(fonts)]);
       if (cancelled) return;
       const text = [...bodiesEl.children].map((el, i) => ({ title: ropeSteps[i].title, paragraphs: readRuns(el) }));
-      const chapterStops = ropeStops({ index: 3, title: "RoPE", formula: "x′ᵢ = xᵢ cos pθᵢ − xᵢ₊d/₂ sin pθᵢ,   θᵢ = 10000^(−2i/d)" }, text, ropeCaptions);
+      const chapterStops = ropeStops({ index: 3, title: "RoPE", formula: "x′ᵢ = xᵢ cos pθᵢ − xᵢ₊d/₂ sin pθᵢ,   θᵢ = 10000^(−2i/d)" }, text, ropeCaptions, ropeWorkbench);
       setStops(chapterStops);
       try {
         instance = new Scene({
@@ -250,25 +252,39 @@ export function BookView() {
         <Magnifier lens={lens} />
         {overlay && narrow && (
           <div data-theme="light" className="book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]">
-            <TokensPicker />
+            {overlay.kind === "tokens" ? <TokensPicker /> : <div ref={setPageEl} />}
           </div>
         )}
         {overlay && !narrow && (
           <div data-theme="light" key={overlay.kind} className="book-overlay touch-auto text-[var(--text)]">
-            <FitPage rect={overlay.rect} width={PAGE_DESIGN_WIDTH}>
-              <div className="h-[34rem]">
-                <TokensPicker />
-              </div>
-            </FitPage>
+            {overlay.kind === "tokens" ? (
+              <FitPage rect={overlay.rect} width={PAGE_DESIGN_WIDTH}>
+                <div className="h-[34rem]">
+                  <TokensPicker />
+                </div>
+              </FitPage>
+            ) : (
+              <FitPage rect={overlay.rect} width={PAGE_DESIGN_WIDTH} onElement={setPageEl} />
+            )}
           </div>
         )}
+        {stop >= ropeSteps.length && <RopeSandbox pages={{ one: overlay?.kind === "sandbox-one" ? pageEl : null, two: overlay?.kind === "sandbox-two" ? pageEl : null }} />}
       </div>
       <div className="relative border-t border-border bg-surface">
         <article aria-live="polite" className="max-h-[32dvh] overflow-y-auto px-4 py-3 text-sm leading-relaxed text-muted min-[721px]:sr-only">
-          {step && (
+          {step ? (
             <>
               <h1 className="font-serif text-2xl text-text">{step.title}</h1>
               <div className="mt-2 space-y-2">{step.body}</div>
+            </>
+          ) : (
+            <>
+              <h1 className="font-serif text-2xl text-text">{titles[stop]}</h1>
+              <div className="mt-2 space-y-2">
+                {ropeWorkbench[stop - ropeSteps.length]?.paragraphs.map((p, i) => (
+                  <p key={i}>{p.map((r) => r.text).join("")}</p>
+                ))}
+              </div>
             </>
           )}
         </article>

@@ -40,13 +40,40 @@ export const ropeBeats: Beat[][] = [
     close("The second jar: 256 instead of 1,152", [0.83, 0.1, -0.03], 0.44, 0.4, -20, 26),
   ],
   [{ caption: "Pick a token count", frame: flatRight, narrow: flatNarrow }],
+  [{ caption: "Rotate it yourself: one position, 32 pairs", frame: flatRight, narrow: flatNarrow }],
+  [{ caption: "Rotate it yourself: the score depends on the gap", frame: flatRight, narrow: flatNarrow }],
 ];
 
 export const ropeInstructions = ["Drag the pink ball along the rail to change the position.", "Watch each value find its partner, 32 places along.", "Watch where the two values land on the steps.", "Watch the chain cross the plate and the jar fill.", "Compare the rows, the clock and the second jar."];
 
 export type ChapterText = { title: string; paragraphs: Run[][] };
 
-export function ropeStops(chapter: { index: number; title: string; formula: string }, steps: ChapterText[], captions: string[]): Stop[] {
+const plain = (...paragraphs: string[]): Run[][] => paragraphs.map((text) => [{ text, accent: false }]);
+
+export const ropeWorkbench: (ChapterText & { overlay: string })[] = [
+  {
+    title: "one position, 32 pairs",
+    overlay: "sandbox-one",
+    paragraphs: plain(
+      "Drag the position and pick a dimension pair on the right. The dial is pair i of a query vector, the two values xᵢ and xᵢ₊₃₂, turned by the angle m · θᵢ, where m is the token's position.",
+      "Pair 0 has θ = 1, so it turns a full circle every 6.3 positions. The grid under the dial shows all 32 pairs at the same position: the low pairs spin quickly and tell neighbouring tokens apart, the high pairs barely move.",
+      "Pair 31 needs about 47,000 positions for one turn, far longer than TinyLlama's 2,048-token context, so its angle never repeats inside a prompt. The fast pairs repeat often, but the slow ones keep every position's set of angles different.",
+      "The vectors are made up for illustration, from seeded random numbers rather than the model. The frequencies, the pairing of dimension i with i + 32 and the rotation are the engine's.",
+    ),
+  },
+  {
+    title: "the score depends on the gap",
+    overlay: "sandbox-two",
+    paragraphs: plain(
+      "Attention scores a query against a key with a dot product. After RoPE the query at position m and the key at position n are each turned by their own angles, so their score q·k depends only on the gap m − n, not on where the pair sits in the prompt.",
+      "Predict first, then try it: with the gap locked, move both positions together by 100 and watch the score. Then unlock the gap and move one position at a time.",
+      "The curve is the score for every gap from −2,048 to 2,048 with the same two vectors. With the gap locked the dot stays put; with it free, the dot slides along the curve.",
+      "This is why the kernel only has to turn each vector by its own position: the relative distance falls out of the dot product, with no table of pairwise positions anywhere.",
+    ),
+  },
+];
+
+export function ropeStops(chapter: { index: number; title: string; formula: string }, steps: ChapterText[], captions: string[], workbench: (ChapterText & { overlay: string })[]): Stop[] {
   const kicker = `chapter ${chapter.index} · ${chapter.title}`;
   const pageFor = (i: number, note?: string): PageText => ({ kicker, title: steps[i].title, note, paragraphs: steps[i].paragraphs, folio: String(i * 2 + 41) });
   const exhibits = [0, 1, 2, 3, 3];
@@ -63,5 +90,16 @@ export function ropeStops(chapter: { index: number; title: string; formula: stri
       overlay: flat ? "tokens" : null,
       beats: ropeBeats[i],
     };
-  });
+  }).concat(
+    workbench.map((w, k): Stop => ({
+      exhibit: null,
+      spread: steps.length + k,
+      page: { kicker: `${kicker} · rotate it yourself`, title: w.title, paragraphs: w.paragraphs, folio: String((steps.length + k) * 2 + 41) },
+      figure: "",
+      caption: "",
+      folio: "",
+      overlay: w.overlay,
+      beats: ropeBeats[steps.length + k],
+    })),
+  );
 }

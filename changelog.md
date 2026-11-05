@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-rope
 
+- Part A: add the sandbox to the book as two spreads, 7/8 and 8/8, one per part: explanatory text on the left page and that part of the sandbox on the right, scaled to fit the page without a scrollbar, with the sandbox state kept across both spreads.
 - Part A: size the page textures to the screen (1,600 to 2,560 px wide instead of 1,200) and draw the label cards at twice the resolution, so the book's text is sharp.
 - Part A: move the microsecond clock card off the thread plate so the plate no longer covers it.
 - Part A: print the figure instruction line under each model in the blue highlight.
