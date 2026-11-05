@@ -2,7 +2,7 @@
 
 import { measured } from "@/content/kernels/types";
 import { StickyStory, type StoryStep } from "../sticky-story";
-import { DecodeFigure, PrefillFigure } from "./prologue-figures";
+import { DecodeFigure, PrefillFigure, SideBySideFigure } from "./prologue-figures";
 
 const prefill = "prefill-against-prompt-length";
 const ttft = (tokens: string) => measured(prefill, { system: "engine" }, tokens, 0, "results");
@@ -16,6 +16,10 @@ const roof = "roofline";
 const whole = (column: string) => measured(roof, { "whole decode step": "engine", rows: "1" }, column, 1, "results");
 const gbs = whole("GB/s");
 const percent = whole("% of roof");
+
+const longStep = "split-attention-in-cuda-graphs-branch-43";
+const stepMs = measured(longStep, { "max batch": "1", prompt: "1,984" }, "this branch graphs");
+const ratio = Math.round(ttft2048 / stepMs);
 
 const steps: StoryStep[] = [
   {
@@ -53,11 +57,28 @@ const steps: StoryStep[] = [
       </>
     ),
   },
+  {
+    id: "cache",
+    title: "why the cache exists",
+    body: (
+      <>
+        <p>
+          Prefill computes the keys and values of the prompt once and writes them to the KV cache. Decode reads them back.
+          Without the cache every new token would rerun the whole prefill over a context that grew by one.
+        </p>
+        <p>
+          A 2,048-token prefill took <span className="font-mono text-text">{ttft2048.toLocaleString("en-US")} ms</span>. One decode
+          step at a 1,984-token context took <span className="font-mono text-accent">{stepMs} ms</span>, about {ratio}x less.
+        </p>
+      </>
+    ),
+  },
 ];
 
 const captions = [
   `an illustrative 8-token prompt; the times are single-request TTFT, median of 5 runs, from docs/results.md`,
   `illustrative tokens; ${gbs} GB/s and ${percent}% are the engine at batch 1 without CUDA Graphs, from docs/results.md`,
+  `${ttft2048.toLocaleString("en-US")} ms prefill of 2,048 tokens (docs/results.md) against ${stepMs} ms per decode step at a 1,984-token prompt, batch 1, with CUDA Graphs (docs/profiling.md)`,
 ];
 
 export function PrologueStory() {
@@ -69,8 +90,10 @@ export function PrologueStory() {
         switch (i) {
           case 0:
             return <PrefillFigure />;
-          default:
+          case 1:
             return <DecodeFigure percent={percent} />;
+          default:
+            return <SideBySideFigure prefillMs={ttft2048} stepMs={stepMs} />;
         }
       }}
     />

@@ -1553,3 +1553,4 @@
 - **decode: why generation is sequential, one token per step** => 
 - **the KV cache: which tensors it stores and why attention can reuse them** => 
 - **memory-bound against compute-bound: what limits a decode step** => 
+- **decoding without a KV cache: why every token would redo the work of all earlier tokens** => 

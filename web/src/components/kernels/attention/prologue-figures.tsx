@@ -105,3 +105,42 @@ export function DecodeFigure({ percent }: { percent: number }) {
     </Frame>
   );
 }
+
+export function SideBySideFigure({ prefillMs, stepMs }: { prefillMs: number; stepMs: number }) {
+  const { on, grow } = useLoop(7);
+  const full = 520;
+  const ratio = Math.round(prefillMs / stepMs);
+  const boxes = [
+    { x: 20, title: "prefill", sub: "all positions, once", from: 0.04, to: 0.3 },
+    { x: 205, title: "KV cache", sub: "K and V per position", from: 0.3, to: 0.56 },
+    { x: 390, title: "decode", sub: "one token per step", from: 0.56, to: 0.9 },
+  ];
+  return (
+    <Frame label={`Prefill writes the KV cache once and decode reads it every step; without the cache each new token would rerun the whole prefill, which takes about ${ratio} times as long as a decode step`}>
+      <Label x={20} y={24}>prefill writes the cache, decode reads it</Label>
+      {boxes.map((b) => (
+        <g key={b.title}>
+          <rect x={b.x} y={36} width={150} height={44} rx={3} className="fill-surface stroke-border" />
+          <motion.rect x={b.x} y={36} width={150} height={44} rx={3} className="fill-accent/15 stroke-accent" {...on(b.from, b.to, false)} />
+          <Label x={b.x + 75} y={55} anchor="middle" className="fill-text">{b.title}</Label>
+          <Label x={b.x + 75} y={71} anchor="middle">{b.sub}</Label>
+        </g>
+      ))}
+      <line x1={172} y1={58} x2={203} y2={58} className="stroke-accent" strokeWidth={1.5} />
+      <line x1={357} y1={58} x2={388} y2={58} className="stroke-accent" strokeWidth={1.5} />
+      <Label x={187} y={98} anchor="middle">write</Label>
+      <Label x={372} y={98} anchor="middle">read</Label>
+      <Label x={20} y={132} className="fill-text">the KV cache exists so decode does not recompute the prefill</Label>
+      <Label x={20} y={176}>one new token at a context of about 2,000 tokens:</Label>
+      <Label x={20} y={206}>without a cache, rerun the prefill</Label>
+      <rect x={20} y={214} width={full} height={14} rx={2} className="fill-border" />
+      <motion.rect x={20} y={214} width={full} height={14} rx={2} className="fill-baseline" {...grow(0.08, 0.5)} />
+      <Label x={540} y={246} anchor="end" className="fill-text">{`${prefillMs.toLocaleString("en-US")} ms`}</Label>
+      <Label x={20} y={284}>with the cache, one decode step</Label>
+      <rect x={20} y={292} width={full} height={14} rx={2} className="fill-border" />
+      <motion.rect x={20} y={292} width={Math.max((full * stepMs) / prefillMs, 2)} height={14} rx={1} className="fill-accent" {...grow(0.5, 0.52)} />
+      <Label x={20} y={324} className="fill-accent">{`${stepMs} ms, about ${ratio}x less`}</Label>
+      <Label x={20} y={378}>a 2,048-token prefill against a decode step at 1,984 tokens, batch 1</Label>
+    </Frame>
+  );
+}
