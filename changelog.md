@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-cover
 
+- Part A: keep the kernels index (layer map and kernel cards) at `/kernels/list`, freeing `/kernels` for the book's cover.
 - Part A: let a stop paint its own pages (`paint.left`, `paint.right`, a `PagePainter` that gets the canvas, palette and fonts) and carry clickable regions (`links`, boxes in page fractions with an `href`), reported through `onLink` with a pointer cursor; stops without them draw as before.
 - Part A: let the book engine rest closed on the desk (`showClosed`), report a click on the closed cover (`onCoverClick`), close the book again with the cover swinging back (`close`), and take a cover camera frame (`coverFrame`); chapters still open on load as before.
 
