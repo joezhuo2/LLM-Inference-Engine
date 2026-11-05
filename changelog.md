@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-polish
+
+- Part A: start the book's left-page body text at 26 units, the size long steps already fit at, so every page in a chapter sets at one size.
+
 ## web/book-engine
 
 - Part A: lay the turning leaf on the page curve (the dip at the spine) at the start and end of a page turn, so it lifts off and lands exactly where the page sits instead of floating flat above the book and snapping down when the turn ends.

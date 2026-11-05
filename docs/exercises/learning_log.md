@@ -1788,3 +1788,7 @@
 ## 3D book: engine fixes (Branch 113)
 
 - **blending a bent mesh into a resting shape by how flat each segment lies** => 
+
+## 3D book: polish (Branch 115)
+
+- **one type size across pages instead of fitting each page alone** => 
