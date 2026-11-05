@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/nav-speed
+
+- Render a sticky story's figure only while its panel is on screen (`web/src/components/kernels/sticky-story.tsx`): the looping figure animations used to keep running after the reader scrolled past the story, which on a story page cost about half of the main thread at 1x CPU and all of it at 4x, so a click on the story navigation at the bottom waited up to 2 s at 4x before the next page started. The figure already restarted with its fade each time the panel came back into view, so nothing on screen changes. (Part A)
+
 ## web/sandbox-sampling
 
 - Add `scripts/dump_logits.py` and its output `results/sampling_logits.json`: the next-token logits of TinyLlama on the CPU in BF16 (no GPU) for three contexts (a one-answer question, an open haiku start, a story start where many names fit), as the 200 largest logits per context plus the other 31,800 binned by 0.25 so the whole softmax can be rebuilt at any temperature. `web/scripts/sync-data.mjs` copies it into `web/src/data/` and `samplingLogits()` in `web/src/lib/data.ts` reads it. (Part A)

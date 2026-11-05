@@ -1650,3 +1650,8 @@
 - **reading a roofline plot: the slope, the flat top and the distance of a measured dot below the roof** => 
 - **why measured attention sits far under its roofline** => 
 - **cancelling a running tween when the user takes over the control** => 
+
+## Navigation Speed (Branch 99)
+- **time-sliced rendering: why a busy main thread stretches a React transition render** => 
+- **main-thread animations on SVG elements against compositor-only animations** => 
+- **pausing offscreen animations with IntersectionObserver** => 
