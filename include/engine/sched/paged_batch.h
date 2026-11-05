@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <vector>
 
 #include "engine/sampling/sample.h"
@@ -27,10 +28,12 @@ struct PagedBatch {
 
 PagedBatch build_paged_batch(const Step& step, const Scheduler& scheduler, int max_blocks);
 
+PagedBatch build_chunked_batch(const ChunkedStep& step, const Scheduler& scheduler, int max_blocks);
+
 PagedBatch pad_decode_batch(const PagedBatch& batch, int64_t rows);
 
 int64_t attention_splits(int64_t rows, int64_t heads, int64_t longest_context);
 
-std::vector<SampleRow> sample_rows(const Step& step, const Scheduler& scheduler);
+std::vector<SampleRow> sample_rows(std::span<const SeqId> seqs, const Scheduler& scheduler);
 
 }  // namespace engine
