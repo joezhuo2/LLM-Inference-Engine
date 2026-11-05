@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { BookChapter } from "@/components/book/book-chapter";
+import { EveryByte } from "@/components/book/every-byte";
 import { kernelMetadata, ReadingView } from "@/components/kernels/reading-view";
 import { kernelStories, kernelStory } from "@/content/kernels";
 
@@ -17,5 +17,5 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const story = kernelStory(slug);
   if (!story) notFound();
-  return story.book ? <BookChapter slug={slug} /> : <ReadingView slug={slug} />;
+  return story.book ? <EveryByte /> : <ReadingView slug={slug} />;
 }
