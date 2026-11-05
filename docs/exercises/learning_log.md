@@ -1583,3 +1583,10 @@
 - **prefill against decode** => 
 - **kernel fusion and why it removes a round trip to global memory** => 
 - **kernel launch and the intermediate tensor written between two kernels** => 
+
+## Paged attention stepper (Branch 92)
+- **online softmax (running max, running sum, rescaled accumulator)** => 
+- **why a new maximum rescales the old sum and accumulator by exp(old max - new max)** => 
+- **numerically stable softmax (subtracting the maximum)** => 
+- **block table (logical block to physical block)** => 
+- **float32 rounding and why two summation orders differ in the last bits** => 

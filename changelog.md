@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-paged-attention
+
+- Add `web/src/components/kernels/attention/online-softmax.ts`: a small seeded model of the v2 kernel's loop over one query (random head vectors in float32, a block table that scatters the context over a 64-block pool with block 0 left as the null block), recording per block the scores, the block maximum, the new running maximum, the rescale factor, the running sum and the accumulator, in the order `paged_attention_v2.cu` does them, plus the one-shot softmax attention to compare with. `web/scripts/online-softmax.test.mjs` checks the two agree to float precision for block sizes 8, 16 and 32 across context lengths including partial last blocks. (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)
