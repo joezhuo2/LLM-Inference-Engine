@@ -1718,3 +1718,6 @@
 - **reading a chart's provenance (commit, date, GPU) from a generated line of a doc at build time** => 
 - **a log axis for tail latency against a linear axis for goodput** => 
 - **a headline metric as a before and after pair from one controlled experiment** => 
+
+## Color palette (Branch 85)
+- **deepening a muted moodboard color until it passes WCAG contrast and CVD checks** => 

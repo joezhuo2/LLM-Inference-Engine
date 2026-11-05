@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/palette
+
+- Part A: replace the green terminal theme tokens with the moodboard palette: cream paper and slate ink in light mode, deep slate and cream in dark mode, dusty blue accent, clay warning, and validated chart and request colors in the same hue families.
+
 ## bench/chunked-prefill
 
 - Replace the "not measured" and "nothing calls it yet" copy of the chunked prefill story, its timeline and the home build timeline M6 entry with the measured effect: the headline is the longest gap between two tokens when a long prompt arrives, without and with a budget of 256 (stall probe); the story's stall and spread steps and the sandbox's "for scale" note quote the sweep and the probe; the sources and tests list the wiring; the timeline gains the wiring (#149) and measurement entries; the M6 entry links #149, quotes goodput at 6 QPS against vLLM and shows the longest gap at 4 QPS as bars. Every number is read from `docs/results.md` at build time. (Part A)

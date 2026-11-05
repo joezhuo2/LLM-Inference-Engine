@@ -3,26 +3,27 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  --bg: #f6f4ee;
-  --surface: #fbfaf6;
-  --border: rgb(20 20 10 / 0.12);
-  --text: #1a1c1a;
-  --text-muted: #5f645f;
-  --accent: #157438;
-  --accent-dim: rgb(21 116 56 / 0.12);
-  --baseline: #9ca3af;
-  --warn: #b45309;
-  --series-1: #157438;
-  --series-2: #4f46e5;
-  --series-3: #db2777;
-  --req-1: #2a78d6;
-  --req-2: #eb6834;
-  --req-3: #1baf7a;
-  --req-4: #eda100;
-  --req-5: #e87ba4;
-  --req-6: #008300;
-  --req-7: #6250d6;
-  --req-8: #e34948;
+  --bg: #f4efe7;
+  --surface: #fbf8f4;
+  --border: rgb(31 42 47 / 0.13);
+  --text: #1f2a2f;
+  --text-muted: #596570;
+  --accent: #3f6583;
+  --accent-dim: rgb(63 101 131 / 0.13);
+  --baseline: #ae9a8c;
+  --on-mark: #fbf8f4;
+  --warn: #955a35;
+  --series-1: #20659b;
+  --series-2: #ae637f;
+  --series-3: #886612;
+  --req-1: #20659b;
+  --req-2: #886612;
+  --req-3: #ae637f;
+  --req-4: #707d32;
+  --req-5: #824011;
+  --req-6: #1c79a4;
+  --req-7: #996014;
+  --req-8: #7b4e86;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --duration-press: 120ms;
@@ -32,26 +33,27 @@
 }
 
 [data-theme="dark"] {
-  --bg: #0a0b0a;
-  --surface: #111311;
-  --border: rgb(255 255 255 / 0.08);
-  --text: #e6e8e6;
-  --text-muted: #8b918b;
-  --accent: #4ade80;
-  --accent-dim: rgb(74 222 128 / 0.15);
-  --baseline: #6b7280;
-  --warn: #fbbf24;
-  --series-1: #16a34a;
-  --series-2: #6366f1;
-  --series-3: #ec4899;
-  --req-1: #3987e5;
-  --req-2: #d95926;
-  --req-3: #199e70;
-  --req-4: #c98500;
-  --req-5: #d55181;
-  --req-6: #008300;
-  --req-7: #9085e9;
-  --req-8: #e66767;
+  --bg: #141c24;
+  --surface: #1b2530;
+  --border: rgb(231 226 214 / 0.1);
+  --text: #e7e2d6;
+  --text-muted: #a3b1bf;
+  --accent: #a9c3d9;
+  --accent-dim: rgb(169 195 217 / 0.15);
+  --baseline: #66737f;
+  --on-mark: #fbf8f4;
+  --warn: #d9a77f;
+  --series-1: #3b7fb5;
+  --series-2: #b66380;
+  --series-3: #a8802a;
+  --req-1: #3b7fb5;
+  --req-2: #ae883c;
+  --req-3: #b66380;
+  --req-4: #849e55;
+  --req-5: #b06648;
+  --req-6: #2285a9;
+  --req-7: #bc834c;
+  --req-8: #9f6ca7;
   color-scheme: dark;
 }
 
@@ -64,6 +66,7 @@
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
   --color-baseline: var(--baseline);
+  --color-on-mark: var(--on-mark);
   --color-warn: var(--warn);
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
