@@ -4,6 +4,7 @@ import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
 import { animate } from "motion";
 import { useEffect, useRef, useState } from "react";
+import { SmoothRange } from "@/components/smooth-range";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { Toggle } from "../toggle";
 import { MAX_POS, PAIRS, angle, invFreq, rotatePair, score, seededVector, wavelength } from "./rotation";
@@ -34,6 +35,7 @@ type Guess = "changes" | "stays the same" | null;
 export function RopeSandbox() {
   const [pos, setPos] = useState(300);
   const [pair, setPair] = useState(0);
+  const [pairF, setPairF] = useState(0);
   const [qPos, setQPos] = useState(300);
   const [kPos, setKPos] = useState(280);
   const [lock, setLock] = useState("locked");
@@ -54,17 +56,20 @@ export function RopeSandbox() {
     if (reduced) {
       setPos(target.pos);
       setPair(target.pair);
+      setPairF(target.pair);
       setQPos(target.qPos);
       setKPos(target.kPos);
       return;
     }
-    const at = (key: keyof typeof from, t: number) => Math.round(from[key] + (target[key] - from[key]) * t);
+    const mix = (key: keyof typeof from, t: number) => from[key] + (target[key] - from[key]) * t;
+    const at = (key: keyof typeof from, t: number) => Math.round(mix(key, t));
     tween.current = animate(0, 1, {
       duration: 0.6,
       ease: resetEase,
       onUpdate: (t) => {
         setPos(at("pos", t));
         setPair(at("pair", t));
+        setPairF(mix("pair", t));
         setQPos(at("qPos", t));
         setKPos(at("kPos", t));
       },
@@ -86,6 +91,18 @@ export function RopeSandbox() {
   const lo = q[pair];
   const hi = q[pair + PAIRS];
   const [rlo, rhi] = rotatePair(lo, hi, turned);
+  const floor = Math.floor(pairF);
+  const ceil = Math.min(floor + 1, PAIRS - 1);
+  const frac = pairF - floor;
+  const polar = (i: number) => [Math.hypot(q[i], q[i + PAIRS]), Math.atan2(q[i + PAIRS], q[i])] as const;
+  const [r0, b0] = polar(floor);
+  const [r1, b1raw] = polar(ceil);
+  const b1 = b1raw + TAU * Math.round((b0 - b1raw) / TAU);
+  const radius = r0 + (r1 - r0) * frac;
+  const base = b0 + (b1 - b0) * frac;
+  const swing = angle(floor, pos) + (angle(ceil, pos) - angle(floor, pos)) * frac;
+  const vx = radius * Math.cos(base);
+  const vy = radius * Math.sin(base);
   const scale = 70 / Math.max(...Array.from({ length: PAIRS }, (_, i) => Math.hypot(q[i], q[i + PAIRS])));
 
   const gap = qPos - kPos;
@@ -129,9 +146,9 @@ export function RopeSandbox() {
               <span>position m</span>
               <NumberFlow value={pos} className="text-text" />
             </span>
-            <input type="range" min={0} max={MAX_POS} value={pos} onChange={(e) => {
+            <SmoothRange min={0} max={MAX_POS} value={pos} onValue={(v) => {
                 stop();
-                setPos(Number(e.target.value));
+                setPos(v);
               }} aria-label="position m" className={slider} />
           </label>
           <label className="block space-y-1">
@@ -139,9 +156,10 @@ export function RopeSandbox() {
               <span>dimension pair i (dims i and i + 32)</span>
               <NumberFlow value={pair} className="text-text" />
             </span>
-            <input type="range" min={0} max={PAIRS - 1} value={pair} onChange={(e) => {
+            <SmoothRange min={0} max={PAIRS - 1} value={pair} onValue={(v) => {
                 stop();
-                setPair(Number(e.target.value));
+                setPair(v);
+                setPairF(v);
               }} aria-label="dimension pair i" className={slider} />
           </label>
           <div className="grid items-center gap-4 sm:grid-cols-[11rem_minmax(0,1fr)]">
@@ -149,10 +167,10 @@ export function RopeSandbox() {
               <circle cx={100} cy={100} r={80} className="fill-none stroke-border" />
               <line x1={20} y1={100} x2={180} y2={100} className="stroke-border" />
               <line x1={100} y1={20} x2={100} y2={180} className="stroke-border" />
-              <line x1={100} y1={100} x2={100 + lo * scale} y2={100 - hi * scale} className="stroke-muted" strokeDasharray="3 3" />
-              <g style={{ transform: `rotate(${-deg(turned)}deg)`, transformOrigin: "100px 100px" }}>
-                <line x1={100} y1={100} x2={100 + lo * scale} y2={100 - hi * scale} className="stroke-accent" strokeWidth={2} />
-                <circle cx={100 + lo * scale} cy={100 - hi * scale} r={3.5} className="fill-accent" />
+              <line x1={100} y1={100} x2={100 + vx * scale} y2={100 - vy * scale} className="stroke-muted" strokeDasharray="3 3" />
+              <g style={{ transform: `rotate(${-deg(swing)}deg)`, transformOrigin: "100px 100px" }}>
+                <line x1={100} y1={100} x2={100 + vx * scale} y2={100 - vy * scale} className="stroke-accent" strokeWidth={2} />
+                <circle cx={100 + vx * scale} cy={100 - vy * scale} r={3.5} className="fill-accent" />
               </g>
               <text x={176} y={94} textAnchor="end" className="fill-muted text-[13px]">{`x${pair}`}</text>
               <text x={104} y={30} className="fill-muted text-[13px]">{`x${pair + PAIRS}`}</text>
@@ -240,14 +258,14 @@ export function RopeSandbox() {
               <span>query position</span>
               <NumberFlow value={qPos} className="text-text" />
             </span>
-            <input type="range" min={0} max={MAX_POS} value={qPos} onChange={(e) => moveQ(Number(e.target.value))} aria-label="query position" className={slider} />
+            <SmoothRange min={0} max={MAX_POS} value={qPos} onValue={moveQ} aria-label="query position" className={slider} />
           </label>
           <label className="block space-y-1">
             <span className="flex justify-between text-muted">
               <span>key position</span>
               <NumberFlow value={kPos} className="text-text" />
             </span>
-            <input type="range" min={0} max={MAX_POS} value={kPos} onChange={(e) => moveK(Number(e.target.value))} aria-label="key position" className={slider} />
+            <SmoothRange min={0} max={MAX_POS} value={kPos} onValue={moveK} aria-label="key position" className={slider} />
           </label>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => shift(-SHIFT)} className={button}>{`both −${SHIFT}`}</button>
