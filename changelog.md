@@ -8,6 +8,12 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add `BatchingFigure` in `web/src/components/kernels/paged-kv/figures.tsx`: a grid of batch slots against steps that fills one column at a time with the request queue above it and live counters (steps, requests running, preemptions, wasted slot-steps), drawn with opacity and scale only and shown complete under reduced motion. (Part A)
 - Add a continuous batching prologue to the paged KV cache page, between its header and "allocate it yourself": a four-step sticky story (static batching waits for the longest, continuous batching revisits the batch every step, the engine's admission and preemption rules, and what to watch in the visualizer: requests running and preemptions), with `prologue` on `KernelStory` and `KernelPrologueView`. The request lengths are illustrative and say so. (Part A)
 
+## web/prefill-decode-prologue
+
+- Add a prologue "Prefill vs. Decode (the token lifecycle)" before "how it works" on the paged attention page (#136), as its own sticky story with new figures: prefill takes the whole prompt in one pass and fills the KV cache, decode generates one token per step and reads every cached key and value. Times come from `docs/results.md` through `sync-data.mjs`; token counts are labelled illustrative. (Part A)
+- Add the third prologue step, both phases side by side: prefill writes the KV cache and decode reads it, with the cost of recomputing the prefill for a new token (2,048-token prefill, from the prefill TTFT table) against one decode step at a 1,984-token context (from the CUDA Graphs split-attention table) as two bars. (Part A)
+- Add the fourth prologue step, the bridge into paged attention: a sequence's cache grows a token per step, is cut into 16-token blocks and placed in a shared pool, which is what the rest of the page explains. Export the example block table from `figures.tsx` so both figures show the same blocks. (Part A)
+
 ## sched/chunked-prefill-impl
 
 - Move the 25 `Scheduler::schedule_chunked` tests to `tests/unit/test_scheduler_chunked.cpp`, add them to `unit_tests` and delete the `todo_unit_tests` target. (Part A)

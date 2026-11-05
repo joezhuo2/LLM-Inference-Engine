@@ -1,6 +1,7 @@
 "use client";
 
 import { AddRmsnormStory } from "./add-rmsnorm/story";
+import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
@@ -41,6 +42,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
 
 export function KernelLeadView({ slug }: { slug: string }) {
   switch (slug) {
+    case "paged-attention":
+      return <PrologueStory />;
     case "paged-kv":
       return <KvVisualizer />;
     default:

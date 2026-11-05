@@ -47,8 +47,8 @@ export function OverviewFigure() {
   );
 }
 
-const table = [7, 2, 11, 4, 9, 0];
-const others = new Set([1, 5, 6, 12, 14]);
+export const table = [7, 2, 11, 4, 9, 0];
+export const others = new Set([1, 5, 6, 12, 14]);
 
 export function BlocksFigure() {
   const { on } = useLoop(6);
