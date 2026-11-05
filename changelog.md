@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/nav-speed
+
+- Restore the scroll position instantly on back and forward (`web/src/components/scroll-to-top.tsx`): `html { scroll-behavior: smooth }` (kept for the hero's "how it was built" link) also made Chrome animate the restored position, so going back to the bottom of a long page flew through it for about 1.5 s, and on the overview the first restored pixel started the glitch exit, which locked the scroll and left the reader at "built from scratch" instead of the cards. The popstate listener now sets `scroll-behavior: auto` on `<html>` for two frames, except for hash links. (Part A)
+- Preload the latin-ext and greek subsets of JetBrains Mono as well as latin (`web/src/app/layout.tsx`, about 24 KB): `/kernels` uses ᵀ and most story pages use Greek letters, so their first visit started a font download, and React holds a view transition until fonts that start loading during the commit are ready (up to 500 ms), which delayed the page by 50 to 300 ms. Inter's extra subsets (85 KB for latin-ext) are still loaded on demand by the three pages that need them. (Part A)
+- Render a sticky story's figure only while its panel is on screen (`web/src/components/kernels/sticky-story.tsx`): the looping figure animations used to keep running after the reader scrolled past the story, which on a story page cost about half of the main thread at 1x CPU and all of it at 4x, so a click on the story navigation at the bottom waited up to 2 s at 4x before the next page started. The figure already restarted with its fade each time the panel came back into view, so nothing on screen changes. (Part A)
+
 ## tools/onchip-speeds
 
 - Replace "each key load waits hundreds of cycles" in the split attention story with the measured DRAM and L2 load latencies from `results/onchip/onchip.csv`. (Part A)
