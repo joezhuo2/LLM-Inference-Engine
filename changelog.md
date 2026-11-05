@@ -12,6 +12,27 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Part A: export the add + RMSNorm story steps, captions, measured times and bytes and the token picker so the book can reuse them.
 
+## web/book-engine
+
+- Part A: lay the turning leaf on the page curve (the dip at the spine) at the start and end of a page turn, so it lifts off and lands exactly where the page sits instead of floating flat above the book and snapping down when the turn ends.
+
+## web/book-cover
+
+- Part A: count the bar's page number over the whole book (cover, contents, every registered chapter, Errata), taking each chapter's length from its `ChapterDef` (steps plus try-it spreads) without building its model, so the total stays right as chapters load and as new registry entries arrive.
+- Part A: make Every Byte one book: `/kernels` (closed), `/kernels/contents` and every book chapter's `/kernels/<slug>` render the same `EveryByte` view (`components/book/every-byte.tsx`, replacing `FrontBook`), ordered cover, contents, the chapters of `bookOrder` present in the lazy registry, then the Errata. A chapter's code and model load when it or a neighbour is reached and its stops are spliced in; one composite model holds a container per registered chapter. A contents or Errata link riffles to the chapter's first spread; steps, keys and page clicks turn one leaf, across chapter boundaries too. The address follows the book with `history.pushState` (`/kernels`, `/kernels/contents`, `/kernels/contents#errata`, `/kernels/<slug>`), loading a chapter's URL opens the book there, and back and forward move the book.
+- Part A: export `Magnifier`, `FitPage`, `PAGE_DESIGN_WIDTH` and `Lens` from the book view so the one-book view reuses them.
+- Part A: let the book open at any stop (`open(start)`, calling the model's `enter`) and take a new list of stops after it was built (`setStops(stops, map)`, remapping the current and target stop, applied once the scene is `idle()`), so chapters can join one book as they load.
+- Part A: riffle a fan of six quick leaves (`riffle`, 1.2 s, ease in-out overall) only when `goTo(stop, beat, true)` asks for it, driving extra leaf meshes from the existing `setLeaf` geometry so the turning page is not reimplemented; every other move, however far, still uses the single `turnLeaf` turn, and reduced motion lands at once.
+- Part A: stop mirroring the cover's title when the book rests closed (drop the cover face's `scale.x = -1`).
+- Part A: serve "Every Byte" at `/kernels` as the closed book on the desk that opens on a cover click (or the open button, or the right arrow) and closes again from the first page, and at `/kernels/contents` already open: a contents spread grouped by Parts I to IV (`bookParts` and `bookOrder` in `components/book/front-matter.ts`) whose entries are clickable page links to `/kernels/<slug>`, then the Errata at the back built from the dead ends as flat pages, two to a spread after a title page; a text list under the book (visible on phones, screen-reader only on wide screens) carries the same links.
+- Part A: keep the kernels index (layer map and kernel cards) at `/kernels/list`, freeing `/kernels` for the book's cover.
+- Part A: let a stop paint its own pages (`paint.left`, `paint.right`, a `PagePainter` that gets the canvas, palette and fonts) and carry clickable regions (`links`, boxes in page fractions with an `href`), reported through `onLink` with a pointer cursor; stops without them draw as before.
+- Part A: let the book engine rest closed on the desk (`showClosed`), report a click on the closed cover (`onCoverClick`), close the book again with the cover swinging back (`close`), and take a cover camera frame (`coverFrame`); chapters still open on load as before.
+
+## web/book-type
+
+- Part A: start the book's left-page body text at 30 units instead of 40, so short steps (RoPE pages 2, 4 and 7) no longer set larger than the rest; long steps still shrink to fit as before.
+
 ## web/book-rope
 
 - Part A: make the book engine chapter-agnostic: a `ChapterDef` (steps, captions, exhibits, overlays, tour beats, try-it-yourself spreads, model builder, overlay component) with `chapterStops` and frame helpers in `components/book/chapter.ts`, a lazy chapter registry in `components/book/chapters/`, and RoPE moved to `chapters/rope.tsx`; a chapter with `book: true` is now served as its book at `/kernels/<slug>` (full width, `(book)` route group), every chapter's scroll page moves to `/kernels/<slug>/read` as the reading view, and `/book/rope` is gone.
