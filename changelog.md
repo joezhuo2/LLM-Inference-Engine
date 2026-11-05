@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-paged-attention
 
+- Part A: make the shared toggle's sliding highlight sit exactly on the selected option inside a scaled book page: its measurements from `getBoundingClientRect` are divided by the element's scale before they become a `clip-path` inset.
 - Part A: on the decode spread, put the measured percent on its own row under the bandwidth bar so it no longer sits on the "100% of measured peak" label.
 - Part A: serve paged attention as chapter 5 of the book: the four prologue steps and the four story steps each get a spread with a hatched ink pop-up model (prefill, decode, the cache, its home in a block pool, the job, the block table with a draggable token, v1 against v2, the split context), a camera tour and an instruction, and the sandbox gets three try-it-yourself spreads (the block table, one block step, predict and compare).
 - Part A: let the paged attention sandbox render three parts (the block table, one block step, predict and compare) into given elements through portals (`pages` prop), and export the prologue and story steps, captions and measured numbers and the figure's scores so another view can reuse them.

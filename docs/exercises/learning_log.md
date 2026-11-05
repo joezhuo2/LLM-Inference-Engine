@@ -1774,3 +1774,4 @@
 - **laying a label card flat on top of a model** => 
 - **growing a bar from one end by scaling and shifting it together** => 
 - **animating two durations side by side to scale** => 
+- **getBoundingClientRect measures after CSS transforms, while clip-path insets use layout pixels** => 
