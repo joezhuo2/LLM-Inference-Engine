@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-gemm
+
+- Add `web/src/components/kernels/gemm/tiling.ts`, a small model of output tiling for one projection (rows M, tile edge, K step): tile loads, DRAM bytes with tiling against naive (every output reading its row of x and row of W), reuse factor, FLOP per byte, padded work, shared memory for two stages and compute and memory time at the measured ceilings, with `web/scripts/tiling.test.mjs` checking the byte and reuse math (one row reads the weights once whatever the tile; enough rows make the tile edge the reuse factor). (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)

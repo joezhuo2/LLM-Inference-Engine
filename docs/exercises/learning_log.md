@@ -1583,3 +1583,13 @@
 - **prefill against decode** => 
 - **kernel fusion and why it removes a round trip to global memory** => 
 - **kernel launch and the intermediate tensor written between two kernels** => 
+
+## GEMM Tiling Sandbox (Branch 95)
+
+- **output tile and thread block tile** => 
+- **shared memory tiling and data reuse** => 
+- **arithmetic intensity of a tile (FLOP per byte)** => 
+- **K loop and K step** => 
+- **padding when the tile is larger than the matrix** => 
+- **shared memory limit per SM and double buffering** => 
+- **naive matrix multiply memory traffic** => 
