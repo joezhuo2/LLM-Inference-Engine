@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/memory-wall-story
+
+- Parse `docs/hardware.md` in `web/scripts/sync-data.mjs` into `web/src/data/hardware.json` (SM count, shared memory per SM, L2, VRAM, compute capability) with a `hardware()` accessor in `web/src/lib/data.ts`, so the memory wall story takes its GPU figures from the repo. (Part A)
+
 ## sched/chunked-prefill-impl
 
 - Move the 25 `Scheduler::schedule_chunked` tests to `tests/unit/test_scheduler_chunked.cpp`, add them to `unit_tests` and delete the `todo_unit_tests` target. (Part A)
