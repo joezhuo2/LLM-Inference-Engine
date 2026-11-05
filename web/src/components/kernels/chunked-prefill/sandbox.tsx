@@ -4,7 +4,7 @@ import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";
-import { glide, type Tween } from "@/lib/glide";
+import { glide, hold, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { prefillMs } from "@/content/kernels/chunked-prefill";
 import { EasedBar } from "../eased-bar";
@@ -192,6 +192,8 @@ export function ChunkedPrefillSandbox() {
   const columns = useColumns(wrapRef);
   const budget = Number(budgetName);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
+
+  useEffect(() => (playing ? hold() : undefined), [playing]);
 
   useEffect(() => {
     if (!playing) return;
