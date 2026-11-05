@@ -37,7 +37,7 @@ const versions = [
   { column: "tuned fused (us)", label: "tuned" },
 ];
 
-function TokensPicker() {
+export function TokensPicker() {
   const [tokens, setTokens] = useState("1");
   const times = versions.map((v) => ({ ...v, us: measured(tuned, at(tokens), v.column) }));
   const max = Math.max(...times.map((t) => t.us));
@@ -224,6 +224,10 @@ const captions = [
   "8 lanes and 3 swaps shown; a warp has 32 lanes and does 5",
   "Nsight Compute, hidden 2048, RTX 5060 Laptop GPU; times and bytes from two separate runs",
 ];
+
+export const addRmsnormSteps = steps;
+export const addRmsnormCaptions = captions;
+export const addRmsnormNumbers = { pair: pair1, first: first1, firstFlat, naiveKb: naiveKb64, fusedKb: fusedKb64 };
 
 export function AddRmsnormStory() {
   return (
