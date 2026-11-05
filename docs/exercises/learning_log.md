@@ -1773,3 +1773,4 @@
 - **rendering the same JSX element into two portals bound to one state** => 
 - **a horizontal cut plane as a threshold in a binary search** => 
 - **routing a drag to one of several handles by the picked mesh** => 
+- **framing a close-up camera so foreground cards do not cover the model** => 

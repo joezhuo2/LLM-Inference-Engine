@@ -69,6 +69,7 @@ function greedyExhibit(kit: Kit, fonts: Fonts, us: number) {
   const levelZ = groups.map((_, li) => -0.25 + li * 0.11);
   const winnerOf = (cover: number[]) => cover.reduce((a, b) => (logits[b] > logits[a] ? b : a));
   const meanX = (cover: number[]) => cover.reduce((a, i) => a + colX(i), 0) / cover.length;
+  const stem = new THREE.MeshBasicMaterial({ color: kit.palette.ink });
   const balls: { group: THREE.Group; height: number }[][] = [];
   const wires: THREE.Object3D[] = [];
   groups.forEach((g, li) => {
@@ -78,7 +79,7 @@ function greedyExhibit(kit: Kit, fonts: Fonts, us: number) {
       const height = colH(logits[winnerOf(cover)]);
       const thread = new THREE.Group();
       thread.position.set(meanX(cover), 0, levelZ[li]);
-      const post = kit.solid(new THREE.CylinderGeometry(0.004, 0.004, 1, 8), { edges: false });
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 1, 8), stem);
       const ball = new THREE.Mesh(new THREE.SphereGeometry(li === groups.length - 1 ? 0.017 : 0.012, 18, 14), kit.blue);
       ball.castShadow = true;
       thread.add(post, ball);
@@ -391,7 +392,7 @@ function searchExhibit(kit: Kit, fonts: Fonts, mode: "k" | "p") {
     const cut = cuts[pass];
     const up = keep(cut);
     if (mode === "k") return `pass ${pass + 1} of ${PASSES}: ${countAt(cut)} logits at or above the cut, ${up ? "move it up" : "move it down"}`;
-    return `pass ${pass + 1} of ${PASSES}: kept mass ${Math.round((massAt(cut) / all) * 100)}% ${up ? "≥" : "<"} ${Math.round(p * 100)}%, ${up ? "move it up" : "move it down"}`;
+    return `pass ${pass + 1} of ${PASSES}: kept mass ${((massAt(cut) / all) * 100).toFixed(1)}% ${up ? "≥" : "<"} ${Math.round(p * 100)}%, ${up ? "move it up" : "move it down"}`;
   };
   const status = label(kit, fonts, 0.84, 0.13, () => [
     { text: passLine(), y: 0.34, size: 0.22, serif: true },
@@ -574,7 +575,7 @@ function fp64Exhibit(kit: Kit, fonts: Fonts, numbers: SamplingNumbers) {
     root.add(
       placed(
         label(kit, fonts, 0.19, 0.07, () => [
-          { text: name, y: 0.32, size: 0.2, color: kit.palette.faint },
+          { text: name, y: 0.32, size: 0.21, color: kit.palette.faint },
           { text: `${value}%`, y: 0.84, size: 0.5, serif: true },
         ]).group,
         x,
