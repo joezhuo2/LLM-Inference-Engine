@@ -102,8 +102,8 @@ function launchesExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers)
   const gaps = eagerLayer.slice(0, -1).map((k, i) => {
     const a = tx(k.end);
     const b = tx(eagerLayer[i + 1].start);
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.002, b - a), 0.006, 0.07), kit.pink);
-    slab.position.set((a + b) / 2, 0.003, gpuZ);
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.003, b - a), 0.02, 0.07), kit.pink);
+    slab.position.set((a + b) / 2, 0.01, gpuZ);
     root.add(slab);
     return { slab, from: k.end, to: eagerLayer[i + 1].start };
   });
@@ -129,12 +129,19 @@ function launchesExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers)
   );
   axis.group.position.set(0.5, 0, gpuZ + 0.1);
 
-  const sweep = kit.solid(new THREE.BoxGeometry(0.004, 0.09, 0.42), { material: kit.ink, edges: false });
-  sweep.position.set(tx(t0), 0.045, (cpuZ + gpuZ) / 2 + 0.02);
+  const sweep = new THREE.Group();
+  for (const [z, depth] of [
+    [cpuZ, 0.08],
+    [gpuZ, 0.1],
+  ]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.07, depth), kit.ink);
+    post.position.set(0, 0.035, z);
+    sweep.add(post);
+  }
   let idle = 0;
   const idleCard = textCard(kit, fonts, 0.6, 0.11, () => [
     { text: `${fmt(numbers.kernels)} kernels per step, each its own launch`, color: kit.palette.ink, size: 0.24, y: 0.3 },
-    { text: `idle in this layer so far: ${fmt(idle, 1)} µs`, color: kit.palette.pink, size: 0.24, y: 0.6 },
+    { text: `idle in this layer so far: ${fmt(idle)} µs`, color: kit.palette.pink, size: 0.24, y: 0.6 },
     { text: `the GPU idles for ${numbers.eagerIdle}% of a decode step`, color: kit.palette.faint, size: 0.2, y: 0.88 },
   ]);
   idleCard.group.position.set(0.5, 0, 0.18);
@@ -160,7 +167,7 @@ function launchesExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers)
         g.slab.visible = part > 0;
         sum += part * (g.to - g.from);
       }
-      const rounded = Math.round(sum * 10) / 10;
+      const rounded = Math.round(sum);
       if (rounded !== shownIdle) {
         shownIdle = rounded;
         idle = rounded;
@@ -176,11 +183,11 @@ function gapsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
   const ops = eagerLayer.filter((k) => ["rope", "write_kv", "attention"].includes(k.op));
   const t0 = ops[0].start - 1.5;
   const t1 = ops[2].end + 1;
-  const tx = (t: number) => 0.06 + (0.56 * (t - t0)) / (t1 - t0);
-  const z = -0.36;
+  const tx = (t: number) => 0.06 + (0.6 * (t - t0)) / (t1 - t0);
+  const z = -0.4;
   const height = 0.05;
-  const zoomCard = textCard(kit, fonts, 0.56, 0.05, () => [{ text: `zoom: ${fmt(t1 - t0)} µs of layer ${trace.eager.layer}, eager`, color: kit.palette.faint, size: 0.46, y: 0.68 }]);
-  zoomCard.group.position.set(0.34, 0, z - 0.17);
+  const zoomCard = textCard(kit, fonts, 0.6, 0.045, () => [{ text: `zoom: ${fmt(t1 - t0)} µs of layer ${trace.eager.layer}, eager`, color: kit.palette.faint, size: 0.46, y: 0.68 }]);
+  zoomCard.group.position.set(0.36, 0, z - 0.15);
   root.add(zoomCard.group);
   const blocks = ops.map((k) => {
     const a = tx(k.start);
@@ -202,15 +209,16 @@ function gapsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
   const opCard = textCard(
     kit,
     fonts,
-    0.56,
-    0.07,
+    0.6,
+    0.1,
     () => [
-      ...ops.map((k) => ({ text: `${k.op} ${fmt(k.end - k.start, 1)} µs`, color: kit.palette.blue, size: 0.3, y: 0.38, x: (tx((k.start + k.end) / 2) - 0.06) / 0.56, align: "center" as CanvasTextAlign })),
-      ...ops.slice(0, -1).map((k, i) => ({ text: `${fmt(ops[i + 1].start - k.end, 1)} idle`, color: kit.palette.pink, size: 0.3, y: 0.82, x: (tx((k.end + ops[i + 1].start) / 2) - 0.06) / 0.56, align: "center" as CanvasTextAlign })),
+      ...ops.map((k) => ({ text: k.op, color: kit.palette.blue, size: 0.22, y: 0.27, x: (tx((k.start + k.end) / 2) - 0.06) / 0.6, align: "center" as CanvasTextAlign })),
+      ...ops.map((k) => ({ text: `${fmt(k.end - k.start, 1)} µs`, color: kit.palette.blue, size: 0.22, y: 0.57, x: (tx((k.start + k.end) / 2) - 0.06) / 0.6, align: "center" as CanvasTextAlign })),
+      ...ops.slice(0, -1).map((k, i) => ({ text: `${fmt(ops[i + 1].start - k.end, 1)} idle`, color: kit.palette.pink, size: 0.22, y: 0.88, x: (tx((k.end + ops[i + 1].start) / 2) - 0.06) / 0.6, align: "center" as CanvasTextAlign })),
     ],
     -0.8,
   );
-  opCard.group.position.set(0.34, 0, z + 0.07);
+  opCard.group.position.set(0.36, 0, z + 0.07);
   root.add(opCard.group);
 
   const g = trace.eager.gap_us;
@@ -221,38 +229,38 @@ function gapsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
     "4. the first block runs",
   ];
   let phase = -1;
-  const stepsCard = textCard(kit, fonts, 0.56, 0.17, () => [
+  const stepsCard = textCard(kit, fonts, 0.6, 0.17, () => [
     { text: `inside a gap: median ${g.p50} µs, middle 80% ${g.p10} to ${g.p90} µs`, color: kit.palette.ink, size: 0.13, y: 0.17 },
     ...steps.map((s, i) => ({ text: s, color: i === phase ? kit.palette.pink : kit.palette.faint, size: 0.12, y: 0.37 + i * 0.18 })),
   ]);
-  stepsCard.group.position.set(0.34, 0, 0.0);
+  stepsCard.group.position.set(0.36, 0, 0.02);
   root.add(stepsCard.group);
 
-  const colH = 0.34;
+  const colH = 0.26;
   const max = numbers.spanUs;
   const busyH = (colH * numbers.busyUs) / max;
   const idleUs = numbers.spanUs - numbers.busyUs;
   const idleH = (colH * idleUs) / max;
-  const colX = 0.83;
-  const colZ = -0.3;
-  const jar = kit.solid(new THREE.BoxGeometry(0.1, colH, 0.1), { material: kit.glass, threshold: 40 });
+  const colX = 0.84;
+  const colZ = -0.44;
+  const jar = kit.solid(new THREE.BoxGeometry(0.09, colH, 0.09), { material: kit.glass, threshold: 40 });
   jar.position.set(colX, colH / 2, colZ);
-  const busy = new THREE.Mesh(new THREE.BoxGeometry(0.092, busyH, 0.092), kit.blue);
+  const busy = new THREE.Mesh(new THREE.BoxGeometry(0.082, busyH, 0.082), kit.blue);
   busy.position.set(colX, busyH / 2, colZ);
   busy.castShadow = true;
-  const idleFill = new THREE.Mesh(new THREE.BoxGeometry(0.092, 1, 0.092), kit.pink);
+  const idleFill = new THREE.Mesh(new THREE.BoxGeometry(0.082, 1, 0.082), kit.pink);
   idleFill.castShadow = true;
   root.add(jar, busy, idleFill);
   let count = 0;
   const boundaries = numbers.kernels - 1;
-  const stepCard = textCard(kit, fonts, 0.3, 0.17, () => [
+  const stepCard = textCard(kit, fonts, 0.27, 0.17, () => [
     { text: "one decode step", color: kit.palette.faint, size: 0.13, y: 0.17 },
     { text: `kernels busy ${fmt(numbers.busyUs)} µs`, color: kit.palette.blue, size: 0.13, y: 0.38 },
     { text: `${fmt(count)} of ${fmt(boundaries)} gaps`, color: kit.palette.pink, size: 0.13, y: 0.58 },
     { text: `idle ${fmt((idleUs * count) / boundaries)} µs`, color: kit.palette.pink, size: 0.13, y: 0.78 },
     { text: `${numbers.shortKernels} of 10 kernels run under 3 µs`, color: kit.palette.faint, size: 0.1, y: 0.95 },
   ]);
-  stepCard.group.position.set(colX - 0.02, 0, colZ + 0.1);
+  stepCard.group.position.set(0.83, 0, -0.1);
   root.add(stepCard.group);
 
   let time = 0;
@@ -303,13 +311,13 @@ function captureExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) 
     { text: "cudaGraphLaunch(exec, stream);", note: "every decode step", at: 9.2 },
   ];
   let line = 0;
-  const codeCard = textCard(kit, fonts, 0.84, 0.2, () =>
+  const codeCard = textCard(kit, fonts, 0.84, 0.14, () =>
     code.flatMap((c, i) => [
-      { text: c.text, color: i === line ? kit.palette.pink : kit.palette.ink, size: 0.1, y: 0.16 + i * 0.15 },
-      { text: c.note, color: kit.palette.faint, size: 0.09, y: 0.16 + i * 0.15, x: 0.6 },
+      { text: c.text, color: i === line ? kit.palette.pink : kit.palette.ink, size: 0.13, y: 0.17 + i * 0.155 },
+      { text: c.note, color: kit.palette.faint, size: 0.12, y: 0.17 + i * 0.155, x: 0.62 },
     ]),
   );
-  codeCard.group.position.set(0.5, 0, -0.56);
+  codeCard.group.position.set(0.5, 0, -0.46);
   root.add(codeCard.group);
 
   const streamZ = -0.3;
@@ -338,7 +346,7 @@ function captureExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) 
     fill.castShadow = true;
     root.add(node, fill);
     const card = textCard(kit, fonts, nodeW, 0.032, () => [{ text: n, color: big ? kit.palette.ink : kit.palette.blue, size: 0.62, y: 0.74, x: 0.5, align: "center" }], -1.0);
-    card.group.position.set(nx(i), 0, nz(i) + 0.035);
+    card.group.position.set(nx(i), 0.009, nz(i) + 0.035);
     root.add(card.group);
     return { node, fill, card: card.group };
   });
@@ -359,7 +367,7 @@ function captureExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) 
 
   const boxGeometry = new THREE.BoxGeometry(0.92, 0.1, 0.32);
   const lid = new THREE.Group();
-  lid.add(new THREE.Mesh(boxGeometry, kit.glass), inkEdges(boxGeometry, kit.line, 30));
+  lid.add(inkEdges(boxGeometry, kit.line, 30));
   const lidPivot = new THREE.Group();
   lidPivot.position.set(0.5, 0, -0.055);
   lid.position.y = 0.05;
@@ -408,7 +416,7 @@ function captureExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) 
       lidPivot.visible = close > 0.01;
       const fly = smooth(9.2, 10, time);
       chip.visible = time >= 9.2 && time < 10.1 && !reduced;
-      chip.position.set(0.5, 0.2 - 0.12 * fly, -0.3 + 0.2 * fly);
+      chip.position.set(0.1 + 0.4 * fly, 0.03 + 0.04 * fly, streamZ + (-0.19 - streamZ) * fly);
       let l = 0;
       code.forEach((c, i) => {
         if (time >= c.at) l = i;
@@ -455,14 +463,11 @@ function stageExhibit(kit: Kit, fonts: Fonts) {
     kit,
     fonts,
     0.84,
-    0.07,
-    () => [
-      ...offsets.map((o, j) => ({ text: o, color: kit.palette.ink, size: 0.3, y: 0.36, x: (segX[j] - 0.08) / 0.84 })),
-      { text: "one device buffer of int32, t = 4 rows, at the same address on every step", color: kit.palette.faint, size: 0.28, y: 0.84 },
-    ],
+    0.035,
+    () => offsets.map((o, j) => ({ text: o, color: kit.palette.ink, size: 0.6, y: 0.74, x: (segX[j] - 0.08) / 0.84 })),
     -0.8,
   );
-  bufCard.group.position.set(0.5, 0, bufZ + 0.07);
+  bufCard.group.position.set(0.5, 0, bufZ - 0.08);
   root.add(bufCard.group);
 
   const cubes: { mesh: THREE.Mesh; field: number; row: number }[] = [];
@@ -522,9 +527,10 @@ function stageExhibit(kit: Kit, fonts: Fonts) {
     -0.8,
   );
   kernelCard.group.position.set(0.5, 0, kz + 0.05);
-  const noteCard = textCard(kit, fonts, 0.84, 0.06, () => [
-    { text: "a padded row writes nowhere (slot -1) and reads nothing (context 0)", color: kit.palette.pink, size: 0.3, y: 0.42 },
-    { text: "a replay gets new values at the same addresses, never new addresses", color: kit.palette.ink, size: 0.3, y: 0.86 },
+  const noteCard = textCard(kit, fonts, 0.84, 0.09, () => [
+    { text: "one device buffer of int32, t = 4 rows, at the same address on every step", color: kit.palette.faint, size: 0.2, y: 0.28 },
+    { text: "a padded row writes nowhere (slot -1) and reads nothing (context 0)", color: kit.palette.pink, size: 0.2, y: 0.6 },
+    { text: "a replay gets new values at the same addresses, never new addresses", color: kit.palette.ink, size: 0.2, y: 0.9 },
   ]);
   noteCard.group.position.set(0.5, 0, 0.3);
   root.add(kernelCard.group, noteCard.group);
@@ -616,11 +622,12 @@ function splitsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
   root.add(knob);
 
   let context = 300;
+  let shown = 296;
   const splitsAt = (c: number) => thresholds.filter((t) => t.context <= c).pop()?.splits ?? 1;
-  const readout = textCard(kit, fonts, 0.84, 0.075, () => [
-    { text: "one request's longest context", color: kit.palette.faint, size: 0.26, y: 0.32 },
-    { text: `${fmt(Math.floor(context))} tokens: the 1-row graph with ${splitsAt(context)} split${splitsAt(context) > 1 ? "s" : ""}`, color: kit.palette.ink, size: 0.4, y: 0.82, serif: true },
-    ...thresholds.map((t) => ({ text: fmt(t.context), color: kit.palette.faint, size: 0.24, y: 0.32, x: (cx(t.context) - 0.08) / 0.84, align: "center" as CanvasTextAlign })).slice(1),
+  const readout = textCard(kit, fonts, 0.84, 0.1, () => [
+    ...thresholds.map((t) => ({ text: fmt(t.context), color: kit.palette.faint, size: 0.18, y: 0.22, x: (cx(t.context) - 0.08) / 0.84, align: "center" as CanvasTextAlign })),
+    { text: "one request's longest context", color: kit.palette.faint, size: 0.2, y: 0.5 },
+    { text: `${fmt(shown)} tokens: the 1-row graph with ${splitsAt(context)} split${splitsAt(context) > 1 ? "s" : ""}`, color: kit.palette.ink, size: 0.3, y: 0.88, serif: true },
   ]);
   readout.group.position.set(0.5, 0, railZ + 0.04);
   root.add(readout.group);
@@ -646,17 +653,16 @@ function splitsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
       ctx.fillText(`${b.v.toFixed(1)} ms`, w * 0.82, y);
     });
   });
-  barCard.group.position.set(0.5, 0, 0.2);
+  barCard.group.position.set(0.5, 0, 0.24);
   root.add(barCard.group);
 
   let held = false;
-  let shown = -1;
   const apply = () => {
     knob.position.set(cx(context), 0.042, railZ);
     const s = splitsAt(context);
     const cell = cells[`1-${s}`];
     live.position.set(cell.position.x, 0.034, cell.position.z);
-    const whole = Math.floor(context);
+    const whole = Math.floor(context / 8) * 8;
     if (whole !== shown) {
       shown = whole;
       readout.redraw();
