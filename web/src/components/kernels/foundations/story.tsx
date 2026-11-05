@@ -252,7 +252,7 @@ const captions = [
   `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, docs/profiling.md; each packet stands for a whole tensor, not to scale`,
 ];
 
-export function MemoryWallStory() {
+export function FoundationsStory() {
   return (
     <StickyStory
       steps={steps}

@@ -1548,7 +1548,7 @@
 - **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
 - **why a preempted sequence has to rewrite its KV from position 0** => 
 
-## Memory Wall (Branch 86)
+## Foundations (Branch 86)
 - **streaming multiprocessor (SM) and how many a GPU has** => 
 - **shared memory per SM** => 
 - **L2 cache** => 

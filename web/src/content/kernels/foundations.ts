@@ -4,10 +4,10 @@ const roof = "roofline";
 
 const wholeStep = measured(roof, { "whole decode step": "engine + graphs", rows: "1" }, "% of roof", 1, "results");
 
-export const memoryWall: KernelStory = {
-  slug: "memory-wall",
+export const foundations: KernelStory = {
+  slug: "foundations",
   index: 0,
-  title: "the memory wall and GPU foundations",
+  title: "foundations",
   short: "How a GPU runs a kernel, where its data lives, and why decoding one token waits on memory and not on arithmetic.",
   formula: "time ≈ max(bytes ÷ bandwidth, FLOPs ÷ compute)",
   headline: {
