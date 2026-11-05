@@ -118,3 +118,120 @@ export function MemoryFigure({ tiers }: { tiers: Tier[] }) {
     </Frame>
   );
 }
+
+export type Lane = { title: string; rows: number; flopPerByte: number; memUs: number; computeUs: number; note: string };
+
+export function ContrastFigure({ lanes, gpuLine }: { lanes: Lane[]; gpuLine: string[] }) {
+  const { grow, on } = useLoop(14);
+  const x = 150;
+  const full = 290;
+  const maxUs = Math.max(...lanes.flatMap((l) => [l.memUs, l.computeUs]));
+  const rate = 0.5 / maxUs;
+  const width = (us: number) => Math.max(3, (full * us) / maxUs);
+  return (
+    <Frame label="Time to read the weights from memory against time to do the arithmetic: for one row the memory read takes about a hundred times longer than the arithmetic, for 512 rows the arithmetic takes five times longer than the read; the longer bar sets the time of the operation">
+      <Label x={20} y={22}>{"one layer's gate/up weights: bytes ÷ bandwidth, FLOPs ÷ compute"}</Label>
+      {lanes.map((l, li) => {
+        const top = 52 + li * 130;
+        const memLonger = l.memUs >= l.computeUs;
+        const bars = [
+          { label: "memory", us: l.memUs, gates: memLonger },
+          { label: "compute", us: l.computeUs, gates: !memLonger },
+        ];
+        return (
+          <g key={l.title}>
+            <Label x={20} y={top} className="fill-text">{l.title}</Label>
+            <Label x={20} y={top + 16}>{`${l.rows} row${l.rows > 1 ? "s" : ""}, ${l.flopPerByte} FLOP per byte`}</Label>
+            {bars.map((b, bi) => {
+              const y = top + 30 + bi * 26;
+              const start = 0.04 + li * 0.04;
+              return (
+                <g key={b.label}>
+                  <Label x={20} y={y + 10} className={b.gates ? "fill-accent" : "fill-muted"}>{b.label}</Label>
+                  <rect x={x} y={y} width={full} height={12} rx={6} className="fill-border" />
+                  <motion.rect x={x} y={y} width={width(b.us)} height={12} rx={6} className={b.gates ? "fill-accent" : "fill-baseline"} {...grow(start, start + b.us * rate)} />
+                  <Label x={x + full + 8} y={y + 10} className={b.gates ? "fill-accent" : "fill-muted"}>{`${b.us.toFixed(b.us < 10 ? 1 : 0)} µs`}</Label>
+                </g>
+              );
+            })}
+            <motion.g {...on(0.04 + li * 0.04 + 0.5 + 0.02, 0.95)}>
+              <Label x={20} y={top + 100} className="fill-text">{l.note}</Label>
+            </motion.g>
+          </g>
+        );
+      })}
+      {gpuLine.map((t, i) => (
+        <Label key={t} x={20} y={332 + i * 16}>{t}</Label>
+      ))}
+    </Frame>
+  );
+}
+
+export type RoofPoint = { x: number; y: number; label: string };
+
+const W = 560;
+const pad = { l: 46, r: 20, t: 50, b: 90 };
+const H = 400;
+
+export function RooflineFigure({ gbs, tflops, rowsPath, measured }: { gbs: number; tflops: number; rowsPath: { rows: number; flopPerByte: number }[]; measured: RoofPoint[] }) {
+  const { on, reduced } = useLoop(16);
+  const xr = [0.5, 1000];
+  const yr = [0.05, 100];
+  const lx = (v: number) => pad.l + ((Math.log10(v) - Math.log10(xr[0])) / (Math.log10(xr[1]) - Math.log10(xr[0]))) * (W - pad.l - pad.r);
+  const ly = (v: number) => H - pad.b - ((Math.log10(v) - Math.log10(yr[0])) / (Math.log10(yr[1]) - Math.log10(yr[0]))) * (H - pad.t - pad.b);
+  const ridge = (tflops * 1e12) / (gbs * 1e9);
+  const roof = (f: number) => Math.min((f * gbs) / 1000, tflops);
+  const path = rowsPath.map((p) => ({ x: lx(p.flopPerByte), y: ly(roof(p.flopPerByte)) }));
+  const times = rowsPath.map((_, i) => 0.08 + (0.8 * i) / (rowsPath.length - 1));
+  const crossAt = 0.08 + (0.8 * 2) / (rowsPath.length - 1) - 0.02;
+  return (
+    <Frame label="Roofline of this GPU: performance in TFLOP/s against FLOPs per byte of memory traffic. Left of the ridge at 107 FLOP/byte performance is capped by memory bandwidth, right of it by the compute peak. A ring slides up the slope as the batch grows and flattens at the ridge; measured points at 1 and 16 rows sit on the slope">
+      <Label x={20} y={22}>{"more rows per weight read: the point moves right"}</Label>
+      {[0.1, 1, 10, 100].map((v) => (
+        <g key={v}>
+          <line x1={pad.l} x2={W - pad.r} y1={ly(v)} y2={ly(v)} className="stroke-border" strokeWidth={0.5} />
+          <Label x={pad.l - 6} y={ly(v) + 3} anchor="end">{String(v)}</Label>
+        </g>
+      ))}
+      {[1, 10, 100, 1000].map((v) => (
+        <Label key={v} x={lx(v)} y={H - pad.b + 16} anchor="middle">{String(v)}</Label>
+      ))}
+      <Label x={W - pad.r} y={H - pad.b + 34} anchor="end">FLOP per byte of memory traffic ≈ rows per weight read</Label>
+      <Label x={pad.l} y={pad.t - 8}>TFLOP/s</Label>
+      <line x1={lx(ridge)} x2={lx(ridge)} y1={pad.t} y2={H - pad.b} className="stroke-border" strokeDasharray="3 3" />
+      <path d={`M ${lx(xr[0])} ${ly(roof(xr[0]))} L ${lx(ridge)} ${ly(tflops)} L ${lx(xr[1])} ${ly(tflops)}`} className="fill-none stroke-text" strokeWidth={1.25} />
+      <Label x={lx(1.4)} y={ly(roof(1.4)) - 26} className="fill-text">{`${gbs} GB/s`}</Label>
+      <Label x={W - pad.r} y={ly(tflops) + 14} anchor="end" className="fill-text">{`${tflops} TFLOP/s`}</Label>
+      <Label x={lx(ridge)} y={H - pad.b + 52} anchor="middle" className="fill-text">{`ridge ${Math.round(ridge)}`}</Label>
+      <motion.g {...on(0.02, crossAt, true)}>
+        <Label x={pad.l + 8} y={H - pad.b + 72} className="fill-accent">memory bound: time = bytes ÷ bandwidth</Label>
+      </motion.g>
+      <motion.g {...on(crossAt, 0.95, false)}>
+        <Label x={W - pad.r} y={H - pad.b + 72} anchor="end" className="fill-accent">compute bound: time = FLOPs ÷ peak</Label>
+      </motion.g>
+      {measured.map((m) => (
+        <g key={m.label}>
+          <circle cx={lx(m.x)} cy={ly(m.y)} r={4} className="fill-accent" opacity={0.85} />
+          <Label x={lx(m.x) + 8} y={ly(m.y) + 14} className="fill-accent">{m.label}</Label>
+        </g>
+      ))}
+      {reduced ? (
+        <circle cx={path[2].x} cy={path[2].y} r={7} className="fill-none stroke-text" strokeWidth={1.5} />
+      ) : (
+        <motion.circle
+          cx={0}
+          cy={0}
+          r={7}
+          className="fill-none stroke-text"
+          strokeWidth={1.5}
+          initial={{ x: path[0].x, y: path[0].y }}
+          animate={{ x: [path[0].x, path[0].x, ...path.map((p) => p.x), path[path.length - 1].x], y: [path[0].y, path[0].y, ...path.map((p) => p.y), path[path.length - 1].y] }}
+          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.02, ...times, 1] }}
+        />
+      )}
+      {rowsPath.map((p, i) => (
+        <Label key={p.rows} x={lx(p.flopPerByte) + (i < 2 ? -10 : 0)} y={ly(roof(p.flopPerByte)) - (i < 2 ? 10 : 14)} anchor={i < 2 ? "end" : "middle"}>{`${p.rows} row${p.rows > 1 ? "s" : ""}`}</Label>
+      ))}
+    </Frame>
+  );
+}

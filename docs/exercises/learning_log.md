@@ -1556,3 +1556,8 @@
 - **warp divergence** => 
 - **global memory, L2, shared memory and registers: size and speed order** => 
 - **GDDR against HBM** => 
+- **compute bound against memory bound** => 
+- **FLOPs per byte (arithmetic intensity)** => 
+- **the roofline model, slope, flat top and ridge** => 
+- **matrix-vector product (GEMV) against matrix product (GEMM)** => 
+- **prefill against decode** => 
