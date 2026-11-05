@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/palette
 
+- Part A: carry the brown undertone into the Open Graph cards, favicon, KV block shading and kernel card shadow.
 - Part A: make light brown the undertone of both themes (background, surfaces, borders, ink) and use light blue and light pink as the highlights (accent and warning tokens, text selection); chart colors re-validated against the new surfaces.
 - Part A: record the moodboard palette in the web plan.
 - Part A: rename the colors the copy points at (green to blue, amber to clay) to match the new palette.

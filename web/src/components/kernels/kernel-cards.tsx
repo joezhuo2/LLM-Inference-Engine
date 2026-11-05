@@ -57,7 +57,7 @@ export function KernelCards() {
           </>
         );
         const card = clsx(
-          "block rounded border bg-surface px-4 py-3 shadow-[0_-4px_8px_-6px_rgba(20,28,36,0.4)]",
+          "block rounded border bg-surface px-4 py-3 shadow-[0_-4px_8px_-6px_rgba(26,21,18,0.4)]",
           k.ready ? "border-border" : "border-dashed border-border",
         );
         return (
