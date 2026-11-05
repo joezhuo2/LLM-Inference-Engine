@@ -8,7 +8,7 @@ export function StoryNav({ slug }: { slug: string }) {
   const prev = i > 0 ? kernelCards[i - 1] : undefined;
   const next = i >= 0 && i < kernelCards.length - 1 ? kernelCards[i + 1] : undefined;
   return (
-    <nav aria-label="kernel stories" className="mx-auto grid max-w-2xl grid-cols-3 gap-3 font-mono">
+    <nav aria-label="kernel stories" className="mx-auto grid max-w-2xl grid-cols-3 gap-3 tabular-nums">
       {prev ? (
         <Link href={`/kernels/${prev.slug}`} transitionTypes={["nav-back"]} rel="prev" className={button}>
           <span className="text-xs text-muted">← previous</span>

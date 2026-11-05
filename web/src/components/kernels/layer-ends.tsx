@@ -31,7 +31,7 @@ function GatherFigure() {
   const tx = 150;
   const ox = 400;
   return (
-    <svg viewBox="0 0 560 180" className="w-full font-mono [font-variant-ligatures:none]" role="img" aria-label="Each token id picks one row of the embedding table, copied into the hidden state">
+    <svg viewBox="0 0 560 180" className="w-full tabular-nums" role="img" aria-label="Each token id picks one row of the embedding table, copied into the hidden state">
       <Label x={20} y={18}>token ids</Label>
       {ids.map((t, i) => (
         <motion.g key={t.id} {...on(0.04 + i * 0.28, 0.94)}>
@@ -69,7 +69,7 @@ function HeadFigure() {
   const { on, grow } = useLoop(6);
   const bars = [0.3, 0.55, 0.2, 0.9, 0.4, 0.25, 0.6, 0.35, 0.15, 0.5, 0.3, 0.45, 0.2, 0.38];
   return (
-    <svg viewBox="0 0 560 180" className="w-full font-mono [font-variant-ligatures:none]" role="img" aria-label="The last token's hidden state is normalized, multiplied by the LM head into 32,000 logits, and handed to the sampler">
+    <svg viewBox="0 0 560 180" className="w-full tabular-nums" role="img" aria-label="The last token's hidden state is normalized, multiplied by the LM head into 32,000 logits, and handed to the sampler">
       <Label x={20} y={18}>last token</Label>
       <rect x={20} y={30} width={90} height={16} rx={2} className="fill-baseline/60" />
       <Label x={20} y={62}>{hidden.toLocaleString("en-US")} values</Label>
@@ -128,7 +128,7 @@ export function LayerEnd({ end, batch }: { end: End; batch: "b1" | "b16" }) {
   const us = e.ops.reduce((a, op) => a + (stepCell(batch, op, "GPU us/step") ?? 0), 0);
   const share = e.ops.reduce((a, op) => a + (stepCell(batch, op, "% of kernel time") ?? 0), 0);
   return (
-    <div className={clsx("rounded border border-dashed border-border font-mono text-xs", open && "border-solid")}>
+    <div className={clsx("rounded border border-dashed border-border tabular-nums text-xs", open && "border-solid")}>
       <button type="button" aria-expanded={open} aria-controls={panel} onClick={() => {
           setSeen(true);
           setOpen((o) => !o);

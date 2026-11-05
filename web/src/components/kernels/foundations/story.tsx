@@ -85,7 +85,7 @@ function RowsPicker() {
   const max = mathUs(Math.max(...rowChoices.map(Number)));
   const isMeasured = measuredRows.includes(rows);
   return (
-    <div className="flex h-full flex-col gap-3 font-mono text-xs">
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
       <Toggle label="rows" choices={rowChoices} value={rows} onChange={setRows} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">gate/up of one layer, µs at the ceilings</div>
@@ -160,7 +160,7 @@ const steps: StoryStep[] = [
         <p>
           A thread can work on data in four places. Global memory is the {hw.vram_gb} GB of DRAM that holds the weights and
           the KV cache; its measured bandwidth on this GPU is{" "}
-          <span className="font-mono text-accent">{peak.gbs} GB/s</span>. On a laptop GPU it is GDDR, not HBM, but the role
+          <span className="text-accent">{peak.gbs} GB/s</span>. On a laptop GPU it is GDDR, not HBM, but the role
           is the same. The L2 cache ({mb(hw.l2_kb)}) sits in front of it and every SM shares it.
         </p>
         <p>
@@ -170,11 +170,11 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Each step closer to the thread is faster, measured on this GPU: a load waits{" "}
-          <span className="font-mono text-text">{nanos(chip.dramNs)}</span> from DRAM,{" "}
-          <span className="font-mono text-text">{nanos(chip.l2Ns)}</span> from L2 and{" "}
-          <span className="font-mono text-text">{nanos(chip.smemNs)}</span> from shared memory, and an FMA&apos;s result
+          <span className="text-text">{nanos(chip.dramNs)}</span> from DRAM,{" "}
+          <span className="text-text">{nanos(chip.l2Ns)}</span> from L2 and{" "}
+          <span className="text-text">{nanos(chip.smemNs)}</span> from shared memory, and an FMA&apos;s result
           feeds the next after {Math.round(chip.fmaCycles)} cycles. L2 streams {whole(chip.l2Gbs)} GB/s, shared memory{" "}
-          <span className="font-mono text-accent">{whole(chip.smem128Gbs)} GB/s</span> with 128-bit loads and{" "}
+          <span className="text-accent">{whole(chip.smem128Gbs)} GB/s</span> with 128-bit loads and{" "}
           {whole(chip.smem32Gbs)} GB/s with 32-bit ones.
         </p>
       </>
@@ -189,13 +189,13 @@ const steps: StoryStep[] = [
           Every operation has to move some bytes from memory and do some arithmetic, and it takes as long as the slower of
           the two. Take one layer&apos;s gate/up projection: [{out.toLocaleString("en-US")} × {inn.toLocaleString("en-US")}]
           BF16 weights, {(weightBytes / 1e6).toFixed(0)} MB. Reading them at the measured {peak.gbs} GB/s takes{" "}
-          <span className="font-mono text-text">{readUs.toFixed(1)} µs</span>, however many tokens use them.
+          <span className="text-text">{readUs.toFixed(1)} µs</span>, however many tokens use them.
         </p>
         <p>
           Decoding one token is a matrix times a vector: 2 FLOPs for every 2-byte weight. At {peak.tflops} TFLOP/s the
-          arithmetic needs <span className="font-mono text-text">{mathUs(1).toFixed(1)} µs</span> and the GPU waits on
+          arithmetic needs <span className="text-text">{mathUs(1).toFixed(1)} µs</span> and the GPU waits on
           memory: memory bound. Prefill with {prefillRows} prompt tokens uses each weight {prefillRows} times, needs{" "}
-          <span className="font-mono text-accent">{mathUs(prefillRows).toFixed(0)} µs</span> of arithmetic and waits on
+          <span className="text-accent">{mathUs(prefillRows).toFixed(0)} µs</span> of arithmetic and waits on
           nothing but the math: compute bound.
         </p>
       </>
@@ -225,9 +225,9 @@ const steps: StoryStep[] = [
       <>
         <p>
           At batch 1 the five matrix-vector products of a decode step run at{" "}
-          <span className="font-mono text-accent">{`${Math.min(...gemvRoof)} to ${Math.max(...gemvRoof)}%`}</span> of the
+          <span className="text-accent">{`${Math.min(...gemvRoof)} to ${Math.max(...gemvRoof)}%`}</span> of the
           bandwidth roof, and the whole step with CUDA Graphs at{" "}
-          <span className="font-mono text-accent">{wholeStep("1")}%</span>. Nothing in a decode step is near the ridge, so a
+          <span className="text-accent">{wholeStep("1")}%</span>. Nothing in a decode step is near the ridge, so a
           faster multiply would not make a token faster: moving fewer bytes would.
         </p>
         <p>
@@ -247,8 +247,8 @@ const steps: StoryStep[] = [
           kernels in a row pay for the data between them twice. Fusing them keeps that intermediate in registers or shared
           memory. For add + RMSNorm that is the sum: the naive pair writes it and reads it back twice, the fused kernel does
           not, and the DRAM traffic at {fusion.tokens} tokens drops from{" "}
-          <span className="font-mono text-text">{fusion.unfusedKb} KB</span> to{" "}
-          <span className="font-mono text-accent">{fusion.fusedKb} KB</span>.
+          <span className="text-text">{fusion.unfusedKb} KB</span> to{" "}
+          <span className="text-accent">{fusion.fusedKb} KB</span>.
         </p>
         <p>
           The kernel stories that follow are this idea at work, each on one small operation of a layer:{" "}

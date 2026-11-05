@@ -33,8 +33,8 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Time to first token is this pass. On this engine 128 tokens took{" "}
-          <span className="font-mono text-text">{ttft128} ms</span> and 2,048 tokens{" "}
-          <span className="font-mono text-accent">{ttft2048.toLocaleString("en-US")} ms</span>: the cost per prompt token
+          <span className="text-text">{ttft128} ms</span> and 2,048 tokens{" "}
+          <span className="text-accent">{ttft2048.toLocaleString("en-US")} ms</span>: the cost per prompt token
           grows from {perToken128} to {perToken2048} ms.
         </p>
       </>
@@ -50,8 +50,8 @@ const steps: StoryStep[] = [
           overlap. A step computes little for one new position, but it reads every weight and every cached key and value.
         </p>
         <p>
-          Counted from the model config, the engine moves <span className="font-mono text-text">{gbs} GB/s</span> at batch 1,{" "}
-          <span className="font-mono text-accent">{percent}%</span> of the GPU&apos;s measured peak: the step waits on memory, not
+          Counted from the model config, the engine moves <span className="text-text">{gbs} GB/s</span> at batch 1,{" "}
+          <span className="text-accent">{percent}%</span> of the GPU&apos;s measured peak: the step waits on memory, not
           on arithmetic.
         </p>
       </>
@@ -67,8 +67,8 @@ const steps: StoryStep[] = [
           Without the cache every new token would rerun the whole prefill over a context that grew by one.
         </p>
         <p>
-          A 2,048-token prefill took <span className="font-mono text-text">{ttft2048.toLocaleString("en-US")} ms</span>. One decode
-          step at a 1,984-token context took <span className="font-mono text-accent">{stepMs} ms</span>, about {ratio}x less.
+          A 2,048-token prefill took <span className="text-text">{ttft2048.toLocaleString("en-US")} ms</span>. One decode
+          step at a 1,984-token context took <span className="text-accent">{stepMs} ms</span>, about {ratio}x less.
         </p>
       </>
     ),

@@ -117,13 +117,13 @@ export function Playground({ feed, url, connected }: { feed: Feed; url: string; 
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div ref={log} aria-live="polite" className="min-h-28 flex-1 space-y-2 overflow-y-auto rounded border border-border p-2 font-sans text-[13px] leading-relaxed">
         {messages.length === 0 && (
-          <p className="font-mono text-[11px] text-muted">
+          <p className="tabular-nums text-[11px] text-muted">
             {connected ? "Ask the engine something. Your sequence is outlined in the timeline and the pool while it runs." : "Connect to an engine to chat with it."}
           </p>
         )}
         {messages.map((m, i) => (
           <p key={i} className={clsx("whitespace-pre-wrap", m.role === "user" ? "text-muted" : "text-text")}>
-            <span className="font-mono text-[11px] text-muted">{m.role === "user" ? "you " : "engine "}</span>
+            <span className="text-[11px] text-muted">{m.role === "user" ? "you " : "engine "}</span>
             {m.content || (streaming && i === messages.length - 1 ? "…" : "")}
           </p>
         ))}

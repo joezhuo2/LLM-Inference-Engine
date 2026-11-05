@@ -82,7 +82,7 @@ export function IntroLoader() {
         pointerEvents: phase === "exiting" ? "none" : undefined,
       }}
     >
-      <div className="w-full max-w-sm font-mono text-xs">
+      <div className="w-full max-w-sm tabular-nums text-xs">
         <div className="text-muted uppercase tracking-wide">
           <span className="text-accent">&gt;</span> <span ref={stage}>{stages[0]}</span>
         </div>

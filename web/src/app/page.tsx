@@ -37,7 +37,7 @@ export default function Overview() {
               <div key={card.title} className="block rounded border border-border bg-surface p-4">
                 <div className="font-serif text-xl text-muted">{card.title}</div>
                 <p className="mt-2 text-sm text-muted">{card.text}</p>
-                <div className="mt-3 font-mono text-xs text-muted">coming soon</div>
+                <div className="mt-3 tabular-nums text-xs text-muted">coming soon</div>
               </div>
             ),
           )}

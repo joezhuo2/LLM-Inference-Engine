@@ -95,7 +95,7 @@ function ReplayPlayer() {
     },
   ];
   return (
-    <div className="flex h-full flex-col gap-2 font-mono text-xs">
+    <div className="flex h-full flex-col gap-2 tabular-nums text-xs">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -173,8 +173,8 @@ const steps: StoryStep[] = [
           get: a chat answer can stop after 9 tokens or run to {fmt(fullContext)}. A cache with one contiguous row per request has to reserve the worst case up front.
         </p>
         <p>
-          The first four requests of a recorded chat run would have reserved <span className="font-mono text-warn">{`${4 * (fullContext / B)} blocks`}</span> that way. Taken 16 tokens at a time, as
-          they grew, they needed <span className="font-mono text-accent">{reqs.slice(0, 4).reduce((n, q) => n + q.blocks.length, 0)}</span>. The idea is the one behind virtual memory: fixed-size
+          The first four requests of a recorded chat run would have reserved <span className="text-warn">{`${4 * (fullContext / B)} blocks`}</span> that way. Taken 16 tokens at a time, as
+          they grew, they needed <span className="text-accent">{reqs.slice(0, 4).reduce((n, q) => n + q.blocks.length, 0)}</span>. The idea is the one behind virtual memory: fixed-size
           pages, handed out on demand, wherever there is room.
         </p>
       </>
@@ -186,12 +186,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          At startup the engine takes {fmt(poolGb, 1)} GB of the GPU in one allocation: <span className="font-mono text-text">{fmt(replay.meta.kv_blocks)}</span> blocks, each 16 tokens of keys and
+          At startup the engine takes {fmt(poolGb, 1)} GB of the GPU in one allocation: <span className="text-text">{fmt(replay.meta.kv_blocks)}</span> blocks, each 16 tokens of keys and
           values for every layer, {fmt(blockBytes)} bytes. Block 0 is never handed out, so a table entry of 0 can mean &quot;nothing here&quot;.
         </p>
         <p>
           The block manager keeps, per request, its length and its block table, the list of blocks it owns in order. Position {lookup.pos} of request {first.id} is in its logical block{" "}
-          {lookup.logical}, the table says that is physical block {lookup.phys}, so it lives in slot <span className="font-mono text-accent">{lookup.slot}</span>. The table comes straight from the
+          {lookup.logical}, the table says that is physical block {lookup.phys}, so it lives in slot <span className="text-accent">{lookup.slot}</span>. The table comes straight from the
           run: request {first.id}&apos;s {reqBlocks} blocks are scattered across the pool between those of the requests running beside it.
         </p>
       </>
@@ -208,7 +208,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The cache is laid out [block, KV head, 16, 64] per layer, so one head&apos;s 16 keys in a block are one contiguous 2 KB tile, which is what the attention kernel reads. Padding rows get slot
-          -1 and write nothing. It is a pure copy: <span className="font-mono text-text">{`${fmt(writeUs, 1)} µs`}</span> per batch-1 decode step over its 22 launches, {writeShare}% of the kernel
+          -1 and write nothing. It is a pure copy: <span className="text-text">{`${fmt(writeUs, 1)} µs`}</span> per batch-1 decode step over its 22 launches, {writeShare}% of the kernel
           time.
         </p>
       </>
@@ -262,9 +262,9 @@ const steps: StoryStep[] = [
           up to {replay.max_running} at once. Each block shows the request that holds it and how full it is. Drag the slider to stop at any step.
         </p>
         <p>
-          At its busiest the run held <span className="font-mono text-accent">{replay.peak.blocks}</span> of the {fmt(replay.meta.kv_blocks)} blocks. The pool is simply 90% of the memory left after
+          At its busiest the run held <span className="text-accent">{replay.peak.blocks}</span> of the {fmt(replay.meta.kv_blocks)} blocks. The pool is simply 90% of the memory left after
           the weights, so a run like this leaves almost all of it free, room for many more or much longer requests. Serving them side by side from one pool is what batching needs: batch 16 serves{" "}
-          <span className="font-mono text-accent">{`${fmt(tput("16"))} tokens/s`}</span> against {fmt(tput("1"))} at batch 1 (CUDA Graphs on, both).
+          <span className="text-accent">{`${fmt(tput("16"))} tokens/s`}</span> against {fmt(tput("1"))} at batch 1 (CUDA Graphs on, both).
         </p>
       </>
     ),
@@ -323,7 +323,7 @@ const batchingSteps: StoryStep[] = [
         </p>
         <p>
           Here request 1 runs for 9 steps while requests 0, 2 and 3 are done by step 3. The dashed cells are slots that go through every forward pass and produce nothing: the 10 requests take{" "}
-          {gs.steps} steps and waste <span className="font-mono text-warn">{gs.wasted}</span> slot-steps.
+          {gs.steps} steps and waste <span className="text-warn">{gs.wasted}</span> slot-steps.
         </p>
       </>
     ),
@@ -338,7 +338,7 @@ const batchingSteps: StoryStep[] = [
           front of the queue takes its slot on the next step.
         </p>
         <p>
-          Same queue, room for every request: the 10 requests take {gr.steps} steps and waste <span className="font-mono text-accent">{gr.wasted}</span> slot-steps, all of them at the end, when the
+          Same queue, room for every request: the 10 requests take {gr.steps} steps and waste <span className="text-accent">{gr.wasted}</span> slot-steps, all of them at the end, when the
           queue is empty and the last requests drain.
         </p>
       </>
@@ -355,7 +355,7 @@ const batchingSteps: StoryStep[] = [
           to the front of the queue.
         </p>
         <p>
-          Here the pool is {tightBlocks} blocks of 2 steps each (the engine uses 16 tokens) and <span className="font-mono text-warn">{tightPreemptions}</span> preemptions follow:
+          Here the pool is {tightBlocks} blocks of 2 steps each (the engine uses 16 tokens) and <span className="text-warn">{tightPreemptions}</span> preemptions follow:
           the crossed cells are evictions and the shaded cells are steps recomputed after one. The 10 requests take {gt.steps} steps and waste {gt.wasted} slot-steps, still well under static
           batching&apos;s {gs.wasted}.
         </p>
@@ -368,11 +368,11 @@ const batchingSteps: StoryStep[] = [
     body: (
       <>
         <p>
-          The visualizer below runs the same two rules on a real block pool. Add requests and watch two numbers. <span className="font-mono text-accent">requests running</span> is how many requests the
+          The visualizer below runs the same two rules on a real block pool. Add requests and watch two numbers. <span className="text-accent">requests running</span> is how many requests the
           scheduler steps together right now: it rises as requests are admitted and falls as they finish.
         </p>
         <p>
-          <span className="font-mono text-accent">preemptions</span> counts every time the pool ran out and the newest running request went back to the queue. Together they are the scheduler at
+          <span className="text-accent">preemptions</span> counts every time the pool ran out and the newest running request went back to the queue. Together they are the scheduler at
           work: requests join and leave between steps, and a full pool pushes one back instead of stalling the batch.
         </p>
       </>

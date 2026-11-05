@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/palette
 
+- Part A: move labels, nav, tables, figures and inline numbers from JetBrains Mono to the sans stack with tabular numbers; code blocks and the token rain stay monospace.
 - Part A: set page titles, section headings and card titles in larger Instrument Serif, and scramble titles through lowercase letters so a proportional font does not jump in width.
 - Part A: load Instrument Serif as a heading font and put Segoe UI first in the sans stack, with Inter as the fallback on systems without it.
 - Part A: carry the beige undertone into the Open Graph cards, favicon, KV block shading, kernel card shadow and the web plan.

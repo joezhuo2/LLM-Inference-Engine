@@ -145,7 +145,7 @@ function RainCanvas({ trace }: { trace: Trace }) {
         <button
           type="button"
           onClick={play}
-          className="pressable absolute right-4 top-4 z-10 rounded border border-border bg-surface px-3 py-1 font-mono text-xs text-muted"
+          className="pressable absolute right-4 top-4 z-10 rounded border border-border bg-surface px-3 py-1 tabular-nums text-xs text-muted"
         >
           play the recorded run
         </button>

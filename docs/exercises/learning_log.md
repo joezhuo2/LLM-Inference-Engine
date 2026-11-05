@@ -1733,3 +1733,4 @@
 - **keeping hard-coded colors outside the CSS in step with theme tokens** => 
 - **next/font self-hosting a Google font at build time** => 
 - **why a character scramble shifts layout in a proportional font** => 
+- **tabular-nums keeping live numbers from jittering in a proportional font** => 

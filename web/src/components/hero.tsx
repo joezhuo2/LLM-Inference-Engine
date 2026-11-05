@@ -26,7 +26,7 @@ export function Hero({ next }: { next?: { href: string; label: string } }) {
               TinyLlama 1.1B served from scratch in C++ and CUDA: a paged KV cache, continuous batching, hand-written
               kernels and CUDA Graphs.
             </p>
-            <dl className="flex flex-wrap gap-x-8 gap-y-3 font-mono">
+            <dl className="flex flex-wrap gap-x-8 gap-y-3 tabular-nums">
               {stats.map((s, i) => (
                 <div key={s.label}>
                   <dt className="text-xs text-muted">{s.label}</dt>
@@ -36,7 +36,7 @@ export function Hero({ next }: { next?: { href: string; label: string } }) {
                 </div>
               ))}
             </dl>
-            <div className="flex flex-wrap items-end justify-between gap-4 font-mono text-xs text-muted">
+            <div className="flex flex-wrap items-end justify-between gap-4 tabular-nums text-xs text-muted">
               <p className="max-w-md">
                 each falling word is a token the engine generated in a recorded run; heavier rain means more tokens per
                 second, pink marks a request&apos;s first token

@@ -441,7 +441,7 @@ export function BatchingFigure({ kind, focus = false }: { kind: BatchKind; focus
         ];
   const height = gridTop + slots * rowPitch + 18;
   return (
-    <div className="flex h-full flex-col gap-2 font-mono text-xs">
+    <div className="flex h-full flex-col gap-2 tabular-nums text-xs">
       <svg
         viewBox={`0 0 560 ${height}`}
         className="w-full [font-variant-ligatures:none]"

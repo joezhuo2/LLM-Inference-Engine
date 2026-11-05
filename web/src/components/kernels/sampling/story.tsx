@@ -42,7 +42,7 @@ function ModePicker() {
   const max = Math.max(...times.map((t) => t.us));
   const sort = at(rows, "full sort alone");
   return (
-    <div className="flex h-full flex-col gap-3 font-mono text-xs">
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
       <Toggle label="rows" choices={["1", "16"]} value={rows} onChange={setRows} />
       <div className="flex-1 space-y-2 pt-1">
         {times.map((t) => (
@@ -77,7 +77,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Ties go to the lowest index, so the result never depends on thread timing:{" "}
-          <span className="font-mono text-text">{one("greedy")} µs</span> per call.
+          <span className="text-text">{one("greedy")} µs</span> per call.
         </p>
       </>
     ),
@@ -153,13 +153,13 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Top-k 50 takes <span className="font-mono text-accent">{one("top-k 50")} µs</span>. Sorting the row alone, before
-          any prefix sum or draw, takes <span className="font-mono text-text">{one("full sort alone")} µs</span>, so the
+          Top-k 50 takes <span className="text-accent">{one("top-k 50")} µs</span>. Sorting the row alone, before
+          any prefix sum or draw, takes <span className="text-text">{one("full sort alone")} µs</span>, so the
           search wins by about 2x.
         </p>
         <p>
           Two columns break the pattern: top-p alone, and plain temperature sampling at{" "}
-          <span className="font-mono text-warn">{one("temperature")} µs</span>, the slowest mode of all.
+          <span className="text-warn">{one("temperature")} µs</span>, the slowest mode of all.
         </p>
       </>
     ),

@@ -51,7 +51,7 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
     <PageTransition>
       <article className="space-y-20">
         <header className="space-y-4">
-          <div className="font-mono text-xs text-muted">
+          <div className="tabular-nums text-xs text-muted">
             <Link href="/kernels" transitionTypes={["nav-back"]} className="link-underline">
               kernels
             </Link>{" "}
@@ -59,7 +59,7 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
           </div>
           <PageTitle text={story.title} />
           <p className="max-w-2xl text-muted">{story.short}</p>
-          <div className="flex flex-wrap items-end gap-x-10 gap-y-4 font-mono">
+          <div className="flex flex-wrap items-end gap-x-10 gap-y-4 tabular-nums">
             <div>
               <div className="text-xs text-muted">computes</div>
               <div className="mt-1 text-text">{story.formula}</div>
@@ -118,10 +118,10 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
               return (
                 <figure key={`${m.section}-${m.table}`} className="space-y-2">
                   <figcaption className="text-sm text-muted">
-                    <span className="font-mono text-xs text-text">{title}</span> · {m.caption}
+                    <span className="text-xs text-text">{title}</span> · {m.caption}
                   </figcaption>
                   <div className="overflow-x-auto rounded border border-border">
-                    <table className="w-full min-w-[32rem] font-mono text-xs tabular-nums">
+                    <table className="w-full min-w-[32rem] tabular-nums text-xs">
                       <thead className="bg-surface text-left text-muted">
                         <tr>
                           {t.header.map((h, i) => (
@@ -165,14 +165,14 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
               <figure key={`${e.file}-${e.startLine}`} className="space-y-2">
                 <figcaption className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-muted">
                   <span>{e.caption}</span>
-                  <a href={e.url} className="link-underline font-mono text-xs text-text">
+                  <a href={e.url} className="link-underline tabular-nums text-xs text-text">
                     {e.file}:{e.startLine}–{e.endLine}
                   </a>
                 </figcaption>
                 <div className="code-excerpt overflow-hidden rounded border border-border bg-surface" dangerouslySetInnerHTML={{ __html: e.html }} />
               </figure>
             ))}
-            <div className="grid gap-6 font-mono text-xs sm:grid-cols-2">
+            <div className="grid gap-6 tabular-nums text-xs sm:grid-cols-2">
               {[
                 { title: "sources", items: story.sources },
                 { title: "tests", items: story.tests },

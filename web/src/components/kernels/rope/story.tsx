@@ -44,7 +44,7 @@ function TokensPicker() {
   const kb = measured(fast, at(tokens), "DRAM, fast (KB)");
   const fastTime = times[2].us;
   return (
-    <div className="flex h-full flex-col gap-3 font-mono text-xs">
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
       <Toggle label="tokens" choices={tokenChoices} value={tokens} onChange={setTokens} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">µs per launch, 32 + 4 heads of 64</div>
@@ -147,11 +147,11 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Correct once the frequencies came from the host, but a flat{" "}
-          <span className="font-mono text-text">{draftFlat}</span> at 1 to 512 tokens, against{" "}
-          <span className="font-mono text-text">{naive1.toFixed(1)} µs</span> for the naive kernel at one token. The time
+          <span className="text-text">{draftFlat}</span> at 1 to 512 tokens, against{" "}
+          <span className="text-text">{naive1.toFixed(1)} µs</span> for the naive kernel at one token. The time
           was the chain of 32 pairs per thread, not the memory: only at 512 tokens did the naive kernel get slower (
-          <span className="font-mono text-text">{naive512.toFixed(1)}</span> against{" "}
-          <span className="font-mono text-text">{draft512.toFixed(1)} µs</span>).
+          <span className="text-text">{naive512.toFixed(1)}</span> against{" "}
+          <span className="text-text">{draft512.toFixed(1)} µs</span>).
         </p>
       </>
     ),
@@ -168,7 +168,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           That is 256 sines and cosines per token instead of 1,152, and{" "}
-          <span className="font-mono text-accent">{fast1.toFixed(1)} µs</span> for one token. Neighbouring threads read
+          <span className="text-accent">{fast1.toFixed(1)} µs</span> for one token. Neighbouring threads read
           neighbouring pairs, so a warp&apos;s 2-byte loads already coalesce into a few contiguous sectors; the 128-bit loads of the
           spec were never needed.
         </p>
@@ -183,7 +183,7 @@ const steps: StoryStep[] = [
         <p>
           Up to 64 tokens the fast kernel stays near {fast1.toFixed(1)} µs: a few hundred KB at most, far from the memory
           limit, so the launch and one chain of load, sine and store set the time. At 512 tokens it is{" "}
-          <span className="font-mono text-accent">{fast512.toFixed(1)} µs</span>, half the naive kernel&apos;s. Try the
+          <span className="text-accent">{fast512.toFixed(1)} µs</span>, half the naive kernel&apos;s. Try the
           token counts on the right.
         </p>
         <p>

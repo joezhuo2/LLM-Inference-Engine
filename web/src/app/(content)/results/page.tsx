@@ -41,12 +41,12 @@ export default function Results() {
             Workload: {String(environment.workload ?? "unknown")}.
           </p>
           {batches.length === 0 ? (
-            <p className="rounded border border-border bg-surface p-4 font-mono text-sm text-muted">
+            <p className="rounded border border-border bg-surface p-4 tabular-nums text-sm text-muted">
               No benchmark runs in results/ yet: run scripts/reproduce.sh and rebuild.
             </p>
           ) : (
             <div className="overflow-x-auto rounded border border-border">
-              <table className="w-full min-w-[36rem] font-mono text-sm tabular-nums">
+              <table className="w-full min-w-[36rem] tabular-nums text-sm">
                 <thead className="bg-surface text-left text-muted">
                   <tr>
                     <th className="px-3 py-2 font-normal">system</th>

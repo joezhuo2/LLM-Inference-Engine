@@ -43,7 +43,7 @@ export function LayerMap() {
           role="radiogroup"
           aria-label="batch size"
           onKeyDown={radioKeyDown(choices.map((c) => c.key), batch, setBatch)}
-          className="flex overflow-hidden rounded border border-border font-mono text-xs"
+          className="flex overflow-hidden rounded border border-border tabular-nums text-xs"
         >
           {choices.map((c) => (
             <button
@@ -63,7 +63,7 @@ export function LayerMap() {
       <div className="mt-5">
         <LayerEnd end="in" batch={batch} />
       </div>
-      <ol className="mt-3 space-y-1.5 font-mono text-xs">
+      <ol className="mt-3 space-y-1.5 tabular-nums text-xs">
         {layerOps.map((l, i) => {
           const linked = ready.has(l.slug);
           const label = (
@@ -97,7 +97,7 @@ export function LayerMap() {
       <div className="mt-3">
         <LayerEnd end="out" batch={batch} />
       </div>
-      <p className="mt-4 font-mono text-[11px] text-muted">
+      <p className="mt-4 tabular-nums text-[11px] text-muted">
         from {table.file}, eager decode step, Nsight Systems; the embedding runs once before the first layer, the final norm and the LM head once after the last
       </p>
     </figure>

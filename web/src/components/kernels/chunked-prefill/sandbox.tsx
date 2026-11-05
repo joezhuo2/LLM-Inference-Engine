@@ -260,7 +260,7 @@ export function ChunkedPrefillSandbox() {
   const summary = `${mode}, step ${run.steps.length}: longest decode stall ${run.stats().longestStall} steps, biggest step ${run.stats().biggest} tokens`;
 
   return (
-    <div className="grid gap-6 font-mono text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
+    <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="min-w-0 space-y-4">
         <div className="space-y-2 rounded border border-border p-3">
           <div className="text-text">predict first</div>

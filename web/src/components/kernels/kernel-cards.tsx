@@ -51,7 +51,7 @@ export function KernelCards() {
             >
               <div className="overflow-hidden">
                 <p className="pt-2 text-sm text-muted">{k.short}</p>
-                {k.dates && <p className="pt-1 font-mono text-xs tabular-nums text-muted">{k.dates}</p>}
+                {k.dates && <p className="pt-1 tabular-nums text-xs text-muted">{k.dates}</p>}
               </div>
             </div>
           </>

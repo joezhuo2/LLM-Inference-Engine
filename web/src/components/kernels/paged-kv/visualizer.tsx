@@ -385,7 +385,7 @@ export function KvVisualizer() {
   const tipW = Math.min(288, g.width - 16);
 
   return (
-    <div className="grid gap-6 font-mono text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
+    <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted">add a request</span>

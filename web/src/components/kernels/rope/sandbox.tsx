@@ -131,7 +131,7 @@ export function RopeSandbox() {
   };
 
   return (
-    <div className="space-y-10 font-mono text-xs">
+    <div className="space-y-10 tabular-nums text-xs">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-muted">
           Part 1: drag the position and pick a dimension pair. Watch the pair at the top left turn fast while the pairs at the bottom right barely move. Part 2: move the query and the key and watch the score. The vectors are made up for illustration (seeded random numbers, not from the model); the frequencies, the pairing of dimension i with i + 32 and the rotation are the engine&apos;s.

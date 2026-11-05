@@ -142,7 +142,7 @@ export function LineChart({ label, view, xs, xAxis, yAxis, series, heading, valu
         key={W}
         ref={svg}
         viewBox={`0 0 ${W} ${H}`}
-        className="h-full w-full touch-pan-y font-mono [font-variant-ligatures:none]"
+        className="h-full w-full touch-pan-y tabular-nums"
         role="img"
         aria-label={`${label}. Focus and use the arrow keys to read the values.`}
         tabIndex={0}

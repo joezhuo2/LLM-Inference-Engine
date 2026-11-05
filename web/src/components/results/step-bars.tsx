@@ -88,7 +88,7 @@ export function StepBars({ rows }: { rows: StepRow[] }) {
       <svg
         key={W}
         viewBox={`0 0 ${W} ${H}`}
-        className="h-full w-full font-mono [font-variant-ligatures:none]"
+        className="h-full w-full tabular-nums"
         role="img"
         aria-label={`GPU time of one decode step by op: ${rows.map((r) => r.label).join(" and ")}. Focus and use the arrow keys to read each segment.`}
         tabIndex={0}
