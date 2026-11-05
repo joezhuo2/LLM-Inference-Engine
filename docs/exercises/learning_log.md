@@ -1594,3 +1594,7 @@
 - **Gumbel-max trick** => 
 - **greedy decoding** => 
 - **counter-based random numbers (Philox)** => 
+- **cumulative probability (nucleus cutoff)** => 
+- **argmax** => 
+- **seeded reproducibility of sampling** => 
+- **bits of entropy and perplexity** => 

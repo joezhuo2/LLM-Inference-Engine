@@ -10,6 +10,7 @@ import { FoundationsStory } from "./foundations/story";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
 import { RopeStory } from "./rope/story";
+import { SamplingSandbox } from "./sampling/sandbox";
 import { SamplingStory } from "./sampling/story";
 import { SplitAttentionStory } from "./split-attention/story";
 import { SwigluStory } from "./swiglu/story";
@@ -58,6 +59,15 @@ export function KernelPrologueView({ slug }: { slug: string }) {
   switch (slug) {
     case "paged-kv":
       return <BatchingStory />;
+    default:
+      return null;
+  }
+}
+
+export function KernelSandboxView({ slug }: { slug: string }) {
+  switch (slug) {
+    case "sampling":
+      return <SamplingSandbox />;
     default:
       return null;
   }

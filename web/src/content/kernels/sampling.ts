@@ -13,6 +13,10 @@ export const sampling: KernelStory = {
     value: `${(one("full sort alone") / one("top-k 50")).toFixed(1)}x`,
     label: "top-k 50 against sorting the row alone, one row",
   },
+  sandbox: {
+    title: "turn the knobs",
+    intro: "The next-token logits TinyLlama produced for three real contexts, run through the same steps as the engine's sample kernel in the same order: divide by the temperature, keep the top-k, keep the smallest set of those whose probability reaches top-p, then draw with Gumbel noise and an argmax. Predict first, then drag, step through the stages and sample.",
+  },
   sources: [
     { path: "src/sampling/sample.cu", label: "Gumbel-max, top-k, top-p" },
     { path: "src/sampling/greedy.cu", label: "greedy" },
