@@ -1655,3 +1655,5 @@
 - **time-sliced rendering: why a busy main thread stretches a React transition render** => 
 - **main-thread animations on SVG elements against compositor-only animations** => 
 - **pausing offscreen animations with IntersectionObserver** => 
+- **font subsets and unicode-range: when the browser downloads a face** => 
+- **why a view transition waits for fonts that start loading during the commit** => 
