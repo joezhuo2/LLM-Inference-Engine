@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { createKit, inkShared, type Kit, readBookPalette } from "./ink";
+import { type BookPalette, createKit, inkShared, type Kit, readBookPalette } from "./ink";
 import { drawCaptionPage, drawTextPage, type Fonts, type PageText } from "./typeset";
 
 export const PAGE_W = 1;
@@ -9,6 +9,8 @@ export const BLOCK = 0.07;
 export type Frame = { center: [number, number, number]; width: number; depth: number; az: number; el: number };
 export type Beat = { caption: string; frame: Frame; narrow?: Frame };
 export type OverlayKind = string | null;
+export type PagePainter = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => void;
+export type PageLink = { side: "left" | "right"; box: [number, number, number, number]; href: string; label: string };
 export type Stop = {
   exhibit: number | null;
   spread: number;
@@ -19,6 +21,8 @@ export type Stop = {
   folio: string;
   overlay: OverlayKind;
   beats: Beat[];
+  paint?: { left?: PagePainter; right?: PagePainter };
+  links?: PageLink[];
 };
 
 export type BookModel = {
@@ -49,6 +53,7 @@ type SceneOptions = {
   onPageClick: (side: "prev" | "next") => void;
   coverFrame?: Frame;
   onCoverClick?: () => void;
+  onLink?: (link: PageLink) => void;
 };
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -354,7 +359,7 @@ export class BookScene {
         this.drag.y = event.clientY;
         return;
       }
-      canvas.style.cursor = this.pickHandle(event) ? "grab" : this.pageSide(event) || this.overCover(event) ? "pointer" : "default";
+      canvas.style.cursor = this.pickHandle(event) ? "grab" : this.linkAt(event) || this.pageSide(event) || this.overCover(event) ? "pointer" : "default";
       this.updateLens(event);
     };
     const onUp = (event: PointerEvent) => {
@@ -364,6 +369,11 @@ export class BookScene {
       if (!click) return;
       if (this.overCover(event)) {
         this.options.onCoverClick?.();
+        return;
+      }
+      const link = this.linkAt(event);
+      if (link) {
+        this.options.onLink?.(link);
         return;
       }
       const side = this.pageSide(event);
@@ -434,6 +444,18 @@ export class BookScene {
     if (!this.closedView || !this.options.onCoverClick) return false;
     this.setPointer(event);
     return this.raycaster.intersectObject(this.bookRoot, true).length > 0;
+  }
+
+  private linkAt(event: PointerEvent): PageLink | null {
+    const links = this.options.stops[this.applied.stop]?.links;
+    if (!links?.length || !this.opened || this.running || this.leaf.front.visible) return null;
+    this.setPointer(event);
+    const hit = this.raycaster.intersectObjects([this.leftPlane, this.rightPlane], false)[0];
+    if (!hit?.uv) return null;
+    const side = hit.object === this.leftPlane ? "left" : "right";
+    const u = hit.uv.x;
+    const v = 1 - hit.uv.y;
+    return links.find((l) => l.side === side && u >= l.box[0] && u <= l.box[2] && v >= l.box[1] && v <= l.box[3]) ?? null;
   }
 
   private pointOnPage(event: PointerEvent): number | null {
@@ -549,7 +571,7 @@ export class BookScene {
     if (!resting) this.showClosed();
     this.closedView = false;
     const first = this.options.stops[0];
-    const leftNext = this.leftText.prepare((c) => drawTextPage(c, first.page, this.kit.palette, this.options.fonts));
+    const leftNext = this.leftText.prepare((c) => this.drawLeft(c, first));
     this.leftText.blend(leftNext, 1);
     this.leftText.commit(leftNext);
     const rightNext = this.rightText.prepare((c) => this.drawRight(c, first));
@@ -588,7 +610,16 @@ export class BookScene {
     return this.tween(seconds, () => undefined);
   }
 
+  private drawLeft(canvas: HTMLCanvasElement, stop: Stop): void {
+    if (stop.paint?.left) stop.paint.left(canvas, this.kit.palette, this.options.fonts);
+    else drawTextPage(canvas, stop.page, this.kit.palette, this.options.fonts);
+  }
+
   private drawRight(canvas: HTMLCanvasElement, stop: Stop): void {
+    if (stop.paint?.right) {
+      stop.paint.right(canvas, this.kit.palette, this.options.fonts);
+      return;
+    }
     if (stop.overlay) {
       canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
       return;
@@ -642,7 +673,7 @@ export class BookScene {
     if (from.spread !== to.spread) {
       await this.turnLeaf(from, to);
     } else {
-      const left = this.leftText.prepare((c) => drawTextPage(c, to.page, this.kit.palette, this.options.fonts));
+      const left = this.leftText.prepare((c) => this.drawLeft(c, to));
       const right = this.rightText.prepare((c) => this.drawRight(c, to));
       await this.tween(0.7, (t) => {
         this.leftText.blend(left, t);
@@ -688,7 +719,7 @@ export class BookScene {
     const scratch = document.createElement("canvas");
     scratch.width = this.leaf.frontCanvas.width;
     scratch.height = this.leaf.frontCanvas.height;
-    const left = this.leftText.prepare((c) => drawTextPage(c, to.page, this.kit.palette, this.options.fonts));
+    const left = this.leftText.prepare((c) => this.drawLeft(c, to));
     const right = this.rightText.prepare((c) => this.drawRight(c, to));
     const zeroActive = () => {
       this.leftText.meshes[this.leftText.active].material.opacity = 0;

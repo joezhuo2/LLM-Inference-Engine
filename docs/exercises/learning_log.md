@@ -1771,3 +1771,4 @@
 ## 3D book: cover and contents (Branch 101)
 - **raycasting a whole group to hit-test a closed object** => 
 - **serialising async animations so a new request waits for the current one** => 
+- **mapping a raycast hit's UV coordinates back to a canvas region** => 
