@@ -1770,3 +1770,7 @@
 
 ## 3D book: paged attention (Branch 105)
 - **splitting one component's JSX into named fragments shared by two layouts** => 
+- **joining a prologue story and a main story into one run of spreads** => 
+- **laying a label card flat on top of a model** => 
+- **growing a bar from one end by scaling and shifting it together** => 
+- **animating two durations side by side to scale** => 
