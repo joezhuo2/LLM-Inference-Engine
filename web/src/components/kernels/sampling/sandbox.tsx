@@ -1,6 +1,6 @@
 "use client";
 
-import NumberFlow from "@number-flow/react";
+import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { SmoothRange } from "@/components/smooth-range";

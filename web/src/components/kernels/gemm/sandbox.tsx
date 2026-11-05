@@ -1,6 +1,6 @@
 "use client";
 
-import NumberFlow from "@number-flow/react";
+import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";

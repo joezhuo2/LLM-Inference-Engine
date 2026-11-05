@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ComponentProps } from "react";
-import { glide, type Tween } from "@/lib/glide";
+import { glide, hold, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 
 type Props = Omit<ComponentProps<"input">, "type" | "onChange"> & { onValue: (v: number) => void };
@@ -15,6 +15,17 @@ export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCanc
   const held = () => performance.now() - down.current > 250;
 
   useEffect(() => () => tween.current?.stop(), []);
+
+  const holdUntilRelease = () => {
+    const release = hold();
+    const end = new AbortController();
+    const done = () => {
+      release();
+      end.abort();
+    };
+    window.addEventListener("pointerup", done, { signal: end.signal });
+    window.addEventListener("pointercancel", done, { signal: end.signal });
+  };
 
   const glideTo = (el: HTMLInputElement, to: number) => {
     const min = Number(el.min || 0);
@@ -36,6 +47,7 @@ export function SmoothRange({ onValue, onPointerDown, onPointerUp, onPointerCanc
       type="range"
       onPointerDown={(e) => {
         tween.current?.stop();
+        holdUntilRelease();
         down.current = performance.now();
         from.current = Number(e.currentTarget.value);
         target.current = null;
