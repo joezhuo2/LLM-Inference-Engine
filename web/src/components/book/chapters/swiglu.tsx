@@ -15,8 +15,8 @@ const beats: Beat[][] = [
   ],
   [
     overview("Two roundings, in PyTorch's order"),
-    close("Close up: s lands just under a rounding boundary", [0.5, 0.05, -0.4], 0.86, 0.34, -16, 30),
-    close("From the side: after × up the two balls land one step apart", [0.5, 0.05, -0.1], 0.86, 0.34, 20, 26),
+    close("Close up: s lands just under a rounding boundary", [0.5, 0.05, -0.38], 0.9, 0.36, -12, 44),
+    close("From the side: after × up the two balls land one step apart", [0.5, 0.05, -0.06], 0.9, 0.4, 16, 38),
   ],
   [
     overview("22 blocks per row, one row per blockIdx.y"),

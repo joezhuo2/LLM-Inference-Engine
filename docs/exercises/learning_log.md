@@ -1773,3 +1773,4 @@
 - **dragging between several handles in one scene by remembering the grabbed one** => 
 - **instanced meshes with per-instance colour for stacked blocks** => 
 - **round-robin placement of blocks onto SMs** => 
+- **a zero-height box still draws its top face** => 

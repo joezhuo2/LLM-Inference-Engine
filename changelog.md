@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-swiglu
 
+- Part A: SwiGLU book fixes from the screenshots: empty SM slabs no longer leave their top faces visible, the BF16 bins get larger labels with the balls clear of the line titles, the token readout gets its own lines, and the rounding close-ups show both balls.
 - Part A: chapter 9 of the book, SwiGLU: five pop-up models (the gate/up row zipped into the output with a draggable gate on the silu curve, the two BF16 roundings as balls landing in BF16 bins, the first draft's 2D grid hitting gridDim.y's ceiling and flattening into one grid, scalar against 16-byte loads with bandwidth bars under the peak plane, and 26 SMs filled by the vector or scalar path with a draggable token count) and the token picker as a flat overlay, served at `/kernels/swiglu` with `book: true`.
 - Part A: export the SwiGLU story steps, captions, measured times, bandwidths and token picker, and the BF16 rounding, silu and SM count from its figures, so the book can reuse them.
 

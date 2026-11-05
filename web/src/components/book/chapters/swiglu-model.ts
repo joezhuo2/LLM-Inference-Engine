@@ -140,7 +140,7 @@ function jobExhibit(kit: Kit, fonts: Fonts) {
     ctx.fillText(q < -2.5 ? "a gate well below 0: silu is about 0, so this value is switched off" : q > 2.5 ? "a large gate: silu is about g, so up passes through, scaled" : "in between: the gate lets part of up through", w * 0.02, h * 0.64);
     ctx.fillText("per value: read 4 bytes, write 2, a few dozen FLOPs", w * 0.02, h * 0.9);
   });
-  readout.group.position.set(0.5, 0, railZ + 0.05);
+  readout.group.position.set(0.5, 0, railZ + 0.065);
   root.add(readout.group);
 
   let held = false;
@@ -202,25 +202,25 @@ function bitsExhibit(kit: Kit, fonts: Fonts) {
     const centers = [-1, 0, 1, 2].map((k) => anchor + k * step);
     const x = (v: number) => 0.1 + ((v - (anchor - 1.5 * step)) / (4 * step)) * 0.8;
     centers.forEach((c, k) => {
-      const bin = kit.solid(new THREE.BoxGeometry(0.192, 0.02, 0.09));
+      const bin = kit.solid(new THREE.BoxGeometry(0.192, 0.02, 0.07));
       bin.position.set(x(c), 0.01, z);
       root.add(bin);
-      const card = createCard(kit, 0.17, 0.034, (ctx, w, h) => {
+      const card = createCard(kit, 0.18, 0.05, (ctx, w, h) => {
         ctx.fillStyle = kit.palette.ink;
-        ctx.font = `${h * 0.56}px ${fonts.serif}`;
+        ctx.font = `${h * 0.6}px ${fonts.sans}`;
         ctx.textAlign = "center";
         ctx.fillText(String(c), w / 2, h * 0.72);
       }, -0.6);
-      card.group.position.set(x(c), 0, z + 0.058);
+      card.group.position.set(x(c), 0, z + 0.05);
       root.add(card.group);
       if (k > 0) root.add(lines(kit, [x(c - step / 2), 0.021, z - 0.06, x(c - step / 2), 0.021, z + 0.05], kit.palette.faint));
     });
-    const head = createCard(kit, 0.8, 0.04, (ctx, w, h) => {
+    const head = createCard(kit, 0.8, 0.05, (ctx, w, h) => {
       ctx.fillStyle = kit.palette.ink;
       ctx.font = `${h * 0.5}px ${fonts.sans}`;
       ctx.fillText(title, w * 0.01, h * 0.66);
     }, -0.5);
-    head.group.position.set(0.5, 0, z - 0.1);
+    head.group.position.set(0.5, 0, z - 0.13);
     root.add(head.group);
     return x;
   };
@@ -247,7 +247,7 @@ function bitsExhibit(kit: Kit, fonts: Fonts) {
   result.group.position.set(0.5, 0, 0.15);
   root.add(result.group);
 
-  const hover = 0.12;
+  const hover = 0.08;
   const rest = 0.038;
   let time = 0;
   return {
@@ -481,7 +481,7 @@ function smExhibit(kit: Kit, fonts: Fonts, numbers: SwigluNumbers) {
     units.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(sms * maxUnits * 3), 3);
     root.add(units);
     let tokens = 1;
-    const card = createCard(kit, 0.8, 0.06, (ctx, w, h) => {
+    const card = createCard(kit, 0.8, 0.07, (ctx, w, h) => {
       const work = tokens * board.perToken;
       const blocks = Math.ceil(work / THREADS);
       const picked = (board.chains > 1) === tokens * (FF / VEC) >= threshold;
@@ -500,19 +500,19 @@ function smExhibit(kit: Kit, fonts: Fonts, numbers: SwigluNumbers) {
   const railZ = 0.1;
   const knob = rail(kit, root, railZ, 0.15, 0.85, 7);
   let tokens = 1;
-  const readout = createCard(kit, 0.8, 0.12, (ctx, w, h) => {
+  const readout = createCard(kit, 0.8, 0.15, (ctx, w, h) => {
     ctx.fillStyle = kit.palette.pink;
-    ctx.font = `${h * 0.24}px ${fonts.serif}`;
-    ctx.fillText(`${tokens} token${tokens > 1 ? "s" : ""}: ${(tokens * (FF / VEC)).toLocaleString("en-US")} vectors`, w * 0.02, h * 0.3);
+    ctx.font = `${h * 0.2}px ${fonts.serif}`;
+    ctx.fillText(`${tokens} token${tokens > 1 ? "s" : ""}: ${(tokens * (FF / VEC)).toLocaleString("en-US")} vectors`, w * 0.02, h * 0.24);
+    ctx.font = `${h * 0.14}px ${fonts.sans}`;
     ctx.fillStyle = kit.palette.faint;
-    ctx.font = `${h * 0.17}px ${fonts.sans}`;
-    ctx.fillText(`vector path from ${sms} SMs × ${THREADS} / 2 = ${threshold.toLocaleString("en-US")} vectors`, w * 0.5, h * 0.3);
+    ctx.fillText(`the vector path needs ${sms} SMs × ${THREADS} / 2 = ${threshold.toLocaleString("en-US")} vectors`, w * 0.02, h * 0.48);
     ctx.fillStyle = kit.palette.ink;
-    ctx.fillText(`one token, µs per launch: naive ${fmt(numbers.smallNaive, 2)}, vector ${fmt(numbers.smallVector, 2)}, dispatch ${fmt(numbers.smallFast, 2)}`, w * 0.02, h * 0.66);
+    ctx.fillText(`one token, µs per launch: naive ${fmt(numbers.smallNaive, 2)}, vector ${fmt(numbers.smallVector, 2)}, dispatch ${fmt(numbers.smallFast, 2)}`, w * 0.02, h * 0.7);
     ctx.fillStyle = kit.palette.faint;
-    ctx.fillText("each stacked block is one block of chains; the tallest stack sets the time", w * 0.02, h * 0.9);
+    ctx.fillText("each slab is one chain per thread; the tallest stack sets the time", w * 0.02, h * 0.92);
   });
-  readout.group.position.set(0.5, 0, railZ + 0.05);
+  readout.group.position.set(0.5, 0, railZ + 0.075);
   root.add(readout.group);
 
   const setTokens = (t: number) => {
@@ -547,7 +547,7 @@ function smExhibit(kit: Kit, fonts: Fonts, numbers: SwigluNumbers) {
             const fill = Math.min(1, Math.max(0, board.levels[s] - k));
             const h = Math.max(0.0001, fill * (unitH - 0.003));
             dummy.position.set(p.x, 0.01 + k * unitH + h / 2, p.z);
-            dummy.scale.set(1, h, 1);
+            dummy.scale.set(fill > 0.01 ? 1 : 0, h, fill > 0.01 ? 1 : 0);
             dummy.updateMatrix();
             board.units.setMatrixAt(s * maxUnits + k, dummy.matrix);
             board.units.setColorAt(s * maxUnits + k, picked ? blue : paper);
