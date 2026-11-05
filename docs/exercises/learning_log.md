@@ -1777,3 +1777,6 @@
 - **staggering several tweens from one eased clock** => 
 - **copying a mutated BufferGeometry's attributes into other meshes** => 
 - **remapping indices when a list grows in the middle** => 
+- **history.pushState inside the Next.js App Router** => 
+- **a composite object that routes calls to the part that owns them** => 
+- **loading a module on demand and caching its promise** => 
