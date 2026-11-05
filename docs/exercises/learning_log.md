@@ -1767,3 +1767,6 @@
 - **replaying an effect by changing a component key** => 
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
+
+## 3D book: SwiGLU (Branch 109)
+- **sharing one module's helpers between a figure and a 3D model** => 

@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-swiglu
+
+- Part A: export the SwiGLU story steps, captions, measured times, bandwidths and token picker, and the BF16 rounding, silu and SM count from its figures, so the book can reuse them.
+
 ## web/book-rope
 
 - Part A: make the book engine chapter-agnostic: a `ChapterDef` (steps, captions, exhibits, overlays, tour beats, try-it-yourself spreads, model builder, overlay component) with `chapterStops` and frame helpers in `components/book/chapter.ts`, a lazy chapter registry in `components/book/chapters/`, and RoPE moved to `chapters/rope.tsx`; a chapter with `book: true` is now served as its book at `/kernels/<slug>` (full width, `(book)` route group), every chapter's scroll page moves to `/kernels/<slug>/read` as the reading view, and `/book/rope` is gone.
