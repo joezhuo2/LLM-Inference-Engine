@@ -228,7 +228,7 @@ def main(argv=None):
                args.dir / "tpot_p99_vs_qps.png", args.theme, limit=args.tpot_ms)
     curve_plot(points, "goodput", 1.0, "requests per second meeting the SLO",
                "Goodput against load", args.dir / "goodput_vs_qps.png", args.theme)
-    print(f"wrote {args.dir}/load_table.md and three plots from {len(summaries)} summaries")
+    print(f"wrote {args.dir}/load_table.md and {4 if gaps_path.exists() else 3} plots from {len(summaries)} summaries")
     return 0
 
 

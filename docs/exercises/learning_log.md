@@ -1667,3 +1667,5 @@
 - **what splitting one prompt into chunks costs when nothing else is running** => 
 - **why the cost of a prefill chunk grows with its position in the prompt, not only with its size** => 
 - **a probe workload: one long request among short ones to isolate a stall** => 
+- **an A/B rerun of an old binary to tell a code change from a machine change** => 
+- **why chunked prefill shortens stalls but does not reduce prefill work** => 
