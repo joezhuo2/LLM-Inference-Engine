@@ -1593,3 +1593,7 @@
 - **padding when the tile is larger than the matrix** => 
 - **shared memory limit per SM and double buffering** => 
 - **naive matrix multiply memory traffic** => 
+
+## Smooth Sliders (Branch 97)
+- **telling a click from a drag on a range input with pointer timing** => 
+- **tweening a value with motion animate and onUpdate** => 
