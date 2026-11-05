@@ -3,7 +3,9 @@
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { animate } from "motion";
+import { SmoothRange } from "@/components/smooth-range";
 import { ceilings, hardware } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
@@ -64,6 +66,7 @@ export function TilingSandbox() {
   const [playing, setPlaying] = useState(false);
   const [guess, setGuess] = useState<"yes" | "no" | null>(null);
 
+  const tween = useRef<{ stop: () => void } | null>(null);
   const shape = ops[opNames.indexOf(op)].shape;
   const m = Number(rows);
   const tile = tileSizes[tileIdx];
@@ -75,6 +78,7 @@ export function TilingSandbox() {
   const over = shared > 1;
 
   const change = (fn: () => void) => {
+    tween.current?.stop();
     fn();
     setDone(0);
     setPlaying(false);
@@ -91,13 +95,26 @@ export function TilingSandbox() {
   }, [playing, done, stride, t.kIters]);
 
   const reset = () => {
+    tween.current?.stop();
     setOp(start.op);
     setRows(start.rows);
-    setTileIdx(start.tile);
     setBk(start.bk);
-    setDone(0);
     setPlaying(false);
     setGuess(null);
+    if (reduced) {
+      setTileIdx(start.tile);
+      return setDone(0);
+    }
+    const fromTile = tileIdx;
+    const fromDone = done;
+    tween.current = animate(0, 1, {
+      duration: 0.6,
+      ease: [0.77, 0, 0.175, 1],
+      onUpdate: (x) => {
+        setTileIdx(Math.round(fromTile + (start.tile - fromTile) * x));
+        setDone(Math.round(fromDone * (1 - x)));
+      },
+    });
   };
 
   const one = tiling(shape, 1, 16, Number(bk), peak);
@@ -135,13 +152,12 @@ export function TilingSandbox() {
           </div>
           <label className="flex items-center gap-3">
             <span className="w-14 shrink-0 text-muted">tile</span>
-            <input
-              type="range"
+            <SmoothRange
               min={0}
               max={tileSizes.length - 1}
               step={1}
               value={tileIdx}
-              onChange={(e) => change(() => setTileIdx(Number(e.target.value)))}
+              onValue={(v) => change(() => setTileIdx(v))}
               aria-valuetext={`${tile} by ${tile} outputs`}
               className="min-w-40 flex-1 accent-[var(--accent)]"
             />
@@ -149,15 +165,15 @@ export function TilingSandbox() {
           </label>
           <label className="flex items-center gap-3">
             <span className="w-14 shrink-0 text-muted">k loop</span>
-            <input
-              type="range"
+            <SmoothRange
               min={0}
               max={t.kIters}
               step={1}
               value={done}
-              onChange={(e) => {
+              onValue={(v) => {
+                tween.current?.stop();
                 setPlaying(false);
-                setDone(Number(e.target.value));
+                setDone(v);
               }}
               aria-valuetext={`${done} of ${t.kIters} k steps`}
               className="min-w-40 flex-1 accent-[var(--accent)]"
@@ -165,10 +181,10 @@ export function TilingSandbox() {
             <span className="w-20 shrink-0 text-text tabular-nums">{`${done} / ${t.kIters}`}</span>
           </label>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => (done >= t.kIters ? (setDone(0), setPlaying(true)) : setPlaying(!playing))} aria-pressed={playing} className="text-accent">
+            <Button onClick={() => (tween.current?.stop(), done >= t.kIters ? (setDone(0), setPlaying(true)) : setPlaying(!playing))} aria-pressed={playing} className="text-accent">
               {playing ? "pause" : "play"}
             </Button>
-            <Button disabled={done >= t.kIters} onClick={() => (setPlaying(false), setDone(done + 1))}>
+            <Button disabled={done >= t.kIters} onClick={() => (tween.current?.stop(), setPlaying(false), setDone(done + 1))}>
               step
             </Button>
             <Button onClick={reset}>reset</Button>

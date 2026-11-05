@@ -6,6 +6,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Add `web/src/components/kernels/gemm/tiling.ts`, a small model of output tiling for one projection (rows M, tile edge, K step): tile loads, DRAM bytes with tiling against naive (every output reading its row of x and row of W), reuse factor, FLOP per byte, padded work, shared memory for two stages and compute and memory time at the measured ceilings, with `web/scripts/tiling.test.mjs` checking the byte and reuse math (one row reads the weights once whatever the tile; enough rows make the tile edge the reuse factor). (Part A)
 - Add the "tile it yourself" sandbox to the GEMM page: a predict-first question (does a bigger tile help at one row), a matrix picker with TinyLlama's four projection shapes, rows 1, 16, 64 and 512, a tile slider and K step, and a block stepping through the K loop (play, step, scrub, reset) with live readouts and bars for DRAM bytes against naive, shared memory against the 100 KB per SM limit and whether the choice is memory or compute bound at the measured ceilings. It says it is a conceptual model, not cuBLAS internals. Wired through the new `sandbox` field on `KernelStory`, `KernelSandboxView` and a "sandbox" section after "how it works". (Part A)
+- Use `SmoothRange` for the GEMM sandbox's tile and K loop sliders, and tween its reset (tile and K position glide back over 600 ms, instantly under reduced motion). (Part A)
 
 ## web/smooth-sliders
 
