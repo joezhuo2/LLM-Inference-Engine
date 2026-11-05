@@ -38,6 +38,7 @@ export type KernelStory = {
   excerpts: ExcerptSpec[];
   measurements: KernelMeasurement[];
   timeline: KernelEntry[];
+  prologue?: { title: string; intro: string };
   lead?: { title: string; intro: string };
   sandbox?: { title: string; intro: string };
 };

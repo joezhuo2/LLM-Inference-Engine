@@ -1,5 +1,6 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
+import hardwareJson from "@/data/hardware.json";
 import kvDemoJson from "@/data/kv_demo.json";
 import kvReplayJson from "@/data/kv_replay.json";
 import launchGapsJson from "@/data/launch_gaps.json";
@@ -98,6 +99,14 @@ export function profilingTable(sectionId: string, index = 0, doc: Doc = "profili
   const table = docSections(doc).find((s) => s.id === sectionId)?.tables[index];
   if (!table) throw new Error(`${docPath[doc]} has no table ${index} in section ${sectionId}`);
   return table;
+}
+
+export type Hardware = { gpu: string; compute_capability: number; sms: number; vram_gb: number; l2_kb: number; shared_kb_per_sm: number };
+
+export function hardware(): Hardware {
+  const hw = hardwareJson as Partial<Hardware>;
+  if (!hw.sms || !hw.shared_kb_per_sm || !hw.l2_kb || !hw.vram_gb) throw new Error("docs/hardware.md is missing SMs, VRAM, L2 or shared mem per SM");
+  return hw as Hardware;
 }
 
 export function ceilings(): { gbs: number; tflops: number } {

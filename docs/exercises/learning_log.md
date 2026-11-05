@@ -1548,6 +1548,46 @@
 - **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
 - **why a preempted sequence has to rewrite its KV from position 0** => 
 
+## Prefill vs. Decode Prologue (Branch 87)
+- **prefill: why all prompt positions can run through the model in one parallel pass** => 
+- **decode: why generation is sequential, one token per step** => 
+- **the KV cache: which tensors it stores and why attention can reuse them** => 
+- **memory-bound against compute-bound: what limits a decode step** => 
+- **decoding without a KV cache: why every token would redo the work of all earlier tokens** => 
+- **reserving the worst-case length per request: why it strands memory** => 
+- **fixed-size blocks drawn from one shared pool** => 
+
+## Continuous Batching Prologue (Branch 88)
+- **static batching: why a batch waits for its longest sequence** => 
+- **continuous batching (iteration-level scheduling): revisiting the batch every step** => 
+- **wasted slot-steps: idle batch slots as a cost of static batching** => 
+- **first come first served admission up to max_batch** => 
+- **preemption from the back of the running list when blocks run out** => 
+
+## Toggle Transitions (Branch 89)
+- **animating a highlight with clip-path inset instead of left and width** => 
+- **ResizeObserver: re-measuring an element when its size changes** => 
+
+## Foundations (Branch 86)
+- **streaming multiprocessor (SM) and how many a GPU has** => 
+- **shared memory per SM** => 
+- **L2 cache** => 
+- **grid, block, warp and thread, and which runs on which hardware** => 
+- **warp divergence** => 
+- **global memory, L2, shared memory and registers: size and speed order** => 
+- **GDDR against HBM** => 
+- **compute bound against memory bound** => 
+- **FLOPs per byte (arithmetic intensity)** => 
+- **the roofline model, slope, flat top and ridge** => 
+- **matrix-vector product (GEMV) against matrix product (GEMM)** => 
+- **prefill against decode** => 
+- **kernel fusion and why it removes a round trip to global memory** => 
+- **kernel launch and the intermediate tensor written between two kernels** => 
+
+## Smooth Sliders (Branch 97)
+- **telling a click from a drag on a range input with pointer timing** => 
+- **tweening a value with motion animate and onUpdate** => 
+
 ## Chunked Prefill Story (Branch 85)
 - **interleaving prefill chunks with decode rows: how a step is shared between the two** => 
 - **time to first token against time per token: what a smaller chunk trades** => 

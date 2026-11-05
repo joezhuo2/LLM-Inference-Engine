@@ -13,6 +13,10 @@ export const pagedAttention: KernelStory = {
     value: `${(measured(split, { rows: "1", context: "2,048" }, "v2") / measured(split, { rows: "1", context: "2,048" }, "8")).toFixed(1)}x`,
     label: "faster with 8 splits, one row at 2,048 tokens",
   },
+  lead: {
+    title: "Prefill vs. Decode (the token lifecycle)",
+    intro: "A model reads a prompt once and then writes its answer one token at a time. Before the kernel, here is what each phase does and why the KV cache sits between them. Token counts in the figures are illustrative; every time is measured on this engine.",
+  },
   sources: [
     { path: "src/kernels/paged_attention.cu", label: "v1" },
     { path: "src/kernels/paged_attention_v2.cu", label: "v2" },
