@@ -78,7 +78,7 @@ export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, p
   if (!page) return;
   const unit = w / 1200;
   const marginX = 130 * unit;
-  const marginR = 90 * unit;
+  const marginR = 170 * unit;
   const textW = w - marginX - marginR;
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = palette.faint;
@@ -115,8 +115,8 @@ export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, capti
   const h = canvas.height;
   ctx.clearRect(0, 0, w, h);
   const unit = w / 1200;
-  const x = 90 * unit;
-  const width = w - 180 * unit;
+  const x = 170 * unit;
+  const width = w - 260 * unit;
   let y = h - 300 * unit;
   ctx.textBaseline = "alphabetic";
   ctx.font = `italic ${28 * unit}px ${fonts.sans}`;
