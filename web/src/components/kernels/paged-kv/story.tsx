@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { measured } from "@/content/kernels/types";
 import { kvReplay } from "@/lib/data";
+import { SmoothRange } from "@/components/smooth-range";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { useLoop } from "../loop";
 import { AppendFigure, BatchingFigure, batchGrids, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, tightBlocks, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
@@ -111,14 +112,13 @@ function ReplayPlayer() {
         >
           {playing ? "pause" : "play"}
         </button>
-        <input
-          type="range"
+        <SmoothRange
           min={0}
           max={replay.steps.length - 1}
           value={step}
-          onChange={(e) => {
+          onValue={(v) => {
             setPaused(true);
-            setPicked(Number(e.target.value));
+            setPicked(v);
           }}
           aria-label="step of the recorded run"
           className="w-full accent-[var(--accent)]"
