@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-foundations
+
+- Parse the TinyLlama config fixture of `tests/unit/test_config.cpp` and the mean attended context of `docs/results.md` in `web/scripts/model-shape.mjs` (with tests), write them to `web/src/data/model_shape.json` from `web/scripts/sync-data.mjs` and expose them as `modelShape()` in `web/src/lib/data.ts`, so the roofline sandbox counts FLOPs and bytes from the model's real shapes instead of copied constants. (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)
