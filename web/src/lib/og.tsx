@@ -33,7 +33,7 @@ export async function ogCard({ eyebrow, title: rawTitle, text: rawText, stats }:
   const footer = `measured on ${String(environment.gpu ?? "unknown GPU")} · commit ${String(environment.commit ?? "unknown")}`;
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", background: "#1a1512", color: "#ece4da", fontFamily: "JetBrains Mono", position: "relative" }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", background: "#191813", color: "#e7e2d6", fontFamily: "JetBrains Mono", position: "relative" }}>
         <div style={{ position: "absolute", top: 0, right: 48, display: "flex", gap: 28 }}>
           {[3, 7, 1, 5, 9].map((seed, i) => (
             <div key={seed} style={{ display: "flex", flexDirection: "column", fontSize: 26, lineHeight: 1.6, marginTop: (i * 97) % 160 - 60 }}>
@@ -45,15 +45,15 @@ export async function ogCard({ eyebrow, title: rawTitle, text: rawText, stats }:
             </div>
           ))}
         </div>
-        <div style={{ position: "absolute", inset: 0, display: "flex", background: "linear-gradient(90deg, #1a1512 55%, rgba(26, 21, 18, 0.6) 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", background: "linear-gradient(90deg, #191813 55%, rgba(25, 24, 19, 0.6) 100%)" }} />
         <div style={{ position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 72px", width: "100%" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div style={{ display: "flex", fontSize: 24, color: "#b9a99a" }}>
+            <div style={{ display: "flex", fontSize: 24, color: "#b3ad9c" }}>
               <span style={{ color: "#a9c3d9" }}>llmie</span>
               <span style={{ marginLeft: 16 }}>/ {eyebrow}</span>
             </div>
             <div style={{ display: "flex", fontSize: Math.min(76, Math.floor(1400 / title.length)), fontWeight: 700, lineHeight: 1.1, maxWidth: 900 }}>{title}</div>
-            <div style={{ display: "block", lineClamp: 4, fontSize: 26, lineHeight: 1.45, color: "#b9a99a", maxWidth: 820 }}>{text}</div>
+            <div style={{ display: "block", lineClamp: 4, fontSize: 26, lineHeight: 1.45, color: "#b3ad9c", maxWidth: 820 }}>{text}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             <div style={{ display: "flex", gap: 56 }}>
@@ -62,11 +62,11 @@ export async function ogCard({ eyebrow, title: rawTitle, text: rawText, stats }:
                 .map((s) => (
                   <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <span style={{ fontSize: 44, color: "#a9c3d9" }}>{s.value}</span>
-                    <span style={{ fontSize: 18, color: "#b9a99a" }}>{s.label}</span>
+                    <span style={{ fontSize: 18, color: "#b3ad9c" }}>{s.label}</span>
                   </div>
                 ))}
             </div>
-            <div style={{ display: "flex", fontSize: 16, color: "#94857a" }}>{footer}</div>
+            <div style={{ display: "flex", fontSize: 16, color: "#8f8a79" }}>{footer}</div>
           </div>
         </div>
       </div>

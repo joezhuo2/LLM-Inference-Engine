@@ -1730,3 +1730,4 @@
 - **tinting a shadow with the background hue instead of black** => 
 - **deepening a pastel for text while keeping it pale for fills** => 
 - **tinting neutrals toward one undertone color** => 
+- **keeping hard-coded colors outside the CSS in step with theme tokens** => 
