@@ -8,6 +8,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add the paged attention stepper, "step through it yourself", as its own section after "how it works": a context-length slider and an 8, 16 or 32 block-size picker, the 64-block pool with the context's scattered blocks and a clickable block table, back, next block, play and reset controls, one block read per step with its scores and weights, and the update of m, the rescale factor, l and the accumulator. Live readouts (blocks read, bytes read at head dim 64, m, l) use NumberFlow, the final output is shown next to one-shot softmax attention with the largest difference, and a predict-first question can jump to the next block that raises m. Wired through a new optional `sandbox` field on `KernelStory` and `KernelSandboxView`; the data is labelled illustrative. (Part A)
 - Start the paged attention stepper on a seed whose default blocks (100 tokens, block size 16) raise the running maximum at blocks 1, 3 and 6, so the predict-first question can be answered by stepping to a block that does. (Part A)
 - Move `KernelSandboxView` to the end of `story-view.tsx` to follow the shared sandbox wiring convention. (Part A)
+- Use `SmoothRange` for the paged attention stepper's context slider (a click on the track glides over 600 ms) and tween the context back to its default over 600 ms on reset (cancelled by any input, a jump under reduced motion). (Part A)
 
 ## web/smooth-sliders
 

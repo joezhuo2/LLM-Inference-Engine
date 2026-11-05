@@ -2,7 +2,10 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
-import { useEffect, useMemo, useState } from "react";
+import { animate, type AnimationPlaybackControls } from "motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SmoothRange } from "@/components/smooth-range";
+import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { START_MAX, directAttention, makeProblem, maxDiff, pagedAttention } from "./online-softmax";
@@ -32,6 +35,10 @@ export function PagedAttentionSandbox() {
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [guess, setGuess] = useState<string | null>(null);
+  const reduced = usePrefersReducedMotion();
+  const tween = useRef<AnimationPlaybackControls | null>(null);
+
+  useEffect(() => () => tween.current?.stop(), []);
 
   const problem = useMemo(() => makeProblem(context, Number(block), seed), [context, block, seed]);
   const run = useMemo(() => pagedAttention(problem), [problem]);
@@ -49,12 +56,15 @@ export function PagedAttentionSandbox() {
   }, [running, blocks]);
 
   const change = (apply: () => void) => {
+    tween.current?.stop();
     apply();
     setStep(0);
     setPlaying(false);
   };
   const reset = () => {
-    setContext(defaults.context);
+    tween.current?.stop();
+    if (reduced || context === defaults.context) setContext(defaults.context);
+    else tween.current = animate(context, defaults.context, { duration: 0.6, ease: [0.77, 0, 0.175, 1], onUpdate: (v) => setContext(Math.round(v)) });
     setBlock(defaults.block);
     setSeed(defaults.seed);
     setStep(0);
@@ -72,12 +82,12 @@ export function PagedAttentionSandbox() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 text-muted">
             <span className="w-14 shrink-0">context</span>
-            <input
-              type="range"
+            <SmoothRange
               min={1}
               max={256}
               value={context}
-              onChange={(e) => change(() => setContext(Number(e.target.value)))}
+              onValue={(v) => change(() => setContext(v))}
+              onPointerDown={() => tween.current?.stop()}
               aria-label="context length in tokens"
               className="w-40 accent-[var(--accent)]"
             />
