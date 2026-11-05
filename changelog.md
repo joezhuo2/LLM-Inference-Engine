@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## tools/onchip-speeds
 
+- Record the on-chip numbers in `results/onchip/` and a new "On-chip memory" section of `docs/results.md` (method, table, reading), and the register file in `docs/hardware.md`. RTX 5060 Laptop GPU at 2,790 to 2,812 MHz, 5 runs on commit e608146: L2 1,911 GB/s (8 MB) and 318 cycles (113 ns) per hit, shared memory 9,107 GB/s with 128-bit loads (125 B per clock per SM) but 4,644 GB/s with 32-bit loads (63.7), 28 cycles (10 ns) per load, DRAM 867 cycles (309 ns) per load, a dependent FMA 4 cycles, 256 KB of registers per SM. (Part A)
 - Add `scripts/onchip_bench.cu`, which measures what sits between DRAM and the threads: L2 read bandwidth (8 MB working set, `__ldcg` so L1 is skipped) and L2 hit latency (pointer chase in 4 MB), shared memory read bandwidth with conflict-free 32-bit and 128-bit loads and its latency (pointer chase in shared memory), dependent FMA latency, DRAM latency (pointer chase in 256 MB) and the register file size from `cudaGetDeviceProperties`, with the SM clock of each kernel from `clock64()` against `%globaltimer`. `scripts/onchip_report.py` runs it several times and writes `results/onchip/onchip.csv` and `onchip.md` (median, min to max); `scripts/reproduce.sh` runs both (`--skip-onchip` to leave out) and `scripts/make_results.py` fills a new `auto:onchip` block of `docs/results.md`. New tests. (Part A)
 
 ## web/memory-wall-story

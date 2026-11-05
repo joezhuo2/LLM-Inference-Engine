@@ -1597,3 +1597,10 @@
 - **keeping a benchmark loop from being optimized away (live results, runtime operands, checking SASS)** => 
 - **`cuobjdump -sass`: reading the machine code a kernel compiled to** => 
 - **sizing a grid to one wave with `cudaOccupancyMaxActiveBlocksPerMultiprocessor`** => 
+
+### The numbers
+- **a working-set sweep: the L2 plateau and the drop to DRAM past the cache size** => 
+- **copy bandwidth against read bandwidth** => 
+- **load/store unit throughput: why 32-bit shared loads reach half the bank bandwidth** => 
+- **address translation (TLB) misses in a pointer chase over a large buffer** => 
+- **clock domains: SM clock against the L2 and memory clocks** => 
