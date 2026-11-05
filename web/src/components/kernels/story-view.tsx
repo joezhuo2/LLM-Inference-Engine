@@ -55,19 +55,19 @@ export function KernelLeadView({ slug }: { slug: string }) {
   }
 }
 
-export function KernelSandboxView({ slug }: { slug: string }) {
+export function KernelPrologueView({ slug }: { slug: string }) {
   switch (slug) {
-    case "paged-attention":
-      return <PagedAttentionSandbox />;
+    case "paged-kv":
+      return <BatchingStory />;
     default:
       return null;
   }
 }
 
-export function KernelPrologueView({ slug }: { slug: string }) {
+export function KernelSandboxView({ slug }: { slug: string }) {
   switch (slug) {
-    case "paged-kv":
-      return <BatchingStory />;
+    case "paged-attention":
+      return <PagedAttentionSandbox />;
     default:
       return null;
   }
