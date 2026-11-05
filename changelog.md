@@ -13,6 +13,11 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Part A: export the add + RMSNorm story steps, captions, measured times and bytes and the token picker so the book can reuse them.
 
+## web/book-polish
+
+- Part A: keep the magnifier where it was while it fades out, instead of jumping to the top left corner of the book when the pointer leaves a page.
+- Part A: start the book's left-page body text at 26 units, the size long steps already fit at, so every page in a chapter sets at one size.
+
 ## web/book-engine
 
 - Part A: lay the turning leaf on the page curve (the dip at the spine) at the start and end of a page turn, so it lifts off and lands exactly where the page sits instead of floating flat above the book and snapping down when the turn ends.

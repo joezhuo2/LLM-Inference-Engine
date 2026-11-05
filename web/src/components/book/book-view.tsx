@@ -24,6 +24,8 @@ function Icon({ d }: { d: string }) {
 
 export function Magnifier({ lens }: { lens: Lens | null }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const [at, setAt] = useState({ x: 0, y: 0 });
+  if (lens && (lens.x !== at.x || lens.y !== at.y)) setAt({ x: lens.x, y: lens.y });
   useEffect(() => {
     const c = canvas.current;
     if (!c || !lens) return;
@@ -41,7 +43,7 @@ export function Magnifier({ lens }: { lens: Lens | null }) {
       aria-hidden
       width={LENS_SIZE * 2}
       height={LENS_SIZE * 2}
-      style={{ width: LENS_SIZE, height: LENS_SIZE, left: (lens?.x ?? 0) - LENS_SIZE / 2, top: (lens?.y ?? 0) - LENS_SIZE / 2, opacity: lens ? 1 : 0 }}
+      style={{ width: LENS_SIZE, height: LENS_SIZE, left: at.x - LENS_SIZE / 2, top: at.y - LENS_SIZE / 2, opacity: lens ? 1 : 0 }}
       className="pointer-events-none absolute z-10 rounded-full border border-[var(--book-faint)] bg-[var(--book-paper)] shadow-lg transition-opacity duration-300"
     />
   );

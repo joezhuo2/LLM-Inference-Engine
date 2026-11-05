@@ -1789,6 +1789,11 @@
 
 - **blending a bent mesh into a resting shape by how flat each segment lies** => 
 
+## 3D book: polish (Branch 115)
+
+- **one type size across pages instead of fitting each page alone** => 
+- **adjusting state while rendering to remember the last prop value** => 
+
 ## 3D book: add and RMSNorm (Branch 108)
 - **scale invariance of RMSNorm** => 
 - **a signed bar chart hung above and below a floating rail** => 
