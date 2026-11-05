@@ -1867,3 +1867,10 @@
 - **mapping a log scale onto a length** => 
 - **inverting a log scale to turn a drag position back into a value** => 
 - **throttling canvas texture redraws by quantizing the value drawn** => 
+
+## 3D book: SwiGLU (Branch 109)
+- **sharing one module's helpers between a figure and a 3D model** => 
+- **dragging between several handles in one scene by remembering the grabbed one** => 
+- **instanced meshes with per-instance colour for stacked blocks** => 
+- **round-robin placement of blocks onto SMs** => 
+- **a zero-height box still draws its top face** => 
