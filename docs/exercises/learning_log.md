@@ -1555,3 +1555,4 @@
 - **why the same prompt can give different greedy tokens at different chunk sizes (GEMM kernels picked by row count)** => 
 - **why mixed steps run eager while pure decode steps keep their CUDA Graph** => 
 - **why the token budget must be at least the max batch** => 
+- **why a smaller token budget delays the first token of a long prompt but steadies everyone else's TPOT** => 
