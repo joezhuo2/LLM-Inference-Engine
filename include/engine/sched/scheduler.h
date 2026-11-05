@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <deque>
 #include <span>
+#include <unordered_map>
 #include <vector>
 
 #include "engine/kv/block_manager.h"
@@ -69,6 +70,8 @@ private:
     std::unordered_map<SeqId, Request> requests_;
     bool pending_step_ = false;
     Step pending_step_obj_;
+    std::unordered_map<SeqId, int> prefill_progress_;
+    std::vector<SeqId> pending_sampled_seqs_;
 };
 
 }  // namespace engine
