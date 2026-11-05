@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-paged-kv
 
+- Part A: shrink a page title that is wider than the left page so long step titles no longer run into the spine (engine change in `typeset.ts`, one line).
 - Part A: let the allocate-it-yourself visualizer render its pool and its tables into two given elements through portals (`pages` prop), keeping its state across both and its normal layout in the reading view; it now reads its colors from the canvas (so a light page inside a dark site draws in light colors), rebinds its observers when the canvas moves, and maps the pointer correctly when the canvas is scaled.
 - Part A: export the paged KV story steps and captions, the continuous batching steps and captions, and the replay's step lookup so the book can reuse them, and drop "below" from the batching step that points at the visualizer, which the book places on its own spread.
 

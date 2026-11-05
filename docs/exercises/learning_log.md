@@ -1773,3 +1773,4 @@
 - **a callback ref stored in state so an effect reruns when the element changes** => 
 - **reading CSS custom properties from the element instead of the document root** => 
 - **mapping pointer coordinates on a CSS-scaled element back to layout pixels** => 
+- **shrinking text to fit a width with measureText** => 

@@ -86,6 +86,7 @@ export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, p
   ctx.fillText(page.kicker, marginX, 150 * unit);
   ctx.fillStyle = palette.ink;
   ctx.font = `${92 * unit}px ${fonts.serif}`;
+  ctx.font = `${Math.min(92, (92 * (w - marginX - 60 * unit)) / ctx.measureText(page.title).width) * unit}px ${fonts.serif}`;
   ctx.fillText(page.title, marginX, 260 * unit);
   let y = 325 * unit;
   if (page.note) {
