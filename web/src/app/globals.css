@@ -294,3 +294,15 @@ main:focus {
     animation-delay: 0s !important;
   }
 }
+
+.dot-move {
+  transition:
+    transform 500ms var(--ease-in-out),
+    opacity 300ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot-move {
+    transition: opacity 300ms ease;
+  }
+}

@@ -8,6 +8,7 @@ import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
 import { ChunkedPrefillStory } from "./chunked-prefill/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
+import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
@@ -74,6 +75,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <ChunkedPrefillSandbox />;
     case "rope":
       return <RopeSandbox />;
+    case "foundations":
+      return <FoundationsSandbox />;
     default:
       return null;
   }

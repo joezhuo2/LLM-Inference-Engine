@@ -1606,3 +1606,14 @@
 - **head-of-line blocking in a FCFS waiting queue** => 
 - **preemption thrash: a restarted prefill that is preempted again** => 
 - **a token budget against max_prefill_tokens: two different caps on a step** => 
+
+## Roofline sandbox (Branch 91)
+- **ridge point of the roofline as peak FLOP/s over peak bytes/s** => 
+- **FLOPs and DRAM bytes of a matmul with weights read once and activations per row** => 
+- **why batching raises arithmetic intensity of a matmul but not of attention** => 
+- **grouped-query attention and the ratio of query heads to KV heads** => 
+- **time at the ceiling as the larger of bytes over bandwidth and FLOPs over peak** => 
+- **log-log axes and why a power law is a straight line on them** => 
+- **reading a roofline plot: the slope, the flat top and the distance of a measured dot below the roof** => 
+- **why measured attention sits far under its roofline** => 
+- **cancelling a running tween when the user takes over the control** => 
