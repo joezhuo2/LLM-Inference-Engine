@@ -1767,3 +1767,6 @@
 - **replaying an effect by changing a component key** => 
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
+
+## 3D book: GEMM (Branch 103)
+- **sharing one set of controls between two portal targets** => 

@@ -252,6 +252,30 @@ const captions = [
   "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
 ];
 
+const roofPoint = (rows: string) => ({
+  ops: gemmOps.map((op) => ({ x: roofline(op, rows, "FLOP/byte"), y: roofline(op, rows, "TFLOP/s") })),
+  attention: { x: roofline("attention", rows, "FLOP/byte"), y: roofline("attention", rows, "TFLOP/s") },
+  step: { x: step("engine + graphs", rows, "FLOP/byte"), y: step("engine + graphs", rows, "TFLOP/s"), pct: step("engine + graphs", rows, "% of roof") },
+  gateUp: roofline("gate_up", rows, "TFLOP/s"),
+});
+
+export const gemmSteps = steps;
+export const gemmCaptions = captions;
+export const gemmNumbers = {
+  projections,
+  weightBytes,
+  share,
+  peak,
+  ridge,
+  tpotUs: tpotGraphs,
+  roofRows,
+  us1: sum("1"),
+  us16: sum("16"),
+  roof1: roofPoint("1"),
+  roof16: roofPoint("16"),
+};
+export type GemmNumbers = typeof gemmNumbers;
+
 export function GemmStory() {
   return (
     <StickyStory
