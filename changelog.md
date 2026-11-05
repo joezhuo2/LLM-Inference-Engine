@@ -2,6 +2,14 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-paged-kv
+
+- Part A: serve `/kernels/paged-kv` as its book chapter; the scroll page stays at `/kernels/paged-kv/read`.
+- Part A: add the paged KV cache chapter (chapter 4) to the book: the four continuous batching steps and the six paged KV steps as ten spreads, with seven hatched ink pop-up models (the batching grid with its queue, counters and a draggable step for static, continuous and tight-pool batching; reserved rows against blocks taken as they grow; request 0's block table wired into the pool with a draggable position and the slot it lands in; write_kv copying K and V heads into one row of each head's tile; slots filling one decode step at a time with a draggable position and block 4 appearing at position 48; freed blocks taken again and a preempted request; the recorded run replayed over the pool with its blocks-held profile and a draggable time), a camera tour per step, and the allocate-it-yourself visualizer as two try-it-yourself spreads.
+- Part A: shrink a page title that is wider than the left page so long step titles no longer run into the spine (engine change in `typeset.ts`, one line).
+- Part A: let the allocate-it-yourself visualizer render its pool and its tables into two given elements through portals (`pages` prop), keeping its state across both and its normal layout in the reading view; it now reads its colors from the canvas (so a light page inside a dark site draws in light colors), rebinds its observers when the canvas moves, and maps the pointer correctly when the canvas is scaled.
+- Part A: export the paged KV story steps and captions, the continuous batching steps and captions, and the replay's step lookup so the book can reuse them, and drop "below" from the batching step that points at the visualizer, which the book places on its own spread.
+
 ## web/book-split-attention
 
 - Part A: split attention book polish: wider, higher close-ups, labels moved clear of the jars, posts and the readout, shorter lane labels on the cut figure, hidden spare block instances, and no shelf behind the graph rack.

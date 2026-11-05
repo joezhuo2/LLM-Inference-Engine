@@ -1811,3 +1811,15 @@
 - **exporting a story's data so another view can reuse it** => 
 - **instanced meshes for many identical blocks** => 
 - **mapping a drag position to the nearest of a few stops** => 
+
+## 3D book: paged KV cache (Branch 104)
+- **reusing one story's steps in two views by exporting the step array** => 
+- **a callback ref stored in state so an effect reruns when the element changes** => 
+- **reading CSS custom properties from the element instead of the document root** => 
+- **mapping pointer coordinates on a CSS-scaled element back to layout pixels** => 
+- **shrinking text to fit a width with measureText** => 
+- **instanced meshes with per-instance color for many small boxes** => 
+- **an extruded Shape as a 3D area chart** => 
+- **a transparent canvas texture on a horizontal plane as printed floor text** => 
+- **hiding an instance by scaling it to almost zero** => 
+- **one drag callback routed to whichever handle was picked** => 
