@@ -386,7 +386,7 @@ function captureExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) 
 
   let time = 0;
   let shownLine = -1;
-  const loop = 13;
+  const loop = 16;
   return {
     root,
     update: (dt: number, reduced: boolean) => {

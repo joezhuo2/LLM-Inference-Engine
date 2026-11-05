@@ -22,7 +22,7 @@ const beats: Beat[][] = [
   [
     overview("Stream capture: record once, launch once"),
     close("Close up: each launch becomes a node of the graph", [0.5, 0.04, -0.1], 0.86, 0.42, -18, 40),
-    close("From the side: the graph sealed for replay", [0.5, 0.06, -0.05], 0.7, 0.36, 26, 22),
+    close("From the side: the graph sealed for replay", [0.55, 0.05, -0.08], 0.8, 0.42, 30, 40),
   ],
   [
     overview("stage: new values into the same buffer"),
