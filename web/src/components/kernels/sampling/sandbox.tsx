@@ -2,8 +2,11 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
-import { useState } from "react";
+import { animate, type AnimationPlaybackControls } from "motion";
+import { useEffect, useRef, useState } from "react";
+import { SmoothRange } from "@/components/smooth-range";
 import { samplingLogits } from "@/lib/data";
+import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { buildGroups, draw, type Group, type Knobs, stages, type Stages } from "./sampler";
@@ -16,6 +19,7 @@ const SHOW = 12;
 const KOFF = 201;
 const defaults = { temperature: 1, k: KOFF, p: 1 };
 const historyLength = 24;
+const snap = (v: number, step: number) => Math.round(v / step) * step;
 
 const fmt = (v: number) => v.toLocaleString("en-US");
 const piece = (t: string) => (t === "<0x0A>" ? "⏎" : t.replaceAll("▁", "␣"));
@@ -55,7 +59,7 @@ function Slider({ label, value, min, max, step, onChange, children }: { label: s
   return (
     <label className="flex items-center gap-3">
       <span className="w-14 shrink-0 text-muted">{label}</span>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-[var(--accent)]" />
+      <SmoothRange min={min} max={max} step={step} value={value} onValue={onChange} className="w-full accent-[var(--accent)]" />
       <span className="w-14 shrink-0 text-right tabular-nums text-text">{children}</span>
     </label>
   );
@@ -71,6 +75,35 @@ export function SamplingSandbox() {
   const [step, setStep] = useState(0);
   const [history, setHistory] = useState<{ label: string; index: number }[]>([]);
   const [guess, setGuess] = useState<string | null>(null);
+
+  const reduced = usePrefersReducedMotion();
+  const tween = useRef<AnimationPlaybackControls | null>(null);
+  useEffect(() => () => tween.current?.stop(), []);
+
+  const glide = (to: { temperature: number; k: number; p: number }) => {
+    tween.current?.stop();
+    if (reduced) {
+      setTemperature(to.temperature);
+      setK(to.k);
+      setP(to.p);
+      return;
+    }
+    const from = { temperature, k, p };
+    tween.current = animate(0, 1, {
+      duration: 0.6,
+      ease: [0.77, 0, 0.175, 1],
+      onUpdate: (x) => {
+        setTemperature(snap(from.temperature + (to.temperature - from.temperature) * x, 0.05));
+        setK(Math.round(from.k + (to.k - from.k) * x));
+        setP(snap(from.p + (to.p - from.p) * x, 0.05));
+      },
+    });
+  };
+
+  const user = (set: (v: number) => void) => (v: number) => {
+    tween.current?.stop();
+    set(v);
+  };
 
   const context = contexts[names.indexOf(ctx)];
   const knobs = knobsOf(temperature, k, p);
@@ -108,9 +141,7 @@ export function SamplingSandbox() {
 
   const reset = () => {
     setCtx(names[0]);
-    setTemperature(defaults.temperature);
-    setK(defaults.k);
-    setP(defaults.p);
+    glide({ temperature: defaults.temperature, k: defaults.k, p: defaults.p });
     setStage("final");
     setSeed(1);
     setStep(0);
@@ -137,13 +168,13 @@ export function SamplingSandbox() {
         </div>
 
         <div className="space-y-2">
-          <Slider label="temp T" value={temperature} min={0} max={2} step={0.05} onChange={setTemperature}>
+          <Slider label="temp T" value={temperature} min={0} max={2} step={0.05} onChange={user(setTemperature)}>
             {greedy ? "greedy" : <NumberFlow value={temperature} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />}
           </Slider>
-          <Slider label="top-k" value={k} min={1} max={KOFF} step={1} onChange={setK}>
+          <Slider label="top-k" value={k} min={1} max={KOFF} step={1} onChange={user(setK)}>
             {k >= KOFF ? "off" : <NumberFlow value={k} />}
           </Slider>
-          <Slider label="top-p" value={p} min={0.05} max={1} step={0.05} onChange={setP}>
+          <Slider label="top-p" value={p} min={0.05} max={1} step={0.05} onChange={user(setP)}>
             {p >= 1 ? "off" : <NumberFlow value={p} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />}
           </Slider>
           {greedy && <p className="text-warn">T = 0 is greedy: the engine takes the largest logit and ignores top-k and top-p.</p>}
@@ -247,9 +278,7 @@ export function SamplingSandbox() {
               <button
                 type="button"
                 onClick={() => {
-                  setTemperature(0.7);
-                  setK(KOFF);
-                  setP(0.9);
+                  glide({ temperature: 0.7, k: KOFF, p: 0.9 });
                   setStage("final");
                 }}
                 className="pressable rounded border border-border px-2.5 py-1 text-text"
