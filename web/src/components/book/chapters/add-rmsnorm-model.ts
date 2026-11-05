@@ -48,73 +48,56 @@ function arcLine(kit: Kit, from: THREE.Vector3, to: THREE.Vector3, lift: number)
   return { line, at };
 }
 
-const SUMS = [0.6, -0.9, 0.3, 1.2, -0.4, 0.8, -1.1, 0.5, 0.2, -0.7, 1.0, -0.3, 0.9, -0.6, 0.4, -1.0];
-const XS = SUMS.map((s, i) => Math.round((s * 0.6 + (((i * 7) % 5) - 2) * 0.15) * 100) / 100);
-const RS = SUMS.map((s, i) => s - XS[i]);
+const XS = [0.3, 0.5, 0.2, 0.7, 0.4, 0.6, 0.3, 0.5, 0.2, 0.4, 0.6, 0.3, 0.5, 0.4, 0.2, 0.6];
+const RS = [0.3, 0.4, 0.1, 0.5, 0.1, 0.2, 0.8, 0.1, 0.1, 0.3, 0.4, 0.1, 0.4, 0.2, 0.3, 0.4];
+const SUMS = XS.map((x, i) => x + RS[i]);
 const WS = [1.1, 0.9, 1.0, 1.2, 0.8, 1.0, 0.9, 1.1, 1.0, 1.2, 0.9, 0.8, 1.1, 1.0, 0.9, 1.0];
 
 function jobExhibit(kit: Kit, fonts: Fonts) {
   const root = new THREE.Group();
   root.add(placed(washPlane(kit.palette.blue, 1, 1.0, 0.14), 0.55, 0.002, -0.18));
-  const rail = 0.12;
-  const k = 0.05;
-  const k2 = 0.034;
-  const cw = 0.045;
-  const x0 = 0.23;
-  const rows = { x: -0.56, r: -0.43, sum: -0.3, sq: -0.15, norm: 0 };
+  const k = 0.09;
+  const k2 = 0.035;
+  const cw = 0.04;
+  const x0 = 0.28;
+  const rows = { x: -0.55, r: -0.4, sum: -0.25, sq: -0.08, norm: 0.08 };
   const colX = (i: number) => x0 + (i + 0.5) * cw;
   const unit = new THREE.BoxGeometry(cw * 0.72, 1, 0.04);
-
-  const makeRail = (z: number) => {
-    const slab = kit.solid(new THREE.BoxGeometry(cw * 16 + 0.02, 0.006, 0.05));
-    slab.position.set(x0 + cw * 8, rail, z);
-    for (const px of [x0 - 0.004, x0 + cw * 16 + 0.004]) {
-      const post = kit.solid(new THREE.CylinderGeometry(0.004, 0.006, rail, 10), { edges: false });
-      post.position.set(px, rail / 2, z);
-      root.add(post);
-    }
-    root.add(slab);
-  };
-  const barRow = (z: number, material: THREE.Material) =>
-    SUMS.map((_, i) => {
+  const barRow = (z: number, material: THREE.Material) => {
+    const base = kit.solid(new THREE.BoxGeometry(cw * 16 + 0.012, 0.006, 0.054));
+    base.position.set(x0 + cw * 8, 0.003, z);
+    root.add(base);
+    return SUMS.map((_, i) => {
       const bar = kit.solid(unit, { material, threshold: 40 });
-      bar.position.set(colX(i), rail, z);
+      bar.position.set(colX(i), 0, z);
       root.add(bar);
       return bar;
     });
-  const setSigned = (bar: THREE.Group, value: number) => {
-    const h = Math.max(0.0005, Math.abs(value));
-    bar.scale.y = h;
-    bar.position.y = rail + (value >= 0 ? 0.003 + h / 2 : -0.003 - h / 2);
   };
-  for (const z of [rows.x, rows.r, rows.sum, rows.norm]) makeRail(z);
+  const setHeight = (bar: THREE.Group, value: number) => {
+    const h = Math.max(0.0005, value);
+    bar.scale.y = h;
+    bar.position.y = 0.006 + h / 2;
+  };
   const xBars = barRow(rows.x, kit.blue);
   const rBars = barRow(rows.r, kit.blue);
   const sumBars = barRow(rows.sum, kit.pink);
+  const sqBars = barRow(rows.sq, kit.blue);
   const normBars = barRow(rows.norm, kit.pink);
-  const sqBars = SUMS.map((_, i) => {
-    const bar = kit.solid(unit, { material: kit.blue, threshold: 40 });
-    bar.position.set(colX(i), 0, rows.sq);
-    root.add(bar);
-    return bar;
-  });
-  const floor = kit.solid(new THREE.BoxGeometry(cw * 16 + 0.02, 0.006, 0.05));
-  floor.position.set(x0 + cw * 8, 0.003, rows.sq);
-  root.add(floor);
 
   const label = (z: number, name: string, sub: string) => {
-    const card = note(kit, fonts, 0.15, 0.06, () => [
-      { text: name, color: kit.palette.ink, size: 0.42, serif: true },
-      { text: sub, color: kit.palette.faint, size: 0.22 },
+    const card = note(kit, fonts, 0.2, 0.08, () => [
+      { text: name, color: kit.palette.ink, size: 0.44, serif: true },
+      { text: sub, color: kit.palette.faint, size: 0.26 },
     ]);
-    card.group.position.set(0.135, 0, z + 0.03);
+    card.group.position.set(0.165, 0, z - 0.02);
     root.add(card.group);
   };
   label(rows.x, "x", "the layer's output");
   label(rows.r, "r", "the residual");
-  label(rows.sum, "sum = x + r", "kept: the next residual");
+  label(rows.sum, "sum = x + r", "the next residual");
   label(rows.sq, "sum²", "one per value");
-  label(rows.norm, "norm", "w · sum · rstd → GEMM");
+  label(rows.norm, "norm", "w · sum · rstd");
 
   let scale = 1;
   const rstdOf = (s: number) => 1 / Math.sqrt(SUMS.reduce((a, v) => a + (v * s) ** 2, 0) / SUMS.length + 1e-5);
@@ -122,10 +105,10 @@ function jobExhibit(kit: Kit, fonts: Fonts) {
     { text: `rstd = 1 / √(mean of sum² + ε) = ${rstdOf(scale).toFixed(2)}`, color: kit.palette.ink, size: 0.3, serif: true },
     { text: "one number per row, shared by all 2,048 values", color: kit.palette.faint, size: 0.2 },
   ]);
-  rstdCard.group.position.set(0.48, 0, 0.09);
+  rstdCard.group.position.set(0.55, 0, 0.17);
   root.add(rstdCard.group);
 
-  const railZ = 0.27;
+  const railZ = 0.34;
   const knobFrom = 0.24;
   const knobSpan = 0.52;
   const slider = kit.solid(new THREE.BoxGeometry(knobSpan + 0.04, 0.014, 0.02));
@@ -149,13 +132,11 @@ function jobExhibit(kit: Kit, fonts: Fonts) {
     const normIn = smooth(5.8, 7.2, time);
     const rstd = rstdOf(scale);
     SUMS.forEach((s, i) => {
-      setSigned(xBars[i], XS[i] * scale * k);
-      setSigned(rBars[i], RS[i] * scale * k);
-      setSigned(sumBars[i], s * scale * k * sumIn);
-      const sq = Math.max(0.0005, (s * scale) ** 2 * k2 * sqIn);
-      sqBars[i].scale.y = sq;
-      sqBars[i].position.y = 0.006 + sq / 2;
-      setSigned(normBars[i], s * scale * rstd * WS[i] * k * 0.6 * normIn);
+      setHeight(xBars[i], XS[i] * scale * k);
+      setHeight(rBars[i], RS[i] * scale * k);
+      setHeight(sumBars[i], s * scale * k * sumIn);
+      setHeight(sqBars[i], (s * scale) ** 2 * k2 * sqIn);
+      setHeight(normBars[i], s * scale * rstd * WS[i] * k * 0.6 * normIn);
     });
     rstdCard.group.visible = smooth(4.6, 5.4, time) > 0.5;
     const key = scale.toFixed(2);
@@ -314,10 +295,10 @@ function firstFusedExhibit(kit: Kit, fonts: Fonts, numbers: AddRmsnormNumbers) {
     }
     return { from, w, fill };
   });
-  const legend = note(kit, fonts, 0.86, 0.17, () => [
-    ...PHASES.map((p, i) => ({ text: `${i + 1}  ${p.text}${p.barrier ? ", then a barrier" : ""}`, color: p.back ? kit.palette.pink : kit.palette.ink, size: 0.12 })),
-  ]);
-  legend.group.position.set(0.5, 0, -0.33);
+  const legend = note(kit, fonts, 0.86, 0.2, () => [
+    ...PHASES.map((p, i) => ({ text: `${i + 1}  ${p.text}${p.barrier ? ", then a barrier" : ""}`, color: p.back ? kit.palette.pink : kit.palette.ink, size: 0.125 })),
+  ], -1.0);
+  legend.group.position.set(0.5, 0, -0.38);
   root.add(legend.group);
 
   const rodX = 0.3;
@@ -325,20 +306,20 @@ function firstFusedExhibit(kit: Kit, fonts: Fonts, numbers: AddRmsnormNumbers) {
   const rod = (zz: number, us: number, material: THREE.Material, name: string) => {
     const bar = kit.solid(new THREE.BoxGeometry(1, 0.03, 0.05), { material });
     bar.position.set(rodX, 0.015, zz);
-    const card = note(kit, fonts, 0.2, 0.06, () => [
-      { text: name, color: kit.palette.faint, size: 0.24 },
-      { text: `${us.toFixed(1)} µs`, color: kit.palette.ink, size: 0.4, serif: true },
+    const card = note(kit, fonts, 0.22, 0.075, () => [
+      { text: name, color: kit.palette.faint, size: 0.26 },
+      { text: `${us.toFixed(1)} µs`, color: kit.palette.ink, size: 0.42, serif: true },
     ]);
     card.group.position.set(0.17, 0, zz + 0.01);
     root.add(bar, card.group);
     return { bar, length: (rodSpan * us) / Math.max(numbers.pair, numbers.first) };
   };
-  const rods = [rod(0.0, numbers.pair, kit.blue, "naive pair, 2 launches"), rod(0.13, numbers.first, kit.pink, "first fused, 1 launch")];
+  const rods = [rod(-0.08, numbers.pair, kit.blue, "naive pair, 2 launches"), rod(0.06, numbers.first, kit.pink, "first fused, 1 launch")];
   const footer = note(kit, fonts, 0.8, 0.08, () => [
     { text: `one token, µs per launch; at 1, 16 and 64 tokens: ${numbers.firstFlat}`, color: kit.palette.ink, size: 0.26 },
     { text: "the time does not grow with the rows: latency bound, not bandwidth", color: kit.palette.faint, size: 0.22 },
   ]);
-  footer.group.position.set(0.5, 0, 0.27);
+  footer.group.position.set(0.5, 0, 0.2);
   root.add(footer.group);
 
   let time = 0;
@@ -395,13 +376,20 @@ function roundingExhibit(kit: Kit, fonts: Fonts) {
       ring.position.set(px, 0.075, zOf(i) - gap / 2);
       root.add(ring);
     }
-    const card = note(kit, fonts, 0.68, 0.075, () => [
-      { text: `${s.text}`, color: kit.palette.ink, size: 0.36, serif: true },
-      { text: s.sub, color: s.fix ? kit.palette.ink : kit.palette.faint, size: 0.2 },
-    ]);
-    card.group.position.set(0.56, 0, zOf(i) - 0.02);
-    const type = note(kit, fonts, 0.1, 0.045, () => [{ text: s.bf16 ? "bf16" : "float", color: s.bf16 ? kit.palette.pink : kit.palette.blue, size: 0.5 }]);
-    type.group.position.set(0.26, 0, zOf(i) - 0.005);
+    const card = note(
+      kit,
+      fonts,
+      0.58,
+      0.085,
+      () => [
+        { text: s.text, color: kit.palette.ink, size: 0.36, serif: true },
+        { text: s.sub, color: s.fix ? kit.palette.ink : kit.palette.faint, size: 0.2 },
+      ],
+      -1.1,
+    );
+    card.group.position.set(0.5, 0, zOf(i) - 0.04);
+    const type = note(kit, fonts, 0.11, 0.05, () => [{ text: s.bf16 ? "bf16" : "float", color: s.bf16 ? kit.palette.pink : kit.palette.blue, size: 0.5 }], -1.1);
+    type.group.position.set(0.875, 0, zOf(i) - 0.025);
     root.add(card.group, type.group);
   });
   const cube = kit.solid(new THREE.BoxGeometry(0.036, 0.036, 0.036), { material: kit.pink });
@@ -592,9 +580,9 @@ function shufflesExhibit(kit: Kit, fonts: Fonts) {
       root.add(card.group);
       if (level > 0) {
         const src = j ^ MASKS[level - 1];
-        const from = new THREE.Vector3(lx(src), levels[level - 1][src] * k, lz(level - 1) + 0.02);
-        const to = new THREE.Vector3(lx(j), 0.01, lz(level) - 0.02);
-        const mid = new THREE.Vector3().lerpVectors(from, to, 0.5).setY(Math.max(from.y, 0.02) + 0.05);
+        const from = new THREE.Vector3(lx(src), 0.004, lz(level - 1) + 0.065);
+        const to = new THREE.Vector3(lx(j), 0.004, lz(level) - 0.022);
+        const mid = new THREE.Vector3().lerpVectors(from, to, 0.5).setY(0.026);
         const mesh = ribbonTube([from, mid, to], 0.0024, kit.blue);
         root.add(mesh);
         ribbons.push({ mesh, level });

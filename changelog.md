@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-add-rmsnorm
 
+- Part A: lay out the add + RMSNorm models for reading: positive illustrative bars standing on bases, larger label cards, the BF16 and float tags beside the rounding steps instead of over them, the phase legend laid flatter so the timeline shows behind it, shuffle wires on the floor in front of the value cards, and close-ups framed from higher up.
+
 - Part A: add the fused add + RMSNorm chapter (chapter 8) to the book at `/kernels/add-rmsnorm`: a hatched ink pop-up model for each step (one row of x, r, sum, sum² and norm with a draggable scale that leaves the norm unchanged, the naive pair's round trip to DRAM against the fused kernel with the measured bytes, the first fused kernel's six phases and two barriers against the measured times, every BF16 rounding in order, 2-byte against 16-byte loads with the sums kept in registers, and the xor shuffle butterfly), a camera tour per model, and the token picker on a flat right page.
 
 - Part A: export the add + RMSNorm story steps, captions, measured times and bytes and the token picker so the book can reuse them.
