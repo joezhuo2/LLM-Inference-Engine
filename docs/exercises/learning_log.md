@@ -1739,3 +1739,17 @@
 - **embedding a font file for a server-side image renderer** => 
 - **reserving layout with an invisible copy of the final text** => 
 - **keeping a text effect within its reserved width by matching glyph width classes** => 
+
+## 3D book (Branch 100)
+- **hatching a surface by its light level in a fragment shader** => 
+- **patching a built-in three.js material with onBeforeCompile** => 
+- **screen-space line width with LineMaterial and LineSegments2** => 
+- **an inverted hull outline** => 
+- **a canvas texture as a page of typeset text** => 
+- **anisotropic filtering for text seen at an angle** => 
+- **a page turn as a bent plane updated on the CPU** => 
+- **framing a camera on a box for any aspect ratio** => 
+- **projecting 3D corners to place a DOM overlay** => 
+- **scaling DOM content to fit a box without scrolling** => 
+- **why a ref callback written inline runs on every render** => 
+- **lazy-loading a large library with a dynamic import** => 

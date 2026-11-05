@@ -2,7 +2,8 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-:root {
+:root,
+[data-theme="light"] {
   --bg: #e7e2d6;
   --surface: #f2eee4;
   --border: rgb(84 78 60 / 0.2);
@@ -24,6 +25,15 @@
   --req-6: #54a1a4;
   --req-7: #60568d;
   --req-8: #579db2;
+  --book-desk: #b4c5d3;
+  --book-paper: #f2eee4;
+  --book-ink: #2b2a24;
+  --book-faint: #6d6a5b;
+  --book-blue: #3d7099;
+  --book-pink: #c4708b;
+  --book-cover: #37617f;
+  --book-edge: #e8b7c2;
+  --book-ribbon: #964260;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --duration-press: 120ms;
@@ -33,6 +43,7 @@
 }
 
 [data-theme="dark"] {
+  --book-desk: #2c2a23;
   --bg: #191813;
   --surface: #23211b;
   --border: rgb(231 226 214 / 0.1);

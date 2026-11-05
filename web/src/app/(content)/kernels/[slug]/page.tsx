@@ -59,6 +59,11 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
           </div>
           <PageTitle text={story.title} />
           <p className="max-w-2xl text-muted">{story.short}</p>
+          {story.book && (
+            <Link href={`/book/${story.slug}`} className="link-underline inline-block text-sm text-accent">
+              open this chapter as a 3D book
+            </Link>
+          )}
           <div className="flex flex-wrap items-end gap-x-10 gap-y-4 tabular-nums">
             <div>
               <div className="text-xs text-muted">computes</div>
