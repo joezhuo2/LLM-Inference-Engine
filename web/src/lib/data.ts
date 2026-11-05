@@ -7,6 +7,7 @@ import launchGapsJson from "@/data/launch_gaps.json";
 import modelShapeJson from "@/data/model_shape.json";
 import profilingJson from "@/data/profiling.json";
 import resultsDocJson from "@/data/results_doc.json";
+import samplingLogitsJson from "@/data/sampling_logits.json";
 import summariesJson from "@/data/summaries.json";
 import tracesJson from "@/data/traces.json";
 
@@ -84,6 +85,16 @@ export function kvDemo(): KvDemo {
   const demo = kvDemoJson as unknown as Partial<KvDemo>;
   if (!demo.requests) throw new Error("results/kv_demo.json is missing, so the KV visualizer has no requests (scripts/kv_demo.py writes it)");
   return demo as KvDemo;
+}
+
+export type SamplingContext = { name: string; note: string; user: string; answer_so_far: string; vocab: number; tokens: string[]; logits: number[]; tail: [number, number][] };
+
+export type SamplingLogits = { date: string; device: string; commit: string; top: number; bin: number; contexts: SamplingContext[] };
+
+export function samplingLogits(): SamplingLogits {
+  const dump = samplingLogitsJson as unknown as Partial<SamplingLogits>;
+  if (!dump.contexts) throw new Error("results/sampling_logits.json is missing, so the sampling sandbox has no logits (scripts/dump_logits.py writes it)");
+  return dump as SamplingLogits;
 }
 
 export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null };
