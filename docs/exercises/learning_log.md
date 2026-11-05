@@ -1589,3 +1589,7 @@
 - **rotate_half layout against interleaved pairs** => 
 - **relative position from absolute rotations (why q·k depends on the distance)** => 
 - **wavelength of a rotary frequency in tokens** => 
+
+## Smooth Sliders (Branch 97)
+- **telling a click from a drag on a range input with pointer timing** => 
+- **tweening a value with motion animate and onUpdate** => 
