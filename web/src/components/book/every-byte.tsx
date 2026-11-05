@@ -94,10 +94,19 @@ export function EveryByte() {
   const [failed, setFailed] = useState(false);
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(false);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    for (const slug of chapterSlugs) void bookChapters[slug]().then((c) => setCounts((n) => ({ ...n, [slug]: c.steps.length + c.workbench.length })));
+  }, []);
 
   const meta = layout.meta[stop];
   const segment = meta?.key ?? "contents";
-  const segmentLength = layout.meta.filter((m) => m.key === segment).length;
+  const keys = ["contents", ...chapterSlugs, "errata"];
+  const lengthOf = (key: string) => (key === "contents" || key === "errata" ? base[key].length : counts[key]);
+  const counted = chapterSlugs.every((slug) => counts[slug] !== undefined);
+  const total = 1 + keys.reduce((sum, key) => sum + (lengthOf(key) ?? 0), 0);
+  const page = open && meta ? 2 + keys.slice(0, keys.indexOf(meta.key)).reduce((sum, key) => sum + (lengthOf(key) ?? 0), 0) + meta.local : 1;
   const def = meta?.slug ? defs[meta.slug] : undefined;
 
   useEffect(() => {
@@ -458,9 +467,9 @@ export function EveryByte() {
           <button type="button" aria-label={playing ? "pause the tour" : "play the tour"} disabled={!open || beatCount < 2} onClick={togglePlay} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
             <Icon d={playing ? "M5 3v10M11 3v10" : "M5 3l8 5-8 5z"} />
           </button>
-          {open && meta && (
+          {counted && (
             <span className="shrink-0 text-text">
-              <Scramble key={stop} text={`${meta.local + 1} / ${segmentLength}`} numeric durationMs={700} />
+              <Scramble key={page} text={`${page} / ${total}`} numeric durationMs={700} />
             </span>
           )}
           <span className="min-w-0 max-w-[22rem] truncate">
