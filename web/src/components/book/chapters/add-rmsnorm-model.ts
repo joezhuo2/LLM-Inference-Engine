@@ -603,7 +603,7 @@ function shufflesExhibit(kit: Kit, fonts: Fonts) {
     root.add(tag.group);
   });
   const footer = note(kit, fonts, 0.84, 0.1, () => [
-    { text: "a real warp: 32 lanes, xor 16, 8, 4, 2, 1; 8 warp totals → shared memory → one barrier → xor again", color: kit.palette.ink, size: 0.19 },
+    { text: "a real warp: 32 lanes, xor 16, 8, 4, 2, 1; then 8 warp totals, one barrier, xor again", color: kit.palette.ink, size: 0.19 },
     { text: "every thread now holds the total and computes rstd itself:", color: kit.palette.pink, size: 0.19 },
     { text: "no thread 0, no shared rstd, no second barrier", color: kit.palette.faint, size: 0.19 },
   ]);
