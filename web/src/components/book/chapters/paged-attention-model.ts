@@ -255,10 +255,10 @@ function decodeExhibit(kit: Kit, t: Tools, n: PagedNumbers): Exhibit {
 
 function box100(t: Tools, root: THREE.Group, kit: Kit, percent: number) {
   t.trough(root, 0.16, 0.2, 0.74, kit.blue, percent / 100);
-  t.card(root, 0.53, 0.25, 0.76, 0.032, () => [
-    { text: "0%", y: 0.72, size: 0.56, color: t.faint, x: 0.01 },
-    { text: `${percent}%`, y: 0.72, size: 0.56, color: t.blue, x: 0.01 + (0.97 * percent) / 100, align: "center" },
-    { text: "100% of measured peak", y: 0.72, size: 0.56, color: t.faint, x: 0.99, align: "right" },
+  t.card(root, 0.53, 0.25, 0.76, 0.06, () => [
+    { text: "0%", y: 0.4, size: 0.3, color: t.faint, x: 0.01 },
+    { text: "100% of measured peak", y: 0.4, size: 0.3, color: t.faint, x: 0.99, align: "right" },
+    { text: `${percent}%`, y: 0.86, size: 0.32, color: t.blue, x: 0.01 + (0.97 * percent) / 100, align: "center" },
   ], -0.6);
 }
 
