@@ -22,6 +22,7 @@ export function StickyStory({
   morph?: boolean;
 }) {
   const [visits, setVisits] = useState(0);
+  const [onScreen, setOnScreen] = useState(true);
   const panel = useRef<HTMLDivElement>(null);
   const { active, refs } = useActiveStep(panel);
   const reduced = usePrefersReducedMotion();
@@ -33,6 +34,7 @@ export function StickyStory({
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting && !shown) setVisits((v) => v + 1);
       shown = entry.isIntersecting;
+      setOnScreen(shown);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -52,7 +54,7 @@ export function StickyStory({
                 exit={{ opacity: 0 }}
                 transition={{ duration: reduced ? 0 : 0.3, ease }}
               >
-                {figure(active)}
+                {onScreen && figure(active)}
               </motion.div>
             </AnimatePresence>
           </div>

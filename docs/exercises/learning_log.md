@@ -1659,3 +1659,4 @@
 - **retargeting a CSS transition every frame and why an ease-in-out curve then lags** => 
 - **interpolating geometrically between two values on a log axis** => 
 - **getSnapshot of useSyncExternalStore runs on every render, so it must be cheap** => 
+- **pausing off-screen animation with IntersectionObserver** => 
