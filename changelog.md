@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-chunked-prefill
+
+- Add a TypeScript port of `Scheduler::schedule()` and `Scheduler::schedule_chunked()` with a counts-only block manager (`web/src/components/kernels/chunked-prefill/scheduler-model.ts`), and a `Playground` that runs both on the same arrivals: four decoders, prompts dropped by the reader, a roomy or tight KV pool. Per sequence it records one cell per step (decode row, stall, chunk, first token, wait, preempted) and it computes the steps, longest decode stall, biggest step, tokens per step and first-token wait of the dropped prompt. 25 tests in `web/scripts/chunked-scheduler.test.mjs` mirror the cases of `tests/unit/test_scheduler_chunked.cpp` (budget limits, decode rows first, spread prompts, head of the queue never skipped, preemption of the partly prefilled sequence and replay of a preempted decoder) plus `schedule()` admission and preemption. (Part A)
+
 ## web/chunked-prefill-story
 
 - Move the chunked prefill timeline entry out of M5 into a new milestone, M6 "refinements" (Nov 4). (Part A)
