@@ -1,8 +1,8 @@
 import { animate } from "motion";
 import { useSyncExternalStore } from "react";
 
-export const glideEase = [0.77, 0, 0.175, 1] as const;
-export const glideSeconds = 0.6;
+export const glideEase = [0.23, 1, 0.32, 1] as const;
+export const glideSeconds = 0.3;
 
 export type Tween = { stop: () => void };
 

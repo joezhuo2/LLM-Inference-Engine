@@ -1661,3 +1661,4 @@
 - **getSnapshot of useSyncExternalStore runs on every render, so it must be cheap** => 
 - **pausing off-screen animation with IntersectionObserver** => 
 - **layout shift: reserving space so changing content does not move its neighbours** => 
+- **ease-out for user-initiated motion: why the first frames decide how responsive it feels** => 

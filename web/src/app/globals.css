@@ -27,6 +27,7 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --duration-press: 120ms;
   --duration-ui: 200ms;
+  --duration-glide: 300ms;
   color-scheme: light;
 }
 
@@ -297,7 +298,7 @@ main:focus {
 
 .dot-move {
   transition:
-    transform 500ms var(--ease-in-out),
+    transform var(--duration-glide) var(--ease-out),
     opacity 300ms ease;
 }
 
