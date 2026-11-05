@@ -1665,3 +1665,5 @@
 - **why a request's mean TPOT hides one long stall** => 
 - **interleaving repeats across configurations so drift on the machine hits each one alike** => 
 - **what splitting one prompt into chunks costs when nothing else is running** => 
+- **why the cost of a prefill chunk grows with its position in the prompt, not only with its size** => 
+- **a probe workload: one long request among short ones to isolate a stall** => 
