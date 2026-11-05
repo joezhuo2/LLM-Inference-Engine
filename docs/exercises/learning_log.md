@@ -1792,3 +1792,4 @@
 ## 3D book: polish (Branch 115)
 
 - **one type size across pages instead of fitting each page alone** => 
+- **adjusting state while rendering to remember the last prop value** => 
