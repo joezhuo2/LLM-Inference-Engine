@@ -1768,6 +1768,19 @@
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
 
+## 3D book: cover and contents (Branch 101)
+- **raycasting a whole group to hit-test a closed object** => 
+- **serialising async animations so a new request waits for the current one** => 
+- **mapping a raycast hit's UV coordinates back to a canvas region** => 
+- **painting text pages onto a canvas with a scaled transform and manual line wrapping** => 
+- **static route segments taking precedence over a dynamic segment** => 
+- **staggering several tweens from one eased clock** => 
+- **copying a mutated BufferGeometry's attributes into other meshes** => 
+- **remapping indices when a list grows in the middle** => 
+- **history.pushState inside the Next.js App Router** => 
+- **a composite object that routes calls to the part that owns them** => 
+- **loading a module on demand and caching its promise** => 
+
 ## 3D book: text size (Branch 114)
 
 - **fit-to-box text sizing with a maximum size** => 
