@@ -1593,3 +1593,16 @@
 ## Smooth Sliders (Branch 97)
 - **telling a click from a drag on a range input with pointer timing** => 
 - **tweening a value with motion animate and onUpdate** => 
+
+## Chunked Prefill Story (Branch 85)
+- **interleaving prefill chunks with decode rows: how a step is shared between the two** => 
+- **time to first token against time per token: what a smaller chunk trades** => 
+- **preempting from the back of the running list: why the prompt in prefill is the first victim** => 
+- **a sampled list: which rows of a step need logits** => 
+
+## Chunked Prefill Sandbox (Branch 94)
+- **time between tokens: what a decoding sequence feels when a step gets longer** => 
+- **a stall measured in steps against a stall measured in tokens** => 
+- **head-of-line blocking in a FCFS waiting queue** => 
+- **preemption thrash: a restarted prefill that is preempted again** => 
+- **a token budget against max_prefill_tokens: two different caps on a step** => 
