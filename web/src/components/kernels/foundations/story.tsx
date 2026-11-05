@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { measured } from "@/content/kernels/types";
-import { ceilings, hardware } from "@/lib/data";
+import { ceilings, hardware, onchip, onchipRun } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -49,11 +49,30 @@ const fusion = {
 
 const mb = (kb: number) => `${(kb / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 })} MB`;
 
+const run = onchipRun();
+const whole = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+const nanos = (n: number) => `${n.toFixed(n < 10 ? 1 : 0)} ns`;
+const chip = {
+  dramNs: onchip("dram_latency", "ns").median,
+  dramCycles: onchip("dram_latency", "cycles").median,
+  l2Gbs: onchip("l2_bandwidth", "GB/s").median,
+  l2Ns: onchip("l2_latency", "ns").median,
+  l2Cycles: onchip("l2_latency", "cycles").median,
+  smem128Gbs: onchip("smem_bandwidth_128bit", "GB/s").median,
+  smem32Gbs: onchip("smem_bandwidth_32bit", "GB/s").median,
+  smemNs: onchip("smem_latency", "ns").median,
+  smemCycles: onchip("smem_latency", "cycles").median,
+  fmaCycles: onchip("fma_latency", "cycles").median,
+  regKb: onchip("register_file", "KB/SM").median,
+  regTotalKb: onchip("register_file", "KB").median,
+  mhz: onchip("smem_bandwidth_128bit", "GB/s").mhz ?? 0,
+};
+
 const tiers: Tier[] = [
-  { name: "global memory (DRAM)", size: `${hw.vram_gb} GB`, note: `${peak.gbs} GB/s measured`, detail: "off the chip, shared by every SM", box: { x: 20, y: 40, w: 300, h: 50 } },
-  { name: "L2 cache", size: mb(hw.l2_kb), note: "on the chip, automatic", detail: "shared by every SM", box: { x: 50, y: 130, w: 240, h: 44 } },
-  { name: "shared memory", size: `${hw.shared_kb_per_sm} KB per SM`, note: `${hw.sms} SMs, one block's scratchpad`, detail: "the kernel decides what goes in", box: { x: 80, y: 214, w: 180, h: 44 } },
-  { name: "registers", size: "per thread", note: "private to one thread", detail: "the fastest, gone when it exits", box: { x: 110, y: 298, w: 120, h: 44 } },
+  { name: "global memory (DRAM)", size: `${hw.vram_gb} GB`, lines: ["off the chip, shared by every SM", `${peak.gbs} GB/s measured`, `load latency ${nanos(chip.dramNs)}`], box: { x: 10, y: 40, w: 280, h: 50 } },
+  { name: "L2 cache", size: mb(hw.l2_kb), lines: ["on the chip, shared by every SM", `${whole(chip.l2Gbs)} GB/s read`, `hit latency ${nanos(chip.l2Ns)}`], box: { x: 35, y: 130, w: 230, h: 44 } },
+  { name: "shared memory", size: `${hw.shared_kb_per_sm} KB per SM`, lines: [`one block's scratchpad, ${hw.sms} SMs`, `${whole(chip.smem128Gbs)} GB/s, 128-bit loads`, `load latency ${nanos(chip.smemNs)}`], box: { x: 60, y: 214, w: 180, h: 44 } },
+  { name: "registers", size: `${whole(chip.regKb)} KB per SM`, lines: ["private to one thread", `${mb(chip.regTotalKb)} over ${hw.sms} SMs`, `FMA to FMA: ${Math.round(chip.fmaCycles)} cycles`], box: { x: 85, y: 298, w: 130, h: 44 } },
 ];
 
 function RowsPicker() {
@@ -145,9 +164,18 @@ const steps: StoryStep[] = [
           is the same. The L2 cache ({mb(hw.l2_kb)}) sits in front of it and every SM shares it.
         </p>
         <p>
-          Each SM also has {hw.shared_kb_per_sm} KB of shared memory that the threads of a block use as a scratchpad, and
-          every thread has registers of its own. Each step closer to the thread is smaller and faster. All {hw.sms} SMs
-          together hold {mb(hw.sms * hw.shared_kb_per_sm)} of shared memory, a tiny fraction of the DRAM.
+          Each SM also has {hw.shared_kb_per_sm} KB of shared memory, a scratchpad for the threads of a block, and{" "}
+          {whole(chip.regKb)} KB of registers split among its threads: {mb(hw.sms * hw.shared_kb_per_sm)} and{" "}
+          {mb(chip.regTotalKb)} over all {hw.sms} SMs.
+        </p>
+        <p>
+          Each step closer to the thread is faster, measured on this GPU: a load waits{" "}
+          <span className="font-mono text-text">{nanos(chip.dramNs)}</span> from DRAM,{" "}
+          <span className="font-mono text-text">{nanos(chip.l2Ns)}</span> from L2 and{" "}
+          <span className="font-mono text-text">{nanos(chip.smemNs)}</span> from shared memory, and an FMA&apos;s result
+          feeds the next after {Math.round(chip.fmaCycles)} cycles. L2 streams {whole(chip.l2Gbs)} GB/s, shared memory{" "}
+          <span className="font-mono text-accent">{whole(chip.smem128Gbs)} GB/s</span> with 128-bit loads and{" "}
+          {whole(chip.smem32Gbs)} GB/s with 32-bit ones.
         </p>
       </>
     ),
@@ -245,7 +273,7 @@ const steps: StoryStep[] = [
 
 const captions = [
   `all ${blocks} blocks drawn, one block and one warp zoomed; SM count from docs/hardware.md`,
-  `${hw.gpu}: sizes from docs/hardware.md, bandwidth from the bandwidth test in docs/results.md; shared and register speeds are not measured here`,
+  `${hw.gpu}: sizes from docs/hardware.md, DRAM bandwidth from the bandwidth test, the rest from scripts/onchip_bench.cu: median of ${run.runs} runs at about ${whole(chip.mhz)} MHz, commit ${run.commit}, ${run.date.slice(0, 10)}`,
   `bytes and FLOPs of the gate/up weights from config.json, ceilings from docs/results.md; ${prefillRows} rows is computed from the ceilings, not measured`,
   "docs/results.md, Roofline: gate/up at 1 and 16 rows measured; the ring follows the two ceilings",
   "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
@@ -262,7 +290,7 @@ export function FoundationsStory() {
           case 0:
             return <HierarchyFigure sms={hw.sms} blocks={blocks} threadsPerBlock={threadsPerBlock} />;
           case 1:
-            return <MemoryFigure tiers={tiers} />;
+            return <MemoryFigure tiers={tiers} footer={`latency in cycles: DRAM ${whole(chip.dramCycles)}, L2 ${whole(chip.l2Cycles)}, shared ${whole(chip.smemCycles)}, FMA ${Math.round(chip.fmaCycles)}`} />;
           case 2:
             return <ContrastFigure lanes={lanes} gpuLine={[`gate/up at 1 row measured: ${measuredUs("1").toFixed(1)} µs per layer, at the roof`, `${prefillRows} rows: computed from the ceilings, not measured`]} />;
           case 3:

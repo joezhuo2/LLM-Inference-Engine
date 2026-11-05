@@ -94,6 +94,13 @@ function parseHardware(text) {
   };
 }
 
+function readOnchip() {
+  const path = join(results, "onchip/onchip.csv");
+  if (!existsSync(path)) return [];
+  const [header, ...rows] = parseCsv(readFileSync(path, "utf8"));
+  return rows.map((row) => Object.fromEntries(header.map((key, i) => [key, value(row[i] ?? "")])));
+}
+
 function git(...args) {
   return execFileSync("git", args, { cwd: web, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
@@ -168,7 +175,9 @@ writeFileSync(join(dataDir, "hardware.json"), JSON.stringify(hardware));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
 writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
 writeFileSync(join(dataDir, "kv_replay.json"), JSON.stringify(kvReplay));
+const onchip = readOnchip();
+writeFileSync(join(dataDir, "onchip.json"), JSON.stringify(onchip));
 const kvDemoFile = join(results, "kv_demo.json");
 const kvDemo = existsSync(kvDemoFile) ? JSON.parse(readFileSync(kvDemoFile, "utf8")) : {};
 writeFileSync(join(dataDir, "kv_demo.json"), JSON.stringify(kvDemo));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, environment ${environment.commit ?? "missing"}`);
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, ${onchip.length} on-chip rows, environment ${environment.commit ?? "missing"}`);

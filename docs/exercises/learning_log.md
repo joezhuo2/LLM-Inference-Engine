@@ -1604,3 +1604,6 @@
 - **load/store unit throughput: why 32-bit shared loads reach half the bank bandwidth** => 
 - **address translation (TLB) misses in a pointer chase over a large buffer** => 
 - **clock domains: SM clock against the L2 and memory clocks** => 
+
+### On the site
+- **a latency ladder: cycles per dependent load at each tier** => 

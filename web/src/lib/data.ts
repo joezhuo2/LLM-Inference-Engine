@@ -4,6 +4,7 @@ import hardwareJson from "@/data/hardware.json";
 import kvDemoJson from "@/data/kv_demo.json";
 import kvReplayJson from "@/data/kv_replay.json";
 import launchGapsJson from "@/data/launch_gaps.json";
+import onchipJson from "@/data/onchip.json";
 import profilingJson from "@/data/profiling.json";
 import resultsDocJson from "@/data/results_doc.json";
 import summariesJson from "@/data/summaries.json";
@@ -112,6 +113,26 @@ export function hardware(): Hardware {
 export function ceilings(): { gbs: number; tflops: number } {
   if (!resultsDoc.ceilings) throw new Error("docs/results.md has no Ceilings line in its Roofline section");
   return resultsDoc.ceilings;
+}
+
+type OnchipRow = { metric: string; unit: string; run: number; value: number; sm_mhz: number | ""; date: string; commit: string; gpu: string };
+
+const onchipRows = onchipJson as unknown as OnchipRow[];
+
+export type Onchip = { median: number; min: number; max: number; mhz: number | undefined };
+
+export function onchip(metric: string, unit: string): Onchip {
+  const rows = onchipRows.filter((r) => r.metric === metric && r.unit === unit);
+  if (rows.length === 0) throw new Error(`results/onchip/onchip.csv has no ${metric} in ${unit} (scripts/onchip_report.py writes it)`);
+  const values = rows.map((r) => r.value);
+  const clocks = rows.flatMap((r) => (typeof r.sm_mhz === "number" ? [r.sm_mhz] : []));
+  return { median: median(values) as number, min: Math.min(...values), max: Math.max(...values), mhz: median(clocks) };
+}
+
+export function onchipRun(): { date: string; commit: string; gpu: string; runs: number } {
+  if (onchipRows.length === 0) throw new Error("results/onchip/onchip.csv is missing (scripts/onchip_report.py writes it)");
+  const { date, commit, gpu } = onchipRows[0];
+  return { date, commit, gpu, runs: Math.max(...onchipRows.map((r) => r.run)) };
 }
 
 export function cellNumber(cell: string | undefined): number | undefined {
