@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-cover
 
+- Part A: export `Magnifier`, `FitPage`, `PAGE_DESIGN_WIDTH` and `Lens` from the book view so the one-book view reuses them.
 - Part A: let the book open at any stop (`open(start)`, calling the model's `enter`) and take a new list of stops after it was built (`setStops(stops, map)`, remapping the current and target stop, applied once the scene is `idle()`), so chapters can join one book as they load.
 - Part A: riffle a fan of six quick leaves (`riffle`, 1.2 s, ease in-out overall) only when `goTo(stop, beat, true)` asks for it, driving extra leaf meshes from the existing `setLeaf` geometry so the turning page is not reimplemented; every other move, however far, still uses the single `turnLeaf` turn, and reduced motion lands at once.
 - Part A: stop mirroring the cover's title when the book rests closed (drop the cover face's `scale.x = -1`).

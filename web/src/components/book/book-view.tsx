@@ -9,7 +9,7 @@ import type { BookScene, OverlayRect, Rect, Stop } from "./book-scene";
 import { type ChapterDef, chapterStops, chapterTitles } from "./chapter";
 import { loadFonts, readFonts, readRuns } from "./typeset";
 
-type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number };
+export type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number };
 
 const LENS_SIZE = 190;
 const beatMs = 6500;
@@ -22,7 +22,7 @@ function Icon({ d }: { d: string }) {
   );
 }
 
-function Magnifier({ lens }: { lens: Lens | null }) {
+export function Magnifier({ lens }: { lens: Lens | null }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = canvas.current;
@@ -47,7 +47,7 @@ function Magnifier({ lens }: { lens: Lens | null }) {
   );
 }
 
-function FitPage({ rect, width, children, onElement }: { rect: Rect; width: number; children?: ReactNode; onElement?: (el: HTMLDivElement | null) => void }) {
+export function FitPage({ rect, width, children, onElement }: { rect: Rect; width: number; children?: ReactNode; onElement?: (el: HTMLDivElement | null) => void }) {
   const inner = useRef<HTMLDivElement | null>(null);
   const attach = useCallback(
     (el: HTMLDivElement | null) => {
@@ -89,7 +89,7 @@ function FitPage({ rect, width, children, onElement }: { rect: Rect; width: numb
   );
 }
 
-const PAGE_DESIGN_WIDTH = 460;
+export const PAGE_DESIGN_WIDTH = 460;
 
 export function BookView({ chapter }: { chapter: ChapterDef }) {
   const reduced = usePrefersReducedMotion();
