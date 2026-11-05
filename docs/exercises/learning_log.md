@@ -1774,3 +1774,8 @@
 - **reading CSS custom properties from the element instead of the document root** => 
 - **mapping pointer coordinates on a CSS-scaled element back to layout pixels** => 
 - **shrinking text to fit a width with measureText** => 
+- **instanced meshes with per-instance color for many small boxes** => 
+- **an extruded Shape as a 3D area chart** => 
+- **a transparent canvas texture on a horizontal plane as printed floor text** => 
+- **hiding an instance by scaling it to almost zero** => 
+- **one drag callback routed to whichever handle was picked** => 
