@@ -1547,3 +1547,10 @@
 - **why a long prefill raises every other sequence's TPOT** => 
 - **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
 - **why a preempted sequence has to rewrite its KV from position 0** => 
+
+## Continuous Batching Prologue (Branch 88)
+- **static batching: why a batch waits for its longest sequence** => 
+- **continuous batching (iteration-level scheduling): revisiting the batch every step** => 
+- **wasted slot-steps: idle batch slots as a cost of static batching** => 
+- **first come first served admission up to max_batch** => 
+- **preemption from the back of the running list when blocks run out** => 

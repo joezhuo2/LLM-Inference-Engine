@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/continuous-batching-prologue
+
+- Add `web/src/components/kernels/paged-kv/batching.ts`: a small deterministic simulation of static batching and of the scheduler's continuous batching (first come first served admission up to the slot count, preemption from the back of the running list when the block pool runs out) over ten illustrative request lengths, with the wasted slot-steps of each. It throws if a grid does not hold exactly the work of its requests. (Part A)
+
 ## sched/chunked-prefill-impl
 
 - Move the 25 `Scheduler::schedule_chunked` tests to `tests/unit/test_scheduler_chunked.cpp`, add them to `unit_tests` and delete the `todo_unit_tests` target. (Part A)
