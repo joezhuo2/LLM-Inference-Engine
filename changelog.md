@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-split-attention
 
+- Part A: split attention book polish: wider, higher close-ups, labels moved clear of the jars, posts and the readout, shorter lane labels on the cut figure, hidden spare block instances, and no shelf behind the graph rack.
 - Part A: chapter 7 of the book, split attention: one spread per story step with hatched ink pop-ups (156 SM slots with 32 v2 blocks, four warps waiting on memory beside the Nsight gauges, one head's context cut into 8 ranges, the split-count rail with waves and the measured clock, the scratch records, the merge stacking rescaled partials in split order, the graph rack growing from 5 to 11), the split picker as a flat overlay, and `book: true` so `/kernels/split-attention` opens the book.
 - Part A: export the split attention story steps, captions, measured numbers and split picker, and the merge figure's example partial results, so the book can reuse them.
 

@@ -24,7 +24,7 @@ function occupancyExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
   const smW = 0.064;
   const smD = 0.15;
   const gridX = 0.06;
-  const rowZ = [-0.48, -0.31];
+  const rowZ = [-0.45, -0.28];
   const smCenter = (sm: number) => ({ x: gridX + (sm % 13) * 0.068 + smW / 2, z: rowZ[Math.floor(sm / 13)] });
   const slotAt = (j: number) => {
     const sm = j % sms;
@@ -32,7 +32,7 @@ function occupancyExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
     const c = smCenter(sm);
     return { x: c.x + ((k % 2) - 0.5) * 0.03, z: c.z + (Math.floor(k / 2) - 1) * 0.045 };
   };
-  root.add(placed(washPlane(kit.palette.blue, 1, 0.5, 0.14), 0.5, 0.002, -0.39));
+  root.add(placed(washPlane(kit.palette.blue, 1, 0.5, 0.14), 0.5, 0.002, -0.36));
   for (let sm = 0; sm < sms; sm++) {
     const c = smCenter(sm);
     const plate = kit.solid(new THREE.BoxGeometry(smW, 0.008, smD));
@@ -56,14 +56,14 @@ function occupancyExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
     ctx.font = `${h * 0.5}px ${fonts.sans}`;
     ctx.fillText(`${sms} SMs × ${perSm} slots = ${capacity} blocks resident at once`, w * 0.01, h * 0.66);
   }, -0.5);
-  titleCard.group.position.set(0.37, 0, -0.19);
+  titleCard.group.position.set(0.37, 0, -0.16);
   root.add(titleCard.group);
 
   const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.022, 1, 0.034), kit.blue, 256);
   blocks.castShadow = true;
   root.add(blocks);
 
-  const railZ = 0.0;
+  const railZ = 0.03;
   const stopX = [0.2, 0.4, 0.6, 0.8];
   const choices = numbers.waves;
   const rail = new THREE.Group();
@@ -106,7 +106,7 @@ function occupancyExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
     ctx.fillStyle = kit.palette.ink;
     ctx.fillText(`${elapsed.toFixed(1)} of ${o.us.toFixed(1)} µs`, w * 0.42, h * 0.85);
   });
-  readout.group.position.set(0.5, 0, 0.13);
+  readout.group.position.set(0.5, 0, 0.22);
   root.add(readout.group);
 
   const dummy = new THREE.Object3D();
@@ -145,7 +145,7 @@ function occupancyExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
           scale = Math.max(0.0001, height * grow * left1);
         } else {
           const q = i - capacity;
-          const from = { x: 0.07 + q * 0.0086, z: -0.115 };
+          const from = { x: 0.07 + q * 0.0086, z: -0.085 };
           const to = slotAt(q);
           x = from.x + (to.x - from.x) * hopT;
           z = from.z + (to.z - from.z) * hopT;
@@ -153,8 +153,10 @@ function occupancyExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
           scale = Math.max(0.0001, height * grow * (hopT < 1 ? 1 : left2));
         }
       }
+      const shrink = i >= capacity ? 1 - 0.65 * (1 - hopT) : 1;
       dummy.position.set(x, y + scale / 2, z);
-      dummy.scale.set(i >= capacity ? (1 - hopT) * 0.3 + hopT : 1, scale, i >= capacity ? (1 - hopT) * 0.4 + hopT : 1);
+      if (i < o.blocks) dummy.scale.set(shrink, scale, shrink);
+      else dummy.scale.set(0.0001, 0.0001, 0.0001);
       dummy.updateMatrix();
       blocks.setMatrixAt(i, dummy.matrix);
     }
@@ -306,8 +308,8 @@ function waitingExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
     { label: "DRAM throughput", value: numbers.dram, material: kit.pink },
   ];
   const jarR = 0.045;
-  const jarH = 0.18;
-  const jarZ = 0.04;
+  const jarH = 0.14;
+  const jarZ = 0.1;
   const fills = gauges.map((g, i) => {
     const x = 0.2 + i * 0.3;
     const glass = new THREE.Group();
@@ -346,7 +348,7 @@ function waitingExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
     ctx.font = `${h * 0.52}px ${fonts.sans}`;
     ctx.fillText("Nsight Compute, v2, 1 row at 2,048 tokens; full jar = 100%", w * 0.01, h * 0.68);
   }, -0.6);
-  sourceCard.group.position.set(0.5, 0, 0.27);
+  sourceCard.group.position.set(0.5, 0, 0.32);
   root.add(sourceCard.group);
 
   let time = 0;
@@ -387,7 +389,7 @@ function cutExhibit(kit: Kit, fonts: Fonts) {
   const cw = 0.88 / total;
   const rowZ = -0.55;
   const laneZ = (s: number) => -0.44 + s * 0.072;
-  root.add(placed(washPlane(kit.palette.blue, 1, 0.75, 0.12), 0.5, 0.002, -0.2));
+  root.add(placed(washPlane(kit.palette.blue, 0.9, 0.5, 0.08), 0.5, 0.002, -0.18));
   const tiles = new THREE.InstancedMesh(new THREE.BoxGeometry(cw - 0.0012, 1, 0.03), new THREE.MeshLambertMaterial({ color: "#ffffff" }), total);
   tiles.castShadow = true;
   tiles.receiveShadow = true;
@@ -410,20 +412,20 @@ function cutExhibit(kit: Kit, fonts: Fonts) {
     return puck;
   });
   const laneCards = Array.from({ length: splits }, (_, s) => {
-    const card = createCard(kit, 0.24, 0.032, (ctx, w, h) => {
+    const card = createCard(kit, 0.2, 0.032, (ctx, w, h) => {
       ctx.fillStyle = kit.palette.ink;
       ctx.font = `${h * 0.5}px ${fonts.sans}`;
-      ctx.fillText(`block (split ${s}, head, row): tokens ${fmt(s * per * 16)} to ${fmt((s + 1) * per * 16 - 1)}`, w * 0.03, h * 0.66);
+      ctx.fillText(`split ${s}: tokens ${fmt(s * per * 16)} to ${fmt((s + 1) * per * 16 - 1)}`, w * 0.04, h * 0.66);
     }, -0.6);
     const right = s < 4;
-    card.group.position.set(right ? x0 + (s + 1) * per * cw + 0.135 : x0 + s * per * cw - 0.135, 0, laneZ(s) + 0.006);
+    card.group.position.set(right ? x0 + (s + 1) * per * cw + 0.115 : x0 + s * per * cw - 0.115, 0, laneZ(s) + 0.006);
     root.add(card.group);
     return card;
   });
   const topCard = createCard(kit, 0.88, 0.1, (ctx, w, h) => {
     ctx.fillStyle = kit.palette.ink;
     ctx.font = `${h * 0.24}px ${fonts.serif}`;
-    ctx.fillText(`one head's 2,048 tokens: ${total} KV blocks of 16`, w * 0.02, h * 0.34);
+    ctx.fillText(`one head's 2,048 tokens: ${total} KV blocks of 16; thread block = (split, head, row)`, w * 0.02, h * 0.34);
     ctx.fillStyle = kit.palette.faint;
     ctx.font = `${h * 0.19}px ${fonts.sans}`;
     ctx.fillText(`blocks per split = ⌈${total} / ${splits}⌉ = ${per}, so a cut never lands inside a block;`, w * 0.02, h * 0.62);
@@ -526,7 +528,7 @@ function scratchExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
     ctx.fillStyle = kit.palette.blue;
     ctx.fillText(`acc: ${numbers.headDim} values weighted by exp(score − m), not yet divided by l`, w * 0.02, h * 0.8);
   });
-  legend.group.position.set(0.5, 0, -0.2);
+  legend.group.position.set(0.5, 0, -0.13);
   const bytes = createCard(kit, 0.88, 0.09, (ctx, w, h) => {
     ctx.fillStyle = kit.palette.ink;
     ctx.font = `${h * 0.27}px ${fonts.serif}`;
@@ -535,7 +537,7 @@ function scratchExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
     ctx.font = `${h * 0.21}px ${fonts.sans}`;
     ctx.fillText("allocated once by the runner; records fill in whatever order the splits finish", w * 0.02, h * 0.8);
   });
-  bytes.group.position.set(0.5, 0, 0.08);
+  bytes.group.position.set(0.5, 0, 0.12);
   root.add(legend.group, bytes.group);
 
   const dummy = new THREE.Object3D();
@@ -629,7 +631,7 @@ function mergeExhibit(kit: Kit, fonts: Fonts) {
     ctx.font = `${h * 0.52}px ${fonts.sans}`;
     ctx.fillText("4 partial results (example values): pink posts are m, blue pillars are l", w * 0.01, h * 0.68);
   }, -0.5);
-  header.group.position.set(0.46, 0, -0.6);
+  header.group.position.set(0.46, 0, -0.1);
   let phase = 0;
   const stackCard = createCard(kit, 0.17, 0.085, (ctx, w, h) => {
     ctx.fillStyle = kit.palette.faint;
@@ -701,9 +703,6 @@ function graphsExhibit(kit: Kit, fonts: Fonts, numbers: SplitNumbers) {
   const rowZ = (i: number) => -0.53 + i * 0.075;
   const colX = (j: number) => 0.33 + j * 0.155;
   root.add(placed(washPlane(kit.palette.blue, 1, 0.45, 0.1), 0.5, 0.002, -0.38));
-  const shelf = kit.solid(new THREE.BoxGeometry(0.66, 0.006, 0.38));
-  shelf.position.set(0.6, 0.003, -0.38);
-  root.add(shelf);
   const tile = (text: string) =>
     createCard(kit, 0.12, 0.046, (ctx, w, h) => {
       ctx.fillStyle = kit.palette.ink;
