@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-rope
 
+- Part A: size the page textures to the screen (1,600 to 2,560 px wide instead of 1,200) and draw the label cards at twice the resolution, so the book's text is sharp.
 - Part A: move the microsecond clock card off the thread plate so the plate no longer covers it.
 - Part A: print the figure instruction line under each model in the blue highlight.
 - Part A: keep the typeset text and the figure captions clear of the curve at the spine, where the start of the right page's lines ("Drag" read as "g") and the end of the left page's lines were hidden.

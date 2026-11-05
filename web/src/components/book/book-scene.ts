@@ -94,11 +94,11 @@ class TextSide {
   readonly meshes: [THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>, THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>];
   active = 0;
 
-  constructor(geometry: THREE.BufferGeometry, parent: THREE.Object3D, anisotropy: number) {
+  constructor(geometry: THREE.BufferGeometry, parent: THREE.Object3D, anisotropy: number, textureWidth: number) {
     const make = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = 1200;
-      canvas.height = Math.round((1200 * PAGE_D) / PAGE_W);
+      canvas.width = textureWidth;
+      canvas.height = Math.round((textureWidth * PAGE_D) / PAGE_W);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = anisotropy;
@@ -213,6 +213,8 @@ export class BookScene {
     this.scene.add(this.desk);
 
     const anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    const screenPage = (Math.max(options.host.clientWidth, options.host.clientHeight) * Math.min(window.devicePixelRatio || 1, 2)) / 2;
+    const textureWidth = Math.min(this.renderer.capabilities.maxTextureSize, 2560, Math.max(1600, Math.round((screenPage * 1.6) / 64) * 64));
     const coverMaterial = new THREE.MeshLambertMaterial({ color: palette.cover });
     const paperMaterial = new THREE.MeshLambertMaterial({ color: palette.paper });
     const blockMaterial = new THREE.MeshLambertMaterial({ map: edgeTexture(palette.paper, palette.ink), side: THREE.DoubleSide });
@@ -248,8 +250,8 @@ export class BookScene {
     this.scene.add(this.bookRoot);
     const rightPage = halfBook(1, rightHalf);
     this.leftPlane = halfBook(-1, this.leftHalf);
-    this.leftText = new TextSide(this.leftPlane.geometry, this.leftHalf, anisotropy);
-    this.rightText = new TextSide(rightPage.geometry, rightHalf, anisotropy);
+    this.leftText = new TextSide(this.leftPlane.geometry, this.leftHalf, anisotropy, textureWidth);
+    this.rightText = new TextSide(rightPage.geometry, rightHalf, anisotropy, textureWidth);
 
     const spine = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, PAGE_D + 0.05), coverMaterial);
     spine.position.set(0, -BLOCK - 0.012, 0);
@@ -290,8 +292,8 @@ export class BookScene {
     leafGeometry.rotateX(-Math.PI / 2);
     const leafCanvas = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = 1200;
-      canvas.height = Math.round((1200 * PAGE_D) / PAGE_W);
+      canvas.width = textureWidth;
+      canvas.height = Math.round((textureWidth * PAGE_D) / PAGE_W);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = anisotropy;

@@ -1756,3 +1756,5 @@
 - **a shadow-only object (colorWrite off) in three.js** => 
 - **a pop-up fold as a scale on one axis** => 
 - **a page curve that dips at the spine and what it hides at a viewing angle** => 
+- **sizing a texture to the pixels it covers on screen** => 
+- **texture memory: width x height x 4 bytes plus a third for mipmaps** => 

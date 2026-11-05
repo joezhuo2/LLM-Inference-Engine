@@ -30,7 +30,7 @@ function Magnifier({ lens }: { lens: Lens | null }) {
     if (!c || !lens) return;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    const zoom = 460;
+    const zoom = lens.source.width * 0.38;
     const sx = lens.u * lens.source.width - zoom / 2;
     const sy = lens.v * lens.source.height - zoom / 2;
     ctx.clearRect(0, 0, c.width, c.height);

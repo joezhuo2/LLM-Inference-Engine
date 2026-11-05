@@ -182,12 +182,12 @@ export type Card = { group: THREE.Group; redraw: () => void };
 
 export function createCard(kit: Kit, width: number, height: number, draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, tilt = -0.42): Card {
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(width * 1500);
-  canvas.height = Math.round(height * 1500);
+  canvas.width = Math.round(width * 3200);
+  canvas.height = Math.round(height * 3200);
   const ctx = canvas.getContext("2d")!;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.anisotropy = 16;
   const redraw = () => {
     ctx.fillStyle = kit.palette.paper;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
