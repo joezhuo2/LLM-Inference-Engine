@@ -100,7 +100,9 @@ export function RopeSandbox() {
   const b1 = b1raw + TAU * Math.round((b0 - b1raw) / TAU);
   const radius = r0 + (r1 - r0) * frac;
   const base = b0 + (b1 - b0) * frac;
-  const swing = angle(floor, pos) + (angle(ceil, pos) - angle(floor, pos)) * frac;
+  const swing0 = angle(floor, pos);
+  const swing1 = angle(ceil, pos);
+  const swing = swing0 + (swing1 + TAU * Math.round((swing0 - swing1) / TAU) - swing0) * frac;
   const vx = radius * Math.cos(base);
   const vy = radius * Math.sin(base);
   const scale = 70 / Math.max(...Array.from({ length: PAIRS }, (_, i) => Math.hypot(q[i], q[i + PAIRS])));
