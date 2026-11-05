@@ -61,10 +61,11 @@ public:
           scheduler_(config_),
           stream_(o.graphs),
           cache_(w.config, config_.num_blocks, kKvBlockSize),
-          runner_(w.config, w.weights, cache_, config_.max_prefill_tokens, o.max_batch,
-                  config_.max_context, stream_.stream),
+          runner_(w.config, w.weights, cache_, std::max(config_.max_prefill_tokens, o.token_budget),
+                  o.max_batch, config_.max_context, stream_.stream),
           sampler_(o.max_batch),
-          next_(size_t(o.max_batch) * sizeof(int32_t)) {
+          next_(size_t(o.max_batch) * sizeof(int32_t)),
+          token_budget_(o.token_budget) {
         if (o.graphs) graphs_.emplace(runner_, graph_buckets(o.max_batch));
     }
 
@@ -75,7 +76,7 @@ public:
         std::vector<StepTrace> trace;
         StepResult result;
         result.finished = serve_step(scheduler_, runner_, sampler_, next_, nullptr,
-                                     graphs_ ? &*graphs_ : nullptr, &trace);
+                                     graphs_ ? &*graphs_ : nullptr, &trace, token_budget_);
         result.trace = std::move(trace.back());
         return result;
     }
@@ -89,6 +90,7 @@ private:
     Sampler sampler_;
     DeviceBuffer next_;
     std::optional<DecodeGraphs> graphs_;
+    int token_budget_;
 };
 
 }  // namespace
@@ -96,6 +98,8 @@ private:
 std::unique_ptr<Backend> make_gpu_backend(const DeviceWeights& weights,
                                           const GpuBackendOptions& options) {
     if (options.max_batch < 1) throw std::invalid_argument("serve: --max-batch must be at least 1");
+    if (options.token_budget > 0 && options.token_budget < options.max_batch)
+        throw std::invalid_argument("serve: --token-budget must be at least --max-batch");
     return std::make_unique<GpuBackend>(weights, options);
 }
 

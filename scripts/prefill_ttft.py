@@ -22,11 +22,17 @@ COLORS = {ENGINE: "engine", GRAPHS: "engine + graphs", LLAMA: "llama.cpp", LLAMA
 COLUMNS = ["system", "prompt_tokens", "run", "ttft_s", "date", "commit"]
 
 
-def engine_command(engine, model, prompt_len, run, warmup, out, graphs):
+def engine_command(engine, model, prompt_len, run, warmup, out, graphs, budget=0):
     cmd = [str(engine), "bench", "--model", str(model), "--max-batch", "1", "--num-requests", "1",
            "--prompt-len", str(prompt_len), "--output-len", "1", "--warmup", str(warmup),
            "--seed", str(run), "--out", str(out)]
-    return cmd + ["--graphs"] if graphs else cmd
+    if graphs:
+        cmd.append("--graphs")
+    return cmd + ["--token-budget", str(budget)] if budget else cmd
+
+
+def base_system(system):
+    return system.partition(", budget ")[0]
 
 
 def llama_command(binary, model, lengths, ubatch):
@@ -54,13 +60,16 @@ def llama_ttfts(rows):
 def measure(args):
     stamp = {"date": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "commit": args.commit}
     measured = []
+    engines = [(ENGINE, False, 0), (GRAPHS, True, 0)]
+    if args.token_budget:
+        engines.append((f"{GRAPHS}, budget {args.token_budget}", True, args.token_budget))
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "bench.csv"
         for run in range(1, args.repeats + 1):
             for length in args.lengths:
-                for system, graphs in ((ENGINE, False), (GRAPHS, True)):
-                    subprocess.run(engine_command(args.engine, args.model, length, run, args.warmup, out, graphs),
-                                   check=True, capture_output=True, text=True)
+                for system, graphs, budget in engines:
+                    command = engine_command(args.engine, args.model, length, run, args.warmup, out, graphs, budget)
+                    subprocess.run(command, check=True, capture_output=True, text=True)
                     measured.append({"system": system, "prompt_tokens": length, "run": run,
                                      "ttft_s": read_engine_ttft(Path(tmp) / "bench_summary.csv"), **stamp})
             if not args.llama_batched_bench:
@@ -90,7 +99,7 @@ def grouped(rows):
     groups = {}
     for r in rows:
         groups.setdefault(r["system"], {}).setdefault(r["prompt_tokens"], []).append(r["ttft_s"])
-    return {s: groups[s] for s in SYSTEMS if s in groups}
+    return {s: groups[s] for s in sorted(groups, key=lambda s: (SYSTEMS.index(base_system(s)), s))}
 
 
 def table_markdown(rows):
@@ -122,8 +131,10 @@ def plot_ttft(rows, out, theme="light"):
     fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=160)
     for system, by_length in grouped(rows).items():
         xs = sorted(by_length)
-        ax.plot(xs, [statistics.median(by_length[n]) * 1e3 for n in xs], color=t["series"][COLORS[system]],
-                linewidth=2, marker="o", markersize=8, markeredgecolor=t["surface"], markeredgewidth=2, label=system)
+        base = base_system(system)
+        ax.plot(xs, [statistics.median(by_length[n]) * 1e3 for n in xs], color=t["series"][COLORS[base]],
+                linestyle="-" if system == base else "--", linewidth=2, marker="o", markersize=8,
+                markeredgecolor=t["surface"], markeredgewidth=2, label=system)
     ax.set_xlabel("prompt tokens")
     ax.set_ylabel("single-request TTFT (ms)")
     ax.set_title("Prefill time against prompt length")
@@ -143,6 +154,7 @@ def main(argv=None):
     ap.add_argument("--lengths", type=int, nargs="+", default=[128, 512, 1024, 2048])
     ap.add_argument("--repeats", type=int, default=5)
     ap.add_argument("--warmup", type=int, default=2)
+    ap.add_argument("--token-budget", type=int, default=0, help="also time the engine with graphs and this budget")
     ap.add_argument("--commit", default="?")
     ap.add_argument("--out-dir", type=Path, default=Path("results/prefill"))
     ap.add_argument("--from-csv", type=Path, help="redraw the table and plot from a saved CSV instead of measuring")

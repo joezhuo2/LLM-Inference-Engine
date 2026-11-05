@@ -19,6 +19,10 @@ export const gemm: KernelStory = {
     value: `${Math.min(...b1Roof)}–${Math.max(...b1Roof)}%`,
     label: "of the bandwidth roof for the five GEMVs at batch 1",
   },
+  sandbox: {
+    title: "tile it yourself",
+    intro: "cuBLAS picks its own tile sizes and this engine does not touch them, so this is a model of the idea, not of the kernel: one thread block computes a square tile of outputs, loading a tile of x and a tile of W into shared memory for each step of the K loop and reusing both for every output in the tile. The shapes are TinyLlama's. Answer the prediction, then pick rows and change the tile; step the K loop and watch the bytes. The byte counts are computed, the two ceilings are measured.",
+  },
   sources: [
     { path: "src/kernels/gemm.cpp", label: "the cublasGemmEx call" },
     { path: "include/engine/kernels/gemm.h", label: "Blas handle and gemm" },

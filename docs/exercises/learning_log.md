@@ -1547,3 +1547,174 @@
 - **why a long prefill raises every other sequence's TPOT** => 
 - **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
 - **why a preempted sequence has to rewrite its KV from position 0** => 
+
+## Prefill vs. Decode Prologue (Branch 87)
+- **prefill: why all prompt positions can run through the model in one parallel pass** => 
+- **decode: why generation is sequential, one token per step** => 
+- **the KV cache: which tensors it stores and why attention can reuse them** => 
+- **memory-bound against compute-bound: what limits a decode step** => 
+- **decoding without a KV cache: why every token would redo the work of all earlier tokens** => 
+- **reserving the worst-case length per request: why it strands memory** => 
+- **fixed-size blocks drawn from one shared pool** => 
+
+## Continuous Batching Prologue (Branch 88)
+- **static batching: why a batch waits for its longest sequence** => 
+- **continuous batching (iteration-level scheduling): revisiting the batch every step** => 
+- **wasted slot-steps: idle batch slots as a cost of static batching** => 
+- **first come first served admission up to max_batch** => 
+- **preemption from the back of the running list when blocks run out** => 
+
+## Toggle Transitions (Branch 89)
+- **animating a highlight with clip-path inset instead of left and width** => 
+- **ResizeObserver: re-measuring an element when its size changes** => 
+
+## Foundations (Branch 86)
+- **streaming multiprocessor (SM) and how many a GPU has** => 
+- **shared memory per SM** => 
+- **L2 cache** => 
+- **grid, block, warp and thread, and which runs on which hardware** => 
+- **warp divergence** => 
+- **global memory, L2, shared memory and registers: size and speed order** => 
+- **GDDR against HBM** => 
+- **compute bound against memory bound** => 
+- **FLOPs per byte (arithmetic intensity)** => 
+- **the roofline model, slope, flat top and ridge** => 
+- **matrix-vector product (GEMV) against matrix product (GEMM)** => 
+- **prefill against decode** => 
+- **kernel fusion and why it removes a round trip to global memory** => 
+- **kernel launch and the intermediate tensor written between two kernels** => 
+
+## RoPE sandbox (Branch 96)
+- **rotation by an angle in a 2D plane** => 
+- **rotate_half layout against interleaved pairs** => 
+- **relative position from absolute rotations (why q·k depends on the distance)** => 
+- **wavelength of a rotary frequency in tokens** => 
+
+## GEMM Tiling Sandbox (Branch 95)
+
+- **output tile and thread block tile** => 
+- **shared memory tiling and data reuse** => 
+- **arithmetic intensity of a tile (FLOP per byte)** => 
+- **K loop and K step** => 
+- **padding when the tile is larger than the matrix** => 
+- **shared memory limit per SM and double buffering** => 
+- **naive matrix multiply memory traffic** => 
+
+## Paged attention stepper (Branch 92)
+- **online softmax (running max, running sum, rescaled accumulator)** => 
+- **why a new maximum rescales the old sum and accumulator by exp(old max - new max)** => 
+- **numerically stable softmax (subtracting the maximum)** => 
+- **block table (logical block to physical block)** => 
+- **float32 rounding and why two summation orders differ in the last bits** => 
+- **grouped reads: why a kernel reads a block at a time instead of one key** => 
+
+## Sampling sandbox (Branch 93)
+- **logits** => 
+- **softmax** => 
+- **temperature** => 
+- **entropy** => 
+- **top-k** => 
+- **top-p (nucleus)** => 
+- **Gumbel-max trick** => 
+- **greedy decoding** => 
+- **counter-based random numbers (Philox)** => 
+- **cumulative probability (nucleus cutoff)** => 
+- **argmax** => 
+- **seeded reproducibility of sampling** => 
+- **bits of entropy and perplexity** => 
+
+## Smooth Sliders (Branch 97)
+- **telling a click from a drag on a range input with pointer timing** => 
+- **tweening a value with motion animate and onUpdate** => 
+
+## Chunked Prefill Story (Branch 85)
+- **interleaving prefill chunks with decode rows: how a step is shared between the two** => 
+- **time to first token against time per token: what a smaller chunk trades** => 
+- **preempting from the back of the running list: why the prompt in prefill is the first victim** => 
+- **a sampled list: which rows of a step need logits** => 
+
+## Chunked Prefill Sandbox (Branch 94)
+- **time between tokens: what a decoding sequence feels when a step gets longer** => 
+- **a stall measured in steps against a stall measured in tokens** => 
+- **head-of-line blocking in a FCFS waiting queue** => 
+- **preemption thrash: a restarted prefill that is preempted again** => 
+- **a token budget against max_prefill_tokens: two different caps on a step** => 
+
+## Roofline sandbox (Branch 91)
+- **ridge point of the roofline as peak FLOP/s over peak bytes/s** => 
+- **FLOPs and DRAM bytes of a matmul with weights read once and activations per row** => 
+- **why batching raises arithmetic intensity of a matmul but not of attention** => 
+- **grouped-query attention and the ratio of query heads to KV heads** => 
+- **time at the ceiling as the larger of bytes over bandwidth and FLOPs over peak** => 
+- **log-log axes and why a power law is a straight line on them** => 
+- **reading a roofline plot: the slope, the flat top and the distance of a measured dot below the roof** => 
+- **why measured attention sits far under its roofline** => 
+- **cancelling a running tween when the user takes over the control** => 
+
+## Chunked Prefill Wiring (Branch 83)
+- **the row order of a mixed batch: decode rows first, then prefill chunks** => 
+- **why a chunk that stops before the end of its prompt needs no logits** => 
+- **a forward pass that samples nothing: why the layers still have to run** => 
+- **why the same prompt can give different greedy tokens at different chunk sizes (GEMM kernels picked by row count)** => 
+- **why mixed steps run eager while pure decode steps keep their CUDA Graph** => 
+- **why the token budget must be at least the max batch** => 
+- **why a smaller token budget delays the first token of a long prompt but steadies everyone else's TPOT** => 
+
+## On-chip Memory Speeds (Branch 90)
+
+### The microbenchmark
+- **pointer chasing: measuring latency with a chain of dependent loads** => 
+- **Sattolo's algorithm: a random permutation that is a single cycle** => 
+- **`__ldcg` and `ld.global.cg`: loads cached in L2 but not L1** => 
+- **`clock64()` against `%globaltimer`: SM cycles and nanoseconds from inside a kernel** => 
+- **shared memory banks and bank-conflict-free access** => 
+- **dependent FMA latency against FMA throughput** => 
+- **register file size per SM (`regsPerMultiprocessor`)** => 
+- **keeping a benchmark loop from being optimized away (live results, runtime operands, checking SASS)** => 
+- **`cuobjdump -sass`: reading the machine code a kernel compiled to** => 
+- **sizing a grid to one wave with `cudaOccupancyMaxActiveBlocksPerMultiprocessor`** => 
+
+### The numbers
+- **a working-set sweep: the L2 plateau and the drop to DRAM past the cache size** => 
+- **copy bandwidth against read bandwidth** => 
+- **load/store unit throughput: why 32-bit shared loads reach half the bank bandwidth** => 
+- **address translation (TLB) misses in a pointer chase over a large buffer** => 
+- **clock domains: SM clock against the L2 and memory clocks** => 
+
+### On the site
+- **a latency ladder: cycles per dependent load at each tier** => 
+
+## Navigation Speed (Branch 99)
+- **time-sliced rendering: why a busy main thread stretches a React transition render** => 
+- **main-thread animations on SVG elements against compositor-only animations** => 
+- **pausing offscreen animations with IntersectionObserver** => 
+- **font subsets and unicode-range: when the browser downloads a face** => 
+- **why a view transition waits for fonts that start loading during the commit** => 
+- **browser scroll restoration on back and forward, and how scroll-behavior applies to it** => 
+- **popstate on fragment navigation** => 
+
+## Sandbox performance (Branch 98)
+- **one shared tween helper instead of copied duration and easing literals** => 
+- **forced synchronous layout: reading getBoundingClientRect after a DOM write** => 
+- **FLIP animation and why it measures layout on every update** => 
+- **useSyncExternalStore for a module-level store shared by many components** => 
+- **retargeting a CSS transition every frame and why an ease-in-out curve then lags** => 
+- **interpolating geometrically between two values on a log axis** => 
+- **getSnapshot of useSyncExternalStore runs on every render, so it must be cheap** => 
+- **pausing off-screen animation with IntersectionObserver** => 
+- **layout shift: reserving space so changing content does not move its neighbours** => 
+- **ease-out for user-initiated motion: why the first frames decide how responsive it feels** => 
+- **lazy initial state in useState instead of work at module import** => 
+
+## Chunked Prefill Under Load (Branch 84)
+- **inter-token latency (the gap between two tokens of one request) against TPOT (the mean of those gaps)** => 
+- **why a request's mean TPOT hides one long stall** => 
+- **interleaving repeats across configurations so drift on the machine hits each one alike** => 
+- **what splitting one prompt into chunks costs when nothing else is running** => 
+- **why the cost of a prefill chunk grows with its position in the prompt, not only with its size** => 
+- **a probe workload: one long request among short ones to isolate a stall** => 
+- **an A/B rerun of an old binary to tell a code change from a machine change** => 
+- **why chunked prefill shortens stalls but does not reduce prefill work** => 
+- **reading a chart's provenance (commit, date, GPU) from a generated line of a doc at build time** => 
+- **a log axis for tail latency against a linear axis for goodput** => 
+- **a headline metric as a before and after pair from one controlled experiment** => 

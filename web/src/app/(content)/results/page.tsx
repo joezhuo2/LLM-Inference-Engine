@@ -7,7 +7,7 @@ import { benchRun } from "@/content/results";
 import { batches, environment, format, medianOf, systems } from "@/lib/data";
 import { ogImage } from "@/lib/og";
 
-const description = "Throughput, time per token, the decode step profile and the roofline of the engine against HuggingFace and llama.cpp, all measured on one laptop GPU.";
+const description = "Throughput, time per token, the decode step profile and the roofline of the engine against HuggingFace and llama.cpp, and serving under load against vLLM, all measured on one laptop GPU.";
 
 export const metadata: Metadata = {
   title: "results",
@@ -22,7 +22,8 @@ export default function Results() {
         <header className="space-y-4">
           <PageTitle text="results" />
           <p className="max-w-2xl text-muted">
-            What the engine measures on {benchRun.gpu}, against HuggingFace transformers and llama.cpp. Scroll through the
+            What the engine measures on {benchRun.gpu}, against HuggingFace transformers and llama.cpp, and under load against
+            vLLM. Scroll through the
             steps; hover or focus a chart for its exact values. Every number is read from <code className="font-mono text-text">results/</code> and{" "}
             <a href={`${repoUrl}/blob/main/docs/results.md`} className="link-underline text-accent">
               docs/results.md

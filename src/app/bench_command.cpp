@@ -51,6 +51,7 @@ struct Options {
     double request_rate = 0.0;
     int max_batch = 0;
     bool graphs = false;
+    int token_budget = 0;
     int warmup = 3;
     uint64_t seed = 0;
     float temperature = 0.0f;
@@ -157,6 +158,10 @@ void run(const Options& o) {
         throw std::invalid_argument("--graphs needs --max-batch of at least 1");
     if (!o.trace.empty() && !batched)
         throw std::invalid_argument("--trace needs --max-batch of at least 1");
+    if (o.token_budget > 0 && !batched)
+        throw std::invalid_argument("--token-budget needs --max-batch of at least 1");
+    if (o.token_budget > 0 && o.token_budget < o.max_batch)
+        throw std::invalid_argument("--token-budget must be at least --max-batch");
 
     int num_blocks = 0;
     ServeStats stats;
@@ -178,7 +183,8 @@ void run(const Options& o) {
               .eos_id = eos_id};
         if (o.graphs) owned_stream.emplace();
         cache.emplace(w.config, num_blocks, kKvBlockSize);
-        paged_runner.emplace(w.config, w.weights, *cache, max_prefill, o.max_batch, context,
+        paged_runner.emplace(w.config, w.weights, *cache,
+                             std::max<int64_t>(max_prefill, o.token_budget), o.max_batch, context,
                              o.graphs ? owned_stream->stream : nullptr);
         sampler.emplace(o.max_batch);
         if (o.graphs) graphs.emplace(*paged_runner, graph_buckets(o.max_batch));
@@ -194,7 +200,7 @@ void run(const Options& o) {
         Scheduler scheduler(sc);
         return run_batched(scheduler, *paged_runner, *sampler, load, start,
                            graphs ? &*graphs : nullptr,
-                           timed && !o.trace.empty() ? &steps : nullptr);
+                           timed && !o.trace.empty() ? &steps : nullptr, o.token_budget);
     };
     if (o.warmup > 0) {
         WorkloadConfig warm = wc;
@@ -255,6 +261,7 @@ void run(const Options& o) {
         fields.emplace_back("steps", std::to_string(stats.steps));
         fields.emplace_back("prefill_steps", std::to_string(stats.prefill_steps));
         fields.emplace_back("preemptions", std::to_string(preemptions));
+        fields.emplace_back("token_budget", std::to_string(o.token_budget));
     } else {
         fields.emplace_back("decode_weight_bytes", std::to_string(weight_bytes));
         fields.emplace_back("bandwidth_gb_s", csv_number(bandwidth));
@@ -271,6 +278,7 @@ void run(const Options& o) {
         }
         meta["max_batch"] = o.max_batch;
         meta["graphs"] = o.graphs;
+        meta["token_budget"] = o.token_budget;
         meta["kv_blocks"] = num_blocks;
         meta["block_size"] = kKvBlockSize;
         meta["num_requests"] = o.num_requests;
@@ -335,6 +343,12 @@ void add_bench_command(CLI::App& app) {
     cmd->add_flag("--graphs", opts->graphs,
                   "Replay CUDA Graphs of the decode step (one per power-of-two batch size up to "
                   "--max-batch); needs --max-batch");
+    cmd->add_option("--token-budget", opts->token_budget,
+                    "Chunked prefill: at most this many tokens per step, decode rows first and "
+                    "prompts split across steps; at least --max-batch; 0 keeps whole-prompt "
+                    "prefill steps")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
     cmd->add_option("--num-requests", opts->num_requests, "Requests to time")
         ->capture_default_str()
         ->check(CLI::PositiveNumber);

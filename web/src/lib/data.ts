@@ -1,10 +1,14 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
+import hardwareJson from "@/data/hardware.json";
 import kvDemoJson from "@/data/kv_demo.json";
 import kvReplayJson from "@/data/kv_replay.json";
 import launchGapsJson from "@/data/launch_gaps.json";
+import modelShapeJson from "@/data/model_shape.json";
+import onchipJson from "@/data/onchip.json";
 import profilingJson from "@/data/profiling.json";
 import resultsDocJson from "@/data/results_doc.json";
+import samplingLogitsJson from "@/data/sampling_logits.json";
 import summariesJson from "@/data/summaries.json";
 import tracesJson from "@/data/traces.json";
 
@@ -84,7 +88,19 @@ export function kvDemo(): KvDemo {
   return demo as KvDemo;
 }
 
-export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null };
+export type SamplingContext = { name: string; note: string; user: string; answer_so_far: string; vocab: number; tokens: string[]; logits: number[]; tail: [number, number][] };
+
+export type SamplingLogits = { date: string; device: string; commit: string; top: number; bin: number; contexts: SamplingContext[] };
+
+export function samplingLogits(): SamplingLogits {
+  const dump = samplingLogitsJson as unknown as Partial<SamplingLogits>;
+  if (!dump.contexts) throw new Error("results/sampling_logits.json is missing, so the sampling sandbox has no logits (scripts/dump_logits.py writes it)");
+  return dump as SamplingLogits;
+}
+
+export type LoadRun = { date: string; commit: string; gpu: string };
+
+export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null };
 
 export type Doc = "profiling" | "results";
 
@@ -100,9 +116,46 @@ export function profilingTable(sectionId: string, index = 0, doc: Doc = "profili
   return table;
 }
 
+export type Hardware = { gpu: string; compute_capability: number; sms: number; vram_gb: number; l2_kb: number; shared_kb_per_sm: number };
+
+export function hardware(): Hardware {
+  const hw = hardwareJson as Partial<Hardware>;
+  if (!hw.sms || !hw.shared_kb_per_sm || !hw.l2_kb || !hw.vram_gb) throw new Error("docs/hardware.md is missing SMs, VRAM, L2 or shared mem per SM");
+  return hw as Hardware;
+}
+
+export type ModelShape = { hidden: number; intermediate: number; layers: number; heads: number; kv_heads: number; vocab: number; max_positions: number; roofline_context: number };
+
+export const modelShape = (): ModelShape => modelShapeJson;
+
+export function loadRun(): LoadRun {
+  if (!resultsDoc.load) throw new Error("docs/results.md has no \"Engine runs measured\" line in its Under load section");
+  return resultsDoc.load;
+}
+
 export function ceilings(): { gbs: number; tflops: number } {
   if (!resultsDoc.ceilings) throw new Error("docs/results.md has no Ceilings line in its Roofline section");
   return resultsDoc.ceilings;
+}
+
+type OnchipRow = { metric: string; unit: string; run: number; value: number; sm_mhz: number | ""; date: string; commit: string; gpu: string };
+
+const onchipRows = onchipJson as unknown as OnchipRow[];
+
+export type Onchip = { median: number; min: number; max: number; mhz: number | undefined };
+
+export function onchip(metric: string, unit: string): Onchip {
+  const rows = onchipRows.filter((r) => r.metric === metric && r.unit === unit);
+  if (rows.length === 0) throw new Error(`results/onchip/onchip.csv has no ${metric} in ${unit} (scripts/onchip_report.py writes it)`);
+  const values = rows.map((r) => r.value);
+  const clocks = rows.flatMap((r) => (typeof r.sm_mhz === "number" ? [r.sm_mhz] : []));
+  return { median: median(values) as number, min: Math.min(...values), max: Math.max(...values), mhz: median(clocks) };
+}
+
+export function onchipRun(): { date: string; commit: string; gpu: string; runs: number } {
+  if (onchipRows.length === 0) throw new Error("results/onchip/onchip.csv is missing (scripts/onchip_report.py writes it)");
+  const { date, commit, gpu } = onchipRows[0];
+  return { date, commit, gpu, runs: Math.max(...onchipRows.map((r) => r.run)) };
 }
 
 export function cellNumber(cell: string | undefined): number | undefined {

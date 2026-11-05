@@ -132,6 +132,17 @@ class Blocks(unittest.TestCase):
             self.assertEqual(mr.main(["--results-dir", str(d), "--doc", str(doc)]), 0)
             self.assertIn("<!-- auto:load -->\nload table\n<!-- /auto:load -->", doc.read_text())
 
+    def test_stall_block_is_filled_when_present(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "load").mkdir()
+            (d / "load" / "stall.md").write_text("stall table\n")
+            doc = d / "results.md"
+            doc.write_text("".join(f"<!-- auto:{n} -->\n<!-- /auto:{n} -->\n"
+                                   for n in ("environment", "scoreboard", "table", "profile", "stall")))
+            self.assertEqual(mr.main(["--results-dir", str(d), "--doc", str(doc)]), 0)
+            self.assertIn("<!-- auto:stall -->\nstall table\n<!-- /auto:stall -->", doc.read_text())
+
     def test_prefill_block_is_filled_when_present(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
@@ -142,6 +153,17 @@ class Blocks(unittest.TestCase):
                                    for n in ("environment", "profile", "prefill", "scoreboard", "table")))
             self.assertEqual(mr.main(["--results-dir", str(d / "results"), "--doc", str(doc)]), 0)
             self.assertIn("Measured prefill table", doc.read_text())
+
+    def test_onchip_block_is_filled_when_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "results" / "onchip").mkdir(parents=True)
+            (d / "results" / "onchip" / "onchip.md").write_text("on-chip table\n")
+            doc = d / "results.md"
+            doc.write_text("".join(f"<!-- auto:{n} -->\n<!-- /auto:{n} -->\n"
+                                   for n in ("environment", "profile", "onchip", "scoreboard", "table")))
+            self.assertEqual(mr.main(["--results-dir", str(d / "results"), "--doc", str(doc)]), 0)
+            self.assertIn("<!-- auto:onchip -->\non-chip table\n<!-- /auto:onchip -->", doc.read_text())
 
     def test_main_updates_a_document(self):
         with tempfile.TemporaryDirectory() as d:

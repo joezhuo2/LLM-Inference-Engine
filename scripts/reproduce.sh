@@ -5,7 +5,7 @@ cd "$(git rev-parse --show-toplevel)"
 usage() {
     cat >&2 <<'USAGE'
 usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp] [--skip-load]
-                           [--skip-prefill] [--skip-vllm]
+                           [--skip-prefill] [--skip-vllm] [--skip-onchip]
 
 Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/environment.txt   commit, GPU, driver, CUDA, date, workload
@@ -17,13 +17,20 @@ Rebuilds the release preset and re-measures everything docs/results.md reports:
                             scripts/setup_llamacpp.sh has built it (skipped otherwise)
   results/load/vllm_q*_r*.csv   vLLM's server under Poisson arrivals, REPEATS runs per rate, when
                             scripts/setup_vllm.sh has installed it (skipped otherwise)
-  results/load/            the engine at Poisson arrivals of mixed-length requests, 1 to 8 QPS, from
-                            scripts/load_sweep.sh, reported by scripts/load_report.py
+  results/load/            the engine at Poisson arrivals of mixed-length requests, 1 to 8 QPS, with
+                            whole-prompt prefill and token budgets of 256, 512 and 2048, from
+                            scripts/load_sweep.sh, reported by scripts/load_report.py with the gaps
+                            between tokens from step traces kept in build/load_traces
+  results/load/stall.*      one long prompt arriving among decoding requests, per budget, from
+                            scripts/stall_probe.py
   results/decode_step.md    nsys launch gaps, GPU time per op and bandwidth of a batch-1 decode step
   results/decode_step_graphs.md   the same decode step replayed from a CUDA Graph
   results/decode_step_b16.md   the GPU time per op of a decode step with 16 rows
   results/plots/roofline.*  the ops and the whole decode step on a roofline (scripts/roofline.py)
-  results/prefill/          single-request TTFT against prompt length, engine and llama.cpp
+  results/prefill/          single-request TTFT against prompt length, engine (also with a token
+                            budget of 256) and llama.cpp
+  results/onchip/           L2, shared memory, register and DRAM latency microbenchmarks
+                            (scripts/onchip_bench.cu, REPEATS runs, scripts/onchip_report.py)
   results/plots/            the plots and summary_table.md
 and then refreshes the measured blocks of docs/results.md.
 
@@ -44,6 +51,7 @@ skip_llamacpp=0
 skip_vllm=0
 skip_load=0
 skip_prefill=0
+skip_onchip=0
 for arg in "$@"; do
     case "$arg" in
     --quick) quick=1 ;;
@@ -53,6 +61,7 @@ for arg in "$@"; do
     --skip-vllm) skip_vllm=1 ;;
     --skip-load) skip_load=1 ;;
     --skip-prefill) skip_prefill=1 ;;
+    --skip-onchip) skip_onchip=1 ;;
     *) usage ;;
     esac
 done
@@ -184,13 +193,23 @@ if [ "$skip_vllm" = 0 ]; then
     fi
 fi
 
+load_traces=build/load_traces
 if [ "$skip_load" = 0 ]; then
     echo "== QPS sweep"
-    if [ "$quick" = 1 ]; then
-        MODEL=$model scripts/load_sweep.sh --quick
-    else
-        MODEL=$model REPEATS=$repeats scripts/load_sweep.sh
-    fi
+    rm -rf "$load_traces"
+    for r in $(seq 1 "$repeats"); do
+        for budget in 0 256 512 2048; do
+            if [ "$quick" = 1 ]; then
+                MODEL=$model TOKEN_BUDGET=$budget TRACES=$load_traces scripts/load_sweep.sh --quick
+            else
+                MODEL=$model RUNS=$r TOKEN_BUDGET=$budget TRACES=$load_traces scripts/load_sweep.sh
+            fi
+        done
+    done
+    echo "== one long prompt among decoding requests"
+    "$python" scripts/stall_probe.py --engine build/release/bin/engine --model "$model" \
+        --budgets 0 256 512 2048 --repeats "$repeats" --commit "$(git rev-parse --short HEAD)" \
+        --out-dir "$out/load" > /dev/null
 fi
 
 if [ "$skip_prefill" = 0 ]; then
@@ -200,8 +219,8 @@ if [ "$skip_prefill" = 0 ]; then
         prefill_llama=(--llama-batched-bench "$llama_batched" --gguf "$llama_gguf")
     fi
     "$python" scripts/prefill_ttft.py --engine build/release/bin/engine --model "$model" \
-        --repeats "$repeats" --commit "$(git rev-parse --short HEAD)" --out-dir "$out/prefill" \
-        "${prefill_llama[@]}" > /dev/null
+        --repeats "$repeats" --token-budget 256 --commit "$(git rev-parse --short HEAD)" \
+        --out-dir "$out/prefill" "${prefill_llama[@]}" > /dev/null
 fi
 
 if command -v nsys > /dev/null; then
@@ -217,6 +236,13 @@ if command -v nsys > /dev/null; then
     cp results/profile/decode_step_b16.md "$out/decode_step_b16.md"
 fi
 
+if [ "$skip_onchip" = 0 ]; then
+    echo "== on-chip memory"
+    nvcc -std=c++20 -O3 -arch=native scripts/onchip_bench.cu -o build/onchip_bench
+    "$python" scripts/onchip_report.py --bench build/onchip_bench --repeats "$repeats" \
+        --commit "$(git rev-parse --short HEAD)" --out-dir "$out/onchip" > /dev/null
+fi
+
 echo "== plots and results page"
 "$python" scripts/plot.py "$out"/*_summary.csv --out-dir "$out/plots" --peak-gb-s "$peak"
 "$python" scripts/roofline.py "$out"/*_summary.csv --profile "$out/decode_step.md:1" \
@@ -224,7 +250,10 @@ echo "== plots and results page"
     --context $((prompt + output / 2)) --out-dir "$out/plots" --peak-gb-s "$peak" \
     --peak-tflops "$peak_tflops"
 if ls "$out"/load/*_summary.csv > /dev/null 2>&1; then
-    "$python" scripts/load_report.py --dir "$out/load"
+    load_report_traces=()
+    [ -d "$load_traces" ] && load_report_traces=(--traces "$load_traces")
+    "$python" scripts/load_report.py --dir "$out/load" --commit "$(git rev-parse --short HEAD)" \
+        "${load_report_traces[@]}"
 fi
 "$python" scripts/make_results.py --results-dir "$out" --doc docs/results.md --peak-gb-s "$peak"
 echo "done: review docs/results.md and results/plots, then commit results/ and the doc together"

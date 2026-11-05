@@ -1,0 +1,85 @@
+system,rate,run,gaps,gap_ms_p50,gap_ms_p99,gap_ms_max
+"engine + graphs, budget 2048",1,1,17536,8.006,10.653,96.171
+"engine + graphs, budget 2048",1,2,17536,8.067,13.029,96.932
+"engine + graphs, budget 2048",1,3,17536,8.075,10.897,96.409
+"engine + graphs, budget 2048",2,1,17536,8.509,44.238,96.976
+"engine + graphs, budget 2048",2,2,17536,8.576,44.929,105.621
+"engine + graphs, budget 2048",2,3,17536,8.536,45.058,100.281
+"engine + graphs, budget 2048",3,1,17536,9.001,68.816,100.581
+"engine + graphs, budget 2048",3,2,17536,9.139,69.632,111.853
+"engine + graphs, budget 2048",3,3,17536,9.133,67.324,101.689
+"engine + graphs, budget 2048",4,1,17536,9.862,76.653,113.308
+"engine + graphs, budget 2048",4,2,17536,9.951,81.726,133.267
+"engine + graphs, budget 2048",4,3,17536,9.824,78.396,116.087
+"engine + graphs, budget 2048",5,1,17536,10.862,85.618,163.364
+"engine + graphs, budget 2048",5,2,17536,10.993,85.934,175.225
+"engine + graphs, budget 2048",5,3,17536,10.944,83.513,124.303
+"engine + graphs, budget 2048",6,1,17536,11.458,91.098,164.814
+"engine + graphs, budget 2048",6,2,17536,11.392,94.782,157.655
+"engine + graphs, budget 2048",6,3,17536,11.369,87.276,127.601
+"engine + graphs, budget 2048",8,1,17536,11.407,90.838,159.843
+"engine + graphs, budget 2048",8,2,17536,11.537,96.136,168.835
+"engine + graphs, budget 2048",8,3,17536,11.479,92.510,158.998
+"engine + graphs, budget 256",1,1,17536,7.896,25.097,64.849
+"engine + graphs, budget 256",1,2,17536,8.058,27.271,65.388
+"engine + graphs, budget 256",1,3,17536,8.040,26.393,65.572
+"engine + graphs, budget 256",2,1,17536,8.373,35.806,64.245
+"engine + graphs, budget 256",2,2,17536,8.534,36.614,66.862
+"engine + graphs, budget 256",2,3,17536,8.527,36.374,65.460
+"engine + graphs, budget 256",3,1,17536,8.885,40.276,64.913
+"engine + graphs, budget 256",3,2,17536,9.122,39.819,65.572
+"engine + graphs, budget 256",3,3,17536,9.086,38.949,65.507
+"engine + graphs, budget 256",4,1,17536,9.757,44.747,66.909
+"engine + graphs, budget 256",4,2,17536,9.816,45.523,69.556
+"engine + graphs, budget 256",4,3,17536,9.815,44.855,66.138
+"engine + graphs, budget 256",5,1,17536,10.755,49.859,67.916
+"engine + graphs, budget 256",5,2,17536,10.960,52.260,69.557
+"engine + graphs, budget 256",5,3,17536,10.848,48.070,66.163
+"engine + graphs, budget 256",6,1,17536,11.079,52.274,70.065
+"engine + graphs, budget 256",6,2,17536,11.368,54.354,73.313
+"engine + graphs, budget 256",6,3,17536,11.342,54.835,68.953
+"engine + graphs, budget 256",8,1,17536,11.273,57.489,70.959
+"engine + graphs, budget 256",8,2,17536,11.518,61.353,72.692
+"engine + graphs, budget 256",8,3,17536,11.554,58.988,68.025
+"engine + graphs, budget 512",1,1,17536,7.962,12.014,94.115
+"engine + graphs, budget 512",1,2,17536,8.050,10.767,96.865
+"engine + graphs, budget 512",1,3,17536,8.046,10.752,97.125
+"engine + graphs, budget 512",2,1,17536,8.412,44.694,96.944
+"engine + graphs, budget 512",2,2,17536,8.547,44.511,98.071
+"engine + graphs, budget 512",2,3,17536,8.531,44.662,97.716
+"engine + graphs, budget 512",3,1,17536,9.052,68.949,97.220
+"engine + graphs, budget 512",3,2,17536,9.092,67.788,97.981
+"engine + graphs, budget 512",3,3,17536,9.096,67.574,97.880
+"engine + graphs, budget 512",4,1,17536,9.567,74.679,101.298
+"engine + graphs, budget 512",4,2,17536,9.853,76.835,100.051
+"engine + graphs, budget 512",4,3,17536,9.823,77.033,98.237
+"engine + graphs, budget 512",5,1,17536,10.798,82.166,102.254
+"engine + graphs, budget 512",5,2,17536,10.931,81.788,105.054
+"engine + graphs, budget 512",5,3,17536,10.938,79.458,102.625
+"engine + graphs, budget 512",6,1,17536,11.125,82.319,103.611
+"engine + graphs, budget 512",6,2,17536,11.451,86.961,107.087
+"engine + graphs, budget 512",6,3,17536,11.377,84.808,104.927
+"engine + graphs, budget 512",8,1,17536,11.367,84.919,105.088
+"engine + graphs, budget 512",8,2,17536,11.526,91.545,106.474
+"engine + graphs, budget 512",8,3,17536,11.516,86.858,108.542
+engine + graphs,1,1,17536,7.938,9.437,154.909
+engine + graphs,1,2,17536,8.032,9.785,157.986
+engine + graphs,1,3,17536,8.082,9.628,159.013
+engine + graphs,2,1,17536,8.371,50.507,157.238
+engine + graphs,2,2,17536,8.513,51.077,160.763
+engine + graphs,2,3,17536,8.544,51.380,162.463
+engine + graphs,3,1,17536,8.916,75.428,154.401
+engine + graphs,3,2,17536,9.111,79.109,178.073
+engine + graphs,3,3,17536,9.144,75.835,179.847
+engine + graphs,4,1,17536,9.670,82.575,195.760
+engine + graphs,4,2,17536,10.042,88.854,200.643
+engine + graphs,4,3,17536,9.927,86.796,216.793
+engine + graphs,5,1,17536,10.679,90.157,207.617
+engine + graphs,5,2,17536,11.056,96.515,223.749
+engine + graphs,5,3,17536,11.015,101.391,212.239
+engine + graphs,6,1,17536,11.065,97.296,181.507
+engine + graphs,6,2,17536,11.397,99.298,184.262
+engine + graphs,6,3,17536,11.408,102.209,179.263
+engine + graphs,8,1,17536,11.351,99.218,172.589
+engine + graphs,8,2,17536,11.560,102.884,190.796
+engine + graphs,8,3,17536,11.518,101.738,141.116

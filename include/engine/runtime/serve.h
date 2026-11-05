@@ -20,9 +20,9 @@ struct ServeStats {
 std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
                                 DeviceBuffer& next, ServeStats* stats = nullptr,
                                 DecodeGraphs* graphs = nullptr,
-                                std::vector<StepTrace>* trace = nullptr);
+                                std::vector<StepTrace>* trace = nullptr, int token_budget = 0);
 
 std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
-                           DecodeGraphs* graphs = nullptr);
+                           DecodeGraphs* graphs = nullptr, int token_budget = 0);
 
 }  // namespace engine

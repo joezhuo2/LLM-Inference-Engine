@@ -106,6 +106,60 @@ TEST_F(PagedRunnerTest, MatchesTheContiguousRunnerOnAMixedBatchOverSeveralSteps)
     std::printf("worst relative L2 of paged logits against the contiguous runner: %g\n", worst);
 }
 
+TEST_F(PagedRunnerTest, ChunkedStepsMatchTheContiguousRunner) {
+    const std::vector<int> lengths = {33, 6, 20, 1};
+    constexpr int kNewTokens = 6;
+    constexpr int kBudget = 8;
+    KvCache cache(w().config, 64, kBlockSize);
+    PagedRunner runner(w().config, w().weights, cache, kBudget, 4, kMaxContext, stream);
+    Scheduler scheduler(SchedulerConfig{.num_blocks = 64,
+                                        .block_size = kBlockSize,
+                                        .max_batch = 4,
+                                        .max_prefill_tokens = kMaxContext,
+                                        .max_context = kMaxContext});
+    std::vector<std::unique_ptr<ModelRunner>> solo;
+    for (size_t i = 0; i < lengths.size(); ++i) {
+        solo.push_back(
+            std::make_unique<ModelRunner>(w().config, w().weights, 64, kMaxContext, stream));
+        Request r{.id = int64_t(i), .max_new_tokens = kNewTokens};
+        r.prompt = prompt_of(int64_t(i), lengths[i], int(vocab()));
+        scheduler.submit(r);
+    }
+
+    double worst = 0.0;
+    int chunk_only = 0, mixed = 0;
+    while (scheduler.num_waiting() + scheduler.num_running() > 0) {
+        const auto step = scheduler.schedule_chunked(kBudget);
+        ASSERT_FALSE(step.empty());
+        chunk_only += step.sampled.empty();
+        mixed += !step.decode.empty() && !step.prefill.empty();
+        const auto batch = engine::build_chunked_batch(step, scheduler, int(runner.max_blocks()));
+        const Tensor logits = runner.forward(batch);
+        ASSERT_EQ(logits.shape[0], int64_t(step.sampled.size()));
+        const auto paged = to_host(logits);
+        std::vector<int32_t> tokens;
+        for (size_t i = 0; i < step.sampled.size(); ++i) {
+            const Request& r = scheduler.request(step.sampled[i]);
+            SCOPED_TRACE("seq " + std::to_string(r.id) + " token " +
+                         std::to_string(r.output.size()));
+            const std::vector<int32_t> feed =
+                r.output.empty() ? r.prompt : std::vector<int32_t>{r.output.back()};
+            const auto expected = to_host(solo[size_t(r.id)]->forward(feed));
+            const std::vector<uint16_t> row(paged.begin() + int64_t(i) * vocab(),
+                                            paged.begin() + int64_t(i + 1) * vocab());
+            const double rel = relative_l2(row, expected);
+            worst = std::max(worst, rel);
+            EXPECT_LE(rel, kLogitRelativeL2);
+            tokens.push_back(argmax_rows(expected, vocab())[0]);
+        }
+        scheduler.update(tokens);
+        scheduler.take_finished();
+    }
+    EXPECT_GT(chunk_only, 0);
+    EXPECT_GT(mixed, 0);
+    std::printf("worst relative L2 of chunked logits against the contiguous runner: %g\n", worst);
+}
+
 TEST_F(PagedRunnerTest, LongContextsMatchTheContiguousRunnerThroughTheSplitKernel) {
     constexpr int kLongContext = 2048;
     const std::vector<int> lengths = {1100, 520};

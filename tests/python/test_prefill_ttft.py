@@ -22,6 +22,12 @@ class Commands(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--seed") + 1], "3")
         self.assertNotIn("--graphs", cmd)
         self.assertIn("--graphs", pt.engine_command("engine", "m", 512, 3, 2, "o.csv", True))
+        self.assertNotIn("--token-budget", cmd)
+
+    def test_a_budget_adds_the_flag(self):
+        cmd = pt.engine_command("engine", "m", 2048, 1, 2, "o.csv", True, 512)
+        self.assertIn("--graphs", cmd)
+        self.assertEqual(cmd[cmd.index("--token-budget") + 1], "512")
 
     def test_llama_context_fits_the_longest_prompt_and_its_token(self):
         cmd = pt.llama_command("bin", "m", [128, 2048], 512)
@@ -51,11 +57,19 @@ class Table(unittest.TestCase):
         text = pt.table_markdown(rows)
         self.assertLess(text.index("| engine |"), text.index("| llama.cpp -ub 512 |"))
 
+    def test_a_budget_row_follows_its_engine(self):
+        budget = f"{pt.GRAPHS}, budget 512"
+        rows = [row(pt.LLAMA, 100, 1, 0.1), row(budget, 100, 1, 0.3), row(pt.GRAPHS, 100, 1, 0.2)]
+        text = pt.table_markdown(rows)
+        self.assertLess(text.index("| engine + graphs |"), text.index(f"| {budget} |"))
+        self.assertLess(text.index(f"| {budget} |"), text.index("| llama.cpp -ub 512 |"))
+
 
 class RoundTrip(unittest.TestCase):
     @unittest.skipUnless(importlib.util.find_spec("matplotlib"), "matplotlib is not installed")
     def test_from_csv_redraws_every_output(self):
         rows = [row(pt.ENGINE, n, 1, n * 1e-3) for n in (128, 512)] + [row(pt.LLAMA_FULL, n, 1, 0.1) for n in (128, 512)]
+        rows += [row(f"{pt.GRAPHS}, budget 512", n, 1, 0.2) for n in (128, 512)]
         with tempfile.TemporaryDirectory() as tmp:
             saved = Path(tmp) / "saved.csv"
             pt.write_rows(saved, rows)

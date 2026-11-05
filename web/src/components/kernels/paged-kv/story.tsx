@@ -1,12 +1,12 @@
 "use client";
 
-import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { measured } from "@/content/kernels/types";
 import { kvReplay } from "@/lib/data";
+import { SmoothRange } from "@/components/smooth-range";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { useLoop } from "../loop";
-import { AppendFigure, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
+import { AppendFigure, BatchingFigure, batchGrids, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, tightBlocks, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
 
 const replay = kvReplay();
 const B = replay.meta.block_size;
@@ -79,7 +79,6 @@ function ReplayPlayer() {
   const [t, , blocks] = replay.steps[step];
   const running = new Set(held.map((b) => b.req)).size;
   const tokens = Math.round(held.reduce((n, b) => n + b.fill * B, 0));
-  const ease = { duration: reduced ? 0 : 0.35, ease: "easeInOut" as const };
   const stats = [
     { label: "requests running", value: running, cls: "text-text" },
     { label: "blocks held", value: blocks, cls: "text-accent" },
@@ -111,14 +110,13 @@ function ReplayPlayer() {
         >
           {playing ? "pause" : "play"}
         </button>
-        <input
-          type="range"
+        <SmoothRange
           min={0}
           max={replay.steps.length - 1}
           value={step}
-          onChange={(e) => {
+          onValue={(v) => {
             setPaused(true);
-            setPicked(Number(e.target.value));
+            setPicked(v);
           }}
           aria-label="step of the recorded run"
           className="w-full accent-[var(--accent)]"
@@ -134,19 +132,7 @@ function ReplayPlayer() {
           return (
             <g key={id}>
               <rect x={x} y={y} width={cw - 3} height={ch} rx={2} className={id === 0 ? "fill-warn/20 stroke-warn/50" : "fill-bg stroke-border"} strokeWidth={0.75} />
-              <motion.rect
-                x={x}
-                y={y}
-                height={ch}
-                rx={2}
-                className={b ? tint[b.req % 3] : "fill-accent"}
-                initial={false}
-                animate={{
-                  width: b ? (cw - 3) * b.fill : 0,
-                  opacity: b ? 1 : 0,
-                }}
-                transition={ease}
-              />
+              {b && <rect x={x} y={y} width={(cw - 3) * b.fill} height={ch} rx={2} className={tint[b.req % 3]} />}
               {b && (
                 <text x={x + 4} y={y + 15} className="pointer-events-none fill-bg text-[10px]">
                   {b.req}
@@ -158,7 +144,7 @@ function ReplayPlayer() {
         <text x={20} y={chartTop - 6} className="fill-muted text-[11px]">{`blocks held over the ${tEnd.toFixed(1)} s run (peak ${maxHeld})`}</text>
         <path d={path} className="fill-none stroke-accent" strokeWidth={1.25} />
         <line x1={20} x2={540} y1={chartTop + chartH} y2={chartTop + chartH} className="stroke-border" />
-        <motion.line y1={chartTop - 2} y2={chartTop + chartH} className="stroke-text" strokeWidth={1} initial={false} animate={{ x1: tx(t), x2: tx(t) }} transition={{ duration: 0 }} />
+        <line x1={tx(t)} x2={tx(t)} y1={chartTop - 2} y2={chartTop + chartH} className="stroke-text" strokeWidth={1} />
       </svg>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-2 tabular-nums sm:grid-cols-4">
         {stats.map((r) => (
@@ -315,6 +301,98 @@ export function PagedKvStory() {
             return <ReplayPlayer />;
         }
       }}
+    />
+  );
+}
+
+const gs = batchGrids.static;
+const gr = batchGrids.roomy;
+const gt = batchGrids.tight;
+const tightPreemptions = gt.evictions.reduce((n, e) => n + e, 0);
+const batchingSlots = gs.slots;
+
+const batchingSteps: StoryStep[] = [
+  {
+    id: "static",
+    title: "static: wait for the longest",
+    body: (
+      <>
+        <p>
+          A static batch takes the first {batchingSlots} requests, runs them together, and takes the next {batchingSlots} only when every one of them is done. A request that stops after 2 steps
+          keeps its slot until the longest request in its batch finishes.
+        </p>
+        <p>
+          Here request 1 runs for 9 steps while requests 0, 2 and 3 are done by step 3. The dashed cells are slots that go through every forward pass and produce nothing: the 10 requests take{" "}
+          {gs.steps} steps and waste <span className="font-mono text-warn">{gs.wasted}</span> slot-steps.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "continuous",
+    title: "continuous: look again every step",
+    body: (
+      <>
+        <p>
+          Continuous batching, also called iteration-level scheduling, runs the scheduler before every step instead of before every batch. A finished request leaves at once, and the request at the
+          front of the queue takes its slot on the next step.
+        </p>
+        <p>
+          Same queue, room for every request: the 10 requests take {gr.steps} steps and waste <span className="font-mono text-accent">{gr.wasted}</span> slot-steps, all of them at the end, when the
+          queue is empty and the last requests drain.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "rules",
+    title: "the engine's two rules",
+    body: (
+      <>
+        <p>
+          The engine&apos;s scheduler (src/sched/scheduler.cpp) has two rules. Admission is first come first served: while a slot is free, the front of the queue joins if blocks for its whole length
+          are free, and nothing skips ahead of it. Preemption: when a running request needs a new block and none is free, the request at the back of the running list gives its blocks back and returns
+          to the front of the queue.
+        </p>
+        <p>
+          Here the pool is {tightBlocks} blocks of 2 steps each (the engine uses 16 tokens) and <span className="font-mono text-warn">{tightPreemptions}</span> preemptions follow:
+          the crossed cells are evictions and the shaded cells are steps recomputed after one. The 10 requests take {gt.steps} steps and waste {gt.wasted} slot-steps, still well under static
+          batching&apos;s {gs.wasted}.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "watch",
+    title: "watch it run",
+    body: (
+      <>
+        <p>
+          The visualizer below runs the same two rules on a real block pool. Add requests and watch two numbers. <span className="font-mono text-accent">requests running</span> is how many requests the
+          scheduler steps together right now: it rises as requests are admitted and falls as they finish.
+        </p>
+        <p>
+          <span className="font-mono text-accent">preemptions</span> counts every time the pool ran out and the newest running request went back to the queue. Together they are the scheduler at
+          work: requests join and leave between steps, and a full pool pushes one back instead of stalling the batch.
+        </p>
+      </>
+    ),
+  },
+];
+
+const batchingCaptions = [
+  `illustrative request lengths in steps, ${batchingSlots} slots; the same 10 requests in every figure`,
+  "illustrative lengths; a pool that never runs out; a prefill and a decode step are drawn as one cell",
+  "illustrative lengths; blocks of 2 steps instead of 16 tokens; rules from src/sched/scheduler.cpp: first come first served up to max_batch, preempt from the back of the running list",
+  "the same run; the two highlighted counters are the visualizer's \"requests running\" and \"preemptions\"",
+];
+
+export function BatchingStory() {
+  return (
+    <StickyStory
+      steps={batchingSteps}
+      caption={(i) => batchingCaptions[i]}
+      figure={(i) => <BatchingFigure kind={(["static", "roomy", "tight", "tight"] as const)[i]} focus={i === 3} />}
     />
   );
 }

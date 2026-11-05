@@ -8,15 +8,22 @@ import { StickyStory, type StoryStep } from "@/components/kernels/sticky-story";
 import {
   batchSizes,
   benchRun,
+  chunkBudget,
   contextPrompts,
   contextRun,
   contextTpot,
   gemmRoofRange,
+  goodputSeries,
+  largestGap,
+  loadProvenance,
+  loadRates,
+  loadValue,
   nearTies,
   type Provenance,
   profileB16Run,
   profileRun,
   opRank,
+  peakGoodput,
   roofIntensity,
   roofline,
   roofPct,
@@ -27,6 +34,7 @@ import {
   stepRows,
   throughput,
   tpot,
+  ttftTailSeries,
   v2Blocks,
   valueAt,
   workload,
@@ -61,6 +69,16 @@ const contextAxis: Axis = { kind: "linear", min: 0, max: 2048, ticks: contextPro
 const contextY: Axis = { kind: "linear", min: 0, max: 16, ticks: [0, 4, 8, 12, 16], format: String, title: "ms per output token (TPOT p50, mean of 2 runs)" };
 const intensityAxis: Axis = { kind: "log", min: 0.5, max: 200, ticks: [1, 10, 100], format: String, title: "FLOP per byte of DRAM traffic" };
 const flopsAxis: Axis = { kind: "log", min: 0.01, max: 60, ticks: [0.01, 0.1, 1, 10], format: String, title: "TFLOP/s" };
+const qpsAxis: Axis = { kind: "linear", min: 0.5, max: 8.5, ticks: loadRates, format: String, title: "offered load (requests per second, Poisson)" };
+const goodputTop = Math.ceil(Math.max(...goodputSeries.flatMap((s) => s.values.filter((v): v is number => v !== undefined))) / 2) * 2;
+const goodputAxis: Axis = { kind: "linear", min: 0, max: goodputTop, ticks: Array.from({ length: goodputTop / 2 + 1 }, (_, i) => i * 2), format: String, title: "goodput (requests/s meeting TTFT 500 ms, TPOT 50 ms)" };
+const ttftAxis: Axis = { kind: "log", min: 20, max: 20000, ticks: [100, 1000, 10000], format: (v) => n(v), title: "TTFT p99 (ms)" };
+const slo = 500;
+
+const chunked = peakGoodput("chunked");
+const whole = peakGoodput("engine");
+const vllm = peakGoodput("vllm");
+const gapAt = 4;
 
 function Roof({ sx, sy }: { sx: (v: number) => number; sy: (v: number) => number }) {
   const slope = (x: number) => (x * peak.gbs) / 1000;
@@ -79,7 +97,7 @@ function Roof({ sx, sy }: { sx: (v: number) => number; sy: (v: number) => number
   );
 }
 
-const views = ["score", "bench", "bench", "context", "profile", "profile", "roof"] as const;
+const views = ["score", "bench", "bench", "context", "profile", "profile", "roof", "goodput", "tail"] as const;
 
 function benchStats(metric: "tps" | "tpot"): Stat[] {
   if (metric === "tps") {
@@ -111,8 +129,66 @@ function profileStats(second: "graphs" | "b16"): Stat[] {
   ];
 }
 
+function SloLine({ sx, sy }: { sx: (v: number) => number; sy: (v: number) => number }) {
+  return (
+    <g className="pointer-events-none">
+      <line x1={sx(0.5)} x2={sx(8.5)} y1={sy(slo)} y2={sy(slo)} className="stroke-muted" strokeWidth={1} strokeDasharray="3 3" />
+      <text x={sx(0.5) + 4} y={sy(slo) - 5} className="fill-muted text-[11px]">
+        {`SLO ${slo} ms`}
+      </text>
+    </g>
+  );
+}
+
 function View({ step }: { step: number }) {
   switch (views[step]) {
+    case "goodput":
+      return (
+        <>
+          <Legend series={goodputSeries} />
+          <LineChart
+            view="goodput"
+            label="Goodput against offered load for the engine with and without a token budget and for vLLM"
+            xs={loadRates}
+            xAxis={qpsAxis}
+            yAxis={goodputAxis}
+            series={goodputSeries}
+            heading={(i) => `${loadRates[i]} requests/s offered`}
+            value={(v) => `${v.toFixed(2)} req/s`}
+          />
+          <Stats
+            stats={[
+              { label: "whole prompts, peak", value: whole.value, digits: 2, suffix: " req/s" },
+              { label: `budget ${chunkBudget}, peak`, value: chunked.value, digits: 2, suffix: " req/s" },
+              { label: "vLLM, peak", value: vllm.value, digits: 2, suffix: " req/s" },
+            ]}
+          />
+        </>
+      );
+    case "tail":
+      return (
+        <>
+          <Legend series={ttftTailSeries} />
+          <LineChart
+            view="tail"
+            label="Tail time to first token against offered load for the engine with and without a token budget and for vLLM"
+            xs={loadRates}
+            xAxis={qpsAxis}
+            yAxis={ttftAxis}
+            series={ttftTailSeries}
+            heading={(i) => `${loadRates[i]} requests/s offered`}
+            value={(v) => `${n(v)} ms`}
+            underlay={(sx, sy) => <SloLine sx={sx} sy={sy} />}
+          />
+          <Stats
+            stats={[
+              { label: `largest gap at ${gapAt}, whole`, value: largestGap("engine", gapAt), digits: 0, suffix: " ms" },
+              { label: `at ${gapAt}, budget ${chunkBudget}`, value: largestGap("chunked", gapAt), digits: 0, suffix: " ms" },
+              { label: `TTFT p99 at ${gapAt}, vLLM`, value: loadValue(ttftTailSeries, "vllm", gapAt), digits: 0, suffix: " ms" },
+            ]}
+          />
+        </>
+      );
     case "score":
       return <Scoreboard criteria={scoreboard} />;
     case "bench": {
@@ -229,7 +305,7 @@ function Source({ p }: { p: Provenance }) {
   );
 }
 
-const sources = [benchRun, benchRun, benchRun, contextRun, profileRun, profileB16Run, { ...benchRun, source: "docs/results.md, Roofline (scripts/roofline.py)" }];
+const sources = [benchRun, benchRun, benchRun, contextRun, profileRun, profileB16Run, { ...benchRun, source: "docs/results.md, Roofline (scripts/roofline.py)" }, loadProvenance, loadProvenance];
 
 function Story({ to, children }: { to: string; children: ReactNode }) {
   return (
@@ -373,6 +449,46 @@ const steps: StoryStep[] = [
           <Num>{roofPct("engine_graphs", 1)}%</Num> of it at batch 1 and <Num>{roofPct("engine_graphs", 16)}%</Num> at 16,
           against <Num>{roofPct("llamacpp", 16)}%</Num> for llama.cpp and <Num>{roofPct("hf", 16)}%</Num> for HuggingFace.
           The op by op version is on the <Story to="/kernels/gemm">GEMM</Story> page.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "load",
+    title: "under load",
+    body: (
+      <>
+        <p>
+          A real server does not get its requests all at once. Here 120 requests of 16 to 512 prompt tokens arrive as a
+          Poisson process at 1 to 8 per second, at most 16 run together, and goodput counts the requests per second whose
+          first token came within 500 ms and whose tokens came no more than 50 ms apart on average.
+        </p>
+        <p>
+          With whole-prompt steps the engine peaks at <Num>{n(whole.value, 2)}</Num> requests/s at {whole.qps} offered. A
+          token budget of {chunkBudget} (<Story to="/kernels/chunked-prefill">chunked prefill</Story>) lifts that to{" "}
+          <Num>{n(chunked.value, 2)}</Num>, and it holds up better past the peak. vLLM, on the same token ids and arrival
+          times, reaches <Num>{n(vllm.value, 2)}</Num> at {vllm.qps}.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "tail",
+    title: "the first token, and the wait between tokens",
+    body: (
+      <>
+        <p>
+          A prompt in a whole-prompt step holds up every running sequence until it is done: at {gapAt} requests/s the
+          longest wait between two tokens of one request is <Num>{n(largestGap("engine", gapAt))} ms</Num>. With at most{" "}
+          {chunkBudget} tokens per step, decode rows first and prompts in chunks, it is <Num>{n(largestGap("chunked", gapAt))} ms</Num>, and
+          the tail TTFT drops from <Num>{n(loadValue(ttftTailSeries, "engine", gapAt))}</Num> to{" "}
+          <Num>{n(loadValue(ttftTailSeries, "chunked", gapAt))} ms</Num>.
+        </p>
+        <p>
+          vLLM&apos;s tail stays at <Num>{n(loadValue(ttftTailSeries, "vllm", gapAt))} ms</Num>. Past its peak the
+          engine&apos;s queue grows whatever the budget: chunks move prefill work between steps but do not shrink it, and
+          the engine&apos;s prefill runs every prompt row through the decode attention kernel, so the rest of the gap is
+          kernel speed, not scheduling.
         </p>
       </>
     ),
