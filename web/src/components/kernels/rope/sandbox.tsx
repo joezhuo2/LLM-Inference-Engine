@@ -47,19 +47,18 @@ export function RopeSandbox() {
   };
   useEffect(() => stop, []);
 
-  const reset = () => {
-    if (tween.current) return stop();
-    setLock("locked");
-    setGuess(null);
+  const glide = (to: Partial<typeof defaults>) => {
+    stop();
+    const from = { pos, pair, qPos, kPos };
+    const target = { ...from, ...to };
     if (reduced) {
-      setPos(defaults.pos);
-      setPair(defaults.pair);
-      setQPos(defaults.qPos);
-      setKPos(defaults.kPos);
+      setPos(target.pos);
+      setPair(target.pair);
+      setQPos(target.qPos);
+      setKPos(target.kPos);
       return;
     }
-    const from = { pos, pair, qPos, kPos };
-    const at = (key: keyof typeof from, t: number) => Math.round(from[key] + (defaults[key] - from[key]) * t);
+    const at = (key: keyof typeof from, t: number) => Math.round(from[key] + (target[key] - from[key]) * t);
     tween.current = animate(0, 1, {
       duration: 0.6,
       ease: resetEase,
@@ -73,6 +72,13 @@ export function RopeSandbox() {
         tween.current = null;
       },
     });
+  };
+
+  const reset = () => {
+    if (tween.current) return stop();
+    setLock("locked");
+    setGuess(null);
+    glide(defaults);
   };
 
   const theta = invFreq(pair);
@@ -100,10 +106,8 @@ export function RopeSandbox() {
     if (lock === "locked") setQPos(qPos + d);
   };
   const shift = (d: number) => {
-    stop();
     const s = Math.max(-Math.min(qPos, kPos), Math.min(MAX_POS - Math.max(qPos, kPos), d));
-    setQPos(qPos + s);
-    setKPos(kPos + s);
+    glide({ qPos: qPos + s, kPos: kPos + s });
   };
 
   return (
@@ -190,10 +194,7 @@ export function RopeSandbox() {
               <button
                 key={i}
                 type="button"
-                onClick={() => {
-                  stop();
-                  setPair(i);
-                }}
+                onClick={() => glide({ pair: i })}
                 aria-pressed={pair === i}
                 aria-label={`pair ${i}, ${Math.round(deg(angle(i, pos)))} degrees`}
                 className={clsx("pressable rounded border p-0.5", pair === i ? "border-accent bg-accent-dim" : "border-border")}
