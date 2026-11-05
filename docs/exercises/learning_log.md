@@ -1771,3 +1771,6 @@
 ## 3D book: foundations (Branch 102)
 
 - **splitting one component's JSX into named parts that render either inline or into portals** => 
+- **extruding a 2D shape into a solid with ExtrudeGeometry** => 
+- **mapping a log scale onto a length** => 
+- **inverting a log scale to turn a drag position back into a value** => 
