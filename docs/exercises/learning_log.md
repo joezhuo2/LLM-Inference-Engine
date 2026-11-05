@@ -1799,3 +1799,10 @@
 - **a signed bar chart hung above and below a floating rail** => 
 - **animating a bar height by scaling a unit box on one axis** => 
 - **getBoundingClientRect returns transformed sizes, offsetWidth does not** => 
+
+## 3D book: sampling (Branch 110)
+- **sharing story data between a scroll page and a 3D view through module exports** => 
+- **rendering the same JSX element into two portals bound to one state** => 
+- **a horizontal cut plane as a threshold in a binary search** => 
+- **routing a drag to one of several handles by the picked mesh** => 
+- **framing a close-up camera so foreground cards do not cover the model** => 

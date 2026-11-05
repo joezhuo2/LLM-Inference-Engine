@@ -2,6 +2,13 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-sampling
+
+- Part A: widen the sampling chapter's close-ups so no card is cropped or covered, draw the greedy tree's posts as plain ink stems, and show the top-p pass mass to one decimal.
+- Part A: add the sampling chapter (chapter 10) to the book at `/kernels/sampling`: a hatched ink pop-up model for each step (the greedy argmax tree, Gumbel noise on twelve logits with picks filling the softmax outlines, two Philox noise grids for the same seed alone and in a batch, the top-k and top-p threshold searches as a cut plane through 40 keys with draggable k and p, the measured cost of six modes against a wall at the sort-alone time, and the FP64 jars with the per-token noise strips), the row picker on a flat page, the sandbox as two try-it-yourself spreads, and a camera tour per step.
+- Part A: let the sampling sandbox render two parts into two given elements through portals (`pages` prop): the knobs and the bars, and the knobs with the draws and the predict box; export the sampling figures' example logits, keys, random generator and search helper.
+- Part A: export the sampling story steps, captions, measured numbers and the row picker so the book can reuse them.
+
 ## web/book-add-rmsnorm
 
 - Part A: place the toggle's highlight in the group's own pixels, dividing by the CSS scale the book puts on its flat pages, so it sits exactly over the chosen option there (the token picker on the measured spread) as well as in the reading view.
