@@ -1770,3 +1770,6 @@
 
 ## 3D book: paged KV cache (Branch 104)
 - **reusing one story's steps in two views by exporting the step array** => 
+- **a callback ref stored in state so an effect reruns when the element changes** => 
+- **reading CSS custom properties from the element instead of the document root** => 
+- **mapping pointer coordinates on a CSS-scaled element back to layout pixels** => 
