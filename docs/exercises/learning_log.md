@@ -1767,3 +1767,7 @@
 - **replaying an effect by changing a component key** => 
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
+
+## 3D book: text size (Branch 114)
+
+- **fit-to-box text sizing with a maximum size** => 
