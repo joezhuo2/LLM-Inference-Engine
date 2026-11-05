@@ -1767,3 +1767,8 @@
 - **replaying an effect by changing a component key** => 
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
+
+## 3D book: add and RMSNorm (Branch 108)
+- **scale invariance of RMSNorm** => 
+- **a signed bar chart hung above and below a floating rail** => 
+- **animating a bar height by scaling a unit box on one axis** => 
