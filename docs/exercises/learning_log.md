@@ -1767,3 +1767,10 @@
 - **replaying an effect by changing a component key** => 
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
+
+## 3D book: attention v2 (Branch 106)
+
+- **interpolating a running softmax state between chunk boundaries for animation** => 
+- **a logarithmic slider mapping position to a power of two** => 
+- **extrapolating a measured linear cost past the last data point** => 
+- **shrinking canvas text to fit by measuring its width** => 
