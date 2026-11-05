@@ -1767,3 +1767,6 @@
 - **replaying an effect by changing a component key** => 
 - **route groups to give some pages a different layout under the same URL prefix** => 
 - **a lazy registry of dynamic imports keyed by slug** => 
+
+## 3D book: chunked prefill (Branch 112)
+- **a ref callback into state so an effect reruns when the element changes** => 
