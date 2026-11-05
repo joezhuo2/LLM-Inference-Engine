@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/chunked-prefill-story
+
+- Add a chunked prefill entry to the home page build timeline (`web/src/components/chunked-scene.tsx`): two timelines of the same decoders and one long prompt, with the prompt as one blocking bar before and as budget-sized chunks sharing each step with the decode rows after. The 2,048-token prefill time comes from the results table; the effect of chunking is not measured, since the runner does not use it yet. (Part A)
+
 ## sched/chunked-prefill-impl
 
 - Move the 25 `Scheduler::schedule_chunked` tests to `tests/unit/test_scheduler_chunked.cpp`, add them to `unit_tests` and delete the `todo_unit_tests` target. (Part A)

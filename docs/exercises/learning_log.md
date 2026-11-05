@@ -1547,3 +1547,7 @@
 - **why a long prefill raises every other sequence's TPOT** => 
 - **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
 - **why a preempted sequence has to rewrite its KV from position 0** => 
+
+## Chunked Prefill Story (Branch 85)
+- **interleaving prefill chunks with decode rows: how a step is shared between the two** => 
+- **time to first token against time per token: what a smaller chunk trades** => 

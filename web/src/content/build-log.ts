@@ -1,3 +1,4 @@
+import { measured as tableValue } from "@/content/kernels/types";
 import { medianOf } from "@/lib/data";
 
 export type Bar = { label: string; value: number; highlight?: boolean };
@@ -13,7 +14,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
-  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline";
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -22,6 +23,10 @@ export const repoUrl = "https://github.com/joezhuo2/LLM-Inference-Engine";
 
 function measured(system: string, batch: number) {
   return medianOf(system, batch, "output_throughput") ?? 0;
+}
+
+function prefillMs(system: string, prompt: string) {
+  return tableValue("prefill-against-prompt-length", { system }, prompt, 0, "results");
 }
 
 export const milestones: Milestone[] = [
@@ -301,7 +306,7 @@ export const milestones: Milestone[] = [
   {
     id: "M5",
     name: "shipped",
-    dates: "Oct 25",
+    dates: "Oct 25 to Nov 4",
     goal: "Measure it against the tools people actually use.",
     entries: [
       {
@@ -337,6 +342,15 @@ export const milestones: Milestone[] = [
         branch: "bench/chat-prompts",
         title: "A recording for this page",
         text: "A trace format for every scheduler step, and a run of 24 chat requests arriving four per second. It is the rain at the top of this page.",
+      },
+      {
+        date: "Nov 4",
+        prs: [133, 134],
+        branch: "sched/chunked-prefill-impl",
+        scene: "chunked",
+        title: "A token budget for every step",
+        text: "Every step used to be all prefill or all decode, so one long prompt stopped every running sequence. Now a step has a token budget: decode rows first, the rest for the one prompt in prefill. Joe wrote the scheduler; the runner does not use it yet, so the effect is not measured.",
+        metric: { kind: "value", value: `${prefillMs("engine", "2,048")} ms`, label: "to prefill one 2,048-token prompt alone, while every running sequence waits" },
       },
     ],
   },
