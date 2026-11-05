@@ -16,13 +16,14 @@ const deg = (rad: number) => ((rad % TAU) * 180) / Math.PI;
 const SHIFT = 100;
 const CURVE_W = 560;
 const CURVE_H = 130;
-const curve = Array.from({ length: 2 * MAX_POS + 1 }, (_, i) => i - MAX_POS)
-  .filter((gap) => gap % 4 === 0)
-  .map((gap) => [gap, score(q, gap, k, 0)] as const);
-const curvePeak = Math.max(...curve.map(([, s]) => Math.abs(s)));
 const curveX = (gap: number) => ((gap + MAX_POS) / (2 * MAX_POS)) * CURVE_W;
-const curveY = (s: number) => CURVE_H / 2 - (s / curvePeak) * (CURVE_H / 2 - 8);
-const curvePath = curve.map(([gap, s], i) => `${i ? "L" : "M"}${curveX(gap).toFixed(1)} ${curveY(s).toFixed(2)}`).join("");
+
+function scoreCurve() {
+  const points = Array.from({ length: MAX_POS / 2 + 1 }, (_, i) => 4 * i - MAX_POS).map((gap) => [gap, score(q, gap, k, 0)] as const);
+  const peak = Math.max(...points.map(([, s]) => Math.abs(s)));
+  const y = (s: number) => CURVE_H / 2 - (s / peak) * (CURVE_H / 2 - 8);
+  return { y, path: points.map(([gap, s], i) => `${i ? "L" : "M"}${curveX(gap).toFixed(1)} ${y(s).toFixed(2)}`).join("") };
+}
 
 const button = "pressable rounded border border-border px-2.5 py-1 text-text";
 const slider = "w-full accent-[var(--accent)]";
@@ -38,6 +39,7 @@ export function RopeSandbox() {
   const [qPos, setQPos] = useState(300);
   const [kPos, setKPos] = useState(280);
   const [lock, setLock] = useState("locked");
+  const [curve] = useState(scoreCurve);
   const [guess, setGuess] = useState<Guess>(null);
 
   const reduced = usePrefersReducedMotion();
@@ -285,9 +287,9 @@ export function RopeSandbox() {
           <svg viewBox={`0 0 ${CURVE_W} ${CURVE_H}`} className="w-full" role="img" aria-label={`The score as a function of the gap from -2048 to 2048; the current gap is ${gap} and the score ${now.toFixed(3)}`}>
             <line x1={0} y1={CURVE_H / 2} x2={CURVE_W} y2={CURVE_H / 2} className="stroke-border" />
             <line x1={curveX(0)} y1={0} x2={curveX(0)} y2={CURVE_H} className="stroke-border" strokeDasharray="3 3" />
-            <path d={curvePath} className="fill-none stroke-muted" strokeWidth={1} />
+            <path d={curve.path} className="fill-none stroke-muted" strokeWidth={1} />
             <line x1={curveX(gap)} y1={0} x2={curveX(gap)} y2={CURVE_H} className="stroke-accent" />
-            <circle cx={curveX(gap)} cy={curveY(now)} r={4} className="fill-accent" />
+            <circle cx={curveX(gap)} cy={curve.y(now)} r={4} className="fill-accent" />
             <text x={4} y={14} className="fill-muted text-[12px]">{`score for every gap, ${-MAX_POS} to ${MAX_POS} (same vectors)`}</text>
           </svg>
           <p className="text-muted">The dot depends on the gap alone. Drag both positions with the gap locked and it does not move; unlock the gap and move one position and it slides along the curve.</p>
