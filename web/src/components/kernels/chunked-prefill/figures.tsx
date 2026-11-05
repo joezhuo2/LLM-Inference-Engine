@@ -119,8 +119,8 @@ export function BudgetBarFigure({ budget, decoders }: { budget: number; decoders
 
 export function SpreadFigure({ steps, budget, prompt }: { steps: ChunkStep[]; budget: number; prompt: number }) {
   const { grow, on } = useLoop(10);
-  const unit = 3.1;
-  const base = 300;
+  const unit = 3.6;
+  const base = 320;
   const pitch = Math.min(64, 520 / steps.length);
   const w = pitch - 6;
   return (
@@ -141,10 +141,9 @@ export function SpreadFigure({ steps, budget, prompt }: { steps: ChunkStep[]; bu
           </g>
         );
       })}
-      <Label x={20} y={base + 16}>step</Label>
       <motion.g {...on(0.88, 0.97)}>
-        <Label x={20} y={346} className="fill-text">A, B and C get a row in every step</Label>
-        <Label x={20} y={366} className="fill-series-2">{`the prompt's first token comes at step ${steps.length}`}</Label>
+        <Label x={20} y={362} className="fill-text">A, B and C get a row in every step</Label>
+        <Label x={20} y={382} className="fill-series-2">{`the prompt's first token comes at step ${steps.length}`}</Label>
       </motion.g>
     </Frame>
   );
