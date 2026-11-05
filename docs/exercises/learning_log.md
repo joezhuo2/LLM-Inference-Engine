@@ -1806,3 +1806,8 @@
 - **a horizontal cut plane as a threshold in a binary search** => 
 - **routing a drag to one of several handles by the picked mesh** => 
 - **framing a close-up camera so foreground cards do not cover the model** => 
+
+## 3D book: split attention (Branch 107)
+- **exporting a story's data so another view can reuse it** => 
+- **instanced meshes for many identical blocks** => 
+- **mapping a drag position to the nearest of a few stops** => 
