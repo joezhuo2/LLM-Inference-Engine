@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-rope
+
+- Add `web/src/components/kernels/rope/rotation.ts`, a TypeScript model of the engine's RoPE: the 32 frequencies `10000^(-2i/64)` for TinyLlama's head dimension 64, pairs of dimension `i` with dimension `i + 32` (the `rotate_half` layout of `rope.cu` and `rope_fast.cu`), a rotation of a whole head by position, the q·k score, and a seeded illustrative vector. `web/scripts/rope-rotation.test.mjs` checks it against an independent `rotate_half` implementation and checks that the score depends only on the distance between the positions. (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)
