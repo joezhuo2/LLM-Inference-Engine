@@ -1728,3 +1728,4 @@
 - **keeping a design record in step with a theme change** => 
 - **undertone against highlight in a color system** => 
 - **tinting a shadow with the background hue instead of black** => 
+- **deepening a pastel for text while keeping it pale for fills** => 

@@ -6,9 +6,9 @@ Written 2026-10-25 from Joe's answers to the design questions. Built on Emil Kow
 
 | Topic | Decision |
 | --- | --- |
-| Personality | Restrained terminal: deep slate, monospace UI, one dusty blue accent, matrix rain only in the hero |
+| Personality | Restrained terminal: dark brown undertone, light blue and light pink highlights, matrix rain only in the hero |
 | Color modes | Dark default, light toggle (next-themes, no flash on load) |
-| Light mode | Paper printout: cream paper, slate ink, deeper blue accent |
+| Light mode | Paper printout: light brown paper, brown ink, deeper blue and pink highlights for contrast |
 | Typography | Mono for UI, headings, nav, numbers, labels, code (JetBrains Mono); sans for prose (Inter) |
 | Accent | Moodboard dusty blue (`#a9c3d9` dark, `#3f6583` light), used sparingly |
 | Charts | Engine series in the accent, baselines (HF, llama.cpp) gray and dashed, extra series from a colorblind-safe palette |
