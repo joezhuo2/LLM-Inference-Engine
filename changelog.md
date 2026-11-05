@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/palette
 
+- Part A: separate the dark theme request colors so beige, pink and blue pass the color vision checks.
 - Part A: replace the brown chart and request colors with blue, pink and beige families (the allocate-it-yourself blocks use these), and draw labels on those marks in dark ink where the mark is pale.
 - Part A: move labels, nav, tables, figures and inline numbers from JetBrains Mono to the sans stack with tabular numbers; code blocks and the token rain stay monospace.
 - Part A: set page titles, section headings and card titles in larger Instrument Serif, and scramble titles through lowercase letters so a proportional font does not jump in width.
