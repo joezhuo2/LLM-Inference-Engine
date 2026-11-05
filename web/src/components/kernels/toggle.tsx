@@ -18,8 +18,9 @@ export function Toggle({ label, choices, value, onChange }: { label: string; cho
       if (!button) return setClip(null);
       const g = el.getBoundingClientRect();
       const b = button.getBoundingClientRect();
-      const left = b.left - g.left - el.clientLeft;
-      setClip(`inset(0 ${el.clientWidth - left - b.width}px 0 ${left}px)`);
+      const scale = g.width / el.offsetWidth || 1;
+      const left = (b.left - g.left) / scale - el.clientLeft;
+      setClip(`inset(0 ${el.clientWidth - left - b.width / scale}px 0 ${left}px)`);
     };
     measure();
     const observer = new ResizeObserver(measure);

@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-add-rmsnorm
 
+- Part A: place the toggle's highlight in the group's own pixels, dividing by the CSS scale the book puts on its flat pages, so it sits exactly over the chosen option there (the token picker on the measured spread) as well as in the reading view.
 - Part A: shorten the shuffle footnote so it fits its card.
 
 - Part A: lay out the add + RMSNorm models for reading: positive illustrative bars standing on bases, larger label cards, the BF16 and float tags beside the rounding steps instead of over them, the phase legend laid flatter so the timeline shows behind it, shuffle wires on the floor in front of the value cards, and close-ups framed from higher up.

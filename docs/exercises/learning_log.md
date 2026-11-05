@@ -1793,3 +1793,4 @@
 - **scale invariance of RMSNorm** => 
 - **a signed bar chart hung above and below a floating rail** => 
 - **animating a bar height by scaling a unit box on one axis** => 
+- **getBoundingClientRect returns transformed sizes, offsetWidth does not** => 
