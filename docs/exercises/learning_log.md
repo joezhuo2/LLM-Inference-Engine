@@ -1764,3 +1764,4 @@
 - **passing events from an imperative scene to React with a DOM CustomEvent** => 
 - **a glass panel with backdrop-filter blur and a translucent fill** => 
 - **animating to an auto width by measuring the content and transitioning a fixed width** => 
+- **replaying an effect by changing a component key** => 

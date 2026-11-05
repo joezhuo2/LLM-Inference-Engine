@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-rope
 
+- Part A: unscramble the bottom bar's caption (0.9 s) and page count (0.7 s, digits only) with the site's `Scramble` whenever they change.
 - Part A: ease the bottom bar's width over 0.7 s (ease-in-out) when its contents change, measuring the contents with a ResizeObserver, instead of jumping to the new size.
 - Part A: make the book's bottom bar a centered, rounded glass pill floating over the desk, sized to its buttons, step caption and reading view link, instead of a full-width strip.
 - Part A: turn the book's pages by clicking them: the left page goes back and the right page goes forward, each only when there is a page to go to (a drag still orbits the camera, and the page shows a pointer only when it can turn).

@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Scramble } from "@/components/scramble";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookScene, OverlayRect, Rect, Stop } from "./book-scene";
 import { createRopeModel } from "./rope-model";
@@ -282,9 +283,11 @@ export function BookView() {
               <Icon d={playing ? "M5 3v10M11 3v10" : "M5 3l8 5-8 5z"} />
             </button>
             <span className="shrink-0 text-text">
-              {stop + 1} / {total}
+              <Scramble key={stop} text={`${stop + 1} / ${total}`} numeric durationMs={700} />
             </span>
-            <span className="min-w-0 max-w-[22rem] truncate">{caption}</span>
+            <span className="min-w-0 max-w-[22rem] truncate">
+                <Scramble key={caption} text={caption} durationMs={900} />
+              </span>
             <span className="flex shrink-0 items-center gap-0.5">
               {beats.length > 1 &&
                 beats.map((b, i) => (
