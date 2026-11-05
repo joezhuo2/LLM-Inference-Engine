@@ -75,7 +75,7 @@ const options = [
   { column: "16", label: "16 splits" },
 ];
 
-function SplitPicker() {
+export function SplitPicker() {
   const [rows, setRows] = useState("1");
   const [context, setContext] = useState("2,048");
   const times = options.map((o) => ({ ...o, us: measured(split, { rows, context }, o.column) }));
@@ -266,6 +266,11 @@ const captions = [
   "TPOT p50 of the first of two runs, RTX 5060 Laptop GPU, 64 output tokens",
   "µs per call from the bench loop; the engine never picks 16",
 ];
+
+export const splitSteps = steps;
+export const splitCaptions = captions;
+export const splitNumbers = { perSm, sms: 26, headDim, v2, waves, dram, smThroughput, dramCycles, l2Cycles, loopV2, loop8, graphBars, graphKeys, scratchBytes, replaySplits: attentionSplits(1, 1984) };
+export type SplitNumbers = typeof splitNumbers;
 
 export function SplitAttentionStory() {
   return (
