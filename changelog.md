@@ -9,6 +9,10 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add the "place an op on the roofline" sandbox section to the foundations page, after "how it works": pick one of eight ops of a TinyLlama decode step (QKV, o_proj, gate/up, down, attention, RMSNorm, SwiGLU, RoPE), drag the batch from 1 to 512 rows on a log scale (and the context for attention), and a ring moves on a log-log roofline under the measured 323.6 GB/s and 34.5 TFLOP/s ceilings with live FLOPs, bytes, FLOP per byte, ridge, bound and time at the ceiling (NumberFlow, eased memory and compute bars). Where `docs/results.md` measured the op (1 and 16 rows, attention at its measured context) a filled dot and the measured time, share of the roof, bandwidth and TFLOP/s sit next to the computed ones, labelled with GPU, commit and date. A "predict first" box takes a guess for where the op crosses the ridge (or that it never does) and then compares it with the model. Presets, reset and native sliders and buttons work from the keyboard; the dot moves with a 500 ms ease-in-out `transform` and only fades under reduced motion. (Part A)
 - Wire sandboxes into the kernel pages through an optional `sandbox` field of `KernelStory`, `KernelSandboxView` in `story-view.tsx` and a `sandbox` section after "how it works" in the kernel page. (Part A)
 
+## web/smooth-sliders
+
+- Add `SmoothRange`, a range input that glides like the build timeline scrubber: a click on the track eases the value to the new spot over 600 ms ease-in-out, emitting each step on the way, while a drag held past 250 ms and the keyboard follow at once; reduced motion jumps. Use it for the dashboard scrubber and the paged KV replay slider. (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)

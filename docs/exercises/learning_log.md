@@ -1584,6 +1584,10 @@
 - **kernel fusion and why it removes a round trip to global memory** => 
 - **kernel launch and the intermediate tensor written between two kernels** => 
 
+## Smooth Sliders (Branch 97)
+- **telling a click from a drag on a range input with pointer timing** => 
+- **tweening a value with motion animate and onUpdate** => 
+
 ## Roofline sandbox (Branch 91)
 - **ridge point of the roofline as peak FLOP/s over peak bytes/s** => 
 - **FLOPs and DRAM bytes of a matmul with weights read once and activations per row** => 
