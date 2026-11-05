@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Toggle } from "@/components/kernels/toggle";
+import { SmoothRange } from "@/components/smooth-range";
 import type { Feed } from "./feed";
 import type { ReplayPlayer } from "./replay-player";
 
@@ -59,9 +60,8 @@ export function Controls({ player, feed }: { player: ReplayPlayer | null; feed: 
         </button>
       </div>
       <Toggle label="speed" choices={speeds} value={`${player?.speed ?? 1}x`} onChange={(v) => player?.setSpeed(Number(v.replace("x", "")))} />
-      <input
+      <SmoothRange
         ref={range}
-        type="range"
         min={0}
         max={player?.total ?? 0}
         step={1}
@@ -74,7 +74,7 @@ export function Controls({ player, feed }: { player: ReplayPlayer | null; feed: 
         onPointerUp={() => {
           dragging.current = false;
         }}
-        onChange={(e) => player?.seekStep(Number(e.currentTarget.value))}
+        onValue={(v) => player?.seekStep(v)}
         className="min-w-40 flex-1 accent-[var(--accent)]"
       />
       <span ref={counter} className="shrink-0 tabular-nums text-muted" />
