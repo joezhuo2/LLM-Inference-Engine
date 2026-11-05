@@ -1548,6 +1548,26 @@
 - **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
 - **why a preempted sequence has to rewrite its KV from position 0** => 
 
+## Prefill vs. Decode Prologue (Branch 87)
+- **prefill: why all prompt positions can run through the model in one parallel pass** => 
+- **decode: why generation is sequential, one token per step** => 
+- **the KV cache: which tensors it stores and why attention can reuse them** => 
+- **memory-bound against compute-bound: what limits a decode step** => 
+- **decoding without a KV cache: why every token would redo the work of all earlier tokens** => 
+- **reserving the worst-case length per request: why it strands memory** => 
+- **fixed-size blocks drawn from one shared pool** => 
+
+## Continuous Batching Prologue (Branch 88)
+- **static batching: why a batch waits for its longest sequence** => 
+- **continuous batching (iteration-level scheduling): revisiting the batch every step** => 
+- **wasted slot-steps: idle batch slots as a cost of static batching** => 
+- **first come first served admission up to max_batch** => 
+- **preemption from the back of the running list when blocks run out** => 
+
+## Toggle Transitions (Branch 89)
+- **animating a highlight with clip-path inset instead of left and width** => 
+- **ResizeObserver: re-measuring an element when its size changes** => 
+
 ## Foundations (Branch 86)
 - **streaming multiprocessor (SM) and how many a GPU has** => 
 - **shared memory per SM** => 

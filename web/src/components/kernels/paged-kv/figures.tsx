@@ -1,10 +1,14 @@
 "use client";
 
+import NumberFlow from "@number-flow/react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { measured } from "@/content/kernels/types";
 import { kvReplay } from "@/lib/data";
+import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
+import { continuousBatching, type Grid, lengths, slots, staticBatching } from "./batching";
 
 const replay = kvReplay();
 const B = replay.meta.block_size;
@@ -374,5 +378,136 @@ export function ReuseFigure() {
         </Label>
       </motion.g>
     </Frame>
+  );
+}
+
+const staticGrid = staticBatching();
+export const roomyGrid = continuousBatching(100);
+export const tightBlocks = 8;
+export const tightGrid = continuousBatching(tightBlocks);
+export const batchGrids = { static: staticGrid, roomy: roomyGrid, tight: tightGrid };
+
+const gx = 28;
+const gw = 540 - gx;
+const cellW = gw / staticGrid.steps;
+const rowH = 30;
+const rowPitch = 34;
+const gridTop = 52;
+const chipW = 520 / lengths.length;
+const columnMs = 600;
+const holdColumns = 5;
+const chipTint = ["fill-accent", "fill-accent/55", "fill-baseline"];
+
+function useColumns(total: number) {
+  const reduced = usePrefersReducedMotion();
+  const [col, setCol] = useState(0);
+  useEffect(() => {
+    if (reduced) return;
+    const timer = setInterval(() => setCol((c) => (c >= total + holdColumns ? 0 : c + 1)), columnMs);
+    return () => clearInterval(timer);
+  }, [reduced, total]);
+  return { col: reduced ? total : Math.min(col, total), reduced };
+}
+
+function idleBefore(g: Grid, col: number) {
+  let n = 0;
+  for (let s = 0; s < g.slots; s++) for (let t = 0; t < col; t++) if (g.cells[s][t] === null || g.redo[s][t]) n++;
+  return n;
+}
+
+export type BatchKind = "static" | "roomy" | "tight";
+
+export function BatchingFigure({ kind, focus = false }: { kind: BatchKind; focus?: boolean }) {
+  const g = batchGrids[kind];
+  const { col: raw, reduced } = useColumns(g.steps + holdColumns);
+  const col = Math.min(raw, g.steps);
+  const ease = { duration: reduced ? 0 : 0.5, ease: "easeInOut" as const };
+  const waiting = new Set(col === 0 ? lengths.map((_, id) => id) : g.waiting[col - 1]);
+  const evictions = g.evictions.slice(0, col).reduce((n, e) => n + e, 0);
+  const wasted = idleBefore(g, col);
+  const stats =
+    kind === "static"
+      ? [
+          { label: "steps so far", value: col, cls: "text-text" },
+          { label: "slots in use", value: col ? g.running[col - 1] : 0, cls: "text-text" },
+          { label: "wasted slot-steps", value: wasted, cls: "text-warn" },
+          { label: "steps to finish", value: g.steps, cls: "text-muted" },
+        ]
+      : [
+          { label: "requests running", value: col ? g.running[col - 1] : 0, cls: focus ? "text-accent" : "text-text" },
+          { label: "preemptions", value: evictions, cls: focus ? "text-accent" : "text-warn" },
+          { label: "wasted slot-steps", value: wasted, cls: "text-warn" },
+          { label: "static batching wasted", value: staticGrid.wasted, cls: "text-muted" },
+        ];
+  const height = gridTop + slots * rowPitch + 18;
+  return (
+    <div className="flex h-full flex-col gap-2 font-mono text-xs">
+      <svg
+        viewBox={`0 0 560 ${height}`}
+        className="w-full [font-variant-ligatures:none]"
+        role="img"
+        aria-label={`${kind === "static" ? "Static batching" : "Continuous batching"} of ${lengths.length} requests in ${slots} slots: ${g.steps} steps, ${g.wasted} wasted slot-steps${kind === "tight" ? `, ${g.evictions.reduce((n, e) => n + e, 0)} preemptions` : ""}`}
+      >
+        <Label x={20} y={12}>{`queue, request:steps (illustrative lengths)`}</Label>
+        {lengths.map((len, id) => (
+          <motion.g key={id} initial={false} animate={{ opacity: waiting.has(id) ? 1 : 0.2 }} transition={ease}>
+            <rect x={20 + id * chipW} y={20} width={chipW - 3} height={18} rx={2} className={chipTint[id % 3]} />
+            <text x={20 + id * chipW + (chipW - 3) / 2} y={33} textAnchor="middle" className="fill-bg text-[10px]">{`${id}:${len}`}</text>
+          </motion.g>
+        ))}
+        {Array.from({ length: slots }, (_, s) => (
+          <g key={s}>
+            <Label x={8} y={gridTop + s * rowPitch + 19} anchor="middle">{s + 1}</Label>
+            {Array.from({ length: staticGrid.steps }, (_, t) => {
+              const id = g.cells[s]?.[t] ?? null;
+              const redo = g.redo[s]?.[t] ?? false;
+              const gone = t < g.steps && g.preempted[s].includes(t);
+              const shown = t < col;
+              const x = gx + t * cellW;
+              const y = gridTop + s * rowPitch;
+              const idle = id === null || redo;
+              return (
+                <g key={t}>
+                  <rect x={x} y={y} width={cellW - 2} height={rowH} rx={2} className="fill-bg stroke-border" strokeWidth={0.5} />
+                  {t < g.steps && (
+                    <motion.g
+                      style={{ transformBox: "fill-box", transformOrigin: "center" }}
+                      initial={false}
+                      animate={{ opacity: shown ? 1 : 0, transform: shown ? "scale(1)" : "scale(0.6)" }}
+                      transition={ease}
+                    >
+                      {idle && !redo && <rect x={x} y={y} width={cellW - 2} height={rowH} rx={2} className="fill-warn/10 stroke-warn/50" strokeDasharray="3 2" strokeWidth={0.75} />}
+                      {redo && <rect x={x} y={y} width={cellW - 2} height={rowH} rx={2} className="fill-warn/45" />}
+                      {id !== null && !redo && <rect x={x} y={y} width={cellW - 2} height={rowH} rx={2} className={chipTint[id % 3]} />}
+                      {id !== null && (
+                        <text x={x + (cellW - 2) / 2} y={y + 19} textAnchor="middle" className={`${redo ? "fill-text" : "fill-bg"} text-[10px]`}>
+                          {id}
+                        </text>
+                      )}
+                      {gone && (
+                        <text x={x + (cellW - 2) / 2} y={y + 20} textAnchor="middle" className="fill-warn text-[13px]">
+                          ×
+                        </text>
+                      )}
+                    </motion.g>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        ))}
+        <Label x={gx} y={height - 4}>{`step 1 to ${staticGrid.steps}, one column per step`}</Label>
+      </svg>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-2 tabular-nums sm:grid-cols-4">
+        {stats.map((r) => (
+          <div key={r.label}>
+            <div className="text-muted">{r.label}</div>
+            <div className={r.cls}>
+              <NumberFlow value={r.value} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

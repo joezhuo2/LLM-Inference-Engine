@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { KernelTimeline } from "@/components/kernels/kernel-timeline";
 import { StoryNav } from "@/components/kernels/story-nav";
-import { KernelLeadView, KernelStoryView } from "@/components/kernels/story-view";
+import { KernelLeadView, KernelPrologueView, KernelStoryView } from "@/components/kernels/story-view";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
 import { Scramble } from "@/components/scramble";
@@ -72,6 +72,13 @@ export default async function KernelPage({ params }: { params: Promise<{ slug: s
             </div>
           </div>
         </header>
+
+        {story.prologue && (
+          <Section id="batching" title={story.prologue.title}>
+            <p className="max-w-2xl text-muted">{story.prologue.intro}</p>
+            <KernelPrologueView slug={story.slug} />
+          </Section>
+        )}
 
         {story.lead && (
           <Section id="lead" title={story.lead.title}>

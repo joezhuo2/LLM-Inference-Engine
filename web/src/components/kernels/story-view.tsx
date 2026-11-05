@@ -1,12 +1,13 @@
 "use client";
 
 import { AddRmsnormStory } from "./add-rmsnorm/story";
+import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
 import { FoundationsStory } from "./foundations/story";
-import { PagedKvStory } from "./paged-kv/story";
+import { BatchingStory, PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
 import { RopeStory } from "./rope/story";
 import { SamplingStory } from "./sampling/story";
@@ -44,8 +45,19 @@ export function KernelStoryView({ slug }: { slug: string }) {
 
 export function KernelLeadView({ slug }: { slug: string }) {
   switch (slug) {
+    case "paged-attention":
+      return <PrologueStory />;
     case "paged-kv":
       return <KvVisualizer />;
+    default:
+      return null;
+  }
+}
+
+export function KernelPrologueView({ slug }: { slug: string }) {
+  switch (slug) {
+    case "paged-kv":
+      return <BatchingStory />;
     default:
       return null;
   }
