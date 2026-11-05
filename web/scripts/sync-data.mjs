@@ -79,6 +79,21 @@ function readEnvironment() {
   return env;
 }
 
+function parseHardware(text) {
+  const number = (pattern) => {
+    const match = pattern.exec(text);
+    return match ? Number(match[1]) : undefined;
+  };
+  return {
+    gpu: text.split("\n")[0].trim(),
+    compute_capability: number(/compute capability: ([\d.]+)/),
+    sms: number(/SMs: (\d+)/),
+    vram_gb: number(/VRAM: ([\d.]+) GB/),
+    l2_kb: number(/L2: (\d+) KB/),
+    shared_kb_per_sm: number(/shared mem per SM: (\d+) KB/),
+  };
+}
+
 function git(...args) {
   return execFileSync("git", args, { cwd: web, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
@@ -126,6 +141,8 @@ const resultsPath = resolve(web, "../docs/results.md");
 const resultsText = existsSync(resultsPath) ? readFileSync(resultsPath, "utf8") : "";
 const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsText);
 const resultsDoc = { sections: parseProfiling(resultsText), ceilings: ceilings ? { gbs: Number(ceilings[1]), tflops: Number(ceilings[2]) } : null };
+const hardwarePath = resolve(web, "../docs/hardware.md");
+const hardware = existsSync(hardwarePath) ? parseHardware(readFileSync(hardwarePath, "utf8")) : {};
 const decodeSteps = {};
 for (const [key, name] of [["b1", "decode_step.md"], ["b16", "decode_step_b16.md"], ["graphs", "decode_step_graphs.md"]]) {
   const path = join(results, name);
@@ -147,6 +164,7 @@ writeFileSync(join(dataDir, "environment.json"), JSON.stringify(environment));
 writeFileSync(join(dataDir, "traces.json"), JSON.stringify(traces));
 writeFileSync(join(dataDir, "profiling.json"), JSON.stringify(profiling));
 writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
+writeFileSync(join(dataDir, "hardware.json"), JSON.stringify(hardware));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
 writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
 writeFileSync(join(dataDir, "kv_replay.json"), JSON.stringify(kvReplay));

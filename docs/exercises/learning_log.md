@@ -1567,3 +1567,19 @@
 ## Toggle Transitions (Branch 89)
 - **animating a highlight with clip-path inset instead of left and width** => 
 - **ResizeObserver: re-measuring an element when its size changes** => 
+
+## Foundations (Branch 86)
+- **streaming multiprocessor (SM) and how many a GPU has** => 
+- **shared memory per SM** => 
+- **L2 cache** => 
+- **grid, block, warp and thread, and which runs on which hardware** => 
+- **warp divergence** => 
+- **global memory, L2, shared memory and registers: size and speed order** => 
+- **GDDR against HBM** => 
+- **compute bound against memory bound** => 
+- **FLOPs per byte (arithmetic intensity)** => 
+- **the roofline model, slope, flat top and ridge** => 
+- **matrix-vector product (GEMV) against matrix product (GEMM)** => 
+- **prefill against decode** => 
+- **kernel fusion and why it removes a round trip to global memory** => 
+- **kernel launch and the intermediate tensor written between two kernels** => 
