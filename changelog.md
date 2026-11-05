@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/palette
 
+- Part A: color the step timeline bars from chart tokens and draw their labels with theme tokens instead of pure white and black.
 - Part A: replace the green terminal theme tokens with the moodboard palette: cream paper and slate ink in light mode, deep slate and cream in dark mode, dusty blue accent, clay warning, and validated chart and request colors in the same hue families.
 
 ## bench/chunked-prefill

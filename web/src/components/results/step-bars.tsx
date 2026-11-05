@@ -17,7 +17,7 @@ const rowY = [36, 112];
 const axisY = rowY[1] + barH + 22;
 
 const groupFill: Record<Segment["group"], string> = {
-  gemm: "fill-accent",
+  gemm: "fill-series-1",
   attention: "fill-series-2",
   other: "fill-series-3",
   idle: "fill-baseline",
@@ -25,11 +25,11 @@ const groupFill: Record<Segment["group"], string> = {
 };
 
 const labelFill: Record<Segment["group"], string> = {
-  gemm: "fill-bg",
-  attention: "fill-white",
-  other: "fill-white",
-  idle: "fill-black dark:fill-white",
-  graph: "fill-white dark:fill-black",
+  gemm: "fill-on-mark",
+  attention: "fill-on-mark",
+  other: "fill-on-mark",
+  idle: "fill-text",
+  graph: "fill-bg",
 };
 
 export const groupLegend: { group: Segment["group"]; label: string }[] = [
