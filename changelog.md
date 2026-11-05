@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/smooth-sliders
+
+- Add `SmoothRange`, a range input that glides like the build timeline scrubber: a click on the track eases the value to the new spot over 600 ms ease-in-out, emitting each step on the way, while a drag held past 250 ms and the keyboard follow at once; reduced motion jumps. Use it for the dashboard scrubber and the paged KV replay slider. (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)
