@@ -17,7 +17,7 @@ const rowY = [36, 112];
 const axisY = rowY[1] + barH + 22;
 
 const groupFill: Record<Segment["group"], string> = {
-  gemm: "fill-accent",
+  gemm: "fill-series-1",
   attention: "fill-series-2",
   other: "fill-series-3",
   idle: "fill-baseline",
@@ -25,11 +25,11 @@ const groupFill: Record<Segment["group"], string> = {
 };
 
 const labelFill: Record<Segment["group"], string> = {
-  gemm: "fill-bg",
-  attention: "fill-white",
-  other: "fill-white",
-  idle: "fill-black dark:fill-white",
-  graph: "fill-white dark:fill-black",
+  gemm: "fill-on-mark dark:fill-bg",
+  attention: "fill-text dark:fill-bg",
+  other: "fill-text dark:fill-bg",
+  idle: "fill-text",
+  graph: "fill-bg",
 };
 
 export const groupLegend: { group: Segment["group"]; label: string }[] = [
@@ -88,7 +88,7 @@ export function StepBars({ rows }: { rows: StepRow[] }) {
       <svg
         key={W}
         viewBox={`0 0 ${W} ${H}`}
-        className="h-full w-full font-mono [font-variant-ligatures:none]"
+        className="h-full w-full tabular-nums"
         role="img"
         aria-label={`GPU time of one decode step by op: ${rows.map((r) => r.label).join(" and ")}. Focus and use the arrow keys to read each segment.`}
         tabIndex={0}

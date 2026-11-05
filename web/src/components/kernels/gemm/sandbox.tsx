@@ -117,7 +117,7 @@ export function TilingSandbox() {
   const accumClip = `inset(${((1 - p) * 100).toFixed(2)}% 0 0 0)`;
 
   return (
-    <div className="space-y-6 font-mono text-xs">
+    <div className="space-y-6 tabular-nums text-xs">
       <div className="space-y-2 rounded border border-border p-3">
         <div className="text-text">predict first: at 1 row (M = 1), does a bigger output tile cut the bytes read from DRAM?</div>
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="your prediction">

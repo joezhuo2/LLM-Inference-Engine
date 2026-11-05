@@ -16,7 +16,7 @@ export default function Overview() {
       <div className="mx-auto w-full max-w-5xl space-y-24 px-4 py-20 sm:px-6">
         <section id="built" aria-labelledby="built-heading" className="scroll-mt-16 space-y-16">
           <div className="space-y-3">
-            <h2 id="built-heading" className="font-mono text-2xl sm:text-3xl">
+            <h2 id="built-heading" className="font-serif text-4xl leading-tight sm:text-5xl">
               <Scramble text="built from scratch" trigger="view" durationMs={1000} />
             </h2>
             <p className="max-w-2xl text-muted">
@@ -30,14 +30,14 @@ export default function Overview() {
           {cards.map((card) =>
             card.href ? (
               <Link key={card.title} href={card.href} className="pressable hover-grow block rounded border border-border bg-surface p-4">
-                <div className="font-mono text-sm text-accent">{card.title}</div>
+                <div className="font-serif text-xl text-accent">{card.title}</div>
                 <p className="mt-2 text-sm text-muted">{card.text}</p>
               </Link>
             ) : (
               <div key={card.title} className="block rounded border border-border bg-surface p-4">
-                <div className="font-mono text-sm text-muted">{card.title}</div>
+                <div className="font-serif text-xl text-muted">{card.title}</div>
                 <p className="mt-2 text-sm text-muted">{card.text}</p>
-                <div className="mt-3 font-mono text-xs text-muted">coming soon</div>
+                <div className="mt-3 tabular-nums text-xs text-muted">coming soon</div>
               </div>
             ),
           )}

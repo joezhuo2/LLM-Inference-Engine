@@ -84,7 +84,7 @@ function SplitPicker() {
   const picked = attentionSplits(Number(rows), Number(context.replace(",", "")));
   const pickedColumn = picked === 1 ? "v2" : String(picked);
   return (
-    <div className="flex h-full flex-col gap-3 font-mono text-xs">
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         <Toggle label="rows" choices={rowsChoices} value={rows} onChange={setRows} />
         <Toggle label="context" choices={contextChoices} value={context} onChange={setContext} />
@@ -134,7 +134,7 @@ const steps: StoryStep[] = [
           slots.
         </p>
         <p>
-          {v2.blocks} of {perSm * 26} is <span className="font-mono text-text">{v2.waves}</span> of a wave. Every block
+          {v2.blocks} of {perSm * 26} is <span className="text-text">{v2.waves}</span> of a wave. Every block
           walks its head&apos;s whole context alone, and most of the GPU has nothing to do.
         </p>
       </>
@@ -147,12 +147,12 @@ const steps: StoryStep[] = [
       <>
         <p>
           A long context sounds like a lot of memory to read, but Nsight Compute shows DRAM at{" "}
-          <span className="font-mono text-text">{dram}%</span> of its peak. The kernel is not short of bandwidth.
+          <span className="text-text">{dram}%</span> of its peak. The kernel is not short of bandwidth.
         </p>
         <p>
           It is short of warps. A load that has to go to DRAM waits about{" "}
-          <span className="font-mono text-text">{dramCycles} cycles</span> on this GPU ({l2Cycles} when it hits L2, both
-          measured with a pointer chase), and a GPU hides that wait by running other warps in the meantime. With <span className="font-mono text-text">{v2.warps}%</span> of warp slots filled, there are
+          <span className="text-text">{dramCycles} cycles</span> on this GPU ({l2Cycles} when it hits L2, both
+          measured with a pointer chase), and a GPU hides that wait by running other warps in the meantime. With <span className="text-text">{v2.warps}%</span> of warp slots filled, there are
           too few to switch to.
         </p>
       </>
@@ -215,8 +215,8 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Splits finish in whatever order the GPU runs them, but the merge always adds them the same way, so the same
-          input gives the same bits on every run. One row at 2,048 tokens: <span className="font-mono text-text">{loopV2}</span>{" "}
-          to <span className="font-mono text-accent">{loop8} µs</span> per call, merge included.
+          input gives the same bits on every run. One row at 2,048 tokens: <span className="text-text">{loopV2}</span>{" "}
+          to <span className="text-accent">{loop8} µs</span> per call, merge included.
         </p>
       </>
     ),
@@ -233,7 +233,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The fix captures one graph per batch size and split count, {graphKeys.reduce((a, k) => a + k.splits.length, 0)}{" "}
-          instead of 5, and replays the one that matches the batch: <span className="font-mono text-accent">{graphBars[3].ms} ms</span>.
+          instead of 5, and replays the one that matches the batch: <span className="text-accent">{graphBars[3].ms} ms</span>.
         </p>
       </>
     ),

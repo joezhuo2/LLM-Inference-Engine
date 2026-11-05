@@ -33,7 +33,7 @@ export default function Results() {
         </header>
         <ResultsStory />
         <section aria-labelledby="runs" className="space-y-4">
-          <h2 id="runs" className="font-mono text-xl text-text">
+          <h2 id="runs" className="font-serif text-3xl text-text">
             every run
           </h2>
           <p className="max-w-2xl text-muted">
@@ -41,12 +41,12 @@ export default function Results() {
             Workload: {String(environment.workload ?? "unknown")}.
           </p>
           {batches.length === 0 ? (
-            <p className="rounded border border-border bg-surface p-4 font-mono text-sm text-muted">
+            <p className="rounded border border-border bg-surface p-4 tabular-nums text-sm text-muted">
               No benchmark runs in results/ yet: run scripts/reproduce.sh and rebuild.
             </p>
           ) : (
             <div className="overflow-x-auto rounded border border-border">
-              <table className="w-full min-w-[36rem] font-mono text-sm tabular-nums">
+              <table className="w-full min-w-[36rem] tabular-nums text-sm">
                 <thead className="bg-surface text-left text-muted">
                   <tr>
                     <th className="px-3 py-2 font-normal">system</th>
@@ -79,7 +79,7 @@ export default function Results() {
           )}
         </section>
         <section aria-labelledby="reproduce" className="space-y-4">
-          <h2 id="reproduce" className="font-mono text-xl text-text">
+          <h2 id="reproduce" className="font-serif text-3xl text-text">
             reproduce
           </h2>
           <p className="max-w-2xl text-muted">

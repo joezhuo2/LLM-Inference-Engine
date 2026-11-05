@@ -143,14 +143,14 @@ function prism(ctx: CanvasRenderingContext2D, g: Geo, id: number, z0: number, z1
   poly(ctx, [lo.L, lo.Bt, hi.Bt, hi.L]);
   ctx.fill();
   if (shade) {
-    ctx.fillStyle = "rgb(0 0 0 / 0.22)";
+    ctx.fillStyle = "rgb(25 24 19 / 0.22)";
     ctx.fill();
   }
   ctx.fillStyle = fill;
   poly(ctx, [lo.Bt, lo.R, hi.R, hi.Bt]);
   ctx.fill();
   if (shade) {
-    ctx.fillStyle = "rgb(0 0 0 / 0.38)";
+    ctx.fillStyle = "rgb(25 24 19 / 0.38)";
     ctx.fill();
   }
   ctx.fillStyle = fill;
@@ -204,7 +204,7 @@ function drawPool(ctx: CanvasRenderingContext2D, g: Geo, shown: Shown[], hovered
     if (s.ghost > 0.5 && g.tw >= 44) {
       const top = corners(g, id, s.h);
       ctx.globalAlpha = dim;
-      ctx.fillStyle = s.h > 0.05 ? c.bg : c.muted;
+      ctx.fillStyle = s.h > 0.05 ? "#1f1e19" : c.muted;
       ctx.textAlign = "center";
       ctx.fillText(`#${s.seq}`, top.T[0], (top.T[1] + top.Bt[1]) / 2);
       ctx.globalAlpha = 1;
@@ -385,7 +385,7 @@ export function KvVisualizer() {
   const tipW = Math.min(288, g.width - 16);
 
   return (
-    <div className="grid gap-6 font-mono text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
+    <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted">add a request</span>

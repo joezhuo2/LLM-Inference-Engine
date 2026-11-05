@@ -154,7 +154,7 @@ export function SamplingSandbox() {
   ];
 
   return (
-    <div className="grid gap-6 font-mono text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
+    <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="space-y-4">
         <div className="space-y-2">
           <Toggle label="prompt" choices={names} value={ctx} onChange={pickContext} />

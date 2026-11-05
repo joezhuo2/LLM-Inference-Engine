@@ -2,6 +2,28 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/palette
+
+- Part A: scramble each word in its own reserved box and swap letters only for ones of similar width, so words stay on their line and never vanish while titles resolve.
+- Part A: reserve the final text size under the scramble effect so proportional titles no longer rewrap or shift the layout while they resolve.
+- Part A: set Open Graph card titles in Instrument Serif and record the new type choices in the web plan.
+- Part A: separate the dark theme request colors so beige, pink and blue pass the color vision checks.
+- Part A: replace the brown chart and request colors with blue, pink and beige families (the allocate-it-yourself blocks use these), and draw labels on those marks in dark ink where the mark is pale.
+- Part A: move labels, nav, tables, figures and inline numbers from JetBrains Mono to the sans stack with tabular numbers; code blocks and the token rain stay monospace.
+- Part A: set page titles, section headings and card titles in larger Instrument Serif, and scramble titles through lowercase letters so a proportional font does not jump in width.
+- Part A: load Instrument Serif as a heading font and put Segoe UI first in the sans stack, with Inter as the fallback on systems without it.
+- Part A: carry the beige undertone into the Open Graph cards, favicon, KV block shading, kernel card shadow and the web plan.
+- Part A: replace the light brown undertone with the moodboard beige (#e7e2d6) as the light background and dark text, with beige-tinted neutrals for surfaces, borders and muted ink.
+- Part A: name the pink highlight in the hero copy and record the undertone and highlights in the web plan.
+- Part A: carry the brown undertone into the Open Graph cards, favicon, KV block shading and kernel card shadow.
+- Part A: make light brown the undertone of both themes (background, surfaces, borders, ink) and use light blue and light pink as the highlights (accent and warning tokens, text selection); chart colors re-validated against the new surfaces.
+- Part A: record the moodboard palette in the web plan.
+- Part A: rename the colors the copy points at (green to blue, amber to clay) to match the new palette.
+- Part A: redraw the Open Graph cards and favicon in the slate and pale blue of the dark theme.
+- Part A: read the token rain and glitch highlights from the on-mark token, and tint the KV block faces and kernel card shadow with the slate of the dark background instead of black.
+- Part A: color the step timeline bars from chart tokens and draw their labels with theme tokens instead of pure white and black.
+- Part A: replace the green terminal theme tokens with the moodboard palette: cream paper and slate ink in light mode, deep slate and cream in dark mode, dusty blue accent, clay warning, and validated chart and request colors in the same hue families.
+
 ## bench/chunked-prefill
 
 - Replace the "not measured" and "nothing calls it yet" copy of the chunked prefill story, its timeline and the home build timeline M6 entry with the measured effect: the headline is the longest gap between two tokens when a long prompt arrives, without and with a budget of 256 (stall probe); the story's stall and spread steps and the sandbox's "for scale" note quote the sweep and the probe; the sources and tests list the wiring; the timeline gains the wiring (#149) and measurement entries; the M6 entry links #149, quotes goodput at 6 QPS against vLLM and shows the longest gap at 4 QPS as bars. Every number is read from `docs/results.md` at build time. (Part A)

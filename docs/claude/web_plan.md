@@ -6,11 +6,11 @@ Written 2026-10-25 from Joe's answers to the design questions. Built on Emil Kow
 
 | Topic | Decision |
 | --- | --- |
-| Personality | Restrained terminal: near-black, monospace UI, one green accent, matrix rain only in the hero |
+| Personality | Restrained terminal: dark beige undertone, light blue and light pink highlights, matrix rain only in the hero |
 | Color modes | Dark default, light toggle (next-themes, no flash on load) |
-| Light mode | Paper printout: off-white paper, near-black ink, darker green accent |
-| Typography | Mono for UI, headings, nav, numbers, labels, code (JetBrains Mono); sans for prose (Inter) |
-| Accent | Muted phosphor green (around `#4ade80` dark, around `#15803d` light), used sparingly |
+| Light mode | Paper printout: beige paper, dark beige ink, deeper blue and pink highlights for contrast |
+| Typography | Instrument Serif for headings; Segoe UI first for UI and prose, Inter as the fallback; JetBrains Mono only for code and the token rain |
+| Accent | Moodboard dusty blue (`#a9c3d9` dark, `#3f6583` light), used sparingly |
 | Charts | Engine series in the accent, baselines (HF, llama.cpp) gray and dashed, extra series from a colorblind-safe palette |
 | Hero | Token rain from a recorded trace: one column per sequence in the batch, glyphs are the decoded tokens it generated |
 | Structure | Top bar: `/`, `/results`, `/kernels` (index plus one page per story), `/dashboard` |

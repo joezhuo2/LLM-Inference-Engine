@@ -49,7 +49,7 @@ function ReplayPicker() {
   const e = tpot("engine", batch);
   const g = tpot("engine + graphs", batch);
   return (
-    <div className="flex h-full flex-col gap-2 font-mono text-xs">
+    <div className="flex h-full flex-col gap-2 tabular-nums text-xs">
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         <Toggle label="step" choices={["eager", "graph"]} value={mode} onChange={setMode} />
         <Toggle label="batch" choices={["1", "4", "16"]} value={batch} onChange={setBatch} />
@@ -147,14 +147,14 @@ const steps: StoryStep[] = [
         <p>
           A decode step of TinyLlama is {eager.kernels} kernels: ten per layer for 22 layers, plus the embedding, the last
           norm and the LM head. Run eagerly, the CPU hands each one to the GPU with its own cudaLaunchKernel, which takes{" "}
-          <span className="font-mono text-text">{`${fmt(trace.eager.launches.cudaLaunchKernel.median_us)} µs`}</span> on the
+          <span className="text-text">{`${fmt(trace.eager.launches.cudaLaunchKernel.median_us)} µs`}</span> on the
           CPU under the profiler. The launches queue up on a stream and the GPU runs them in order.
         </p>
         <p>
           The CPU keeps up easily: in the middle of a step it is{" "}
-          <span className="font-mono text-text">{`${fmt(trace.eager.cpu_ahead_us / 1000, 1)} ms`}</span> ahead, launching
+          <span className="text-text">{`${fmt(trace.eager.cpu_ahead_us / 1000, 1)} ms`}</span> ahead, launching
           kernels {layersAhead} layers further on. And still the GPU is idle for{" "}
-          <span className="font-mono text-warn">{`${eager.idle_pct}%`}</span> of the step.
+          <span className="text-warn">{`${eager.idle_pct}%`}</span> of the step.
         </p>
       </>
     ),
@@ -168,12 +168,12 @@ const steps: StoryStep[] = [
           Zoomed in, the idle time is a few microseconds before every kernel. Between two kernels launched one by one on a
           stream, the GPU lets the first finish completely, then takes the next launch from the queue and sets up its grid
           before its first block runs. The median gap is{" "}
-          <span className="font-mono text-warn">{`${trace.eager.gap_us.p50} µs`}</span>, whatever the CPU is doing.
+          <span className="text-warn">{`${trace.eager.gap_us.p50} µs`}</span>, whatever the CPU is doing.
         </p>
         <p>
           A few microseconds is nothing next to a 140 µs gate/up GEMV, but a step has {eager.kernels - 1} of these
           boundaries, and {shortKernels} of every ten kernels run for under 3 µs. Together they come to{" "}
-          <span className="font-mono text-warn">{`${fmt(eager.span_us - eager.busy_us)} µs`}</span> per step. Faster kernels
+          <span className="text-warn">{`${fmt(eager.span_us - eager.busy_us)} µs`}</span> per step. Faster kernels
           would not touch it; fewer launches would.
         </p>
       </>
@@ -231,8 +231,8 @@ const steps: StoryStep[] = [
           Now the constructor walks the contexts up to 2,048 tokens and captures again whenever a bucket&apos;s split count
           changes: 11 graphs instead of 5. A replay picks its graph from the batch&apos;s longest context, and at a
           1,984-token prompt the time per token goes from{" "}
-          <span className="font-mono text-text">{`${longRun.before.toFixed(1)}`}</span> to{" "}
-          <span className="font-mono text-accent">{`${longRun.after.toFixed(1)} ms`}</span>.
+          <span className="text-text">{`${longRun.before.toFixed(1)}`}</span> to{" "}
+          <span className="text-accent">{`${longRun.after.toFixed(1)} ms`}</span>.
         </p>
       </>
     ),
@@ -244,13 +244,13 @@ const steps: StoryStep[] = [
       <>
         <p>
           Switch the step on the right: the same ten kernels, from the two profiles, close up. The median gap drops from{" "}
-          {trace.eager.gap_us.p50} to <span className="font-mono text-accent">{`${trace.graphs.gap_us.p50} µs`}</span>,
+          {trace.eager.gap_us.p50} to <span className="text-accent">{`${trace.graphs.gap_us.p50} µs`}</span>,
           and the GPU is idle for {replay.idle_pct}% of the step instead of {eager.idle_pct}%. The kernels themselves take
           the same time.
         </p>
         <p>
           Without the profiler the saving is{" "}
-          <span className="font-mono text-accent">{`${saved.map((s) => s.toFixed(2)).join(", ")} ms`}</span> per token at
+          <span className="text-accent">{`${saved.map((s) => s.toFixed(2)).join(", ")} ms`}</span> per token at
           batch 1, 4 and 16: roughly a fixed amount per step, since every step has the same {eager.kernels} boundaries. It
           is {savedShare}% of a batch-1 token and less of a longer batch-16 step. Prefill steps are not graphed.
         </p>

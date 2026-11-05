@@ -66,7 +66,7 @@ function RooflinePicker() {
   const att = points[5];
   const whole = points[6];
   return (
-    <div className="flex h-full flex-col gap-2 font-mono text-xs">
+    <div className="flex h-full flex-col gap-2 tabular-nums text-xs">
       <Toggle label="rows" choices={["1", "16"]} value={rows} onChange={setRows} />
       <svg viewBox={`0 0 ${W} ${H}`} className="min-h-0 w-full flex-1" role="img" aria-label={`Roofline at ${rows} rows: the five projections, attention and the whole decode step against the measured bandwidth and compute ceilings`}>
         {[0.01, 0.1, 1, 10, 100].map((v) => (
@@ -179,8 +179,8 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Every token reads all{" "}
-          <span className="font-mono text-text">{`${(weightBytes / 1e9).toFixed(2)} GB`}</span>, which sets a floor of{" "}
-          <span className="font-mono text-text">{`${(weightBytes / (peak.gbs * 1e6)).toFixed(2)} ms`}</span> per token on
+          <span className="text-text">{`${(weightBytes / 1e9).toFixed(2)} GB`}</span>, which sets a floor of{" "}
+          <span className="text-text">{`${(weightBytes / (peak.gbs * 1e6)).toFixed(2)} ms`}</span> per token on
           this GPU. cuBLAS sees the single row and runs a dedicated gemv kernel instead of a GEMM.
         </p>
       </>
@@ -193,13 +193,13 @@ const steps: StoryStep[] = [
       <>
         <p>
           Dividing the bytes each projection reads by its time in the profile gives its bandwidth. All five reach{" "}
-          <span className="font-mono text-accent">{`${Math.min(...roofRows.slice(0, 5).map((r) => r.pct))} to ${Math.max(...roofRows.slice(0, 5).map((r) => r.pct))}%`}</span>{" "}
+          <span className="text-accent">{`${Math.min(...roofRows.slice(0, 5).map((r) => r.pct))} to ${Math.max(...roofRows.slice(0, 5).map((r) => r.pct))}%`}</span>{" "}
           of the {peak.gbs} GB/s a plain copy kernel measures on this GPU. A hand-written GEMV could not do better: it has to
           read the same bytes through the same memory.
         </p>
         <p>
           That is why the engine&apos;s own kernels went elsewhere. The projections are{" "}
-          <span className="font-mono text-text">{`${share.toFixed(1)}%`}</span> of a decode step&apos;s GPU time and already
+          <span className="text-text">{`${share.toFixed(1)}%`}</span> of a decode step&apos;s GPU time and already
           at the roof; the gains were in the launch gaps (CUDA Graphs) and in attention.
         </p>
       </>
@@ -214,8 +214,8 @@ const steps: StoryStep[] = [
           With 16 requests decoding together, x has 16 rows. Each weight row is still read once, but now it meets 16
           input rows: 16 FLOPs per byte. That is still far left of the ridge, so the GPU is still waiting on memory, and the
           projections take about the same time as for one row:{" "}
-          <span className="font-mono text-accent">{`${Math.round(sum("16")).toLocaleString("en-US")} µs`}</span> against{" "}
-          <span className="font-mono text-text">{`${Math.round(sum("1")).toLocaleString("en-US")} µs`}</span> per step.
+          <span className="text-accent">{`${Math.round(sum("16")).toLocaleString("en-US")} µs`}</span> against{" "}
+          <span className="text-text">{`${Math.round(sum("1")).toLocaleString("en-US")} µs`}</span> per step.
         </p>
         <p>
           Sixteen tokens for the price of one is where batching gets its throughput. cuBLAS switches to tensor-core GEMM

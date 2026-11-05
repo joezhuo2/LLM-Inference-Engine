@@ -35,7 +35,7 @@ export function KernelTimeline({ entries }: { entries: KernelEntry[] }) {
             transition={{ duration: 0.35, ease }}
           >
             <span aria-hidden="true" className="absolute left-[-4px] top-1.5 h-[9px] w-[9px] rounded-full border border-accent bg-bg" />
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums text-xs text-muted">
               <span className="tabular-nums">{e.date}</span>
               <span
                 className={clsx(
@@ -58,7 +58,7 @@ export function KernelTimeline({ entries }: { entries: KernelEntry[] }) {
               </span>
               <span className={clsx(e.author === "claude" ? "text-muted" : "text-text")}>· {authorLabel[e.author]}</span>
             </div>
-            <h3 className="mt-2 text-lg text-text">{e.title}</h3>
+            <h3 className="mt-2 font-serif text-2xl text-text">{e.title}</h3>
             <p className="mt-1 max-w-2xl text-muted">{e.text}</p>
             {e.metric && (
               <div className="mt-4 max-w-xl">

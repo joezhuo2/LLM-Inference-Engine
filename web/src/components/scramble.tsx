@@ -3,13 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { useIntroDone } from "@/lib/intro";
 
-const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&*";
 const digits = "0123456789";
 const everyMs = 45;
 
 function pool(ch: string, numeric: boolean) {
-  if (numeric) return /[0-9]/.test(ch) ? digits : null;
-  return /[a-z0-9]/i.test(ch) ? letters : null;
+  if (/[0-9]/.test(ch)) return digits;
+  if (numeric) return null;
+  if (/[ijlftr]/.test(ch)) return "ijlftr";
+  if (/[mw]/.test(ch)) return "mw";
+  if (/[a-z]/.test(ch)) return "abcdeghknopqsuvxyz";
+  if (/[A-Z]/.test(ch)) return "ABCDEGHKNOPRSTUVXYZ";
+  return null;
+}
+
+function splitWords(text: string) {
+  return text.match(/\S+?-(?=\S)|\S+|\s+/g) ?? [];
+}
+
+function isWord(part: string) {
+  return /\S/.test(part);
 }
 
 export function Scramble({
@@ -51,11 +63,21 @@ export function Scramble({
     const el = ref.current;
     if (!el || !start) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.textContent = text;
+      el.querySelectorAll<HTMLElement>("[data-scramble]").forEach((span, w) => {
+        span.textContent = splitWords(text).filter(isWord)[w];
+      });
       return;
     }
-    const chars = [...text];
-    const resolveAt = chars.map((_, i) => delayMs + (durationMs * (i + 1)) / chars.length);
+    const spans = [...el.querySelectorAll<HTMLElement>("[data-scramble]")];
+    const words = splitWords(text).filter(isWord);
+    const total = [...words.join("")].length;
+    let seen = 0;
+    const parts = words.map((word) => {
+      const chars = [...word];
+      const resolveAt = chars.map((_, i) => delayMs + (durationMs * (seen + i + 1)) / total);
+      seen += chars.length;
+      return { word, chars, resolveAt };
+    });
     const t0 = performance.now();
     let last = -Infinity;
     let raf = 0;
@@ -63,25 +85,38 @@ export function Scramble({
       const t = now - t0;
       if (t - last >= everyMs) {
         last = t;
-        el.textContent = chars
-          .map((ch, i) => {
-            const set = pool(ch, numeric);
-            return !set || t >= resolveAt[i] ? ch : set[Math.floor(Math.random() * set.length)];
-          })
-          .join("");
+        parts.forEach(({ chars, resolveAt }, w) => {
+          spans[w].textContent = chars
+            .map((ch, i) => {
+              const set = pool(ch, numeric);
+              return !set || t >= resolveAt[i] ? ch : set[Math.floor(Math.random() * set.length)];
+            })
+            .join("");
+        });
       }
       if (t < delayMs + durationMs) raf = requestAnimationFrame(tick);
-      else el.textContent = text;
+      else parts.forEach(({ word }, w) => (spans[w].textContent = word));
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [start, text, numeric, durationMs, delayMs, replay]);
 
   return (
-    <span className={className}>
+    <span ref={ref} className={className}>
       <span className="sr-only">{text}</span>
-      <span ref={ref} aria-hidden="true">
-        {text}
+      <span aria-hidden="true">
+        {splitWords(text).map((part, i) =>
+          isWord(part) ? (
+            <span key={i} className="relative inline-block whitespace-nowrap">
+              <span className="invisible">{part}</span>
+              <span data-scramble className="absolute top-0 left-0">
+                {part}
+              </span>
+            </span>
+          ) : (
+            part
+          ),
+        )}
       </span>
     </span>
   );

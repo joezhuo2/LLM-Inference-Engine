@@ -144,7 +144,7 @@ export function FoundationsSandbox() {
   ];
 
   return (
-    <div className="grid gap-6 font-mono text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
+    <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="space-y-4">
         <div className="space-y-2 rounded border border-border p-3 leading-relaxed">
           <div className="text-accent">predict first</div>

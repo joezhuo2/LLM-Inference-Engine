@@ -9,6 +9,7 @@ export type Palette = {
   muted: string;
   accent: string;
   warn: string;
+  onMark: string;
   border: string;
   mono: string;
 };
@@ -22,6 +23,7 @@ export function readPalette(): Palette {
     muted: v("--text-muted"),
     accent: v("--accent"),
     warn: v("--warn"),
+    onMark: v("--on-mark"),
     border: v("--border"),
     mono: v("--font-jetbrains") || "monospace",
   };

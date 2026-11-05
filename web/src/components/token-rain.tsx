@@ -84,7 +84,7 @@ function RainCanvas({ trace }: { trace: Trace }) {
       const age = now - at;
       return age < holdMs ? 1 : Math.max(0, 1 - (age - holdMs) / fadeMs);
     };
-    const white = parseInt(palette.bg.slice(1, 3), 16) < 128 ? "#ffffff" : palette.text;
+    const white = parseInt(palette.bg.slice(1, 3), 16) < 128 ? palette.onMark : palette.text;
     const covered = new Set<number>();
     drops.current = drops.current.filter((d) => t - d.spawn < life && t >= d.spawn);
     for (const d of drops.current) {
@@ -145,7 +145,7 @@ function RainCanvas({ trace }: { trace: Trace }) {
         <button
           type="button"
           onClick={play}
-          className="pressable absolute right-4 top-4 z-10 rounded border border-border bg-surface px-3 py-1 font-mono text-xs text-muted"
+          className="pressable absolute right-4 top-4 z-10 rounded border border-border bg-surface px-3 py-1 tabular-nums text-xs text-muted"
         >
           play the recorded run
         </button>

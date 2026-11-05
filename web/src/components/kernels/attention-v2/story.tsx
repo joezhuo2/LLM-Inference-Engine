@@ -66,7 +66,7 @@ function V1V2Picker() {
   const rejected = !Number.isFinite(v1) || v1Cell === "n/a";
   const max = Math.max(v2, rejected ? 0 : v1);
   return (
-    <div className="flex h-full flex-col gap-3 font-mono text-xs">
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         <Toggle label="rows" choices={rowsChoices} value={rows} onChange={setRows} />
         <Toggle label="context" choices={contextChoices} value={context} onChange={setContext} />
@@ -112,7 +112,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Each thread also computes a whole dot product alone. One row at 2,048 tokens:{" "}
-          <span className="font-mono text-text">{v1At2048} µs</span>.
+          <span className="text-text">{v1At2048} µs</span>.
         </p>
       </>
     ),
@@ -129,7 +129,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The memory itself was not the wall: at 2,048 tokens v1 uses{" "}
-          <span className="font-mono text-text">{(sharedPoints[2].v1 ?? 0).toLocaleString("en-US")} bytes</span> per block,
+          <span className="text-text">{(sharedPoints[2].v1 ?? 0).toLocaleString("en-US")} bytes</span> per block,
           a fifth of the default limit. The cap was a design choice that a longer model would have hit.
         </p>
       </>
@@ -147,7 +147,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The result is the same softmax, in one pass, and shared memory holds one chunk:{" "}
-          <span className="font-mono text-accent">{sharedPoints[0].v2.toLocaleString("en-US")} bytes</span> at any length.
+          <span className="text-accent">{sharedPoints[0].v2.toLocaleString("en-US")} bytes</span> at any length.
           The cap is gone.
         </p>
       </>
@@ -188,8 +188,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Wired into the runner, attention per decode step fell from <span className="font-mono text-text">{stepBefore}</span>{" "}
-          to <span className="font-mono text-accent">{stepAfter} µs</span> with contexts of at most 64 tokens.
+          Wired into the runner, attention per decode step fell from <span className="text-text">{stepBefore}</span>{" "}
+          to <span className="text-accent">{stepAfter} µs</span> with contexts of at most 64 tokens.
         </p>
         <p>
           Batch 16 gained the most, because attention work grows with the number of rows while the weight reads of the

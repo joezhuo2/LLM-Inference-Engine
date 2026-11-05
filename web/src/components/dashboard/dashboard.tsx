@@ -100,7 +100,7 @@ export function Dashboard({ label }: { label: string }) {
   };
 
   return (
-    <div ref={rootRef} className="space-y-3 font-mono text-xs">
+    <div ref={rootRef} className="space-y-3 tabular-nums text-xs">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Toggle label="mode" choices={modes} value={mode} onChange={switchMode} />
         {replaying ? (

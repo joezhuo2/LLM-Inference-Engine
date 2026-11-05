@@ -77,7 +77,7 @@ export function PagedAttentionSandbox() {
   const diff = last ? maxDiff(run.out, direct) : null;
 
   return (
-    <div className="grid gap-6 font-mono text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
+    <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 text-muted">
@@ -184,7 +184,7 @@ export function PagedAttentionSandbox() {
                   </div>
                 ))}
               </div>
-              <div className="text-muted">bar = weight exp(score - new m); the best score of the block is green</div>
+              <div className="text-muted">bar = weight exp(score - new m); the best score of the block is blue</div>
               <table className="w-full tabular-nums">
                 <tbody>
                   <tr className="border-t border-border">

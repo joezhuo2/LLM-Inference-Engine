@@ -60,7 +60,7 @@ export function StickyStory({
               )}
             </AnimatePresence>
           </div>
-          <div className="mt-3 min-h-10 border-t border-border pt-3 font-mono text-[11px] leading-relaxed text-muted">
+          <div className="mt-3 min-h-10 border-t border-border pt-3 tabular-nums text-[11px] leading-relaxed text-muted">
             {caption(active)}
           </div>
         </div>
@@ -78,12 +78,12 @@ export function StickyStory({
                 refs.current[i] = el;
               }}
             >
-              <div className="font-mono text-xs text-muted tabular-nums">
+              <div className="tabular-nums text-xs text-muted">
                 {String(i + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}
               </div>
               <h2
                 className={clsx(
-                  "mt-1 font-mono text-lg transition-colors duration-200",
+                  "mt-1 font-serif text-3xl leading-tight transition-colors duration-200",
                   i === active ? "text-accent" : "text-muted",
                 )}
               >

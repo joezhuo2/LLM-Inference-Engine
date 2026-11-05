@@ -15,7 +15,7 @@ function SpreadPicker() {
   const [budget, setBudget] = useState("16");
   const steps = chunkedSteps(Number(budget), decoders, prompt);
   return (
-    <div className="flex h-full flex-col gap-3 font-mono text-xs">
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
       <Toggle label="budget" choices={budgets} value={budget} onChange={setBudget} />
       <div className="min-h-0 flex-1">
         <SpreadFigure key={budget} steps={steps} budget={Number(budget)} prompt={prompt} />
@@ -33,11 +33,11 @@ const steps: StoryStep[] = [
         <p>
           schedule() makes every step all prefill or all decode, and prefill goes first. A long prompt is one step, and
           every running sequence waits for it: alone, a 2,048-token prompt takes{" "}
-          <span className="font-mono text-warn">{alone} ms</span>.
+          <span className="text-warn">{alone} ms</span>.
         </p>
         <p>
           Measured under Poisson arrivals at 4 requests per second, the longest wait between two tokens of one request is{" "}
-          <span className="font-mono text-warn">{largestGap("engine + graphs", "4")} ms</span> with whole-prompt steps, against a
+          <span className="text-warn">{largestGap("engine + graphs", "4")} ms</span> with whole-prompt steps, against a
           median gap of {medianGap("engine + graphs", "4")} ms.
         </p>
       </>
@@ -71,10 +71,10 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Measured with a {fmt(stallPrompt)}-token prompt arriving among {stallDecoding} decoding requests: with no budget the longest gap is{" "}
-          <span className="font-mono text-text">{fmt(stallMs("none", "largest gap ms"))} ms</span> and the prompt&apos;s first
-          token comes after <span className="font-mono text-text">{fmt(stallMs("none", "TTFT of the long prompt ms"))} ms</span>; with
-          a budget of {chunkBudget} the gap is <span className="font-mono text-text">{fmt(stallMs(chunkBudget, "largest gap ms"))} ms</span> and
-          the first token <span className="font-mono text-text">{fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms</span>.
+          <span className="text-text">{fmt(stallMs("none", "largest gap ms"))} ms</span> and the prompt&apos;s first
+          token comes after <span className="text-text">{fmt(stallMs("none", "TTFT of the long prompt ms"))} ms</span>; with
+          a budget of {chunkBudget} the gap is <span className="text-text">{fmt(stallMs(chunkBudget, "largest gap ms"))} ms</span> and
+          the first token <span className="text-text">{fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms</span>.
         </p>
         <p>
           Under load the same budget moves peak goodput from {peakGoodput("engine + graphs").value.toFixed(2)} to{" "}

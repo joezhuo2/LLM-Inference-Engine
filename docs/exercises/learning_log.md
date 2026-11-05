@@ -1718,3 +1718,24 @@
 - **reading a chart's provenance (commit, date, GPU) from a generated line of a doc at build time** => 
 - **a log axis for tail latency against a linear axis for goodput** => 
 - **a headline metric as a before and after pair from one controlled experiment** => 
+
+## Color palette (Branch 85)
+- **deepening a muted moodboard color until it passes WCAG contrast and CVD checks** => 
+- **choosing label ink from the mark behind it instead of the page theme** => 
+- **canvas colors read from CSS custom properties at draw time** => 
+- **why Open Graph cards hard-code colors instead of reading CSS variables** => 
+- **copy that names a color as a hidden dependency on the theme** => 
+- **keeping a design record in step with a theme change** => 
+- **undertone against highlight in a color system** => 
+- **tinting a shadow with the background hue instead of black** => 
+- **deepening a pastel for text while keeping it pale for fills** => 
+- **tinting neutrals toward one undertone color** => 
+- **keeping hard-coded colors outside the CSS in step with theme tokens** => 
+- **next/font self-hosting a Google font at build time** => 
+- **why a character scramble shifts layout in a proportional font** => 
+- **tabular-nums keeping live numbers from jittering in a proportional font** => 
+- **all-pairs versus adjacent-pairs checks for a categorical palette** => 
+- **lightness difference as the separator that survives color blindness** => 
+- **embedding a font file for a server-side image renderer** => 
+- **reserving layout with an invisible copy of the final text** => 
+- **keeping a text effect within its reserved width by matching glyph width classes** => 

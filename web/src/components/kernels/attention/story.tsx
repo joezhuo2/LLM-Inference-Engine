@@ -55,8 +55,8 @@ const steps: StoryStep[] = [
           eight lanes, and runs 8,192 tokens.
         </p>
         <p>
-          Attention per decode step: <span className="font-mono text-text">{stepV1}</span> to{" "}
-          <span className="font-mono text-accent">{stepV2} µs</span>. The whole before and after is its own story:{" "}
+          Attention per decode step: <span className="text-text">{stepV1}</span> to{" "}
+          <span className="text-accent">{stepV2} µs</span>. The whole before and after is its own story:{" "}
           <Link href="/kernels/attention-v2" className="link-underline text-accent">
             attention v1 → v2
           </Link>
@@ -73,7 +73,7 @@ const steps: StoryStep[] = [
         <p>
           v2 still launches one block per row and head, 32 blocks at batch 1, a fifth of what the GPU holds at once. Cutting
           each context into ranges that run side by side, then merging them, took one row at 2,048 tokens from{" "}
-          <span className="font-mono text-text">{v2Loop}</span> to <span className="font-mono text-accent">{split8} µs</span>.
+          <span className="text-text">{v2Loop}</span> to <span className="text-accent">{split8} µs</span>.
         </p>
         <p>
           That is its own story:{" "}

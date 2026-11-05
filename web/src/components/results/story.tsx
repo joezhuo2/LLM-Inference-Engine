@@ -279,7 +279,7 @@ function ResultsFigure({ step }: { step: number }) {
         <motion.div
           key={views[step]}
           data-view={views[step]}
-          className="col-start-1 row-start-1 flex min-h-0 min-w-0 flex-col gap-2 font-mono text-xs"
+          className="col-start-1 row-start-1 flex min-h-0 min-w-0 flex-col gap-2 tabular-nums text-xs"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -315,7 +315,7 @@ function Story({ to, children }: { to: string; children: ReactNode }) {
   );
 }
 
-const Num = ({ children }: { children: ReactNode }) => <span className="font-mono text-text">{children}</span>;
+const Num = ({ children }: { children: ReactNode }) => <span className="text-text">{children}</span>;
 
 const steps: StoryStep[] = [
   {

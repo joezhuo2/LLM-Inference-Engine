@@ -48,7 +48,7 @@ function TokensPicker() {
   const maxKb = Math.max(...bytes.map((b) => b.kb));
   const tunedTime = times[2].us;
   return (
-    <div className="flex h-full flex-col gap-3 font-mono text-xs">
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
       <Toggle label="tokens" choices={tokenChoices} value={tokens} onChange={setTokens} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">µs per launch, hidden 2048</div>
@@ -122,8 +122,8 @@ const steps: StoryStep[] = [
         </p>
         <p>
           A fused kernel reads x, the residual and the weight once, writes the sum and the norm once, and keeps the sum on
-          the chip in between. At 64 tokens that is <span className="font-mono text-text">{naiveKb64}</span> to{" "}
-          <span className="font-mono text-accent">{fusedKb64} KB</span> of DRAM traffic, and one launch instead of two.
+          the chip in between. At 64 tokens that is <span className="text-text">{naiveKb64}</span> to{" "}
+          <span className="text-accent">{fusedKb64} KB</span> of DRAM traffic, and one launch instead of two.
         </p>
       </>
     ),
@@ -140,8 +140,8 @@ const steps: StoryStep[] = [
         </p>
         <p>
           It moves a third fewer bytes, but takes the same time as the pair:{" "}
-          <span className="font-mono text-text">{pair1.toFixed(1)}</span> against{" "}
-          <span className="font-mono text-text">{first1.toFixed(1)} µs</span> for one token. 64 rows of 4 KB are under 2 µs of
+          <span className="text-text">{pair1.toFixed(1)}</span> against{" "}
+          <span className="text-text">{first1.toFixed(1)} µs</span> for one token. 64 rows of 4 KB are under 2 µs of
           memory traffic; the rest is waiting on dependent loads and two barriers.
         </p>
       </>
@@ -202,8 +202,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The tuned kernel takes <span className="font-mono text-accent">{tuned1.toFixed(1)} µs</span> for one token against{" "}
-          <span className="font-mono text-text">{tunedPair1.toFixed(1)} µs</span> for the pair, and stays near that up to 64 rows.
+          The tuned kernel takes <span className="text-accent">{tuned1.toFixed(1)} µs</span> for one token against{" "}
+          <span className="text-text">{tunedPair1.toFixed(1)} µs</span> for the pair, and stays near that up to 64 rows.
           Try the token counts on the right.
         </p>
         <p>

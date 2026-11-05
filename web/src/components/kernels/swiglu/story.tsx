@@ -46,7 +46,7 @@ function TokensPicker() {
   const max = Math.max(...times.map((t) => t.us));
   const bandwidth = gbs(tokens, "fast (us)");
   return (
-    <div className="flex h-full flex-col gap-3 font-mono text-xs">
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
       <Toggle label="tokens" choices={tokenChoices} value={tokens} onChange={setTokens} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">µs per launch, ff 5,632</div>
@@ -136,8 +136,8 @@ const steps: StoryStep[] = [
           Joe&apos;s first draft kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: 22
           blocks of 256 threads along a row of 5,632, and the row on blockIdx.y. It was bit-identical from the start and a
           little faster than naive at every size,{" "}
-          <span className="font-mono text-text">{draft1.toFixed(1)} µs</span> against{" "}
-          <span className="font-mono text-text">{naive1.toFixed(1)} µs</span> at one token.
+          <span className="text-text">{draft1.toFixed(1)} µs</span> against{" "}
+          <span className="text-text">{naive1.toFixed(1)} µs</span> at one token.
         </p>
         <p>
           The 2D grid had a ceiling: gridDim.y stops at 65,535, so a batch with more rows would not launch. The engine never
@@ -159,8 +159,8 @@ const steps: StoryStep[] = [
         </p>
         <p>
           With enough tokens that is what the kernel is limited by. At 4,096 tokens it takes{" "}
-          <span className="font-mono text-accent">{vectorBig.toFixed(0)} µs</span> against{" "}
-          <span className="font-mono text-text">{naiveBig.toFixed(0)} µs</span> for naive, which is the GPU&apos;s measured
+          <span className="text-accent">{vectorBig.toFixed(0)} µs</span> against{" "}
+          <span className="text-text">{naiveBig.toFixed(0)} µs</span> for naive, which is the GPU&apos;s measured
           peak bandwidth: there is no faster way to move those bytes.
         </p>
       </>
@@ -179,8 +179,8 @@ const steps: StoryStep[] = [
         <p>
           So the kernel counts its work first: below half a block per SM, 4 tokens or fewer here, it takes the scalar path,
           whose 22 blocks spread the same chains over most of the GPU. At one token that is{" "}
-          <span className="font-mono text-accent">{smallFast.toFixed(2)} µs</span> against{" "}
-          <span className="font-mono text-text">{smallVector.toFixed(2)} µs</span> for the vector kernel in the same session.
+          <span className="text-accent">{smallFast.toFixed(2)} µs</span> against{" "}
+          <span className="text-text">{smallVector.toFixed(2)} µs</span> for the vector kernel in the same session.
         </p>
       </>
     ),

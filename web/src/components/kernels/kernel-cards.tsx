@@ -27,7 +27,7 @@ export function KernelCards() {
         const replay = plays[k.slug] ?? 0;
         const body = (
           <>
-            <div className="font-mono text-sm">
+            <div className="font-serif text-xl">
               <span className="text-muted">{String(k.index).padStart(2, "0")} </span>
               <Scramble
                 text={k.title}
@@ -51,13 +51,13 @@ export function KernelCards() {
             >
               <div className="overflow-hidden">
                 <p className="pt-2 text-sm text-muted">{k.short}</p>
-                {k.dates && <p className="pt-1 font-mono text-xs tabular-nums text-muted">{k.dates}</p>}
+                {k.dates && <p className="pt-1 tabular-nums text-xs text-muted">{k.dates}</p>}
               </div>
             </div>
           </>
         );
         const card = clsx(
-          "block rounded border bg-surface px-4 py-3 shadow-[0_-4px_8px_-6px_rgba(0,0,0,0.4)]",
+          "block rounded border bg-surface px-4 py-3 shadow-[0_-4px_8px_-6px_rgba(25,24,19,0.4)]",
           k.ready ? "border-border" : "border-dashed border-border",
         );
         return (

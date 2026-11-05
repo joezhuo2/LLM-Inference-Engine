@@ -76,7 +76,7 @@ function Scrubber({ progress, active, reduced, go }: { progress: MotionValue<num
         aria-valuetext={entries[active].title}
         className="mt-3 block w-full accent-accent"
       />
-      <div className="relative mt-1 h-4 font-mono text-[10px] text-muted">
+      <div className="relative mt-1 h-4 tabular-nums text-[10px] text-muted">
         {milestones.map((m, i) => (
           <button
             key={m.id}
@@ -113,7 +113,7 @@ function GpuPanel({ active, progress, reduced, go }: { active: number; progress:
           </motion.div>
         </AnimatePresence>
       </div>
-      <p className="mt-3 min-h-10 border-t border-border pt-3 font-mono text-[11px] leading-relaxed text-muted">{captions[scene]}</p>
+      <p className="mt-3 min-h-10 border-t border-border pt-3 tabular-nums text-[11px] leading-relaxed text-muted">{captions[scene]}</p>
       <Scrubber progress={progress} active={active} reduced={reduced} go={go} />
     </div>
   );
@@ -122,7 +122,7 @@ function GpuPanel({ active, progress, reduced, go }: { active: number; progress:
 export function MetricView({ metric, reduced }: { metric: Metric; reduced: boolean }) {
   if (metric.kind === "value") {
     return (
-      <div className="font-mono">
+      <div className="tabular-nums">
         <div className="text-2xl text-accent tabular-nums">
           <Scramble text={metric.value} trigger="view" durationMs={1200} />
         </div>
@@ -132,7 +132,7 @@ export function MetricView({ metric, reduced }: { metric: Metric; reduced: boole
   }
   const max = Math.max(...metric.bars.map((b) => b.value));
   return (
-    <figure className="font-mono text-xs">
+    <figure className="tabular-nums text-xs">
       <figcaption className="mb-2 text-muted">{metric.label}</figcaption>
       <div className="space-y-1.5">
         {metric.bars.map((bar, i) => (
@@ -176,7 +176,7 @@ function EntryView({ entry, reduced, stepRef }: { entry: Entry; reduced: boolean
       transition={{ duration: 0.35, ease }}
     >
       <span aria-hidden="true" className="absolute left-[-4px] top-1.5 h-[9px] w-[9px] rounded-full border border-accent bg-bg" />
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs text-muted">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 tabular-nums text-xs text-muted">
         <span className="tabular-nums">{entry.date}</span>
         <span className="text-accent">{entry.branch}</span>
         <span>
@@ -190,7 +190,7 @@ function EntryView({ entry, reduced, stepRef }: { entry: Entry; reduced: boolean
           ))}
         </span>
       </div>
-      <h3 className="mt-2 text-lg text-text">
+      <h3 className="mt-2 font-serif text-2xl text-text">
         <Scramble text={entry.title} trigger="view" durationMs={900} />
       </h3>
       <p className="mt-1 max-w-xl text-muted">{entry.text}</p>
@@ -210,10 +210,10 @@ function MilestoneView({ milestone, reduced, start, refs }: { milestone: Milesto
   return (
     <section aria-labelledby={`milestone-${milestone.id}`} className="space-y-6">
       <header>
-        <div className="font-mono text-xs text-muted tabular-nums">
+        <div className="tabular-nums text-xs text-muted">
           {milestone.id} · {milestone.dates}
         </div>
-        <h2 id={`milestone-${milestone.id}`} className="mt-1 font-mono text-xl text-text">
+        <h2 id={`milestone-${milestone.id}`} className="mt-1 font-serif text-3xl text-text">
           <Scramble text={milestone.name} trigger="view" durationMs={900} />
         </h2>
         <p className="mt-2 text-sm text-muted">{milestone.goal}</p>
@@ -260,7 +260,7 @@ export function BuildTimeline() {
         {milestones.map((m, i) => (
           <MilestoneView key={m.id} milestone={m} reduced={reduced} start={starts[i]} refs={refs} />
         ))}
-        <p className="font-mono text-xs text-muted">
+        <p className="tabular-nums text-xs text-muted">
           {prs} of the pull requests shown;{" "}
           <a href={`${repoUrl}/pulls?q=is%3Apr+is%3Amerged`} className="link-underline text-text">
             all of them on GitHub

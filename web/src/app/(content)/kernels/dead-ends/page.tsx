@@ -20,7 +20,7 @@ export default function DeadEnds() {
     <PageTransition>
       <article className="space-y-10">
         <header className="space-y-4">
-          <div className="font-mono text-xs text-muted">
+          <div className="tabular-nums text-xs text-muted">
             <Link href="/kernels" transitionTypes={["nav-back"]} className="link-underline">
               kernels
             </Link>{" "}

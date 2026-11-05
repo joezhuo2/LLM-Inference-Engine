@@ -44,7 +44,7 @@ function Pair({ spread, digits }: { spread: Spread; digits: number }) {
 export function Tiles({ tiles, windows }: { tiles: TileValues; windows: { rate: string; latency: string } }) {
   const share = tiles.kvUsed !== null && tiles.kvTotal ? (100 * tiles.kvUsed) / tiles.kvTotal : null;
   return (
-    <section aria-label="Metrics" className="grid grid-cols-2 gap-2 font-mono text-xs sm:grid-cols-3 lg:grid-cols-5">
+    <section aria-label="Metrics" className="grid grid-cols-2 gap-2 tabular-nums text-xs sm:grid-cols-3 lg:grid-cols-5">
       <Tile label="tokens/s" note={windows.rate}>
         <Num value={tiles.tokensPerS} />
       </Tile>
