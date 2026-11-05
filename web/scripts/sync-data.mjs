@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync, exis
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { replayKv } from "./kv-replay.mjs";
+import { parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 import { parseLaunchGaps, parseProfiling } from "./profiling.mjs";
 
 const web = resolve(fileURLToPath(import.meta.url), "../..");
@@ -79,6 +80,21 @@ function readEnvironment() {
   return env;
 }
 
+function parseHardware(text) {
+  const number = (pattern) => {
+    const match = pattern.exec(text);
+    return match ? Number(match[1]) : undefined;
+  };
+  return {
+    gpu: text.split("\n")[0].trim(),
+    compute_capability: number(/compute capability: ([\d.]+)/),
+    sms: number(/SMs: (\d+)/),
+    vram_gb: number(/VRAM: ([\d.]+) GB/),
+    l2_kb: number(/L2: (\d+) KB/),
+    shared_kb_per_sm: number(/shared mem per SM: (\d+) KB/),
+  };
+}
+
 function git(...args) {
   return execFileSync("git", args, { cwd: web, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
@@ -126,6 +142,9 @@ const resultsPath = resolve(web, "../docs/results.md");
 const resultsText = existsSync(resultsPath) ? readFileSync(resultsPath, "utf8") : "";
 const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsText);
 const resultsDoc = { sections: parseProfiling(resultsText), ceilings: ceilings ? { gbs: Number(ceilings[1]), tflops: Number(ceilings[2]) } : null };
+const modelShape = { ...parseModelShape(readFileSync(resolve(web, "../tests/unit/test_config.cpp"), "utf8")), roofline_context: parseRooflineContext(resultsText) };
+const hardwarePath = resolve(web, "../docs/hardware.md");
+const hardware = existsSync(hardwarePath) ? parseHardware(readFileSync(hardwarePath, "utf8")) : {};
 const decodeSteps = {};
 for (const [key, name] of [["b1", "decode_step.md"], ["b16", "decode_step_b16.md"], ["graphs", "decode_step_graphs.md"]]) {
   const path = join(results, name);
@@ -147,10 +166,15 @@ writeFileSync(join(dataDir, "environment.json"), JSON.stringify(environment));
 writeFileSync(join(dataDir, "traces.json"), JSON.stringify(traces));
 writeFileSync(join(dataDir, "profiling.json"), JSON.stringify(profiling));
 writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
+writeFileSync(join(dataDir, "model_shape.json"), JSON.stringify(modelShape));
+writeFileSync(join(dataDir, "hardware.json"), JSON.stringify(hardware));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
 writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
 writeFileSync(join(dataDir, "kv_replay.json"), JSON.stringify(kvReplay));
 const kvDemoFile = join(results, "kv_demo.json");
 const kvDemo = existsSync(kvDemoFile) ? JSON.parse(readFileSync(kvDemoFile, "utf8")) : {};
 writeFileSync(join(dataDir, "kv_demo.json"), JSON.stringify(kvDemo));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, environment ${environment.commit ?? "missing"}`);
+const samplingLogitsFile = join(results, "sampling_logits.json");
+const samplingLogits = existsSync(samplingLogitsFile) ? JSON.parse(readFileSync(samplingLogitsFile, "utf8")) : {};
+writeFileSync(join(dataDir, "sampling_logits.json"), JSON.stringify(samplingLogits));
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, sampling logits ${samplingLogits.contexts?.length ?? 0} contexts, environment ${environment.commit ?? "missing"}`);
