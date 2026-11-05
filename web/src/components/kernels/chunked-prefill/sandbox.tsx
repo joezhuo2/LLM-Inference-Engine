@@ -2,7 +2,10 @@
 
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
+import { animate, type AnimationPlaybackControls } from "motion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SmoothRange } from "@/components/smooth-range";
+import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { prefillMs } from "@/content/kernels/chunked-prefill";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
@@ -218,16 +221,33 @@ export function ChunkedPrefillSandbox() {
   };
 
   const prediction = guess ? predict("roomy", 2048, 256) : null;
+  const reduced = usePrefersReducedMotion();
+  const tweens = useRef<AnimationPlaybackControls[]>([]);
+  const cancelTween = () => {
+    tweens.current.forEach((t) => t.stop());
+    tweens.current = [];
+  };
+  const glideTo = (from: number, to: number, set: (v: number) => void, round: (v: number) => number, done?: () => void) => {
+    if (reduced || from === to) {
+      set(to);
+      return done?.();
+    }
+    tweens.current.push(animate(from, to, { duration: 0.6, ease: [0.77, 0, 0.175, 1], onUpdate: (x) => set(round(x)), onComplete: () => {
+        set(to);
+        done?.();
+      } }));
+  };
   const tryIt = () => {
     setGuess(guessed);
     setPool("roomy");
-    setBi(budgets.indexOf(256));
-    setLength(2048);
+    cancelTween();
+    glideTo(bi, budgets.indexOf(256), setBi, Math.round, () => setPlaying(true));
+    glideTo(length, 2048, setLength, (v) => Math.round(v / 16) * 16);
     setMode("schedule_chunked()");
     const next = new Playground("roomy");
     next.drop(2048);
     setPg(next);
-    setPlaying(true);
+    setPlaying(false);
   };
 
   const run = pg.runs[mode];
@@ -271,7 +291,7 @@ export function ChunkedPrefillSandbox() {
             <label htmlFor="cp-length" className="w-14 shrink-0 text-muted">
               length
             </label>
-            <input id="cp-length" type="range" min={16} max={maxPrompt} step={16} value={length} onChange={(e) => setLength(Number(e.target.value))} aria-valuetext={`${length} tokens`} className="min-w-32 flex-1 accent-[var(--accent)]" />
+            <SmoothRange id="cp-length" min={16} max={maxPrompt} step={16} value={length} onValue={(v) => { cancelTween(); setLength(v); }} onKeyDown={cancelTween} aria-valuetext={`${length} tokens`} className="min-w-32 flex-1 accent-[var(--accent)]" />
             <span className="w-14 text-right tabular-nums text-text">
               <NumberFlow value={length} />
             </span>
@@ -283,7 +303,7 @@ export function ChunkedPrefillSandbox() {
             <label htmlFor="cp-budget" className="w-14 shrink-0 text-muted">
               budget
             </label>
-            <input id="cp-budget" type="range" min={0} max={budgets.length - 1} step={1} value={bi} onChange={(e) => setBi(Number(e.target.value))} disabled={mode === "schedule()"} aria-valuetext={`${budget} tokens per step`} className="min-w-32 flex-1 accent-[var(--accent)] disabled:opacity-40" />
+            <SmoothRange id="cp-budget" min={0} max={budgets.length - 1} step={1} value={bi} onValue={(v) => { cancelTween(); setBi(v); }} onKeyDown={cancelTween} disabled={mode === "schedule()"} aria-valuetext={`${budget} tokens per step`} className="min-w-32 flex-1 accent-[var(--accent)] disabled:opacity-40" />
             <span className={clsx("w-14 text-right tabular-nums", mode === "schedule()" ? "text-muted" : "text-text")}>
               <NumberFlow value={budget} />
             </span>
