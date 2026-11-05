@@ -5,11 +5,16 @@ import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionSandbox } from "./attention/sandbox";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
+import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
+import { ChunkedPrefillStory } from "./chunked-prefill/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
+import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
+import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
+import { RopeSandbox } from "./rope/sandbox";
 import { RopeStory } from "./rope/story";
 import { SamplingStory } from "./sampling/story";
 import { SplitAttentionStory } from "./split-attention/story";
@@ -39,6 +44,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <AttentionV2Story />;
     case "sampling":
       return <SamplingStory />;
+    case "chunked-prefill":
+      return <ChunkedPrefillStory />;
     default:
       return null;
   }
@@ -66,6 +73,14 @@ export function KernelPrologueView({ slug }: { slug: string }) {
 
 export function KernelSandboxView({ slug }: { slug: string }) {
   switch (slug) {
+    case "chunked-prefill":
+      return <ChunkedPrefillSandbox />;
+    case "rope":
+      return <RopeSandbox />;
+    case "foundations":
+      return <FoundationsSandbox />;
+    case "gemm":
+      return <GemmSandbox />;
     case "paged-attention":
       return <PagedAttentionSandbox />;
     default:

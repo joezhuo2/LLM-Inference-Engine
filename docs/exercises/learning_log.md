@@ -1584,6 +1584,22 @@
 - **kernel fusion and why it removes a round trip to global memory** => 
 - **kernel launch and the intermediate tensor written between two kernels** => 
 
+## RoPE sandbox (Branch 96)
+- **rotation by an angle in a 2D plane** => 
+- **rotate_half layout against interleaved pairs** => 
+- **relative position from absolute rotations (why q·k depends on the distance)** => 
+- **wavelength of a rotary frequency in tokens** => 
+
+## GEMM Tiling Sandbox (Branch 95)
+
+- **output tile and thread block tile** => 
+- **shared memory tiling and data reuse** => 
+- **arithmetic intensity of a tile (FLOP per byte)** => 
+- **K loop and K step** => 
+- **padding when the tile is larger than the matrix** => 
+- **shared memory limit per SM and double buffering** => 
+- **naive matrix multiply memory traffic** => 
+
 ## Paged attention stepper (Branch 92)
 - **online softmax (running max, running sum, rescaled accumulator)** => 
 - **why a new maximum rescales the old sum and accumulator by exp(old max - new max)** => 
@@ -1595,3 +1611,27 @@
 ## Smooth Sliders (Branch 97)
 - **telling a click from a drag on a range input with pointer timing** => 
 - **tweening a value with motion animate and onUpdate** => 
+
+## Chunked Prefill Story (Branch 85)
+- **interleaving prefill chunks with decode rows: how a step is shared between the two** => 
+- **time to first token against time per token: what a smaller chunk trades** => 
+- **preempting from the back of the running list: why the prompt in prefill is the first victim** => 
+- **a sampled list: which rows of a step need logits** => 
+
+## Chunked Prefill Sandbox (Branch 94)
+- **time between tokens: what a decoding sequence feels when a step gets longer** => 
+- **a stall measured in steps against a stall measured in tokens** => 
+- **head-of-line blocking in a FCFS waiting queue** => 
+- **preemption thrash: a restarted prefill that is preempted again** => 
+- **a token budget against max_prefill_tokens: two different caps on a step** => 
+
+## Roofline sandbox (Branch 91)
+- **ridge point of the roofline as peak FLOP/s over peak bytes/s** => 
+- **FLOPs and DRAM bytes of a matmul with weights read once and activations per row** => 
+- **why batching raises arithmetic intensity of a matmul but not of attention** => 
+- **grouped-query attention and the ratio of query heads to KV heads** => 
+- **time at the ceiling as the larger of bytes over bandwidth and FLOPs over peak** => 
+- **log-log axes and why a power law is a straight line on them** => 
+- **reading a roofline plot: the slope, the flat top and the distance of a measured dot below the roof** => 
+- **why measured attention sits far under its roofline** => 
+- **cancelling a running tween when the user takes over the control** => 

@@ -14,6 +14,10 @@ export const rope: KernelStory = {
     value: `${(measured(fast, oneToken, "naive (us)") / measured(fast, oneToken, "fast (us)")).toFixed(1)}x`,
     label: "faster than the naive kernel, one token",
   },
+  sandbox: {
+    title: "rotate it yourself",
+    intro: "RoPE turns each pair of dimensions of a query or key by an angle that grows with the token's position. Rotate one pair, watch all 32 at once, then see why the attention score between a query and a key ends up depending only on how far apart they are.",
+  },
   sources: [
     { path: "src/kernels/rope_fast.cu", label: "fast kernel" },
     { path: "src/kernels/rope.cu", label: "v0 naive" },
