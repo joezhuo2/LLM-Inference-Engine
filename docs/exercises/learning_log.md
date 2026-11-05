@@ -1598,3 +1598,7 @@
 - **argmax** => 
 - **seeded reproducibility of sampling** => 
 - **bits of entropy and perplexity** => 
+
+## Smooth Sliders (Branch 97)
+- **telling a click from a drag on a range input with pointer timing** => 
+- **tweening a value with motion animate and onUpdate** => 

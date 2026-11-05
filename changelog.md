@@ -8,6 +8,10 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Add `web/src/components/kernels/sampling/sampler.ts`, a TypeScript model of `sample_kernel` in `src/sampling/sample.cu`: temperature 0 is greedy and ignores top-k and top-p, otherwise logits are divided by the temperature, top-k keeps whole tie groups until k tokens are counted, top-p keeps the smallest prefix of the top-k survivors whose mass reaches p, and the draw is Gumbel-max over the survivors with noise keyed by seed, step and token. Binned tail tokens are drawn as a group (max of n Gumbels is one Gumbel plus log n). `web/scripts/sampler.test.mjs` checks the math, the tie rules, repeatability by seed and step, and the draw frequencies against the softmax. (Part A)
 - Add the sampling sandbox "turn the knobs" as its own section after "how it works" on `/kernels/sampling` (`web/src/components/kernels/sampling/sandbox.tsx`, wired through `sandbox` on `KernelStory`, `KernelSandboxView` and `Section id="sandbox"`): pick one of three real TinyLlama contexts, drag temperature, top-k and top-p, step the bars through logits, divided by T, top-k, top-p and final with a running-total strip and a top-p line, read candidates left, entropy, top-token probability and mass cut with NumberFlow, then sample (seeded, 1 or 20 draws, new seed) and see the draw history; temperature 0 shows greedy. A "predict first" box computes its answer from the same model. (Part A)
 
+## web/smooth-sliders
+
+- Add `SmoothRange`, a range input that glides like the build timeline scrubber: a click on the track eases the value to the new spot over 600 ms ease-in-out, emitting each step on the way, while a drag held past 250 ms and the keyboard follow at once; reduced motion jumps. Use it for the dashboard scrubber and the paged KV replay slider. (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)
