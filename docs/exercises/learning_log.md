@@ -1584,6 +1584,12 @@
 - **kernel fusion and why it removes a round trip to global memory** => 
 - **kernel launch and the intermediate tensor written between two kernels** => 
 
+## RoPE sandbox (Branch 96)
+- **rotation by an angle in a 2D plane** => 
+- **rotate_half layout against interleaved pairs** => 
+- **relative position from absolute rotations (why q·k depends on the distance)** => 
+- **wavelength of a rotary frequency in tokens** => 
+
 ## Smooth Sliders (Branch 97)
 - **telling a click from a drag on a range input with pointer timing** => 
 - **tweening a value with motion animate and onUpdate** => 

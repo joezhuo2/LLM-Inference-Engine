@@ -2,6 +2,14 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-rope
+
+- Swap the RoPE sandbox's range inputs for `SmoothRange` and tween a pair change through a continuous pair index, so the vector turns and resizes smoothly (its direction and length blend between neighbouring pairs) instead of stepping. (Part A)
+- Make the RoPE sandbox's dial buttons and "both -100 / +100" glide with the same 600 ms ease-in-out tween as reset (one `glide` helper for all three; the predict buttons move nothing), cancelled by any input and skipped under reduced motion. (Part A)
+- Animate the RoPE sandbox's reset: position, pair, query and key positions tween to their defaults over 600 ms (ease-in-out, `animate` from `motion`, integers rounded each frame) while the gap toggle and predict box reset at once; a second click or any input cancels it, and reduced motion jumps. (Part A)
+- Add the "rotate it yourself" sandbox to the RoPE page, under "how it works" (a new `sandbox` field on `KernelStory` and `KernelSandboxView`): a position slider (0 to 2,048) and a dimension pair slider drive a rotating 2D vector and a dial of all 32 pairs, with live theta, angle, dial degrees, full turns and wavelength in tokens; a second part sets a query and a key position (gap locked or free, shift both by 100) and plots the q·k score of seeded illustrative vectors against the gap, with a predict-first prompt that checks the guess. A reset button restores everything. The vector plot is larger and its labels readable at phone width. (Part A)
+- Add `web/src/components/kernels/rope/rotation.ts`, a TypeScript model of the engine's RoPE: the 32 frequencies `10000^(-2i/64)` for TinyLlama's head dimension 64, pairs of dimension `i` with dimension `i + 32` (the `rotate_half` layout of `rope.cu` and `rope_fast.cu`), a rotation of a whole head by position, the q·k score, and a seeded illustrative vector. `web/scripts/rope-rotation.test.mjs` checks it against an independent `rotate_half` implementation and checks that the score depends only on the distance between the positions. (Part A)
+
 ## web/sandbox-chunked-prefill
 
 - Use `SmoothRange` (copied from main) for the length and budget sliders of the chunked prefill sandbox, and make "run it" glide the sliders to budget 256 and length 2,048 over 600 ms before the run starts (a click or key on a slider cancels it; reduced motion jumps). (Part A)

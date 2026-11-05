@@ -11,6 +11,7 @@ import { GemmStory } from "./gemm/story";
 import { FoundationsStory } from "./foundations/story";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
+import { RopeSandbox } from "./rope/sandbox";
 import { RopeStory } from "./rope/story";
 import { SamplingStory } from "./sampling/story";
 import { SplitAttentionStory } from "./split-attention/story";
@@ -71,6 +72,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
   switch (slug) {
     case "chunked-prefill":
       return <ChunkedPrefillSandbox />;
+    case "rope":
+      return <RopeSandbox />;
     default:
       return null;
   }
