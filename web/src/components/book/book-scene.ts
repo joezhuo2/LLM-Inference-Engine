@@ -566,25 +566,27 @@ export class BookScene {
     return this.opened;
   }
 
-  async open(): Promise<void> {
+  async open(start = 0): Promise<void> {
     if (this.opened) return;
     const resting = this.closedView;
     if (!resting) this.showClosed();
     this.closedView = false;
-    const first = this.options.stops[0];
+    this.target = { stop: start, beat: 0 };
+    const first = this.options.stops[start];
     const leftNext = this.leftText.prepare((c) => this.drawLeft(c, first));
     this.leftText.blend(leftNext, 1);
     this.leftText.commit(leftNext);
     const rightNext = this.rightText.prepare((c) => this.drawRight(c, first));
     this.rightText.blend(rightNext, 1);
     this.rightText.commit(rightNext);
-    const beat = this.beatOf(0, 0)!;
+    const beat = this.beatOf(start, 0)!;
     if (!this.options.reduced && !resting) await this.wait(0.5);
     this.setCamGoal(beat, 2.2);
     await this.tween(2.2, (t) => this.setLeftAngle(easeInOut(t)));
-    this.applied.stop = 0;
+    this.applied.stop = start;
     this.applied.beat = 0;
     this.opened = true;
+    this.model.enter?.(start);
     if (first.exhibit !== null) await this.popUp(first.exhibit, 0);
     this.publishOverlay();
     this.kick();
@@ -632,6 +634,16 @@ export class BookScene {
     this.target = { stop, beat };
     this.riffleNext = riffle;
     this.kick();
+  }
+
+  setStops(stops: Stop[], map: (index: number) => number): void {
+    this.options.stops = stops;
+    if (this.applied.stop >= 0) this.applied.stop = map(this.applied.stop);
+    this.target.stop = map(this.target.stop);
+  }
+
+  async idle(): Promise<void> {
+    while (this.running) await this.settling;
   }
 
   private kick(): void {

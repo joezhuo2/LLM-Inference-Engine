@@ -1776,3 +1776,4 @@
 - **static route segments taking precedence over a dynamic segment** => 
 - **staggering several tweens from one eased clock** => 
 - **copying a mutated BufferGeometry's attributes into other meshes** => 
+- **remapping indices when a list grows in the middle** => 
