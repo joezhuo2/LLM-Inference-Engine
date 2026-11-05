@@ -1793,3 +1793,9 @@
 
 - **one type size across pages instead of fitting each page alone** => 
 - **adjusting state while rendering to remember the last prop value** => 
+
+## 3D book: add and RMSNorm (Branch 108)
+- **scale invariance of RMSNorm** => 
+- **a signed bar chart hung above and below a floating rail** => 
+- **animating a bar height by scaling a unit box on one axis** => 
+- **getBoundingClientRect returns transformed sizes, offsetWidth does not** => 
