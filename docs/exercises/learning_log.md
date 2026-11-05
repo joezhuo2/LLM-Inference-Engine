@@ -1669,3 +1669,5 @@
 - **a probe workload: one long request among short ones to isolate a stall** => 
 - **an A/B rerun of an old binary to tell a code change from a machine change** => 
 - **why chunked prefill shortens stalls but does not reduce prefill work** => 
+- **reading a chart's provenance (commit, date, GPU) from a generated line of a doc at build time** => 
+- **a log axis for tail latency against a linear axis for goodput** => 

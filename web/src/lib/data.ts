@@ -97,7 +97,9 @@ export function samplingLogits(): SamplingLogits {
   return dump as SamplingLogits;
 }
 
-export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null };
+export type LoadRun = { date: string; commit: string; gpu: string };
+
+export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null };
 
 export type Doc = "profiling" | "results";
 
@@ -124,6 +126,11 @@ export function hardware(): Hardware {
 export type ModelShape = { hidden: number; intermediate: number; layers: number; heads: number; kv_heads: number; vocab: number; max_positions: number; roofline_context: number };
 
 export const modelShape = (): ModelShape => modelShapeJson;
+
+export function loadRun(): LoadRun {
+  if (!resultsDoc.load) throw new Error("docs/results.md has no \"Engine runs measured\" line in its Under load section");
+  return resultsDoc.load;
+}
 
 export function ceilings(): { gbs: number; tflops: number } {
   if (!resultsDoc.ceilings) throw new Error("docs/results.md has no Ceilings line in its Roofline section");

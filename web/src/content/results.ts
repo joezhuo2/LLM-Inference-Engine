@@ -1,5 +1,5 @@
 import { measured } from "@/content/kernels/types";
-import { cellNumber, decodeSteps, environment, launchGaps, medianOf, profilingTable, type GapProfile } from "@/lib/data";
+import { cellNumber, decodeSteps, environment, launchGaps, loadRun, medianOf, profilingTable, type GapProfile } from "@/lib/data";
 
 export type Tone = "accent" | "series-2" | "series-3" | "baseline";
 
@@ -264,3 +264,61 @@ export function opRank(row: StepRow, id: string): number {
   const ops = row.segments.filter((s) => s.group !== "idle" && s.group !== "other").sort((a, b) => b.us - a.us);
   return ops.findIndex((s) => s.id === id) + 1;
 }
+
+const loadSection = "under-load";
+const loadTable = profilingTable(loadSection, 0, "results");
+const gapTable = profilingTable(loadSection, 1, "results");
+
+export const loadRates = [...new Set(loadTable.rows.map((r) => Number(r[1])))].sort((a, b) => a - b);
+
+export const chunkBudget = 256;
+
+const loadSystems: { id: string; doc: string; label: string; tone: Tone; dash?: string }[] = [
+  { id: "chunked", doc: `engine + graphs, budget ${chunkBudget}`, label: `engine, budget ${chunkBudget}`, tone: "accent" },
+  { id: "budget-2048", doc: "engine + graphs, budget 2048", label: "engine, budget 2,048", tone: "series-3" },
+  { id: "engine", doc: "engine + graphs", label: "engine, whole prompts", tone: "series-2" },
+  { id: "vllm", doc: "vLLM", label: "vLLM (budget 2,048)", tone: "baseline", dash: "6 4" },
+];
+
+function loadCell(table: typeof loadTable, doc: string, qps: number, column: string): number | undefined {
+  const row = table.rows.find((r) => r[0] === doc && r[1] === String(qps));
+  return row ? cellNumber(row[table.header.indexOf(column)]) : undefined;
+}
+
+function loadSeries(column: string): Series[] {
+  if (loadTable.header.indexOf(column) < 0) throw new Error(`docs/results.md under load: no column "${column}"`);
+  return loadSystems.map(({ doc, ...s }) => ({ ...s, values: loadRates.map((q) => loadCell(loadTable, doc, q, column)) }));
+}
+
+export const goodputSeries = loadSeries("goodput req/s");
+export const ttftTailSeries = loadSeries("TTFT p99 ms");
+
+export function loadValue(series: Series[], id: string, qps: number): number {
+  const v = series.find((s) => s.id === id)?.values[loadRates.indexOf(qps)];
+  if (v === undefined) throw new Error(`no ${id} value at ${qps} QPS`);
+  return v;
+}
+
+export function peakGoodput(id: string): { qps: number; value: number } {
+  const values = goodputSeries.find((s) => s.id === id)?.values ?? [];
+  const i = values.reduce<number>((best, v, k) => ((v ?? -1) > (values[best] ?? -1) ? k : best), 0);
+  if (values[i] === undefined) throw new Error(`no goodput for ${id}`);
+  return { qps: loadRates[i], value: values[i] as number };
+}
+
+export function largestGap(id: string, qps: number): number {
+  const doc = loadSystems.find((s) => s.id === id)?.doc ?? id;
+  const v = loadCell(gapTable, doc, qps, "largest gap ms");
+  if (v === undefined) throw new Error(`docs/results.md under load: no largest gap for ${doc} at ${qps} QPS`);
+  return v;
+}
+
+const run = loadRun();
+
+export const loadProvenance: Provenance = {
+  gpu: run.gpu.replace(/^NVIDIA GeForce /, ""),
+  commit: run.commit,
+  date: run.date,
+  source: "results/load/, docs/results.md (Under load)",
+  command: `TOKEN_BUDGET=${chunkBudget} scripts/load_sweep.sh, then scripts/load_report.py (scripts/reproduce.sh runs every budget)`,
+};

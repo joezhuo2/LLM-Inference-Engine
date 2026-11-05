@@ -141,7 +141,12 @@ const profiling = existsSync(profilingPath) ? parseProfiling(readFileSync(profil
 const resultsPath = resolve(web, "../docs/results.md");
 const resultsText = existsSync(resultsPath) ? readFileSync(resultsPath, "utf8") : "";
 const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsText);
-const resultsDoc = { sections: parseProfiling(resultsText), ceilings: ceilings ? { gbs: Number(ceilings[1]), tflops: Number(ceilings[2]) } : null };
+const loadRun = /Engine runs measured ([\d-]+(?: to [\d-]+)?) at commit (\w+) on ([^;.]+)/.exec(resultsText);
+const resultsDoc = {
+  sections: parseProfiling(resultsText),
+  ceilings: ceilings ? { gbs: Number(ceilings[1]), tflops: Number(ceilings[2]) } : null,
+  load: loadRun ? { date: loadRun[1], commit: loadRun[2], gpu: loadRun[3] } : null,
+};
 const modelShape = { ...parseModelShape(readFileSync(resolve(web, "../tests/unit/test_config.cpp"), "utf8")), roofline_context: parseRooflineContext(resultsText) };
 const hardwarePath = resolve(web, "../docs/hardware.md");
 const hardware = existsSync(hardwarePath) ? parseHardware(readFileSync(hardwarePath, "utf8")) : {};
