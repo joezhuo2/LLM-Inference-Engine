@@ -1770,3 +1770,5 @@
 
 ## 3D book: split attention (Branch 107)
 - **exporting a story's data so another view can reuse it** => 
+- **instanced meshes for many identical blocks** => 
+- **mapping a drag position to the nearest of a few stops** => 
