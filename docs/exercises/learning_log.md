@@ -1772,3 +1772,5 @@
 - **raycasting a whole group to hit-test a closed object** => 
 - **serialising async animations so a new request waits for the current one** => 
 - **mapping a raycast hit's UV coordinates back to a canvas region** => 
+- **painting text pages onto a canvas with a scaled transform and manual line wrapping** => 
+- **static route segments taking precedence over a dynamic segment** => 
