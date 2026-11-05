@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-rope
+
+- Part A: let the RoPE sandbox render its two parts into two given elements through portals (`pages` prop), and export the RoPE story steps, captions, measured times and the token picker so another view can reuse them.
+
 ## web/palette
 
 - Part A: scramble each word in its own reserved box and swap letters only for ones of similar width, so words stay on their line and never vanish while titles resolve.
