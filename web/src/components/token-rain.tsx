@@ -84,7 +84,7 @@ function RainCanvas({ trace }: { trace: Trace }) {
       const age = now - at;
       return age < holdMs ? 1 : Math.max(0, 1 - (age - holdMs) / fadeMs);
     };
-    const white = parseInt(palette.bg.slice(1, 3), 16) < 128 ? "#ffffff" : palette.text;
+    const white = parseInt(palette.bg.slice(1, 3), 16) < 128 ? palette.onMark : palette.text;
     const covered = new Set<number>();
     drops.current = drops.current.filter((d) => t - d.spawn < life && t >= d.spawn);
     for (const d of drops.current) {

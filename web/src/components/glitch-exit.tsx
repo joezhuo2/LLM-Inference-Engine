@@ -57,7 +57,7 @@ export function GlitchExit({ to, children }: { to?: string; children: ReactNode 
       }
       ctx.globalAlpha = Math.min(1, Math.max(0, (e - 0.55) / 0.35));
       ctx.fillRect(0, 0, w, h);
-      const colors = ["#ffffff", palette.accent, palette.muted];
+      const colors = [palette.onMark, palette.accent, palette.muted];
       const bars = Math.round(40 + e * 260);
       for (let i = 0; i < bars; i++) {
         const r = (k: number) => noise(seed * 131 + i * 7 + k);

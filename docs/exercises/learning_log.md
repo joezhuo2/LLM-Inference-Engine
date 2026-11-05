@@ -1722,3 +1722,4 @@
 ## Color palette (Branch 85)
 - **deepening a muted moodboard color until it passes WCAG contrast and CVD checks** => 
 - **choosing label ink from the mark behind it instead of the page theme** => 
+- **canvas colors read from CSS custom properties at draw time** => 

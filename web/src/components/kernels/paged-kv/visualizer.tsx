@@ -143,14 +143,14 @@ function prism(ctx: CanvasRenderingContext2D, g: Geo, id: number, z0: number, z1
   poly(ctx, [lo.L, lo.Bt, hi.Bt, hi.L]);
   ctx.fill();
   if (shade) {
-    ctx.fillStyle = "rgb(0 0 0 / 0.22)";
+    ctx.fillStyle = "rgb(20 28 36 / 0.22)";
     ctx.fill();
   }
   ctx.fillStyle = fill;
   poly(ctx, [lo.Bt, lo.R, hi.R, hi.Bt]);
   ctx.fill();
   if (shade) {
-    ctx.fillStyle = "rgb(0 0 0 / 0.38)";
+    ctx.fillStyle = "rgb(20 28 36 / 0.38)";
     ctx.fill();
   }
   ctx.fillStyle = fill;
