@@ -39,6 +39,7 @@ constexpr int kContext = 2048;
 constexpr size_t kMinIdenticalSampled = 10;
 constexpr size_t kMinIdenticalPreempted = 14;
 constexpr int kTieUlps = 2;
+constexpr int kTokenBudgets[] = {kRequests, 23, 40, 100, kContext};
 
 class ServeTest : public ::testing::Test {
 protected:
@@ -69,7 +70,8 @@ protected:
 
     std::map<int64_t, std::vector<int32_t>> run(const std::vector<Request>& reqs, int num_blocks,
                                                 int max_batch, int context = kContext,
-                                                int* preemptions = nullptr, bool graphs = false) {
+                                                int* preemptions = nullptr, bool graphs = false,
+                                                int token_budget = 0) {
         KvCache cache(w().config, num_blocks, kBlockSize);
         PagedRunner runner(w().config, w().weights, cache, context, max_batch, context, stream);
         Scheduler scheduler(SchedulerConfig{.num_blocks = num_blocks,
@@ -83,8 +85,8 @@ protected:
         if (preemptions) *preemptions = 0;
         std::optional<engine::DecodeGraphs> decode_graphs;
         if (graphs) decode_graphs.emplace(runner, std::vector<int64_t>{1, 2, 4, 8, max_batch});
-        for (const Request& r :
-             engine::serve(scheduler, runner, sampler, graphs ? &*decode_graphs : nullptr)) {
+        for (const Request& r : engine::serve(scheduler, runner, sampler,
+                                              graphs ? &*decode_graphs : nullptr, token_budget)) {
             out[r.id] = r.output;
             if (preemptions) *preemptions += r.preemptions;
         }
@@ -247,5 +249,45 @@ TEST_F(ServeTest, DecodeGraphsSurviveForcedPreemption) {
     for (const Request& r : reqs) {
         SCOPED_TRACE("request " + std::to_string(r.id));
         EXPECT_EQ(tight.at(r.id), roomy.at(r.id));
+    }
+}
+
+TEST_F(ServeTest, TokenBudgetsKeepTheGreedyOutputsOfEveryRequestUpToTies) {
+    const auto reqs = requests(SamplingParams{0.0f, 0});
+    const auto whole = run(reqs, 1024, kRequests);
+    for (const int budget : kTokenBudgets) {
+        SCOPED_TRACE("token budget " + std::to_string(budget));
+        const auto chunked = run(reqs, 1024, kRequests, kContext, nullptr, false, budget);
+        ASSERT_EQ(chunked.size(), size_t(kRequests));
+        size_t identical = 0;
+        for (const Request& r : reqs) {
+            SCOPED_TRACE("request " + std::to_string(r.id));
+            identical += chunked.at(r.id) == whole.at(r.id);
+            expect_equal_up_to_a_tie(r, chunked.at(r.id), whole.at(r.id));
+        }
+        std::printf("token budget %d: %zu of %d identical to whole-prompt prefill\n", budget,
+                    identical, kRequests);
+    }
+}
+
+TEST_F(ServeTest, TokenBudgetsKeepTheOutputsThroughForcedPreemptionAndGraphsUpToTies) {
+    const auto reqs = requests(SamplingParams{0.0f, 0});
+    const auto roomy = run(reqs, 1024, kRequests, 512);
+    for (const int budget : {kRequests, 40}) {
+        for (const bool graphs : {false, true}) {
+            SCOPED_TRACE("token budget " + std::to_string(budget) + (graphs ? " graphs" : ""));
+            int preemptions = 0;
+            const auto tight = run(reqs, 56, kRequests, 512, &preemptions, graphs, budget);
+            EXPECT_GT(preemptions, 0);
+            ASSERT_EQ(tight.size(), size_t(kRequests));
+            size_t identical = 0;
+            for (const Request& r : reqs) {
+                SCOPED_TRACE("request " + std::to_string(r.id));
+                identical += tight.at(r.id) == roomy.at(r.id);
+                expect_equal_up_to_a_tie(r, tight.at(r.id), roomy.at(r.id));
+            }
+            std::printf("token budget %d%s: %d preemptions, %zu of %d identical\n", budget,
+                        graphs ? " with graphs" : "", preemptions, identical, kRequests);
+        }
     }
 }

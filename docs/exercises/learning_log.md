@@ -1650,3 +1650,12 @@
 - **reading a roofline plot: the slope, the flat top and the distance of a measured dot below the roof** => 
 - **why measured attention sits far under its roofline** => 
 - **cancelling a running tween when the user takes over the control** => 
+
+## Chunked Prefill Wiring (Branch 83)
+- **the row order of a mixed batch: decode rows first, then prefill chunks** => 
+- **why a chunk that stops before the end of its prompt needs no logits** => 
+- **a forward pass that samples nothing: why the layers still have to run** => 
+- **why the same prompt can give different greedy tokens at different chunk sizes (GEMM kernels picked by row count)** => 
+- **why mixed steps run eager while pure decode steps keep their CUDA Graph** => 
+- **why the token budget must be at least the max batch** => 
+- **why a smaller token budget delays the first token of a long prompt but steadies everyone else's TPOT** => 
