@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/palette
 
+- Part A: scramble each word in its own reserved box and swap letters only for ones of similar width, so words stay on their line and never vanish while titles resolve.
 - Part A: reserve the final text size under the scramble effect so proportional titles no longer rewrap or shift the layout while they resolve.
 - Part A: set Open Graph card titles in Instrument Serif and record the new type choices in the web plan.
 - Part A: separate the dark theme request colors so beige, pink and blue pass the color vision checks.

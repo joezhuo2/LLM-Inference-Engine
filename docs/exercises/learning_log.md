@@ -1738,3 +1738,4 @@
 - **lightness difference as the separator that survives color blindness** => 
 - **embedding a font file for a server-side image renderer** => 
 - **reserving layout with an invisible copy of the final text** => 
+- **keeping a text effect within its reserved width by matching glyph width classes** => 
