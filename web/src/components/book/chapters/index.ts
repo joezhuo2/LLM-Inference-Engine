@@ -1,6 +1,7 @@
 import type { ChapterDef } from "../chapter";
 
 export const bookChapters: Record<string, () => Promise<ChapterDef>> = {
+  foundations: () => import("./foundations").then((m) => m.foundationsChapter),
   gemm: () => import("./gemm").then((m) => m.gemmChapter),
   "paged-kv": () => import("./paged-kv").then((m) => m.pagedKvChapter),
   rope: () => import("./rope").then((m) => m.ropeChapter),

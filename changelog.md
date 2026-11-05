@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-foundations
+
+- Part A: step the bytes-against-FLOPs clock card in 5 µs ticks so it redraws its texture less often.
+- Part A: add the foundations chapter (chapter 1) to the book at `/kernels/foundations`: a hatched ink pop-up model for each step (22 blocks landing on the 26 SMs with one block opened into 8 warps and one warp's 32 threads moving in lockstep, the four memory tiers with a tile that waits longer at each slower tier and a result that climbs back, the decode and prefill memory and compute bars filling against one clock, the roofline as a wall with a draggable batch ball and the measured gate/up dots, and the unfused and fused add + RMSNorm counting their trips to DRAM), the rows picker on a flat page, a camera tour per step, and the roofline sandbox as two try-it-yourself spreads.
+- Part A: let the foundations sandbox render its two parts (the roofline with its controls, and the readouts) into two given elements through portals (`pages` prop), and export the foundations story steps, captions, measured numbers and the rows picker so the book can reuse them.
+
 ## web/book-gemm
 
 - Part A: turn the GEMM story into chapter 2 of the book (`/kernels/gemm`): five hatched ink pop-up models (the five projections as towers of bytes and time, one row of W in memory, row-major and column-major, the batch-1 GEMV streaming weight rows past x, the five GEMVs under a glass roof at the measured bandwidth, and one weight row shared by up to 16 rows with a draggable batch), the roofline picker as a flat overlay, and the tiling sandbox's two parts on their own try-it-yourself spreads.
