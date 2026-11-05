@@ -7,6 +7,7 @@ import { AttentionV2Story } from "./attention-v2/story";
 import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
 import { ChunkedPrefillStory } from "./chunked-prefill/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
+import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
 import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
@@ -77,6 +78,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <RopeSandbox />;
     case "foundations":
       return <FoundationsSandbox />;
+    case "gemm":
+      return <GemmSandbox />;
     default:
       return null;
   }

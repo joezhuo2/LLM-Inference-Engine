@@ -1590,6 +1590,16 @@
 - **relative position from absolute rotations (why q·k depends on the distance)** => 
 - **wavelength of a rotary frequency in tokens** => 
 
+## GEMM Tiling Sandbox (Branch 95)
+
+- **output tile and thread block tile** => 
+- **shared memory tiling and data reuse** => 
+- **arithmetic intensity of a tile (FLOP per byte)** => 
+- **K loop and K step** => 
+- **padding when the tile is larger than the matrix** => 
+- **shared memory limit per SM and double buffering** => 
+- **naive matrix multiply memory traffic** => 
+
 ## Smooth Sliders (Branch 97)
 - **telling a click from a drag on a range input with pointer timing** => 
 - **tweening a value with motion animate and onUpdate** => 
