@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-sampling
+
+- Add `scripts/dump_logits.py` and its output `results/sampling_logits.json`: the next-token logits of TinyLlama on the CPU in BF16 (no GPU) for three contexts (a one-answer question, an open haiku start, a story start where many names fit), as the 200 largest logits per context plus the other 31,800 binned by 0.25 so the whole softmax can be rebuilt at any temperature. `web/scripts/sync-data.mjs` copies it into `web/src/data/` and `samplingLogits()` in `web/src/lib/data.ts` reads it. (Part A)
+- Add `web/src/components/kernels/sampling/sampler.ts`, a TypeScript model of `sample_kernel` in `src/sampling/sample.cu`: temperature 0 is greedy and ignores top-k and top-p, otherwise logits are divided by the temperature, top-k keeps whole tie groups until k tokens are counted, top-p keeps the smallest prefix of the top-k survivors whose mass reaches p, and the draw is Gumbel-max over the survivors with noise keyed by seed, step and token. Binned tail tokens are drawn as a group (max of n Gumbels is one Gumbel plus log n). `web/scripts/sampler.test.mjs` checks the math, the tie rules, repeatability by seed and step, and the draw frequencies against the softmax. (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)

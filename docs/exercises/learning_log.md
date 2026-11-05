@@ -1583,3 +1583,14 @@
 - **prefill against decode** => 
 - **kernel fusion and why it removes a round trip to global memory** => 
 - **kernel launch and the intermediate tensor written between two kernels** => 
+
+## Sampling sandbox (Branch 93)
+- **logits** => 
+- **softmax** => 
+- **temperature** => 
+- **entropy** => 
+- **top-k** => 
+- **top-p (nucleus)** => 
+- **Gumbel-max trick** => 
+- **greedy decoding** => 
+- **counter-based random numbers (Philox)** => 
