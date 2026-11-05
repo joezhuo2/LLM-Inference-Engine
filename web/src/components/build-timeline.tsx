@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, type MotionValue, useMotionValueEvent, useScroll, useTransform } from "motion/react";
 import { createElement, useRef, useState } from "react";
+import { ChunkedFigure } from "@/components/chunked-scene";
 import { GemmTilesFigure, GpuFloorplan, ReductionRaceFigure } from "@/components/gpu-floorplan";
 import { GenerateFigure, RooflineFigure, SampleFigure, TokenizeFigure } from "@/components/scene-figures";
 import { useActiveStep } from "@/components/kernels/use-active-step";
@@ -30,10 +31,11 @@ const captions: Record<Scene | "idle", string> = {
   generate: "The prompt goes in, then each decode step picks the most likely next token from the model's probabilities until the reply is complete.",
   sample: "Temperature reshapes the logits, Gumbel noise is added to each, and the largest sum wins; the same seed makes the same pick.",
   roofline: "On a log-log roofline the batch-1 matrix-vector products sit right under the bandwidth roof, which is why the whole step reaches most of it.",
+  chunked: "One prompt and the running decoders, before and after a per-step token budget: the prompt is cut into chunks that share each step with the decode rows, so the decoders never stop.",
   warps: "Warps read the KV blocks a chunk at a time with a running max and sum in registers, so shared memory never holds the whole context.",
 };
 
-const figures = { reduce: ReductionRaceFigure, gemm: GemmTilesFigure, tokenize: TokenizeFigure, generate: GenerateFigure, sample: SampleFigure, roofline: RooflineFigure };
+const figures = { reduce: ReductionRaceFigure, gemm: GemmTilesFigure, tokenize: TokenizeFigure, generate: GenerateFigure, sample: SampleFigure, roofline: RooflineFigure, chunked: ChunkedFigure };
 
 const isStandalone = (s: Scene | "idle"): s is keyof typeof figures => s in figures;
 
