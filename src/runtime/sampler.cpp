@@ -18,9 +18,9 @@ void Sampler::operator()(const Tensor& ids, const Tensor& logits, std::span<cons
     if (int64_t(rows.size()) > max_rows_)
         throw std::invalid_argument("Sampler: more rows than max_rows");
     for (const auto& row : rows) validate(row.params);
-    if (!rows.empty())
-        CUDA_CHECK(cudaMemcpyAsync(rows_.data(), rows.data(), rows.size_bytes(),
-                                   cudaMemcpyHostToDevice, stream));
+    if (rows.empty()) return;
+    CUDA_CHECK(cudaMemcpyAsync(rows_.data(), rows.data(), rows.size_bytes(), cudaMemcpyHostToDevice,
+                               stream));
     sample(ids, logits, static_cast<const SampleRow*>(rows_.data()), stream);
 }
 

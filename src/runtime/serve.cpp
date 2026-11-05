@@ -11,15 +11,46 @@
 
 namespace engine {
 
-std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
-                                DeviceBuffer& next, ServeStats* stats, DecodeGraphs* graphs,
-                                std::vector<StepTrace>* trace) {
-    const NvtxRange step_range("step");
-    const Clock::time_point started = Clock::now();
+namespace {
+
+struct Planned {
+    bool prefill = false;
+    std::vector<SeqId> sampled;
+    PagedBatch batch;
+};
+
+Planned plan(Scheduler& scheduler, int max_blocks) {
     Step step;
     ranged("schedule", [&] { step = scheduler.schedule(); });
     if (step.seqs.empty())
         throw std::logic_error("serve: the scheduler returned an empty step with work left");
+    Planned planned{step.prefill, step.seqs, {}};
+    ranged("build_batch", [&] { planned.batch = build_paged_batch(step, scheduler, max_blocks); });
+    return planned;
+}
+
+Planned plan_chunked(Scheduler& scheduler, int max_blocks, int token_budget) {
+    ChunkedStep step;
+    ranged("schedule", [&] { step = scheduler.schedule_chunked(token_budget); });
+    if (step.empty())
+        throw std::logic_error("serve: the scheduler returned an empty step with work left");
+    Planned planned{step.decode.empty(), step.sampled, {}};
+    ranged("build_batch",
+           [&] { planned.batch = build_chunked_batch(step, scheduler, max_blocks); });
+    return planned;
+}
+
+}  // namespace
+
+std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
+                                DeviceBuffer& next, ServeStats* stats, DecodeGraphs* graphs,
+                                std::vector<StepTrace>* trace, int token_budget) {
+    const NvtxRange step_range("step");
+    const Clock::time_point started = Clock::now();
+    const int max_blocks = int(runner.max_blocks());
+    const Planned step = token_budget > 0 ? plan_chunked(scheduler, max_blocks, token_budget)
+                                          : plan(scheduler, max_blocks);
+    const PagedBatch& batch = step.batch;
     if (stats) {
         ++stats->steps;
         stats->prefill_steps += step.prefill;
@@ -28,14 +59,11 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
             stats->min_free_blocks = free_blocks;
     }
 
-    PagedBatch batch;
-    ranged("build_batch",
-           [&] { batch = build_paged_batch(step, scheduler, int(runner.max_blocks())); });
     Tensor logits;
-    ranged(step.prefill ? "forward_prefill" : "forward_decode", [&] {
+    ranged(batch.prefill ? "forward_prefill" : "forward_decode", [&] {
         logits = graphs && graphs->covers(batch) ? graphs->forward(batch) : runner.forward(batch);
     });
-    const std::vector<SampleRow> rows = sample_rows(step, scheduler);
+    const std::vector<SampleRow> rows = sample_rows(step.sampled, scheduler);
     const Tensor ids(next.data(), DType::I32, {batch.num_seqs});
     ranged("sample", [&] { sampler(ids, logits, rows, runner.stream()); });
 
@@ -52,7 +80,7 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
         record.start = started;
         record.end = Clock::now();
         record.prefill = step.prefill;
-        record.seqs = step.seqs;
+        record.seqs = step.sampled;
         record.tokens = tokens;
         for (const Request& r : finished) record.finished.push_back(r.id);
         record.waiting = scheduler.num_waiting();
@@ -63,7 +91,7 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
 }
 
 std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
-                           DecodeGraphs* graphs) {
+                           DecodeGraphs* graphs, int token_budget) {
     if (sampler.max_rows() < runner.max_seqs())
         throw std::invalid_argument("serve: the sampler must take at least max_seqs rows");
 
@@ -71,7 +99,7 @@ std::vector<Request> serve(Scheduler& scheduler, PagedRunner& runner, Sampler& s
     std::vector<Request> done;
     while (scheduler.num_waiting() + scheduler.num_running() > 0) {
         std::vector<Request> finished =
-            serve_step(scheduler, runner, sampler, next, nullptr, graphs);
+            serve_step(scheduler, runner, sampler, next, nullptr, graphs, nullptr, token_budget);
         done.insert(done.end(), std::make_move_iterator(finished.begin()),
                     std::make_move_iterator(finished.end()));
     }

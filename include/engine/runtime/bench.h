@@ -18,6 +18,6 @@ void run_one_at_a_time(ModelRunner& runner, Workload& workload, int32_t eos_id,
 
 ServeStats run_batched(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,
                        Workload& workload, Clock::time_point start, DecodeGraphs* graphs = nullptr,
-                       std::vector<StepTrace>* trace = nullptr);
+                       std::vector<StepTrace>* trace = nullptr, int token_budget = 0);
 
 }  // namespace engine
