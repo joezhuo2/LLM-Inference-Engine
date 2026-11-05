@@ -1551,3 +1551,5 @@
 ## Chunked Prefill Story (Branch 85)
 - **interleaving prefill chunks with decode rows: how a step is shared between the two** => 
 - **time to first token against time per token: what a smaller chunk trades** => 
+- **preempting from the back of the running list: why the prompt in prefill is the first victim** => 
+- **a sampled list: which rows of a step need logits** => 

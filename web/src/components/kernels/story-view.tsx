@@ -3,6 +3,7 @@
 import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
+import { ChunkedPrefillStory } from "./chunked-prefill/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
 import { PagedKvStory } from "./paged-kv/story";
@@ -34,6 +35,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <AttentionV2Story />;
     case "sampling":
       return <SamplingStory />;
+    case "chunked-prefill":
+      return <ChunkedPrefillStory />;
     default:
       return null;
   }

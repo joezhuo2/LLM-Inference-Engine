@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/chunked-prefill-story
 
+- Add the kernel story `/kernels/chunked-prefill` (`web/src/components/kernels/chunked-prefill/`, `web/src/content/kernels/chunked-prefill.ts`): five scroll steps (an all-prefill step stalling the decoders, a step as a token-budget bar, a long prompt spread over steps with a budget toggle, preemption taking the partly prefilled sequence first, only finished chunks sampled), registered in the story view, kernel cards, story navigation and the OG card route. Its figures are new components, not the timeline scene. Numbers come from the prefill and QPS tables of `docs/results.md`; the effect of chunking is not measured. (Part A)
 - Add a chunked prefill entry to the home page build timeline (`web/src/components/chunked-scene.tsx`): two timelines of the same decoders and one long prompt, with the prompt as one blocking bar before and as budget-sized chunks sharing each step with the decode rows after. The 2,048-token prefill time comes from the results table; the effect of chunking is not measured, since the runner does not use it yet. (Part A)
 
 ## sched/chunked-prefill-impl
