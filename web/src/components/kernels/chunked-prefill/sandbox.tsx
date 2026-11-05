@@ -11,8 +11,8 @@ import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { type Cell, decoders, type Lane, maxPrompt, type Mode, Playground, type PoolSize, predict, type Run } from "./scheduler-model";
 
-const budgets = [8, 16, 32, 64, 128, 256, 512, 1024, 2048];
-const defaultBudget = 5;
+const budgets = ["16", "64", "256", "512", "2048"];
+const defaultBudget = "256";
 const modes: Mode[] = ["schedule()", "schedule_chunked()"];
 const pools: PoolSize[] = ["roomy", "tight"];
 const quick = [128, 512, 2048];
@@ -183,14 +183,14 @@ export function ChunkedPrefillSandbox() {
   const [pg, setPg] = useState(() => new Playground("roomy"));
   const [, setVersion] = useState(0);
   const [mode, setMode] = useState<Mode>("schedule_chunked()");
-  const [bi, setBi] = useState(defaultBudget);
+  const [budgetName, setBudgetName] = useState(defaultBudget);
   const [length, setLength] = useState(2048);
   const [playing, setPlaying] = useState(false);
   const [guess, setGuess] = useState<{ steps: string; stall: string } | null>(null);
   const [guessed, setGuessed] = useState({ steps: "", stall: "" });
   const wrapRef = useRef<HTMLDivElement>(null);
   const columns = useColumns(wrapRef);
-  const budget = budgets[bi];
+  const budget = Number(budgetName);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
@@ -241,13 +241,13 @@ export function ChunkedPrefillSandbox() {
     setGuess(guessed);
     setPool("roomy");
     cancelTween();
-    glideTo(bi, budgets.indexOf(256), setBi, Math.round, () => setPlaying(true));
-    glideTo(length, 2048, setLength, (v) => Math.round(v / 16) * 16);
+    setPlaying(false);
+    setBudgetName("256");
+    glideTo(length, 2048, setLength, (v) => Math.round(v / 16) * 16, () => setPlaying(true));
     setMode("schedule_chunked()");
     const next = new Playground("roomy");
     next.drop(2048);
     setPg(next);
-    setPlaying(false);
   };
 
   const run = pg.runs[mode];
@@ -299,14 +299,8 @@ export function ChunkedPrefillSandbox() {
               drop it
             </button>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label htmlFor="cp-budget" className="w-14 shrink-0 text-muted">
-              budget
-            </label>
-            <SmoothRange id="cp-budget" min={0} max={budgets.length - 1} step={1} value={bi} onValue={(v) => { cancelTween(); setBi(v); }} onKeyDown={cancelTween} disabled={mode === "schedule()"} aria-valuetext={`${budget} tokens per step`} className="min-w-32 flex-1 accent-[var(--accent)] disabled:opacity-40" />
-            <span className={clsx("w-14 text-right tabular-nums", mode === "schedule()" ? "text-muted" : "text-text")}>
-              <NumberFlow value={budget} />
-            </span>
+          <div inert={mode === "schedule()"} className={clsx("flex flex-wrap items-center gap-3", mode === "schedule()" && "opacity-40")}>
+            <Toggle label="budget" choices={budgets} value={budgetName} onChange={setBudgetName} />
             <span className="text-muted">tokens per step</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -339,7 +333,14 @@ export function ChunkedPrefillSandbox() {
             <button type="button" disabled={!busy} onClick={toFirstToken} className="pressable rounded border border-border px-2.5 py-1 text-text disabled:opacity-40">
               run to first token
             </button>
-            <button type="button" onClick={() => fresh(pool)} className="pressable rounded border border-border px-2.5 py-1 text-text">
+            <button
+              type="button"
+              onClick={() => {
+                fresh(pool);
+                setBudgetName(defaultBudget);
+              }}
+              className="pressable rounded border border-border px-2.5 py-1 text-text"
+            >
               reset
             </button>
           </div>
