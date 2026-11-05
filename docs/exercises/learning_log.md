@@ -1551,3 +1551,4 @@
 ## Chunked Prefill Wiring (Branch 83)
 - **the row order of a mixed batch: decode rows first, then prefill chunks** => 
 - **why a chunk that stops before the end of its prompt needs no logits** => 
+- **a forward pass that samples nothing: why the layers still have to run** => 

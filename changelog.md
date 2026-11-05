@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## sched/chunked-prefill-wiring
 
+- Let `PagedRunner::stage` and `run_staged` take a batch with zero sequences, which is what a step of unfinished prefill chunks gives: the layers still run and write the chunk's KV, and the result is an empty logits tensor. `Sampler` returns at once for zero rows. A new GPU test runs chunked steps at a budget of 8 (chunk-only and mixed steps included) and compares every sampled row with the contiguous runner. (Part B)
 - Add `build_chunked_batch` for a `ChunkedStep`: one row per decode sequence for its last token, then the rows of each prefill chunk at positions `first` to `first + count - 1`, with logit rows only for the sequences in `sampled`, in that order. A chunk that does not reach the end of its sequence gets no logit row, so a chunk-only step has none. `build_paged_batch` now shares the per-sequence row code with it, and `sample_rows` takes the list of sampled sequences (#101). (Part B)
 
 ## sched/chunked-prefill-impl
