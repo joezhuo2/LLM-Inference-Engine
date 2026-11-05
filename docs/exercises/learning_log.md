@@ -1773,3 +1773,4 @@
 - **scaling a group on one axis to grow a bar from its left edge** => 
 - **easing between two layouts when a dragged input changes the target** => 
 - **snapping a dragged value to the nearest marked stop on release** => 
+- **why a low camera elevation magnifies the near side of a scene in perspective** => 

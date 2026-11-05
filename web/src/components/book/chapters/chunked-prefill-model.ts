@@ -172,7 +172,7 @@ function stallExhibit(kit: Kit, fonts: Fonts, n: ChunkedPrefillNumbers) {
       const grow = smooth(2.0, 6.0, time);
       slab.scale.x = Math.max(0.001, grow * (slabEnd - slabStart));
       slab.visible = grow > 0.001;
-      const waiting = smooth(1.9, 2.7, time) * (1 - smooth(6.1, 6.6, time));
+      const waiting = reduced ? 1 : smooth(1.9, 2.7, time) * (1 - smooth(6.1, 6.6, time));
       waits.visible = waiting > 0.02;
       waits.scale.y = Math.max(0.001, waiting);
     },
@@ -318,9 +318,9 @@ function spreadExhibit(kit: Kit, fonts: Fonts, n: ChunkedPrefillNumbers) {
     ctx.font = `${h * 0.22}px ${fonts.sans}`;
     ctx.fillText(`first token at step ${steps.length}`, w * 0.6, h * 0.8);
   });
-  readout.group.position.set(0.52, 0, -0.22);
+  readout.group.position.set(0.52, 0, -0.14);
 
-  const railZ = 0.0;
+  const railZ = 0.04;
   const railX0 = 0.14;
   const railX1 = 0.9;
   const rail = kit.solid(new THREE.BoxGeometry(railX1 - railX0 + 0.04, 0.018, 0.022));
@@ -358,7 +358,7 @@ function spreadExhibit(kit: Kit, fonts: Fonts, n: ChunkedPrefillNumbers) {
     ctx.fillText(`first token ${fmt(n.ttftNone)} ms`, w * 0.66, h * 0.52);
     ctx.fillText(`first token ${fmt(n.ttftBudget)} ms`, w * 0.66, h * 0.84);
   });
-  measuredCard.group.position.set(0.52, 0, 0.14);
+  measuredCard.group.position.set(0.52, 0, 0.18);
   root.add(numbers.group, readout.group, rail, inkSegments(ticks, kit.line, 0.0004), knob, railCard.group, measuredCard.group);
 
   let held = false;
