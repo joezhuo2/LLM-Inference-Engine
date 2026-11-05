@@ -41,6 +41,7 @@ export type KernelStory = {
   prologue?: { title: string; intro: string };
   lead?: { title: string; intro: string };
   sandbox?: { title: string; intro: string };
+  book?: boolean;
 };
 
 export function measured(section: string, match: Record<string, string>, column: string, table = 0, doc: Doc = "profiling"): number {

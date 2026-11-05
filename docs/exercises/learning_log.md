@@ -1739,3 +1739,31 @@
 - **embedding a font file for a server-side image renderer** => 
 - **reserving layout with an invisible copy of the final text** => 
 - **keeping a text effect within its reserved width by matching glyph width classes** => 
+
+## 3D book (Branch 100)
+- **hatching a surface by its light level in a fragment shader** => 
+- **patching a built-in three.js material with onBeforeCompile** => 
+- **screen-space line width with LineMaterial and LineSegments2** => 
+- **an inverted hull outline** => 
+- **a canvas texture as a page of typeset text** => 
+- **anisotropic filtering for text seen at an angle** => 
+- **a page turn as a bent plane updated on the CPU** => 
+- **framing a camera on a box for any aspect ratio** => 
+- **projecting 3D corners to place a DOM overlay** => 
+- **scaling DOM content to fit a box without scrolling** => 
+- **why a ref callback written inline runs on every render** => 
+- **lazy-loading a large library with a dynamic import** => 
+- **a shadow-only object (colorWrite off) in three.js** => 
+- **a pop-up fold as a scale on one axis** => 
+- **a page curve that dips at the spine and what it hides at a viewing angle** => 
+- **sizing a texture to the pixels it covers on screen** => 
+- **texture memory: width x height x 4 bytes plus a third for mipmaps** => 
+- **rendering into a DOM node outside the component tree with a React portal** => 
+- **keeping component state while its portal target changes** => 
+- **telling a click from a drag by pointer travel** => 
+- **passing events from an imperative scene to React with a DOM CustomEvent** => 
+- **a glass panel with backdrop-filter blur and a translucent fill** => 
+- **animating to an auto width by measuring the content and transitioning a fixed width** => 
+- **replaying an effect by changing a component key** => 
+- **route groups to give some pages a different layout under the same URL prefix** => 
+- **a lazy registry of dynamic imports keyed by slug** => 

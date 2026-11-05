@@ -37,7 +37,7 @@ const versions = [
   { column: "fast (us)", label: "fast" },
 ];
 
-function TokensPicker() {
+export function TokensPicker() {
   const [tokens, setTokens] = useState("1");
   const times = versions.map((v) => ({ ...v, us: measured(fast, at(tokens), v.column) }));
   const max = Math.max(...times.map((t) => t.us));
@@ -203,6 +203,10 @@ const captions = [
   `µs per launch for one token, Nsight Compute; sin and cos counts from the code`,
   "Nsight Compute, RTX 5060 Laptop GPU, one launch after ten warm-ups",
 ];
+
+export const ropeSteps = steps;
+export const ropeCaptions = captions;
+export const ropeNumbers = { naive: naive1, draft: draft1, fast: fast1 };
 
 export function RopeStory() {
   return (

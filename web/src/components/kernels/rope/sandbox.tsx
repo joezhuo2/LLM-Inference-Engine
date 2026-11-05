@@ -3,6 +3,7 @@
 import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SmoothRange } from "@/components/smooth-range";
 import { glide as tween, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
@@ -32,7 +33,7 @@ const defaults = { pos: 300, pair: 0, qPos: 300, kPos: 280 };
 
 type Guess = "changes" | "stays the same" | null;
 
-export function RopeSandbox() {
+export function RopeSandbox({ pages }: { pages?: { one: HTMLElement | null; two: HTMLElement | null } } = {}) {
   const [pos, setPos] = useState(300);
   const [pair, setPair] = useState(0);
   const [pairF, setPairF] = useState(0);
@@ -130,8 +131,7 @@ export function RopeSandbox() {
     glide({ qPos: qPos + s, kPos: kPos + s });
   };
 
-  return (
-    <div className="space-y-10 tabular-nums text-xs">
+  const intro = (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-muted">
           Part 1: drag the position and pick a dimension pair. Watch the pair at the top left turn fast while the pairs at the bottom right barely move. Part 2: move the query and the key and watch the score. The vectors are made up for illustration (seeded random numbers, not from the model); the frequencies, the pairing of dimension i with i + 32 and the rotation are the engine&apos;s.
@@ -140,8 +140,8 @@ export function RopeSandbox() {
           reset
         </button>
       </div>
-
-      <div className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
+  );
+  const partOne = (
         <div className="space-y-4">
           <h3 className="text-sm text-text">1 · one position, 32 pairs</h3>
           <label className="block space-y-1">
@@ -231,7 +231,8 @@ export function RopeSandbox() {
             ))}
           </div>
         </div>
-
+  );
+  const partTwo = (
         <div className="space-y-4">
           <h3 className="text-sm text-text">2 · the score depends on the gap</h3>
           <div className="space-y-2 rounded border border-border p-3">
@@ -294,6 +295,42 @@ export function RopeSandbox() {
           </svg>
           <p className="text-muted">The dot depends on the gap alone. Drag both positions with the gap locked and it does not move; unlock the gap and move one position and it slides along the curve.</p>
         </div>
+  );
+  if (pages) {
+    const resetButton = (
+      <div className="flex justify-end">
+        <button type="button" onClick={reset} className={button}>
+          reset
+        </button>
+      </div>
+    );
+    return (
+      <>
+        {pages.one &&
+          createPortal(
+            <div className="space-y-6 tabular-nums text-xs">
+              {resetButton}
+              {partOne}
+            </div>,
+            pages.one,
+          )}
+        {pages.two &&
+          createPortal(
+            <div className="space-y-6 tabular-nums text-xs">
+              {resetButton}
+              {partTwo}
+            </div>,
+            pages.two,
+          )}
+      </>
+    );
+  }
+  return (
+    <div className="space-y-10 tabular-nums text-xs">
+      {intro}
+      <div className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
+        {partOne}
+        {partTwo}
       </div>
     </div>
   );

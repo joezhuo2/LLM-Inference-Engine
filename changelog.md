@@ -2,6 +2,23 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-rope
+
+- Part A: make the book engine chapter-agnostic: a `ChapterDef` (steps, captions, exhibits, overlays, tour beats, try-it-yourself spreads, model builder, overlay component) with `chapterStops` and frame helpers in `components/book/chapter.ts`, a lazy chapter registry in `components/book/chapters/`, and RoPE moved to `chapters/rope.tsx`; a chapter with `book: true` is now served as its book at `/kernels/<slug>` (full width, `(book)` route group), every chapter's scroll page moves to `/kernels/<slug>/read` as the reading view, and `/book/rope` is gone.
+- Part A: unscramble the bottom bar's caption (0.9 s) and page count (0.7 s, digits only) with the site's `Scramble` whenever they change.
+- Part A: ease the bottom bar's width over 0.7 s (ease-in-out) when its contents change, measuring the contents with a ResizeObserver, instead of jumping to the new size.
+- Part A: make the book's bottom bar a centered, rounded glass pill floating over the desk, sized to its buttons, step caption and reading view link, instead of a full-width strip.
+- Part A: turn the book's pages by clicking them: the left page goes back and the right page goes forward, each only when there is a page to go to (a drag still orbits the camera, and the page shows a pointer only when it can turn).
+- Part A: add the sandbox to the book as two spreads, 7/8 and 8/8, one per part: explanatory text on the left page and that part of the sandbox on the right, scaled to fit the page without a scrollbar, with the sandbox state kept across both spreads.
+- Part A: size the page textures to the screen (1,600 to 2,560 px wide instead of 1,200) and draw the label cards at twice the resolution, so the book's text is sharp.
+- Part A: move the microsecond clock card off the thread plate so the plate no longer covers it.
+- Part A: print the figure instruction line under each model in the blue highlight.
+- Part A: keep the typeset text and the figure captions clear of the curve at the spine, where the start of the right page's lines ("Drag" read as "g") and the end of the left page's lines were hidden.
+- Part A: turn a page for every step of the book, folding the pop-up model flat before the turn and raising the next one after it (1.8 s turn), instead of fading the text in place.
+- Part A: remove the hidden window frame that cast a # shaped shadow across the desk and the book.
+- Part A: add `/book/rope`, the RoPE chapter as a 3D book (three.js 0.186.1, loaded only on that page): a hardcover on a desk that opens, a hatched ink pop-up model on the right page for each step (eight dials driven by a draggable position, the QKV row with the i and i + 32 pairing, the last-bit chain on BF16 steps, the 36 x 32 thread plate with the sin and cos jars at the measured draft and fast times), the step text typeset on the left page from the same JSX, a camera tour per step, a magnifier over the page and the token picker on a flat right page fitted without scrolling; the reading view links to it, phones get the text in a sheet under the model, and browsers without WebGL get a link back.
+- Part A: let the RoPE sandbox render its two parts into two given elements through portals (`pages` prop), and export the RoPE story steps, captions, measured times and the token picker so another view can reuse them.
+
 ## web/palette
 
 - Part A: scramble each word in its own reserved box and swap letters only for ones of similar width, so words stay on their line and never vanish while titles resolve.
