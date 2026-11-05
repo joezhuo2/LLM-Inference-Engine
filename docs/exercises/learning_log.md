@@ -1552,3 +1552,5 @@
 - **the row order of a mixed batch: decode rows first, then prefill chunks** => 
 - **why a chunk that stops before the end of its prompt needs no logits** => 
 - **a forward pass that samples nothing: why the layers still have to run** => 
+- **why the same prompt can give different greedy tokens at different chunk sizes (GEMM kernels picked by row count)** => 
+- **why mixed steps run eager while pure decode steps keep their CUDA Graph** => 
