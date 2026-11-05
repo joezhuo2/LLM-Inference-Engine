@@ -3,14 +3,18 @@
 #include <algorithm>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "engine/sched/paged_batch.h"
 
 using engine::attention_splits;
+using engine::build_chunked_batch;
 using engine::build_paged_batch;
+using engine::ChunkedStep;
 using engine::pad_decode_batch;
 using engine::PagedBatch;
+using engine::PrefillChunk;
 using engine::Request;
 using engine::sample_rows;
 using engine::Scheduler;
@@ -134,13 +138,13 @@ TEST(PagedBatch, SampleRowsCarryParamsAndTheNumberOfTokensGenerated) {
     s.submit(make(2, 3, 5, 22));
     ASSERT_TRUE(s.schedule().prefill);
     Step step{false, {1, 2}};
-    auto rows = sample_rows(step, s);
+    auto rows = sample_rows(step.seqs, s);
     ASSERT_EQ(rows.size(), 2u);
     EXPECT_EQ(rows[0].step, 0u);
     EXPECT_EQ(rows[0].params.seed, 11u);
     EXPECT_EQ(rows[1].params.seed, 22u);
     s.update(std::vector<int32_t>{7, 8});
-    rows = sample_rows(step, s);
+    rows = sample_rows(step.seqs, s);
     EXPECT_EQ(rows[0].step, 1u);
     EXPECT_EQ(rows[1].step, 1u);
     EXPECT_FLOAT_EQ(rows[0].params.temperature, 0.5f);
@@ -154,6 +158,119 @@ TEST(PagedBatch, RejectsBadArgumentsWithInvalidArgument) {
     EXPECT_THROW(build_paged_batch(step, s, 1), std::invalid_argument);
     EXPECT_THROW(build_paged_batch(Step{true, {}}, s, kMaxBlocks), std::invalid_argument);
     EXPECT_THROW(build_paged_batch(Step{true, {99}}, s, kMaxBlocks), std::invalid_argument);
+}
+
+TEST(ChunkedBatch, APromptLongerThanTheBudgetHasALogitRowOnlyInItsLastChunk) {
+    Scheduler s(config());
+    s.submit(make(1, 10, 4));
+    const std::vector<std::vector<int32_t>> positions = {{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9}};
+    for (size_t i = 0; i < positions.size(); ++i) {
+        SCOPED_TRACE("chunk " + std::to_string(i));
+        const ChunkedStep step = s.schedule_chunked(4);
+        ASSERT_TRUE(step.decode.empty());
+        ASSERT_EQ(step.prefill.size(), 1u);
+        const bool last = i + 1 == positions.size();
+        const PagedBatch b = build_chunked_batch(step, s, kMaxBlocks);
+
+        EXPECT_TRUE(b.prefill);
+        EXPECT_EQ(b.num_seqs, last ? 1 : 0);
+        EXPECT_EQ(b.positions, positions[i]);
+        ASSERT_EQ(b.num_tokens(), int64_t(positions[i].size()));
+        for (size_t t = 0; t < positions[i].size(); ++t) {
+            const int32_t pos = positions[i][t];
+            EXPECT_EQ(b.token_ids[t], 100 + pos);
+            EXPECT_EQ(b.context_lens[t], pos + 1);
+            EXPECT_EQ(b.slot_mapping[t], s.blocks().slot(1, pos));
+        }
+        EXPECT_EQ(b.logit_rows, last ? std::vector<int32_t>{1} : std::vector<int32_t>{});
+        EXPECT_EQ(b.block_tables.size(), positions[i].size() * kMaxBlocks);
+        s.update(std::vector<int32_t>(step.sampled.size(), 900));
+    }
+}
+
+TEST(ChunkedBatch, AMixedStepPutsDecodeRowsFirstAndLogitRowsOnlyOnSampledSequences) {
+    Scheduler s(config());
+    s.submit(make(1, 3, 5, 11));
+    s.submit(make(2, 6, 5, 22));
+
+    ChunkedStep step = s.schedule_chunked(4);
+    ASSERT_TRUE(step.decode.empty());
+    ASSERT_EQ(step.sampled, (std::vector<SeqId>{1}));
+    PagedBatch b = build_chunked_batch(step, s, kMaxBlocks);
+    EXPECT_EQ(b.token_ids, (std::vector<int32_t>{100, 101, 102, 200}));
+    EXPECT_EQ(b.positions, (std::vector<int32_t>{0, 1, 2, 0}));
+    EXPECT_EQ(b.logit_rows, (std::vector<int32_t>{2}));
+    s.update(std::vector<int32_t>{901});
+
+    step = s.schedule_chunked(4);
+    ASSERT_EQ(step.decode, (std::vector<SeqId>{1}));
+    ASSERT_EQ(step.sampled, (std::vector<SeqId>{1}));
+    b = build_chunked_batch(step, s, kMaxBlocks);
+    EXPECT_TRUE(b.prefill);
+    EXPECT_EQ(b.num_seqs, 1);
+    EXPECT_EQ(b.token_ids, (std::vector<int32_t>{901, 201, 202, 203}));
+    EXPECT_EQ(b.positions, (std::vector<int32_t>{3, 1, 2, 3}));
+    EXPECT_EQ(b.context_lens, (std::vector<int32_t>{4, 2, 3, 4}));
+    EXPECT_EQ(b.slot_mapping[0], s.blocks().slot(1, 3));
+    EXPECT_EQ(b.slot_mapping[3], s.blocks().slot(2, 3));
+    EXPECT_EQ(b.logit_rows, (std::vector<int32_t>{0}));
+    EXPECT_EQ(b.block_tables[0], s.blocks().table(1)[0]);
+    EXPECT_EQ(b.block_tables[size_t(kMaxBlocks)], s.blocks().table(2)[0]);
+    s.update(std::vector<int32_t>{902});
+
+    step = s.schedule_chunked(4);
+    ASSERT_EQ(step.sampled, (std::vector<SeqId>{1, 2}));
+    b = build_chunked_batch(step, s, kMaxBlocks);
+    EXPECT_EQ(b.num_seqs, 2);
+    EXPECT_EQ(b.token_ids, (std::vector<int32_t>{902, 204, 205}));
+    EXPECT_EQ(b.positions, (std::vector<int32_t>{4, 4, 5}));
+    EXPECT_EQ(b.logit_rows, (std::vector<int32_t>{0, 2}));
+    const auto rows = sample_rows(step.sampled, s);
+    ASSERT_EQ(rows.size(), 2u);
+    EXPECT_EQ(rows[0].params.seed, 11u);
+    EXPECT_EQ(rows[0].step, 2u);
+    EXPECT_EQ(rows[1].params.seed, 22u);
+    EXPECT_EQ(rows[1].step, 0u);
+}
+
+TEST(ChunkedBatch, APureDecodeStepBuildsTheSameBatchAsTheUnchunkedBuilder) {
+    Scheduler s(config());
+    s.submit(make(1, 3, 5));
+    s.submit(make(2, 1, 5));
+    ASSERT_EQ(s.schedule_chunked(4).sampled, (std::vector<SeqId>{1, 2}));
+    s.update(std::vector<int32_t>{901, 902});
+    const ChunkedStep step = s.schedule_chunked(4);
+    ASSERT_TRUE(step.prefill.empty());
+    const PagedBatch b = build_chunked_batch(step, s, kMaxBlocks);
+    const PagedBatch want = build_paged_batch(Step{false, step.decode}, s, kMaxBlocks);
+
+    EXPECT_FALSE(b.prefill);
+    EXPECT_EQ(b.num_seqs, want.num_seqs);
+    EXPECT_EQ(b.token_ids, want.token_ids);
+    EXPECT_EQ(b.positions, want.positions);
+    EXPECT_EQ(b.slot_mapping, want.slot_mapping);
+    EXPECT_EQ(b.context_lens, want.context_lens);
+    EXPECT_EQ(b.logit_rows, want.logit_rows);
+    EXPECT_EQ(b.block_tables, want.block_tables);
+}
+
+TEST(ChunkedBatch, RejectsBadStepsWithInvalidArgument) {
+    Scheduler s(config());
+    s.submit(make(1, 10, 4));
+    const ChunkedStep step = s.schedule_chunked(4);
+    ASSERT_EQ(step.prefill.size(), 1u);
+    EXPECT_THROW(build_chunked_batch(step, s, 0), std::invalid_argument);
+    EXPECT_THROW(build_chunked_batch(ChunkedStep{}, s, kMaxBlocks), std::invalid_argument);
+    EXPECT_THROW(build_chunked_batch(ChunkedStep{{}, {PrefillChunk{1, 0, 4}}, {1}}, s, kMaxBlocks),
+                 std::invalid_argument);
+    EXPECT_THROW(build_chunked_batch(ChunkedStep{{}, {PrefillChunk{1, 8, 3}}, {}}, s, kMaxBlocks),
+                 std::invalid_argument);
+    EXPECT_THROW(build_chunked_batch(ChunkedStep{{}, {PrefillChunk{1, 0, 0}}, {}}, s, kMaxBlocks),
+                 std::invalid_argument);
+    EXPECT_THROW(build_chunked_batch(ChunkedStep{{99}, {}, {99}}, s, kMaxBlocks),
+                 std::invalid_argument);
+    EXPECT_NO_THROW(
+        build_chunked_batch(ChunkedStep{{}, {PrefillChunk{1, 8, 2}}, {1}}, s, kMaxBlocks));
 }
 
 TEST(PagedBatch, PaddingADecodeBatchAddsRowsThatWriteNothingAndAttendToNothing) {

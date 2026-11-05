@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## sched/chunked-prefill-wiring
+
+- Add `build_chunked_batch` for a `ChunkedStep`: one row per decode sequence for its last token, then the rows of each prefill chunk at positions `first` to `first + count - 1`, with logit rows only for the sequences in `sampled`, in that order. A chunk that does not reach the end of its sequence gets no logit row, so a chunk-only step has none. `build_paged_batch` now shares the per-sequence row code with it, and `sample_rows` takes the list of sampled sequences (#101). (Part B)
+
 ## sched/chunked-prefill-impl
 
 - Move the 25 `Scheduler::schedule_chunked` tests to `tests/unit/test_scheduler_chunked.cpp`, add them to `unit_tests` and delete the `todo_unit_tests` target. (Part A)

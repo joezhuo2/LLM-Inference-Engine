@@ -35,7 +35,7 @@ std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampl
     ranged(step.prefill ? "forward_prefill" : "forward_decode", [&] {
         logits = graphs && graphs->covers(batch) ? graphs->forward(batch) : runner.forward(batch);
     });
-    const std::vector<SampleRow> rows = sample_rows(step, scheduler);
+    const std::vector<SampleRow> rows = sample_rows(step.seqs, scheduler);
     const Tensor ids(next.data(), DType::I32, {batch.num_seqs});
     ranged("sample", [&] { sampler(ids, logits, rows, runner.stream()); });
 

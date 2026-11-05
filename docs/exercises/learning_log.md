@@ -1547,3 +1547,7 @@
 - **why a long prefill raises every other sequence's TPOT** => 
 - **why allocating blocks for the whole prompt at admission avoids running out halfway** => 
 - **why a preempted sequence has to rewrite its KV from position 0** => 
+
+## Chunked Prefill Wiring (Branch 83)
+- **the row order of a mixed batch: decode rows first, then prefill chunks** => 
+- **why a chunk that stops before the end of its prompt needs no logits** => 
