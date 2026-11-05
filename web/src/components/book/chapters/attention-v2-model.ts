@@ -99,7 +99,7 @@ function threePassExhibit(kit: Kit, fonts: Fonts, numbers: AttentionV2Numbers) {
     { text: passText[pass][0], color: kit.palette.faint, size: 0.8 },
     { text: passText[pass][1], serif: true, size: 1.1 },
     { text: passText[pass][2], color: pass === 2 ? kit.palette.pink : kit.palette.blue, size: 0.9 },
-  ]);
+  ], -1.1);
   passCard.group.position.set(0.5, 0, 0.21);
   const timeCard = textCard(kit, fonts, 0.5, 0.05, () => [{ text: `one row at 2,048 tokens: ${numbers.v1At2048} µs`, serif: true }], -0.6);
   timeCard.group.position.set(0.5, 0, 0.36);
@@ -309,7 +309,7 @@ function onlineExhibit(kit: Kit, fonts: Fonts, numbers: AttentionV2Numbers) {
   const memCard = textCard(kit, fonts, 0.66, 0.075, () => [
     { text: "the box: the chunk of 256 scores in shared memory", color: kit.palette.faint },
     { text: `${fmt(numbers.sharedPoints[0].v2)} bytes at 128 tokens or at 8,192`, color: kit.palette.blue },
-  ]);
+  ], -1.2);
   memCard.group.position.set(0.47, 0, -0.29);
 
   const ms: number[] = [];
@@ -367,7 +367,7 @@ function onlineExhibit(kit: Kit, fonts: Fonts, numbers: AttentionV2Numbers) {
       : rose
         ? { text: "m rose: scale l and acc by exp(m_old − m_new), then add", color: kit.palette.pink, serif: true }
         : { text: "m held: add the chunk, nothing to rescale", serif: true },
-  ]);
+  ], -1.1);
   statusCard.group.position.set(0.5, 0, 0.24);
   root.add(memCard.group, statusCard.group);
 
@@ -404,12 +404,12 @@ function onlineExhibit(kit: Kit, fonts: Fonts, numbers: AttentionV2Numbers) {
       maxBar.position.set(0.08 + (reach - 0.08) / 2, shownM * yScale, rowZ);
       mBall.position.set(0.13, shownM * yScale, stateZ);
       const lNow = ls[c] + (rescaledL[c] - ls[c]) * rescale + (ls[c + 1] - rescaledL[c]) * add;
-      const lHeight = 0.003 + (lNow / lMax) * 0.2;
+      const lHeight = 0.003 + (lNow / lMax) * 0.13;
       lJar.scale.y = lHeight;
       lJar.position.set(0.31, lHeight / 2 + 0.002, stateZ);
       accBars.forEach((mesh, d) => {
         const a = accs[c][d] + (rescaledAcc[c][d] - accs[c][d]) * rescale + (accs[c + 1][d] - rescaledAcc[c][d]) * add;
-        const height = 0.003 + (a / accMax) * 0.2;
+        const height = 0.003 + (a / accMax) * 0.13;
         mesh.scale.y = height;
         mesh.position.y = height / 2 + 0.006;
       });
@@ -470,12 +470,12 @@ function lanesExhibit(kit: Kit, fonts: Fonts) {
         ],
   );
   rowCard.group.position.set(0.8, 0, -0.32);
-  const v1Card = textCard(kit, fonts, 0.32, 0.11, () => [
+  const v1Card = textCard(kit, fonts, 0.32, 0.1, () => [
     { text: "v1: one thread walks", serif: true },
     { text: "all 64 dims of its key alone,", color: kit.palette.faint, size: 0.8 },
     { text: "neighbours 128 bytes apart", color: kit.palette.faint, size: 0.8 },
   ]);
-  v1Card.group.position.set(0.8, 0, -0.5);
+  v1Card.group.position.set(0.8, 0, 0.39);
 
   const levelZ = [0.0, 0.09, 0.18, 0.27];
   const levels = [8, 4, 2, 1].map((n, li) =>

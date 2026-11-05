@@ -1774,3 +1774,4 @@
 - **a logarithmic slider mapping position to a power of two** => 
 - **extrapolating a measured linear cost past the last data point** => 
 - **shrinking canvas text to fit by measuring its width** => 
+- **why a standing label is hidden by taller objects in front at low camera elevations** => 
