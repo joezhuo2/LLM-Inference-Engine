@@ -108,6 +108,16 @@ export function BookView() {
   const [failed, setFailed] = useState(false);
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(false);
+  const barInner = useRef<HTMLDivElement>(null);
+  const [barWidth, setBarWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    const el = barInner.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setBarWidth(el.offsetWidth + 2));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 720px)");
@@ -259,7 +269,12 @@ export function BookView() {
       <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
         <canvas ref={canvas} role="img" aria-label={`3D book, open at ${titles[stop]}. ${caption}`} className="absolute inset-0 size-full" />
         <Magnifier lens={lens} />
-          <nav aria-label="book" className="absolute bottom-4 left-1/2 z-20 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/30 bg-surface/55 py-1 pl-1.5 pr-4 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150">
+          <nav
+            aria-label="book"
+            style={{ width: barWidth ?? undefined }}
+            className="absolute bottom-4 left-1/2 z-20 max-w-[calc(100%-2rem)] -translate-x-1/2 overflow-hidden rounded-full border border-white/30 bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150 transition-[width] duration-700 ease-[var(--ease-in-out)] motion-reduce:transition-none"
+          >
+            <div ref={barInner} className="flex w-max items-center gap-1.5 py-1 pl-1.5 pr-4">
             <button type="button" aria-label="previous page" disabled={stop === 0} onClick={() => go(stop - 1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
               <Icon d="M10 3 5 8l5 5" />
             </button>
@@ -284,6 +299,7 @@ export function BookView() {
             <Link href="/kernels/rope" className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
               reading view
             </Link>
+            </div>
           </nav>
         {overlay && narrow && (
           <div data-theme="light" className="book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]">
