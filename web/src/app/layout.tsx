@@ -9,7 +9,7 @@ import { ogImage } from "@/lib/og";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
+const jetbrains = JetBrains_Mono({ subsets: ["latin", "latin-ext", "greek"], variable: "--font-jetbrains" });
 
 const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000";
 

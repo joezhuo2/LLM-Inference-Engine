@@ -11,6 +11,10 @@ export function ScrollToTop() {
   useEffect(() => {
     const onPop = () => {
       fromHistory.current = true;
+      if (window.location.hash) return;
+      const html = document.documentElement;
+      html.style.scrollBehavior = "auto";
+      requestAnimationFrame(() => requestAnimationFrame(() => (html.style.scrollBehavior = "")));
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
