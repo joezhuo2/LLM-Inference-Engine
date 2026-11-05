@@ -204,7 +204,7 @@ function drawPool(ctx: CanvasRenderingContext2D, g: Geo, shown: Shown[], hovered
     if (s.ghost > 0.5 && g.tw >= 44) {
       const top = corners(g, id, s.h);
       ctx.globalAlpha = dim;
-      ctx.fillStyle = s.h > 0.05 ? c.bg : c.muted;
+      ctx.fillStyle = s.h > 0.05 ? "#1f1e19" : c.muted;
       ctx.textAlign = "center";
       ctx.fillText(`#${s.seq}`, top.T[0], (top.T[1] + top.Bt[1]) / 2);
       ctx.globalAlpha = 1;

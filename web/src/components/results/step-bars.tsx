@@ -25,9 +25,9 @@ const groupFill: Record<Segment["group"], string> = {
 };
 
 const labelFill: Record<Segment["group"], string> = {
-  gemm: "fill-on-mark",
-  attention: "fill-on-mark",
-  other: "fill-on-mark",
+  gemm: "fill-on-mark dark:fill-bg",
+  attention: "fill-text dark:fill-bg",
+  other: "fill-text dark:fill-bg",
   idle: "fill-text",
   graph: "fill-bg",
 };

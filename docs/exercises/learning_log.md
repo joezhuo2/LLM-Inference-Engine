@@ -1734,3 +1734,4 @@
 - **next/font self-hosting a Google font at build time** => 
 - **why a character scramble shifts layout in a proportional font** => 
 - **tabular-nums keeping live numbers from jittering in a proportional font** => 
+- **all-pairs versus adjacent-pairs checks for a categorical palette** => 
