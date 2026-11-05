@@ -83,11 +83,11 @@ export function HierarchyFigure({ sms, blocks, threadsPerBlock }: { sms: number;
   );
 }
 
-export type Tier = { name: string; size: string; note: string; detail: string; box: Box };
+export type Tier = { name: string; size: string; lines: string[]; box: Box };
 
-export function MemoryFigure({ tiers }: { tiers: Tier[] }) {
+export function MemoryFigure({ tiers, footer }: { tiers: Tier[]; footer: string }) {
   const { move, on } = useLoop(14);
-  const centre = 170;
+  const centre = 150;
   const hops = [
     { from: 0, to: 1, start: 0.05, end: 0.2 },
     { from: 1, to: 2, start: 0.22, end: 0.37 },
@@ -97,15 +97,16 @@ export function MemoryFigure({ tiers }: { tiers: Tier[] }) {
   const left = (t: Tier) => t.box.x + 10;
   const right = (t: Tier) => t.box.x + t.box.w - 26;
   return (
-    <Frame label="The GPU memory hierarchy: global memory in DRAM is the largest and slowest, then the L2 cache, then shared memory in each SM, then registers private to each thread; data is loaded down the tiers and the result written back up">
+    <Frame label="The GPU memory hierarchy: global memory in DRAM is the largest and slowest, then the L2 cache, then shared memory in each SM, then registers private to each thread, each with its measured bandwidth and latency; data is loaded down the tiers and the result written back up">
       <Label x={20} y={22}>{"a tile of data goes down the tiers, the result comes back up"}</Label>
       {tiers.map((t, i) => (
         <g key={t.name}>
           <rect x={t.box.x} y={t.box.y} width={t.box.w} height={t.box.h} rx={4} className={i === 0 ? "fill-baseline/20 stroke-baseline" : i === 3 ? "fill-accent/20 stroke-accent" : "fill-surface stroke-border"} strokeWidth={0.75} />
           <Label x={centre} y={t.box.y + 19} anchor="middle" className="fill-text">{t.name}</Label>
           <Label x={centre} y={t.box.y + 35} anchor="middle" className={i === 0 ? "fill-baseline" : "fill-accent"}>{t.size}</Label>
-          <Label x={340} y={t.box.y + 19} className="fill-text">{t.note}</Label>
-          <Label x={340} y={t.box.y + 35}>{t.detail}</Label>
+          {t.lines.map((line, li) => (
+            <Label key={line} x={310} y={t.box.y + 15 + li * 15} className={li === 0 ? "fill-text" : "fill-muted"}>{line}</Label>
+          ))}
         </g>
       ))}
       {hops.map((h) => (
@@ -114,7 +115,7 @@ export function MemoryFigure({ tiers }: { tiers: Tier[] }) {
       <motion.circle cx={right(tiers[3]) + 8} cy={mid(tiers[3]) + 6} r={5} className="fill-warn" {...on(0.56, 0.68, false)} />
       <motion.rect x={right(tiers[3])} y={mid(tiers[3])} width={16} height={12} rx={2} className="fill-text" {...move(0.7, 0.9, right(tiers[0]) - right(tiers[3]), mid(tiers[0]) - mid(tiers[3]), true)} />
       <Label x={20} y={372}>closer to the thread: smaller and faster</Label>
-      <Label x={20} y={388}>only the DRAM bandwidth is measured on this GPU</Label>
+      <Label x={20} y={388}>{footer}</Label>
     </Frame>
   );
 }

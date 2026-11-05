@@ -1659,3 +1659,27 @@
 - **why mixed steps run eager while pure decode steps keep their CUDA Graph** => 
 - **why the token budget must be at least the max batch** => 
 - **why a smaller token budget delays the first token of a long prompt but steadies everyone else's TPOT** => 
+
+## On-chip Memory Speeds (Branch 90)
+
+### The microbenchmark
+- **pointer chasing: measuring latency with a chain of dependent loads** => 
+- **Sattolo's algorithm: a random permutation that is a single cycle** => 
+- **`__ldcg` and `ld.global.cg`: loads cached in L2 but not L1** => 
+- **`clock64()` against `%globaltimer`: SM cycles and nanoseconds from inside a kernel** => 
+- **shared memory banks and bank-conflict-free access** => 
+- **dependent FMA latency against FMA throughput** => 
+- **register file size per SM (`regsPerMultiprocessor`)** => 
+- **keeping a benchmark loop from being optimized away (live results, runtime operands, checking SASS)** => 
+- **`cuobjdump -sass`: reading the machine code a kernel compiled to** => 
+- **sizing a grid to one wave with `cudaOccupancyMaxActiveBlocksPerMultiprocessor`** => 
+
+### The numbers
+- **a working-set sweep: the L2 plateau and the drop to DRAM past the cache size** => 
+- **copy bandwidth against read bandwidth** => 
+- **load/store unit throughput: why 32-bit shared loads reach half the bank bandwidth** => 
+- **address translation (TLB) misses in a pointer chase over a large buffer** => 
+- **clock domains: SM clock against the L2 and memory clocks** => 
+
+### On the site
+- **a latency ladder: cycles per dependent load at each tier** => 

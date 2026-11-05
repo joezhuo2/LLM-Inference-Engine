@@ -255,6 +255,39 @@ Every point sits on the bandwidth slope, far left of the 107 FLOP/byte ridge, so
 
 At batch 16 the GEMMs move right to 16 FLOP/byte and take the same time as at batch 1 (4,888 us against 4,863 for gate/up and down together) while doing 16 times the FLOPs, up to 5.2 TFLOP/s: every weight byte is read once for 16 tokens, which is where the 11x throughput comes from. Attention does not move: each row reads its own K and V, so its intensity stays at 7.4 FLOP/byte at any batch size. Its time grows from 333 to 1,631 us per step (19% of kernel time) at 7% of its roof, which makes it the op with the most headroom at batch 16; the split kernel does not run there (5 rows or more keep v2). The whole step at batch 16 falls to 68% of the roof with graphs, against 54% for llama.cpp and 17% for HuggingFace.
 
+## On-chip memory
+
+The roofline above uses one memory ceiling, DRAM. What sits between DRAM and the threads is measured by `scripts/onchip_bench.cu`, which `scripts/onchip_report.py` runs several times (`results/onchip/onchip.csv` and `onchip.md`). Bandwidths are reads by one full wave of blocks (the occupancy limit on every SM), timed with CUDA events after a warm-up launch: L2 from an 8 MB buffer read with `__ldcg` (cached in L2, not in L1) by 128-bit loads, shared memory from 256-thread blocks reading their own arrays with conflict-free 32-bit or 128-bit loads. Latencies are one thread following a pointer chain in a random single cycle (Sattolo's algorithm), one load at a time: through shared memory, through 4 MB of L2 after a warm-up pass, and through 256 MB of DRAM with 128-byte spacing and no warm-up, so every load misses L2. The FMA latency is one thread's chain of dependent `fmaf` calls. Each kernel reads `clock64()` and `%globaltimer` at its start and end, so cycles, nanoseconds and the SM clock come from the same kernel; the register file is `regsPerMultiprocessor` from `cudaGetDeviceProperties`. The SASS (`cuobjdump -sass`) was checked: the chase loops are bare chains of dependent `LDS` or `LDG.E.64.STRONG.GPU` loads, the FMA loop is 128 dependent `FFMA`s per branch, and the bandwidth loops keep their `LDS`, `LDS.128` and `LDG.E.128` loads.
+
+<!-- auto:onchip -->
+Measured 2026-11-05T04:40:03Z at commit e608146 on the NVIDIA GeForce RTX 5060 Laptop GPU: 5 runs of `scripts/onchip_bench.cu`, median (min to max). The SM clock is measured inside each kernel (`clock64()` against `%globaltimer`).
+
+| tier | measure | unit | median | min to max | SM clock MHz |
+|---|---|---|---|---|---|
+| registers | register file | KB/SM | 256 | 256 to 256 |  |
+| registers | register file | KB | 6,656 | 6,656 to 6,656 |  |
+| shared memory | size | KB/SM | 100 | 100 to 100 |  |
+| L2 | size | KB | 32,768 | 32,768 to 32,768 |  |
+| shared memory | read bandwidth, 32-bit loads | GB/s | 4,644 | 4,644 to 4,645 | 2,804 |
+| shared memory | read bandwidth, 32-bit loads | GB/s/SM | 179 | 179 to 179 | 2,804 |
+| shared memory | read bandwidth, 32-bit loads | B/clk/SM | 63.7 | 63.7 to 63.7 | 2,804 |
+| shared memory | read bandwidth, 128-bit loads | GB/s | 9,107 | 9,097 to 9,115 | 2,800 |
+| shared memory | read bandwidth, 128-bit loads | GB/s/SM | 350 | 350 to 351 | 2,800 |
+| shared memory | read bandwidth, 128-bit loads | B/clk/SM | 125 | 125 to 125 | 2,800 |
+| L2 | read bandwidth, 8 MB working set | GB/s | 1,911 | 1,905 to 1,913 | 2,790 |
+| L2 | read bandwidth, 8 MB working set | B/clk/SM | 26.3 | 26.3 to 26.4 | 2,790 |
+| registers | dependent FMA latency | cycles | 4.05 | 4.05 to 4.05 | 2,812 |
+| registers | dependent FMA latency | ns | 1.44 | 1.44 to 1.44 | 2,812 |
+| shared memory | load latency, pointer chase | cycles | 28.0 | 28.0 to 28.0 | 2,812 |
+| shared memory | load latency, pointer chase | ns | 9.96 | 9.96 to 9.96 | 2,812 |
+| L2 | hit latency, pointer chase in 4 MB | cycles | 318 | 318 to 318 | 2,812 |
+| L2 | hit latency, pointer chase in 4 MB | ns | 113 | 113 to 113 | 2,812 |
+| DRAM | load latency, pointer chase in 256 MB | cycles | 867 | 866 to 915 | 2,809 |
+| DRAM | load latency, pointer chase in 256 MB | ns | 309 | 308 to 326 | 2,809 |
+<!-- /auto:onchip -->
+
+Reading it. Every kernel ran at 2,790 to 2,812 MHz (the boost clock under load; the laptop idles at 1,687), so the cycle counts are the numbers to compare across machines and the nanoseconds hold at this clock. Each step closer to the thread is several times faster: a dependent load takes 867 cycles from DRAM, 318 from L2 and 28 from shared memory, and a dependent FMA 4. L2 delivers about 1.9 TB/s, about six times the 323.6 GB/s DRAM ceiling; that ceiling is a copy, and an exploratory run of the same read kernel (not in the table) reached 359 and 372 GB/s over 64 and 256 MB and 1.80 to 1.92 TB/s anywhere from 4 to 28 MB, so 8 MB sits on the L2 plateau and L2 reads are about five times DRAM reads. None of that helps a decode step, which streams 2.07 GB of weights through a 32 MB L2 once per token. Shared memory with 128-bit loads moves 125 bytes per clock per SM, close to 32 banks of 4 bytes, 9.1 TB/s over the 26 SMs; with 32-bit loads it moves exactly half, 63.7, and neither 8 nor 16 loads per loop iteration nor 128-thread blocks changed that, so it is not the loop. It is consistent with the shared memory pipe taking two cycles for a warp-wide 32-bit load, but NVIDIA does not document that rate for this architecture, so the reason is an inference; the measured point is that wide loads pay off on the chip as well as in DRAM. The register file is 256 KB per SM, 6.5 MB in all, more than the 2.5 MB of shared memory. There is no register bandwidth in the table: registers are read as instruction operands, so the honest numbers are the file size and the 4-cycle FMA dependency. Caveats: the DRAM chase covers 256 MB, so it may include address translation misses, and one run of five took 915 cycles instead of about 867, which looks like where the buffer landed in that process; B/clk/SM counts SM cycles although L2 runs in its own clock domain; one GPU, one session (an earlier session at a higher CPU load gave the same numbers within 2%, except the DRAM latency, 864 to 915 cycles).
+
 ## Prefill against prompt length
 
 ![Single-request TTFT against prompt length](../results/prefill/prefill_ttft.png)

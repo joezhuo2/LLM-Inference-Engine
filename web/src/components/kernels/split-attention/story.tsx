@@ -3,6 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
+import { onchip } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -31,6 +32,8 @@ function occ(kernel: string, splits: number): Occupancy {
 
 const v2 = occ("v2", 1);
 const waves = [1, 2, 4, 8].map((s) => occ("split partial", s));
+const dramCycles = Math.round(onchip("dram_latency", "cycles").median).toLocaleString("en-US");
+const l2Cycles = Math.round(onchip("l2_latency", "cycles").median);
 const v2Nsight = { "rows x context": "1 x 2,048", kernel: "v2" };
 const smThroughput = measured(v2Section, v2Nsight, "SM throughput", 1);
 const dram = measured(v2Section, v2Nsight, "DRAM throughput", 1);
@@ -147,8 +150,9 @@ const steps: StoryStep[] = [
           <span className="font-mono text-text">{dram}%</span> of its peak. The kernel is not short of bandwidth.
         </p>
         <p>
-          It is short of warps. Each key load waits hundreds of cycles, and a GPU hides that wait by running other warps
-          in the meantime. With <span className="font-mono text-text">{v2.warps}%</span> of warp slots filled, there are
+          It is short of warps. A load that has to go to DRAM waits about{" "}
+          <span className="font-mono text-text">{dramCycles} cycles</span> on this GPU ({l2Cycles} when it hits L2, both
+          measured with a pointer chase), and a GPU hides that wait by running other warps in the meantime. With <span className="font-mono text-text">{v2.warps}%</span> of warp slots filled, there are
           too few to switch to.
         </p>
       </>
@@ -254,7 +258,7 @@ const steps: StoryStep[] = [
 
 const captions = [
   `${perSm} blocks per SM and ${v2.warps}% warps active are measured (Nsight Compute, 1 row × 2,048 tokens)`,
-  `from the v2 Nsight Compute table in docs/profiling.md; ${smThroughput}% SM throughput`,
+  `from the v2 Nsight Compute table in docs/profiling.md; ${smThroughput}% SM throughput; load latencies from scripts/onchip_bench.cu`,
   "one row, one head; the other 31 heads are cut the same way",
   "block counts, waves, warps and times measured with Nsight Compute; slot placement is a sketch",
   "the layout of the scratch buffer; the record contents are illustrative",
