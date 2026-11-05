@@ -259,6 +259,32 @@ export function BookView() {
       <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
         <canvas ref={canvas} role="img" aria-label={`3D book, open at ${titles[stop]}. ${caption}`} className="absolute inset-0 size-full" />
         <Magnifier lens={lens} />
+          <nav aria-label="book" className="absolute bottom-4 left-1/2 z-20 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/30 bg-surface/55 py-1 pl-1.5 pr-4 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150">
+            <button type="button" aria-label="previous page" disabled={stop === 0} onClick={() => go(stop - 1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+              <Icon d="M10 3 5 8l5 5" />
+            </button>
+            <button type="button" aria-label={playing ? "pause the tour" : "play the tour"} disabled={beatCount < 2} onClick={togglePlay} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+              <Icon d={playing ? "M5 3v10M11 3v10" : "M5 3l8 5-8 5z"} />
+            </button>
+            <span className="shrink-0 text-text">
+              {stop + 1} / {total}
+            </span>
+            <span className="min-w-0 max-w-[22rem] truncate">{caption}</span>
+            <span className="flex shrink-0 items-center gap-0.5">
+              {beats.length > 1 &&
+                beats.map((b, i) => (
+                  <button key={b.caption} type="button" aria-label={b.caption} aria-current={i === beat} onClick={() => pickBeat(i)} className="p-1.5">
+                    <span className={clsx("block size-1.5 rounded-full transition-colors duration-300", i === beat ? "bg-accent" : "bg-border")} />
+                  </button>
+                ))}
+            </span>
+            <button type="button" aria-label="next page" disabled={stop === total - 1} onClick={() => go(stop + 1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+              <Icon d="M6 3l5 5-5 5" />
+            </button>
+            <Link href="/kernels/rope" className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
+              reading view
+            </Link>
+          </nav>
         {overlay && narrow && (
           <div data-theme="light" className="book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]">
             {overlay.kind === "tokens" ? <TokensPicker /> : <div ref={setPageEl} />}
@@ -279,7 +305,7 @@ export function BookView() {
         )}
         {stop >= ropeSteps.length && <RopeSandbox pages={{ one: overlay?.kind === "sandbox-one" ? pageEl : null, two: overlay?.kind === "sandbox-two" ? pageEl : null }} />}
       </div>
-      <div className="relative border-t border-border bg-surface">
+      <div className="relative border-border bg-surface max-[720px]:border-t">
         <article aria-live="polite" className="max-h-[32dvh] overflow-y-auto px-4 py-3 text-sm leading-relaxed text-muted min-[721px]:sr-only">
           {step ? (
             <>
@@ -297,32 +323,6 @@ export function BookView() {
             </>
           )}
         </article>
-        <nav aria-label="book" className="flex items-center gap-2 px-3 py-2 tabular-nums text-xs text-muted">
-          <button type="button" aria-label="previous page" disabled={stop === 0} onClick={() => go(stop - 1)} className="pressable rounded p-1.5 enabled:hover:text-text disabled:opacity-30">
-            <Icon d="M10 3 5 8l5 5" />
-          </button>
-          <button type="button" aria-label={playing ? "pause the tour" : "play the tour"} disabled={beatCount < 2} onClick={togglePlay} className="pressable rounded p-1.5 enabled:hover:text-text disabled:opacity-30">
-            <Icon d={playing ? "M5 3v10M11 3v10" : "M5 3l8 5-8 5z"} />
-          </button>
-          <span className="shrink-0 text-text">
-            {stop + 1} / {total}
-          </span>
-          <span className="min-w-0 flex-1 truncate">{caption}</span>
-          <span className="flex shrink-0 items-center gap-0.5">
-            {beats.length > 1 &&
-              beats.map((b, i) => (
-                <button key={b.caption} type="button" aria-label={b.caption} aria-current={i === beat} onClick={() => pickBeat(i)} className="p-1.5">
-                  <span className={clsx("block size-1.5 rounded-full transition-colors duration-300", i === beat ? "bg-accent" : "bg-border")} />
-                </button>
-              ))}
-          </span>
-          <button type="button" aria-label="next page" disabled={stop === total - 1} onClick={() => go(stop + 1)} className="pressable rounded p-1.5 enabled:hover:text-text disabled:opacity-30">
-            <Icon d="M6 3l5 5-5 5" />
-          </button>
-          <Link href="/kernels/rope" className="link-underline ml-1 shrink-0 max-sm:hidden">
-            reading view
-          </Link>
-        </nav>
       </div>
     </div>
   );

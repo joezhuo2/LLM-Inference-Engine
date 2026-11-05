@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-rope
 
+- Part A: make the book's bottom bar a centered, rounded glass pill floating over the desk, sized to its buttons, step caption and reading view link, instead of a full-width strip.
 - Part A: turn the book's pages by clicking them: the left page goes back and the right page goes forward, each only when there is a page to go to (a drag still orbits the camera, and the page shows a pointer only when it can turn).
 - Part A: add the sandbox to the book as two spreads, 7/8 and 8/8, one per part: explanatory text on the left page and that part of the sandbox on the right, scaled to fit the page without a scrollbar, with the sandbox state kept across both spreads.
 - Part A: size the page textures to the screen (1,600 to 2,560 px wide instead of 1,200) and draw the label cards at twice the resolution, so the book's text is sharp.
