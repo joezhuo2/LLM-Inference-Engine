@@ -1657,3 +1657,5 @@
 - **pausing offscreen animations with IntersectionObserver** => 
 - **font subsets and unicode-range: when the browser downloads a face** => 
 - **why a view transition waits for fonts that start loading during the commit** => 
+- **browser scroll restoration on back and forward, and how scroll-behavior applies to it** => 
+- **popstate on fragment navigation** => 
