@@ -1,11 +1,11 @@
 "use client";
 
-import NumberFlow from "@number-flow/react";
+import NumberFlow from "@/components/number-flow";
 import clsx from "clsx";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { animate } from "motion";
 import { SmoothRange } from "@/components/smooth-range";
+import { glide, type Tween } from "@/lib/glide";
 import { ceilings, hardware } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
@@ -26,6 +26,7 @@ const ops: { name: string; shape: Shape }[] = [
 const opNames = ops.map((o) => o.name);
 const rowNames = rowChoices.map(String);
 const bkNames = kSteps.map(String);
+const tileNames = tileSizes.map(String);
 const start = { op: "gate/up", rows: "16", tile: 1, bk: "32" };
 
 const fmt = (v: number) => v.toLocaleString("en-US");
@@ -66,7 +67,7 @@ export function TilingSandbox() {
   const [playing, setPlaying] = useState(false);
   const [guess, setGuess] = useState<"yes" | "no" | null>(null);
 
-  const tween = useRef<{ stop: () => void } | null>(null);
+  const tween = useRef<Tween | null>(null);
   const shape = ops[opNames.indexOf(op)].shape;
   const m = Number(rows);
   const tile = tileSizes[tileIdx];
@@ -99,22 +100,11 @@ export function TilingSandbox() {
     setOp(start.op);
     setRows(start.rows);
     setBk(start.bk);
+    setTileIdx(start.tile);
     setPlaying(false);
     setGuess(null);
-    if (reduced) {
-      setTileIdx(start.tile);
-      return setDone(0);
-    }
-    const fromTile = tileIdx;
-    const fromDone = done;
-    tween.current = animate(0, 1, {
-      duration: 0.6,
-      ease: [0.77, 0, 0.175, 1],
-      onUpdate: (x) => {
-        setTileIdx(Math.round(fromTile + (start.tile - fromTile) * x));
-        setDone(Math.round(fromDone * (1 - x)));
-      },
-    });
+    if (reduced) return setDone(0);
+    tween.current = glide(done, 0, (x) => setDone(Math.round(x)));
   };
 
   const one = tiling(shape, 1, 16, Number(bk), peak);
@@ -139,7 +129,7 @@ export function TilingSandbox() {
         </div>
         <div role="status" aria-live="polite" className="max-w-2xl text-muted">
           {guess &&
-            `${guess === "no" ? "Right." : "Not quite."} For ${op} at M = 1, tile 16 loads ${mb(one.loadBytes).toFixed(1)} MB and tile 128 loads ${mb(wide.loadBytes).toFixed(1)} MB, against ${mb(one.floorBytes).toFixed(1)} MB for the weights and x read once. There is one row of x to pair with each weight, so a weight is used once however big the tile, and the 127 extra tile rows are padding. Now set rows to 512 and drag the tile again.`}
+            `${guess === "no" ? "Right." : "Not quite."} For ${op} at M = 1, tile 16 loads ${mb(one.loadBytes).toFixed(1)} MB and tile 128 loads ${mb(wide.loadBytes).toFixed(1)} MB, against ${mb(one.floorBytes).toFixed(1)} MB for the weights and x read once. There is one row of x to pair with each weight, so a weight is used once however big the tile, and the 127 extra tile rows are padding. Now set rows to 512 and change the tile again.`}
         </div>
       </div>
 
@@ -149,20 +139,8 @@ export function TilingSandbox() {
             <Toggle label="matrix" choices={opNames} value={op} onChange={(v) => change(() => setOp(v))} />
             <Toggle label="rows M" choices={rowNames} value={rows} onChange={(v) => change(() => setRows(v))} />
             <Toggle label="k step" choices={bkNames} value={bk} onChange={(v) => change(() => setBk(v))} />
+            <Toggle label="tile" choices={tileNames} value={String(tile)} onChange={(v) => change(() => setTileIdx(tileNames.indexOf(v)))} />
           </div>
-          <label className="flex items-center gap-3">
-            <span className="w-14 shrink-0 text-muted">tile</span>
-            <SmoothRange
-              min={0}
-              max={tileSizes.length - 1}
-              step={1}
-              value={tileIdx}
-              onValue={(v) => change(() => setTileIdx(v))}
-              aria-valuetext={`${tile} by ${tile} outputs`}
-              className="min-w-40 flex-1 accent-[var(--accent)]"
-            />
-            <span className="w-20 shrink-0 text-text tabular-nums">{`${tile} × ${tile}`}</span>
-          </label>
           <label className="flex items-center gap-3">
             <span className="w-14 shrink-0 text-muted">k loop</span>
             <SmoothRange
@@ -193,12 +171,12 @@ export function TilingSandbox() {
             <Frame label={`One thread block computing a ${tile} by ${tile} output tile of ${op} at ${m} rows: k step ${done} of ${t.kIters} loaded, ${fmt(Math.round(blockLoadBytes(m, tile, Number(bk), done, shape.in) / 1024))} KB brought in from DRAM so far`}>
               <Label x={20} y={24}>{`A panel: ${live} row${live > 1 ? "s" : ""} of x, K = ${fmt(shape.in)} wide`}</Label>
               <rect x={20} y={32} width={stripW} height={20} rx={3} className="fill-border" />
-              <rect x={20} y={32} width={stripW} height={20} rx={3} className="fill-accent-dim" style={{ ...box, ...slide("transform"), transform: `scaleX(${p})` }} />
-              <rect x={20} y={32} width={Math.max(3, chunk)} height={20} className="fill-accent" style={{ ...slide("transform"), transform: `translateX(${Math.max(0, done - 1) * chunk}px)`, opacity: done > 0 ? 1 : 0 }} />
+              <rect x={20} y={32} width={stripW} height={20} rx={3} className="glide-snap fill-accent-dim" style={{ ...box, ...slide("transform"), transform: `scaleX(${p})` }} />
+              <rect x={20} y={32} width={Math.max(3, chunk)} height={20} className="glide-snap fill-accent" style={{ ...slide("transform"), transform: `translateX(${Math.max(0, done - 1) * chunk}px)`, opacity: done > 0 ? 1 : 0 }} />
               <Label x={20} y={76}>{`B panel: ${tile} rows of W, K = ${fmt(shape.in)} wide`}</Label>
               <rect x={20} y={84} width={stripW} height={20} rx={3} className="fill-border" />
-              <rect x={20} y={84} width={stripW} height={20} rx={3} className="fill-accent-dim" style={{ ...box, ...slide("transform"), transform: `scaleX(${p})` }} />
-              <rect x={20} y={84} width={Math.max(3, chunk)} height={20} className="fill-accent" style={{ ...slide("transform"), transform: `translateX(${Math.max(0, done - 1) * chunk}px)`, opacity: done > 0 ? 1 : 0 }} />
+              <rect x={20} y={84} width={stripW} height={20} rx={3} className="glide-snap fill-accent-dim" style={{ ...box, ...slide("transform"), transform: `scaleX(${p})` }} />
+              <rect x={20} y={84} width={Math.max(3, chunk)} height={20} className="glide-snap fill-accent" style={{ ...slide("transform"), transform: `translateX(${Math.max(0, done - 1) * chunk}px)`, opacity: done > 0 ? 1 : 0 }} />
               <rect x={20} y={128} width={340} height={150} rx={4} fill="none" strokeDasharray="4 3" className={over ? "stroke-warn" : "stroke-border"} />
               <Label x={30} y={146} className={over ? "fill-warn" : "fill-muted"}>{`shared memory: ${kb(t.sharedBytes)} KB of ${kb(sharedLimit)} KB, 2 stages`}</Label>
               <rect x={40} y={158} width={tileW} height={tileH} className="stroke-border" fill="none" strokeDasharray="3 2" />
@@ -210,7 +188,7 @@ export function TilingSandbox() {
               <Label x={374} y={146}>{`output tile ${tile} × ${tile}`}</Label>
               <rect x={374} y={158} width={tileH} height={tileH} className="stroke-border" fill="none" strokeDasharray="3 2" />
               <rect x={374} y={158} width={tileH} height={Math.max(2, live * px)} className="fill-border" />
-              <rect x={374} y={158} width={tileH} height={Math.max(2, live * px)} className="fill-accent" style={{ clipPath: accumClip, transition: reduced ? "none" : `clip-path 600ms ${ease}` }} />
+              <rect x={374} y={158} width={tileH} height={Math.max(2, live * px)} className="glide-snap fill-accent" style={{ clipPath: accumClip, transition: reduced ? "none" : `clip-path 600ms ${ease}` }} />
               <Label x={374} y={158 + tileH + 16}>accumulators, in registers</Label>
               <Label x={20} y={304} className="fill-text">{`k step ${done} of ${t.kIters}: ${fmt(Math.round(kb(blockLoadBytes(m, tile, Number(bk), done, shape.in))))} KB loaded by this block`}</Label>
               <Label x={20} y={324}>{`each loaded x value feeds ${tile} outputs, each W value feeds ${live}`}</Label>

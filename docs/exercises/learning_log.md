@@ -1692,3 +1692,16 @@
 - **why a view transition waits for fonts that start loading during the commit** => 
 - **browser scroll restoration on back and forward, and how scroll-behavior applies to it** => 
 - **popstate on fragment navigation** => 
+
+## Sandbox performance (Branch 98)
+- **one shared tween helper instead of copied duration and easing literals** => 
+- **forced synchronous layout: reading getBoundingClientRect after a DOM write** => 
+- **FLIP animation and why it measures layout on every update** => 
+- **useSyncExternalStore for a module-level store shared by many components** => 
+- **retargeting a CSS transition every frame and why an ease-in-out curve then lags** => 
+- **interpolating geometrically between two values on a log axis** => 
+- **getSnapshot of useSyncExternalStore runs on every render, so it must be cheap** => 
+- **pausing off-screen animation with IntersectionObserver** => 
+- **layout shift: reserving space so changing content does not move its neighbours** => 
+- **ease-out for user-initiated motion: why the first frames decide how responsive it feels** => 
+- **lazy initial state in useState instead of work at module import** => 

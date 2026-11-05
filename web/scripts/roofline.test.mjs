@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { analyse, crossoverRows, opCost, rowSteps, rowsAt, stepOf } from "../src/components/kernels/foundations/roofline.ts";
+import { analyse, crossoverRows, opCost, rowSteps, rowsAt, rowsBetween, stepOf } from "../src/components/kernels/foundations/roofline.ts";
 import { parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 import { parseProfiling } from "./profiling.mjs";
 
@@ -35,6 +35,12 @@ test("rows follow a log scale from 1 to 512 and every step changes them", () => 
   assert.equal(rows.at(-1), 512);
   assert.ok(rows.every((r, i) => i === 0 || r > rows[i - 1]));
   assert.deepEqual([1, 16, 64, 512].map((r) => rowsAt(stepOf(r))), [1, 16, 64, 512]);
+});
+
+test("rows between two steps move geometrically and meet the steps at whole numbers", () => {
+  for (let s = 0; s <= rowSteps; s++) assert.equal(rowsBetween(s), rowsAt(s));
+  assert.ok(Math.abs(rowsBetween(0.5) - Math.sqrt(rowsAt(0) * rowsAt(1))) < 1e-9);
+  for (let s = 0; s < rowSteps; s += 0.25) assert.ok(rowsBetween(s + 0.25) > rowsBetween(s));
 });
 
 test("a GEMM crosses the ridge between 100 and 130 rows and is memory bound before", () => {
