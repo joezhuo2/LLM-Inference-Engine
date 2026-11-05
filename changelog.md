@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-intro
 
+- Part A: reset the canvas transform before every page is drawn, so the scale a front-matter page (contents, errata, a chapter intro) leaves on its canvas no longer doubles the size of the text pages and figure captions drawn later on the same canvas, which made every other spread's left page text far too big on high-density screens.
 - Part A: every chapter of the book opens on an introduction spread: the part, the chapter number, the title and the story's summary on the left, and "in this chapter" on the right, listing the steps and the try-it-yourself spreads with dotted leaders and page numbers, each row a link that turns to its spread. The contents links and `/kernels/<slug>` now land on the intro, and the folios, the contents page numbers and the bar's page count are numbered through the whole book from each chapter's real length, so they agree.
 
 ## web/book-attention-v2

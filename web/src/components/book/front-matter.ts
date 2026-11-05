@@ -250,7 +250,7 @@ export function errataStops(firstSpread: number): Stop[] {
     const shown = [left, right].filter((d): d is DeadEnd => d !== null);
     return {
       ...flatStop(firstSpread + k, k === 0 ? `Errata: ${errataTitle}` : `Errata: ${shown.map((d) => d.kernel).join(" and ")}`, left?.title ?? "Errata", left ? [left.tried, left.happened, left.kept] : [errataIntro]),
-      paint: { left: l?.paint ?? errataTitlePage, right: r?.paint ?? ((canvas) => canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height)) },
+      paint: { left: l?.paint ?? errataTitlePage, right: r?.paint ?? ((canvas) => void begin(canvas, "right")) },
       links: [l?.link, r?.link].filter((x): x is PageLink => !!x),
     };
   });

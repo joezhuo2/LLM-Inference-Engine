@@ -72,6 +72,7 @@ function drawParagraph(ctx: CanvasRenderingContext2D, runs: Run[], x: number, y:
 
 export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, palette: BookPalette, fonts: Fonts): void {
   const ctx = canvas.getContext("2d")!;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   const w = canvas.width;
   const h = canvas.height;
   ctx.clearRect(0, 0, w, h);
@@ -112,6 +113,7 @@ export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, p
 
 export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, caption: string, instruction: string | undefined, folio: string, palette: BookPalette, fonts: Fonts): void {
   const ctx = canvas.getContext("2d")!;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   const w = canvas.width;
   const h = canvas.height;
   ctx.clearRect(0, 0, w, h);

@@ -624,7 +624,9 @@ export class BookScene {
       return;
     }
     if (stop.overlay) {
-      canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
+      const ctx = canvas.getContext("2d")!;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }
     drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, stop.folio, this.kit.palette, this.options.fonts);
