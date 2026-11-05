@@ -10,6 +10,7 @@ export function ogImage(name: string, alt: string) {
 }
 
 const fontDir = join(process.cwd(), "node_modules/@fontsource/jetbrains-mono/files");
+const serifDir = join(process.cwd(), "node_modules/@fontsource/instrument-serif/files");
 
 const glyphs = "01{}<>=+*#/;:%";
 
@@ -26,9 +27,10 @@ const ascii = (s: string) => s.replaceAll("→", "->");
 export async function ogCard({ eyebrow, title: rawTitle, text: rawText, stats }: { eyebrow: string; title: string; text: string; stats: { label: string; value: string }[] }) {
   const title = ascii(rawTitle);
   const text = ascii(rawText);
-  const [regular, bold] = await Promise.all([
+  const [regular, bold, serif] = await Promise.all([
     readFile(join(fontDir, "jetbrains-mono-latin-400-normal.woff")),
     readFile(join(fontDir, "jetbrains-mono-latin-700-normal.woff")),
+    readFile(join(serifDir, "instrument-serif-latin-400-normal.woff")),
   ]);
   const footer = `measured on ${String(environment.gpu ?? "unknown GPU")} · commit ${String(environment.commit ?? "unknown")}`;
   return new ImageResponse(
@@ -52,7 +54,7 @@ export async function ogCard({ eyebrow, title: rawTitle, text: rawText, stats }:
               <span style={{ color: "#a9c3d9" }}>llmie</span>
               <span style={{ marginLeft: 16 }}>/ {eyebrow}</span>
             </div>
-            <div style={{ display: "flex", fontSize: Math.min(76, Math.floor(1400 / title.length)), fontWeight: 700, lineHeight: 1.1, maxWidth: 900 }}>{title}</div>
+            <div style={{ display: "flex", fontSize: Math.min(76, Math.floor(1400 / title.length)), fontFamily: "Instrument Serif", fontWeight: 400, lineHeight: 1.1, maxWidth: 900 }}>{title}</div>
             <div style={{ display: "block", lineClamp: 4, fontSize: 26, lineHeight: 1.45, color: "#b3ad9c", maxWidth: 820 }}>{text}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
@@ -76,6 +78,7 @@ export async function ogCard({ eyebrow, title: rawTitle, text: rawText, stats }:
       fonts: [
         { name: "JetBrains Mono", data: regular, weight: 400, style: "normal" },
         { name: "JetBrains Mono", data: bold, weight: 700, style: "normal" },
+        { name: "Instrument Serif", data: serif, weight: 400, style: "normal" },
       ],
     },
   );

@@ -1736,3 +1736,4 @@
 - **tabular-nums keeping live numbers from jittering in a proportional font** => 
 - **all-pairs versus adjacent-pairs checks for a categorical palette** => 
 - **lightness difference as the separator that survives color blindness** => 
+- **embedding a font file for a server-side image renderer** => 
