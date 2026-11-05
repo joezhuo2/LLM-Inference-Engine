@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/toggle-transitions
+
+- Slide the highlight of the shared `Toggle` between choices: an accent copy of the choices sits over the buttons and its `clip-path` moves to the selected one over 500 ms ease-in-out, measured from the buttons and kept in place with a `ResizeObserver`. Every number picker on every page uses `Toggle`, so all of them animate; under reduced motion the highlight jumps. (Part A)
+
 ## web/continuous-batching-prologue
 
 - Add `web/src/components/kernels/paged-kv/batching.ts`: a small deterministic simulation of static batching and of the scheduler's continuous batching (first come first served admission up to the slot count, preemption from the back of the running list when the block pool runs out) over ten illustrative request lengths, with the wasted slot-steps of each. It throws if a grid does not hold exactly the work of its requests. (Part A)
