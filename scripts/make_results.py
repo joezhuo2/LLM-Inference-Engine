@@ -165,6 +165,10 @@ def main(argv=None):
     if "<!-- auto:prefill -->" in text:
         text = replace_block(text, "prefill", prefill_path.read_text() if prefill_path.exists()
                              else "No prefill curve recorded.\n")
+    onchip_path = args.results_dir / "onchip" / "onchip.md"
+    if "<!-- auto:onchip -->" in text:
+        text = replace_block(text, "onchip", onchip_path.read_text() if onchip_path.exists()
+                             else "No on-chip measurements recorded.\n")
     text = replace_block(text, "scoreboard", scoreboard(rows, correctness, args.peak_gb_s))
     text = replace_block(text, "table", plot.table_markdown(rows) if rows else "No summaries found.\n")
     args.doc.write_text(text)

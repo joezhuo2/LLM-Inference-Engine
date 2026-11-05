@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## tools/onchip-speeds
+
+- Add `scripts/onchip_bench.cu`, which measures what sits between DRAM and the threads: L2 read bandwidth (8 MB working set, `__ldcg` so L1 is skipped) and L2 hit latency (pointer chase in 4 MB), shared memory read bandwidth with conflict-free 32-bit and 128-bit loads and its latency (pointer chase in shared memory), dependent FMA latency, DRAM latency (pointer chase in 256 MB) and the register file size from `cudaGetDeviceProperties`, with the SM clock of each kernel from `clock64()` against `%globaltimer`. `scripts/onchip_report.py` runs it several times and writes `results/onchip/onchip.csv` and `onchip.md` (median, min to max); `scripts/reproduce.sh` runs both (`--skip-onchip` to leave out) and `scripts/make_results.py` fills a new `auto:onchip` block of `docs/results.md`. New tests. (Part A)
+
 ## web/memory-wall-story
 
 - Rename the 00 story to "foundations" (title, slug `/kernels/foundations`, files, component). (Part A)

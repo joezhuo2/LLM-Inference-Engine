@@ -1583,3 +1583,17 @@
 - **prefill against decode** => 
 - **kernel fusion and why it removes a round trip to global memory** => 
 - **kernel launch and the intermediate tensor written between two kernels** => 
+
+## On-chip Memory Speeds (Branch 90)
+
+### The microbenchmark
+- **pointer chasing: measuring latency with a chain of dependent loads** => 
+- **Sattolo's algorithm: a random permutation that is a single cycle** => 
+- **`__ldcg` and `ld.global.cg`: loads cached in L2 but not L1** => 
+- **`clock64()` against `%globaltimer`: SM cycles and nanoseconds from inside a kernel** => 
+- **shared memory banks and bank-conflict-free access** => 
+- **dependent FMA latency against FMA throughput** => 
+- **register file size per SM (`regsPerMultiprocessor`)** => 
+- **keeping a benchmark loop from being optimized away (live results, runtime operands, checking SASS)** => 
+- **`cuobjdump -sass`: reading the machine code a kernel compiled to** => 
+- **sizing a grid to one wave with `cudaOccupancyMaxActiveBlocksPerMultiprocessor`** => 
