@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-cover
 
+- Part A: riffle a fan of six quick leaves (`riffle`, 1.2 s, ease in-out overall) only when `goTo(stop, beat, true)` asks for it, driving extra leaf meshes from the existing `setLeaf` geometry so the turning page is not reimplemented; every other move, however far, still uses the single `turnLeaf` turn, and reduced motion lands at once.
 - Part A: stop mirroring the cover's title when the book rests closed (drop the cover face's `scale.x = -1`).
 - Part A: serve "Every Byte" at `/kernels` as the closed book on the desk that opens on a cover click (or the open button, or the right arrow) and closes again from the first page, and at `/kernels/contents` already open: a contents spread grouped by Parts I to IV (`bookParts` and `bookOrder` in `components/book/front-matter.ts`) whose entries are clickable page links to `/kernels/<slug>`, then the Errata at the back built from the dead ends as flat pages, two to a spread after a title page; a text list under the book (visible on phones, screen-reader only on wide screens) carries the same links.
 - Part A: keep the kernels index (layer map and kernel cards) at `/kernels/list`, freeing `/kernels` for the book's cover.

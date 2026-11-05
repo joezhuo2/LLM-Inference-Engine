@@ -172,6 +172,8 @@ export class BookScene {
   private applied = { stop: -1, beat: 0 };
   private target = { stop: 0, beat: 0 };
   private running = false;
+  private riffleNext = false;
+  private riffleLeaves: { front: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>; back: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial> }[] = [];
   private opened = false;
   private closedView = false;
   private settling: Promise<void> = Promise.resolve();
@@ -626,8 +628,9 @@ export class BookScene {
     drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, stop.folio, this.kit.palette, this.options.fonts);
   }
 
-  goTo(stop: number, beat: number): void {
+  goTo(stop: number, beat: number, riffle = false): void {
     this.target = { stop, beat };
+    this.riffleNext = riffle;
     this.kick();
   }
 
@@ -669,8 +672,10 @@ export class BookScene {
     const exhibitChanges = from.exhibit !== to.exhibit || from.spread !== to.spread;
     if (exhibitChanges && from.exhibit !== null) await this.foldDown(from.exhibit);
     this.setCamGoal(this.beatOf(stop, beat)!, 1.9);
+    const riffle = this.riffleNext;
+    this.riffleNext = false;
     if (from.spread !== to.spread) {
-      await this.turnLeaf(from, to);
+      await (riffle ? this.riffle(from, to) : this.turnLeaf(from, to));
     } else {
       const left = this.leftText.prepare((c) => this.drawLeft(c, to));
       const right = this.rightText.prepare((c) => this.drawRight(c, to));
@@ -745,6 +750,79 @@ export class BookScene {
     await this.tween(1.8, (t) => this.setLeaf(forward ? easeInOut(t) : 1 - easeInOut(t)));
     this.leaf.front.visible = false;
     this.leaf.back.visible = false;
+    if (forward) {
+      this.leftText.blend(left, 1);
+      this.leftText.commit(left);
+    } else {
+      this.rightText.blend(right, 1);
+      this.rightText.commit(right);
+    }
+  }
+
+  private async riffle(from: Stop, to: Stop): Promise<void> {
+    const forward = to.spread > from.spread;
+    if (!this.riffleLeaves.length) {
+      const blank = document.createElement("canvas");
+      blank.width = blank.height = 4;
+      const ctx = blank.getContext("2d")!;
+      ctx.fillStyle = this.kit.palette.paper;
+      ctx.fillRect(0, 0, 4, 4);
+      const paper = new THREE.CanvasTexture(blank);
+      paper.colorSpace = THREE.SRGBColorSpace;
+      for (let k = 0; k < 6; k++) {
+        const geometry = this.leaf.geometry.clone();
+        const front = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ map: paper, side: THREE.FrontSide }));
+        const back = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ map: paper, side: THREE.BackSide }));
+        front.castShadow = true;
+        front.visible = back.visible = false;
+        this.bookRoot.add(front, back);
+        this.riffleLeaves.push({ front, back });
+      }
+    }
+    const leaves = this.riffleLeaves;
+    const n = leaves.length;
+    const paper = leaves[1].front.material.map;
+    const left = this.leftText.prepare((c) => this.drawLeft(c, to));
+    const right = this.rightText.prepare((c) => this.drawRight(c, to));
+    for (const leaf of leaves) {
+      leaf.front.material.map = paper;
+      leaf.back.material.map = paper;
+    }
+    if (forward) {
+      this.composeLeaf(this.leaf.frontCanvas, this.rightText.current);
+      this.composeLeaf(this.leaf.backCanvas, this.leftText.canvases[left]);
+      leaves[0].front.material.map = this.leaf.frontMap;
+      leaves[n - 1].back.material.map = this.leaf.backMap;
+      this.rightText.blend(right, 1);
+      this.rightText.commit(right);
+    } else {
+      this.composeLeaf(this.leaf.backCanvas, this.leftText.current);
+      this.composeLeaf(this.leaf.frontCanvas, this.rightText.canvases[right]);
+      leaves[0].back.material.map = this.leaf.backMap;
+      leaves[n - 1].front.material.map = this.leaf.frontMap;
+      this.leftText.blend(left, 1);
+      this.leftText.commit(left);
+    }
+    this.leaf.frontMap.needsUpdate = true;
+    this.leaf.backMap.needsUpdate = true;
+    const source = this.leaf.geometry.attributes;
+    const place = (t: number) => {
+      const u = easeInOut(t);
+      leaves.forEach((leaf, k) => {
+        const p = clamp01((u - (k * 0.65) / (n - 1)) / 0.35);
+        this.setLeaf(forward ? p : 1 - p);
+        const attributes = leaf.front.geometry.attributes;
+        (attributes.position.array as Float32Array).set(source.position.array as Float32Array);
+        (attributes.normal.array as Float32Array).set(source.normal.array as Float32Array);
+        attributes.position.needsUpdate = attributes.normal.needsUpdate = true;
+        leaf.front.geometry.computeBoundingSphere();
+        const landed = forward ? p > 0.5 : p < 0.5;
+        leaf.front.position.y = leaf.back.position.y = (landed ? k : n - 1 - k) * 0.0008;
+        leaf.front.visible = leaf.back.visible = t < 1;
+      });
+    };
+    place(0);
+    await this.tween(1.2, place);
     if (forward) {
       this.leftText.blend(left, 1);
       this.leftText.commit(left);
