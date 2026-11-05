@@ -1770,3 +1770,6 @@
 
 ## 3D book: CUDA Graphs (Branch 111)
 - **sharing data between a 2D figure and a 3D model through named exports** => 
+- **a timeline drawn to scale as a row of boxes on a time axis** => 
+- **a lid that closes over a group as a pop-up scale** => 
+- **a draggable knob that maps page x to a value range** => 
