@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-rope
 
+- Part A: print the figure instruction line under each model in the blue highlight.
 - Part A: keep the typeset text and the figure captions clear of the curve at the spine, where the start of the right page's lines ("Drag" read as "g") and the end of the left page's lines were hidden.
 - Part A: turn a page for every step of the book, folding the pop-up model flat before the turn and raising the next one after it (1.8 s turn), instead of fading the text in place.
 - Part A: remove the hidden window frame that cast a # shaped shadow across the desk and the book.

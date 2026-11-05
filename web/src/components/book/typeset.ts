@@ -123,7 +123,7 @@ export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, capti
   y = drawParagraph(ctx, [{ text: `${figure}. ${caption}`, accent: false }], x, y, width, 38 * unit, palette.faint, palette.faint, false) + 8 * unit;
   if (instruction) {
     ctx.font = `${40 * unit}px ${fonts.serif}`;
-    drawParagraph(ctx, [{ text: instruction, accent: false }], x, y + 12 * unit, width, 48 * unit, palette.ink, palette.ink, false);
+    drawParagraph(ctx, [{ text: instruction, accent: false }], x, y + 12 * unit, width, 48 * unit, palette.blue, palette.blue, false);
   }
   ctx.fillStyle = palette.faint;
   ctx.font = `${26 * unit}px ${fonts.sans}`;
