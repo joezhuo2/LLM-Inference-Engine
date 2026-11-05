@@ -2,6 +2,20 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/sandbox-chunked-prefill
+
+- Use `SmoothRange` (copied from main) for the length and budget sliders of the chunked prefill sandbox, and make "run it" glide the sliders to budget 256 and length 2,048 over 600 ms before the run starts (a click or key on a slider cancels it; reduced motion jumps). (Part A)
+- Copy `web/src/components/smooth-range.tsx` byte for byte from main, ahead of the merge. (Part A)
+- Add a `sandbox` field to `KernelStory` and a "play with the budget" section after "how it works" on `/kernels/chunked-prefill` (`web/src/components/kernels/chunked-prefill/sandbox.tsx`): a predict-first prompt, drop buttons and a length slider, a budget slider over 8 to 2,048 tokens, a `schedule()` / `schedule_chunked()` toggle, a roomy or tight KV pool, play, step, run to first token and reset. It shows tokens per step as columns over a per-sequence timeline of decode rows, stalls, chunks, first tokens and preemptions, and a table that compares both rules on the same arrivals (steps, longest decode stall, biggest step, tokens per step, steps to first token, preemptions). It counts steps and tokens only; the measured 128 and 2,048-token prefill times from `docs/results.md` are quoted for scale. (Part A)
+- Add a TypeScript port of `Scheduler::schedule()` and `Scheduler::schedule_chunked()` with a counts-only block manager (`web/src/components/kernels/chunked-prefill/scheduler-model.ts`), and a `Playground` that runs both on the same arrivals: four decoders, prompts dropped by the reader, a roomy or tight KV pool. Per sequence it records one cell per step (decode row, stall, chunk, first token, wait, preempted) and it computes the steps, longest decode stall, biggest step, tokens per step and first-token wait of the dropped prompt. 25 tests in `web/scripts/chunked-scheduler.test.mjs` mirror the cases of `tests/unit/test_scheduler_chunked.cpp` (budget limits, decode rows first, spread prompts, head of the queue never skipped, preemption of the partly prefilled sequence and replay of a preempted decoder) plus `schedule()` admission and preemption. (Part A)
+
+## web/chunked-prefill-story
+
+- Move the chunked prefill timeline entry out of M5 into a new milestone, M6 "refinements" (Nov 4). (Part A)
+- Fix the spread figure of `/kernels/chunked-prefill`: the "step" label no longer sits on column 1, and the columns use more of the figure height. (Part A)
+- Add the kernel story `/kernels/chunked-prefill` (`web/src/components/kernels/chunked-prefill/`, `web/src/content/kernels/chunked-prefill.ts`): five scroll steps (an all-prefill step stalling the decoders, a step as a token-budget bar, a long prompt spread over steps with a budget toggle, preemption taking the partly prefilled sequence first, only finished chunks sampled), registered in the story view, kernel cards, story navigation and the OG card route. Its figures are new components, not the timeline scene. Numbers come from the prefill and QPS tables of `docs/results.md`; the effect of chunking is not measured. (Part A)
+- Add a chunked prefill entry to the home page build timeline (`web/src/components/chunked-scene.tsx`): two timelines of the same decoders and one long prompt, with the prompt as one blocking bar before and as budget-sized chunks sharing each step with the decode rows after. The 2,048-token prefill time comes from the results table; the effect of chunking is not measured, since the runner does not use it yet. (Part A)
+
 ## web/smooth-sliders
 
 - Add `SmoothRange`, a range input that glides like the build timeline scrubber: a click on the track eases the value to the new spot over 600 ms ease-in-out, emitting each step on the way, while a drag held past 250 ms and the keyboard follow at once; reduced motion jumps. Use it for the dashboard scrubber and the paged KV replay slider. (Part A)

@@ -4,6 +4,8 @@ import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
+import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
+import { ChunkedPrefillStory } from "./chunked-prefill/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
 import { FoundationsStory } from "./foundations/story";
@@ -38,6 +40,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <AttentionV2Story />;
     case "sampling":
       return <SamplingStory />;
+    case "chunked-prefill":
+      return <ChunkedPrefillStory />;
     default:
       return null;
   }
@@ -58,6 +62,15 @@ export function KernelPrologueView({ slug }: { slug: string }) {
   switch (slug) {
     case "paged-kv":
       return <BatchingStory />;
+    default:
+      return null;
+  }
+}
+
+export function KernelSandboxView({ slug }: { slug: string }) {
+  switch (slug) {
+    case "chunked-prefill":
+      return <ChunkedPrefillSandbox />;
     default:
       return null;
   }
