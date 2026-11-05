@@ -27,7 +27,7 @@ export function KernelCards() {
         const replay = plays[k.slug] ?? 0;
         const body = (
           <>
-            <div className="font-mono text-sm">
+            <div className="font-serif text-xl">
               <span className="text-muted">{String(k.index).padStart(2, "0")} </span>
               <Scramble
                 text={k.title}

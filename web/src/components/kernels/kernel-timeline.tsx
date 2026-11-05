@@ -58,7 +58,7 @@ export function KernelTimeline({ entries }: { entries: KernelEntry[] }) {
               </span>
               <span className={clsx(e.author === "claude" ? "text-muted" : "text-text")}>· {authorLabel[e.author]}</span>
             </div>
-            <h3 className="mt-2 text-lg text-text">{e.title}</h3>
+            <h3 className="mt-2 font-serif text-2xl text-text">{e.title}</h3>
             <p className="mt-1 max-w-2xl text-muted">{e.text}</p>
             {e.metric && (
               <div className="mt-4 max-w-xl">

@@ -33,7 +33,7 @@ export default function Results() {
         </header>
         <ResultsStory />
         <section aria-labelledby="runs" className="space-y-4">
-          <h2 id="runs" className="font-mono text-xl text-text">
+          <h2 id="runs" className="font-serif text-3xl text-text">
             every run
           </h2>
           <p className="max-w-2xl text-muted">
@@ -79,7 +79,7 @@ export default function Results() {
           )}
         </section>
         <section aria-labelledby="reproduce" className="space-y-4">
-          <h2 id="reproduce" className="font-mono text-xl text-text">
+          <h2 id="reproduce" className="font-serif text-3xl text-text">
             reproduce
           </h2>
           <p className="max-w-2xl text-muted">

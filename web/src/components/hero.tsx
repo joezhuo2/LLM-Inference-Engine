@@ -19,7 +19,7 @@ export function Hero({ next }: { next?: { href: string; label: string } }) {
         />
         <div className="absolute inset-x-0 bottom-0">
           <div className="mx-auto w-full max-w-5xl space-y-5 px-4 pb-8 sm:px-6 sm:pb-12">
-            <h1 className="font-mono text-3xl sm:text-5xl">
+            <h1 className="font-serif text-[2.75rem] leading-tight sm:text-7xl">
               <Scramble text="llm-inference-engine" durationMs={1600} />
             </h1>
             <p className="max-w-xl text-muted">

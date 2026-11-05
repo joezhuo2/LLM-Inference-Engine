@@ -83,7 +83,7 @@ export function StickyStory({
               </div>
               <h2
                 className={clsx(
-                  "mt-1 font-mono text-lg transition-colors duration-200",
+                  "mt-1 font-serif text-3xl leading-tight transition-colors duration-200",
                   i === active ? "text-accent" : "text-muted",
                 )}
               >

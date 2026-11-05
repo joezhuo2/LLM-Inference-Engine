@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useIntroDone } from "@/lib/intro";
 
-const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&*";
+const letters = "abcdefghijklmnopqrstuvwxyz";
 const digits = "0123456789";
 const everyMs = 45;
 

@@ -190,7 +190,7 @@ function EntryView({ entry, reduced, stepRef }: { entry: Entry; reduced: boolean
           ))}
         </span>
       </div>
-      <h3 className="mt-2 text-lg text-text">
+      <h3 className="mt-2 font-serif text-2xl text-text">
         <Scramble text={entry.title} trigger="view" durationMs={900} />
       </h3>
       <p className="mt-1 max-w-xl text-muted">{entry.text}</p>
@@ -213,7 +213,7 @@ function MilestoneView({ milestone, reduced, start, refs }: { milestone: Milesto
         <div className="font-mono text-xs text-muted tabular-nums">
           {milestone.id} · {milestone.dates}
         </div>
-        <h2 id={`milestone-${milestone.id}`} className="mt-1 font-mono text-xl text-text">
+        <h2 id={`milestone-${milestone.id}`} className="mt-1 font-serif text-3xl text-text">
           <Scramble text={milestone.name} trigger="view" durationMs={900} />
         </h2>
         <p className="mt-2 text-sm text-muted">{milestone.goal}</p>

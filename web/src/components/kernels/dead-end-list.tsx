@@ -71,7 +71,7 @@ export function DeadEndList() {
                 </span>
                 <span className={d.author === "claude" ? "text-muted" : "text-text"}>· {authorLabel[d.author]}</span>
               </div>
-              <h2 className="mt-2 text-lg text-text">{d.title}</h2>
+              <h2 className="mt-2 font-serif text-2xl text-text">{d.title}</h2>
               <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[6rem_minmax(0,1fr)]">
                 <dt className="font-mono text-xs text-muted sm:pt-0.5">tried</dt>
                 <dd className="text-muted">{d.tried}</dd>

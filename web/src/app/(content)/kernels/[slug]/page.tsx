@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className="space-y-6">
-      <h2 id={id} className="font-mono text-xl text-text">
+      <h2 id={id} className="font-serif text-3xl text-text">
         {title}
       </h2>
       {children}
