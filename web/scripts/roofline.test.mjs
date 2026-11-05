@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { analyse, crossoverRows, opCost, rowsAt } from "../src/components/kernels/foundations/roofline.ts";
+import { analyse, crossoverRows, opCost, rowSteps, rowsAt, stepOf } from "../src/components/kernels/foundations/roofline.ts";
 import { parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 import { parseProfiling } from "./profiling.mjs";
 
@@ -29,8 +29,12 @@ test("time at the memory ceiling is within 10% of the measured GEMV time at one 
   }
 });
 
-test("rows follow a log scale from 1 to 512", () => {
-  assert.deepEqual([0, 40, 60, 90].map(rowsAt), [1, 16, 64, 512]);
+test("rows follow a log scale from 1 to 512 and every step changes them", () => {
+  const rows = Array.from({ length: rowSteps + 1 }, (_, i) => rowsAt(i));
+  assert.equal(rows[0], 1);
+  assert.equal(rows.at(-1), 512);
+  assert.ok(rows.every((r, i) => i === 0 || r > rows[i - 1]));
+  assert.deepEqual([1, 16, 64, 512].map((r) => rowsAt(stepOf(r))), [1, 16, 64, 512]);
 });
 
 test("a GEMM crosses the ridge between 100 and 130 rows and is memory bound before", () => {

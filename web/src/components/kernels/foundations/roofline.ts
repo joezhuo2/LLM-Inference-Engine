@@ -6,9 +6,11 @@ export type Op = (typeof ops)[number];
 export type Cost = { flops: number; bytes: number };
 
 const BF16 = 2;
-export const rowSteps = 90;
+const rowList = [...new Set(Array.from({ length: 91 }, (_, i) => Math.round(2 ** (i / 10))))];
 
-export const rowsAt = (step: number) => Math.round(2 ** (step / 10));
+export const rowSteps = rowList.length - 1;
+export const rowsAt = (step: number) => rowList[step];
+export const stepOf = (rows: number) => rowList.indexOf(rows);
 
 function gemm(rows: number, nIn: number, nOut: number, count: number): Cost {
   const params = nIn * nOut;

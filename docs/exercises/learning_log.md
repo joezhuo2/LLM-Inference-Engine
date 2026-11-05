@@ -1590,3 +1590,6 @@
 - **why batching raises arithmetic intensity of a matmul but not of attention** => 
 - **grouped-query attention and the ratio of query heads to KV heads** => 
 - **time at the ceiling as the larger of bytes over bandwidth and FLOPs over peak** => 
+- **log-log axes and why a power law is a straight line on them** => 
+- **reading a roofline plot: the slope, the flat top and the distance of a measured dot below the roof** => 
+- **why measured attention sits far under its roofline** => 

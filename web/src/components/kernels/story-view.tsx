@@ -6,6 +6,7 @@ import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmStory } from "./gemm/story";
+import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
@@ -58,6 +59,15 @@ export function KernelPrologueView({ slug }: { slug: string }) {
   switch (slug) {
     case "paged-kv":
       return <BatchingStory />;
+    default:
+      return null;
+  }
+}
+
+export function KernelSandboxView({ slug }: { slug: string }) {
+  switch (slug) {
+    case "foundations":
+      return <FoundationsSandbox />;
     default:
       return null;
   }
