@@ -1760,3 +1760,5 @@
 - **texture memory: width x height x 4 bytes plus a third for mipmaps** => 
 - **rendering into a DOM node outside the component tree with a React portal** => 
 - **keeping component state while its portal target changes** => 
+- **telling a click from a drag by pointer travel** => 
+- **passing events from an imperative scene to React with a DOM CustomEvent** => 

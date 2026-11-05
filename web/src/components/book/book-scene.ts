@@ -46,6 +46,7 @@ type SceneOptions = {
   onOverlay: (rect: OverlayRect | null) => void;
   onLens: (lens: { x: number; y: number; source: HTMLCanvasElement; u: number; v: number } | null) => void;
   onFrameTime?: (ms: number) => void;
+  onPageClick: (side: "prev" | "next") => void;
 };
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -168,12 +169,13 @@ export class BookScene {
   private width = 1;
   private height = 1;
   private time = 0;
-  private drag: { mode: "orbit" | "handle"; x: number; y: number } | null = null;
+  private drag: { mode: "orbit" | "handle"; x: number; y: number; moved: number } | null = null;
   private orbit = { az: 0, el: 0 };
   private overlayKey = "";
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private leftPlane: THREE.Mesh;
+  private rightPlane: THREE.Mesh;
   private disposers: (() => void)[] = [];
 
   constructor(options: SceneOptions) {
@@ -249,6 +251,7 @@ export class BookScene {
     this.bookRoot.add(rightHalf, this.leftHalf);
     this.scene.add(this.bookRoot);
     const rightPage = halfBook(1, rightHalf);
+    this.rightPlane = rightPage;
     this.leftPlane = halfBook(-1, this.leftHalf);
     this.leftText = new TextSide(this.leftPlane.geometry, this.leftHalf, anisotropy, textureWidth);
     this.rightText = new TextSide(rightPage.geometry, rightHalf, anisotropy, textureWidth);
@@ -328,7 +331,7 @@ export class BookScene {
     const { canvas, host } = this.options;
     const onDown = (event: PointerEvent) => {
       const handle = this.pickHandle(event);
-      this.drag = { mode: handle ? "handle" : "orbit", x: event.clientX, y: event.clientY };
+      this.drag = { mode: handle ? "handle" : "orbit", x: event.clientX, y: event.clientY, moved: 0 };
       if (handle) this.model.dragStart?.(handle);
       canvas.setPointerCapture(event.pointerId);
     };
@@ -339,18 +342,23 @@ export class BookScene {
         return;
       }
       if (this.drag) {
+        this.drag.moved += Math.abs(event.clientX - this.drag.x) + Math.abs(event.clientY - this.drag.y);
         this.orbit.az = THREE.MathUtils.clamp(this.orbit.az - (event.clientX - this.drag.x) * 0.25, -55, 55);
         this.orbit.el = THREE.MathUtils.clamp(this.orbit.el + (event.clientY - this.drag.y) * 0.18, -30, 18);
         this.drag.x = event.clientX;
         this.drag.y = event.clientY;
         return;
       }
-      canvas.style.cursor = this.pickHandle(event) ? "grab" : "default";
+      canvas.style.cursor = this.pickHandle(event) ? "grab" : this.pageSide(event) ? "pointer" : "default";
       this.updateLens(event);
     };
-    const onUp = () => {
+    const onUp = (event: PointerEvent) => {
       if (this.drag?.mode === "handle") this.model.dragEnd?.();
+      const click = this.drag?.mode === "orbit" && this.drag.moved < 6 && event.type === "pointerup";
       this.drag = null;
+      if (!click) return;
+      const side = this.pageSide(event);
+      if (side) this.options.onPageClick(side);
     };
     const onLeave = () => this.options.onLens(null);
     canvas.addEventListener("pointerdown", onDown);
@@ -401,6 +409,16 @@ export class BookScene {
       return true;
     });
     return this.raycaster.intersectObjects(live, true)[0]?.object ?? null;
+  }
+
+  private pageSide(event: PointerEvent): "prev" | "next" | null {
+    if (!this.opened) return null;
+    this.setPointer(event);
+    const hit = this.raycaster.intersectObjects([this.leftPlane, this.rightPlane], false)[0];
+    if (!hit) return null;
+    const stop = this.target.stop;
+    if (hit.object === this.leftPlane) return stop > 0 ? "prev" : null;
+    return stop < this.options.stops.length - 1 ? "next" : null;
   }
 
   private pointOnPage(event: PointerEvent): number | null {

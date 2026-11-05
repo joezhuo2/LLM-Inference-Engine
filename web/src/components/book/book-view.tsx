@@ -152,6 +152,7 @@ export function BookView() {
           buildModel: (kit) => createRopeModel(kit, fonts, ropeNumbers),
           onOverlay: setOverlay,
           onLens: setLens,
+          onPageClick: (side) => hostEl.dispatchEvent(new CustomEvent("bookpage", { detail: side })),
         });
       } catch (error) {
         console.error(error);
@@ -179,6 +180,14 @@ export function BookView() {
     },
     [total],
   );
+
+  useEffect(() => {
+    const hostEl = host.current;
+    if (!hostEl) return;
+    const onPage = (event: Event) => go(stop + ((event as CustomEvent<"prev" | "next">).detail === "next" ? 1 : -1));
+    hostEl.addEventListener("bookpage", onPage);
+    return () => hostEl.removeEventListener("bookpage", onPage);
+  }, [go, stop]);
 
   const pickBeat = useCallback(
     (next: number) => {
