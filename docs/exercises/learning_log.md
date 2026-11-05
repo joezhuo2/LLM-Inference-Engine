@@ -1753,3 +1753,4 @@
 - **scaling DOM content to fit a box without scrolling** => 
 - **why a ref callback written inline runs on every render** => 
 - **lazy-loading a large library with a dynamic import** => 
+- **a shadow-only object (colorWrite off) in three.js** => 

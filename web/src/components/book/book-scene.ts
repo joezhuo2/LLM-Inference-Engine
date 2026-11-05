@@ -155,7 +155,6 @@ export class BookScene {
   private rightText: TextSide;
   private leaf: { front: THREE.Mesh; back: THREE.Mesh; geometry: THREE.BufferGeometry; frontMap: THREE.CanvasTexture; backMap: THREE.CanvasTexture; frontCanvas: HTMLCanvasElement; backCanvas: HTMLCanvasElement };
   private desk: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>;
-  private gobo = new THREE.Group();
   private cam = { x: 0, y: 0, z: 0, az: 0, el: 60, dist: 6 };
   private camGoal = { x: 0, y: 0, z: 0, az: 0, el: 60, dist: 6 };
   private camStartTime = -1;
@@ -205,19 +204,6 @@ export class BookScene {
     sun.shadow.blurSamples = 16;
     sun.shadow.intensity = 0.62;
     this.scene.add(hemi, sun);
-
-    const invisible = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
-    for (const [x, z, w, d] of [
-      [-2.25, -1.4, 0.06, 2.6],
-      [-1.55, -1.4, 0.06, 2.6],
-      [-1.9, -1.15, 1.6, 0.06],
-    ]) {
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, d), invisible);
-      bar.position.set(x, 2.2, z);
-      bar.castShadow = true;
-      this.gobo.add(bar);
-    }
-    this.scene.add(this.gobo);
 
 
     this.desk = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshLambertMaterial({ color: palette.desk }));
@@ -775,8 +761,6 @@ export class BookScene {
       this.orbit.az += (0 - this.orbit.az) * settle;
       this.orbit.el += (0 - this.orbit.el) * settle;
     }
-
-    if (!this.options.reduced) this.gobo.position.x = Math.sin(this.time * 0.05) * 0.1;
 
     const stop = this.options.stops[this.applied.stop];
     if (stop?.exhibit !== null && stop?.exhibit !== undefined && this.opened) this.model.update(dt, stop.exhibit, this.applied.stop, this.options.reduced);

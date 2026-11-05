@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-rope
 
+- Part A: remove the hidden window frame that cast a # shaped shadow across the desk and the book.
 - Part A: add `/book/rope`, the RoPE chapter as a 3D book (three.js 0.186.1, loaded only on that page): a hardcover on a desk that opens, a hatched ink pop-up model on the right page for each step (eight dials driven by a draggable position, the QKV row with the i and i + 32 pairing, the last-bit chain on BF16 steps, the 36 x 32 thread plate with the sin and cos jars at the measured draft and fast times), the step text typeset on the left page from the same JSX, a camera tour per step, a magnifier over the page and the token picker on a flat right page fitted without scrolling; the reading view links to it, phones get the text in a sheet under the model, and browsers without WebGL get a link back.
 - Part A: let the RoPE sandbox render its two parts into two given elements through portals (`pages` prop), and export the RoPE story steps, captions, measured times and the token picker so another view can reuse them.
 
