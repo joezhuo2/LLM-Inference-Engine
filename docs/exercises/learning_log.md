@@ -1823,3 +1823,10 @@
 - **a transparent canvas texture on a horizontal plane as printed floor text** => 
 - **hiding an instance by scaling it to almost zero** => 
 - **one drag callback routed to whichever handle was picked** => 
+
+## 3D book: CUDA Graphs (Branch 111)
+- **sharing data between a 2D figure and a 3D model through named exports** => 
+- **a timeline drawn to scale as a row of boxes on a time axis** => 
+- **a lid that closes over a group as a pop-up scale** => 
+- **a draggable knob that maps page x to a value range** => 
+- **requestAnimationFrame throttling in a background tab** => 

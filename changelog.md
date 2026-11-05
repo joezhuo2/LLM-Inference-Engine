@@ -2,6 +2,13 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-cuda-graphs
+
+- Part A: frame the capture spread's side view on the graph instead of the summary card, and hold the sealed graph for 3 s more before the capture replays.
+- Part A: fit the CUDA Graphs book models after the screenshot pass: two short sweep posts instead of one plate over the labels, visible pink gaps, the zoomed kernels' names, times and gaps on three lines, the idle column moved off its card, node labels lifted above the tray, the graph's lid drawn as an outline so it never dims a label, the launch chip travelling along the stream, the buffer offsets behind the buffer so the read rods cross no text, the context ticks on their own line, closer camera beats, and the replay picker at its natural height.
+- Part A: serve CUDA Graphs as chapter 11 of the book at `/kernels/cuda-graphs`: hatched ink pop-up models for the eager launches (layer 11 to scale, CPU launches ahead, the pink gaps adding up), the gap between kernels (three kernels zoomed, the idle column on top of the busy one), stream capture (the launches dropping into a graph that is sealed and launched once), stage (the padded batch landing at fixed offsets that the captured kernels read) and the 11 graphs (buckets by split counts, with a draggable context that picks the graph), each with a camera tour and an instruction line, and the replay picker on a flat right page.
+- Part A: export the CUDA Graphs story steps, captions, measured numbers, replay picker and figure data (kernel names, staged rows, buckets, split thresholds) so the book chapter can reuse them.
+
 ## web/book-paged-kv
 
 - Part A: serve `/kernels/paged-kv` as its book chapter; the scroll page stays at `/kernels/paged-kv/read`.

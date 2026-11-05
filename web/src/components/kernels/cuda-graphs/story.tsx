@@ -34,7 +34,7 @@ const total = Math.ceil(layerUs(eagerLayer) / 10) * 10 + 10;
 const px = (t: number) => (lane * t) / total;
 const gemm = new Set(["qkv", "o_proj", "gate_up", "down"]);
 
-function ReplayPicker() {
+export function ReplayPicker() {
   const [mode, setMode] = useState("eager");
   const [batch, setBatch] = useState("1");
   const { reduced } = useLoop(1);
@@ -267,6 +267,22 @@ const captions = [
   "graph count and split rule from docs/profiling.md, Split attention in CUDA Graphs; ms per token from engine bench, mean of two runs",
   "layer from the two profiles; idle share from results/decode_step*.md; ms per token from engine bench in docs/results.md (TPOT p50, 3 runs)",
 ];
+
+export const cudaGraphsSteps = steps;
+export const cudaGraphsCaptions = captions;
+export const cudaGraphsNumbers = {
+  kernels: eager.kernels,
+  eagerIdle: eager.idle_pct,
+  graphIdle: replay.idle_pct,
+  spanUs: eager.span_us,
+  busyUs: eager.busy_us,
+  gapsOver: eager.gaps,
+  layersAhead,
+  shortKernels,
+  saved,
+  batches: ["1", "4", "16"],
+  longRun,
+};
 
 export function CudaGraphsStory() {
   return (
