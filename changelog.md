@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-chunked-prefill
+
+- Part A: raise the chapter 12 side views so the close-ups no longer zoom past their labels, move the spread model's readout, rail and measured cards forward so they never hide the decode rows, and keep schedule()'s dashed waiting outlines in the reduced motion final state.
+- Part A: serve chunked prefill as chapter 12 of the 3D book at `/kernels/chunked-prefill`: five pop-up models (schedule()'s whole-prompt step with A, B and C waiting and the measured 2,048-token time and longest gap; a 16-slot budget tray filled by the decode rows before the chunk; the 96-token prompt spread over steps with a draggable budget from 16 to 64 and the measured gaps without and with a budget of 256; preemption of the sequence in prefill from the back of the running list to the front of the waiting queue; the sampled lists of two steps), each with a camera tour and an instruction, and the sandbox as two try-it-yourself spreads, predict and compare, and the lanes.
+- Part A: let the chunked prefill sandbox render its two parts (predict and compare, the lanes) into two given elements through portals (`pages` prop), keeping its normal layout for the reading view, and export the story steps, captions and measured numbers so the book can reuse them.
+
 ## web/book-paged-attention
 
 - Part A: fixes from the visual pass of chapter 5: empty liquid cells are hidden instead of showing a flat face, the cards that beads, flying blocks or the drag ball crossed move out of their way, the block table tube is gone (the outlines show the link), the job spread's labels are larger and further from the spine, the cache bars hold longer, and the close-ups frame wider.

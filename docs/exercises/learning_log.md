@@ -1838,3 +1838,10 @@
 - **growing a bar from one end by scaling and shifting it together** => 
 - **animating two durations side by side to scale** => 
 - **getBoundingClientRect measures after CSS transforms, while clip-path insets use layout pixels** => 
+
+## 3D book: chunked prefill (Branch 112)
+- **a ref callback into state so an effect reruns when the element changes** => 
+- **scaling a group on one axis to grow a bar from its left edge** => 
+- **easing between two layouts when a dragged input changes the target** => 
+- **snapping a dragged value to the nearest marked stop on release** => 
+- **why a low camera elevation magnifies the near side of a scene in perspective** => 
