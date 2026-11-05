@@ -1563,3 +1563,7 @@
 - **wasted slot-steps: idle batch slots as a cost of static batching** => 
 - **first come first served admission up to max_batch** => 
 - **preemption from the back of the running list when blocks run out** => 
+
+## Toggle Transitions (Branch 89)
+- **animating a highlight with clip-path inset instead of left and width** => 
+- **ResizeObserver: re-measuring an element when its size changes** => 
