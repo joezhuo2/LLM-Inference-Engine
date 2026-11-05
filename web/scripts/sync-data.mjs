@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync, exis
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { replayKv } from "./kv-replay.mjs";
+import { parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 import { parseLaunchGaps, parseProfiling } from "./profiling.mjs";
 
 const web = resolve(fileURLToPath(import.meta.url), "../..");
@@ -141,6 +142,7 @@ const resultsPath = resolve(web, "../docs/results.md");
 const resultsText = existsSync(resultsPath) ? readFileSync(resultsPath, "utf8") : "";
 const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsText);
 const resultsDoc = { sections: parseProfiling(resultsText), ceilings: ceilings ? { gbs: Number(ceilings[1]), tflops: Number(ceilings[2]) } : null };
+const modelShape = { ...parseModelShape(readFileSync(resolve(web, "../tests/unit/test_config.cpp"), "utf8")), roofline_context: parseRooflineContext(resultsText) };
 const hardwarePath = resolve(web, "../docs/hardware.md");
 const hardware = existsSync(hardwarePath) ? parseHardware(readFileSync(hardwarePath, "utf8")) : {};
 const decodeSteps = {};
@@ -164,6 +166,7 @@ writeFileSync(join(dataDir, "environment.json"), JSON.stringify(environment));
 writeFileSync(join(dataDir, "traces.json"), JSON.stringify(traces));
 writeFileSync(join(dataDir, "profiling.json"), JSON.stringify(profiling));
 writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
+writeFileSync(join(dataDir, "model_shape.json"), JSON.stringify(modelShape));
 writeFileSync(join(dataDir, "hardware.json"), JSON.stringify(hardware));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
 writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
