@@ -26,6 +26,7 @@ const ops: { name: string; shape: Shape }[] = [
 const opNames = ops.map((o) => o.name);
 const rowNames = rowChoices.map(String);
 const bkNames = kSteps.map(String);
+const tileNames = tileSizes.map(String);
 const start = { op: "gate/up", rows: "16", tile: 1, bk: "32" };
 
 const fmt = (v: number) => v.toLocaleString("en-US");
@@ -99,18 +100,11 @@ export function TilingSandbox() {
     setOp(start.op);
     setRows(start.rows);
     setBk(start.bk);
+    setTileIdx(start.tile);
     setPlaying(false);
     setGuess(null);
-    if (reduced) {
-      setTileIdx(start.tile);
-      return setDone(0);
-    }
-    const fromTile = tileIdx;
-    const fromDone = done;
-    tween.current = glide(0, 1, (x) => {
-      setTileIdx(Math.round(fromTile + (start.tile - fromTile) * x));
-      setDone(Math.round(fromDone * (1 - x)));
-    });
+    if (reduced) return setDone(0);
+    tween.current = glide(done, 0, (x) => setDone(Math.round(x)));
   };
 
   const one = tiling(shape, 1, 16, Number(bk), peak);
@@ -135,7 +129,7 @@ export function TilingSandbox() {
         </div>
         <div role="status" aria-live="polite" className="max-w-2xl text-muted">
           {guess &&
-            `${guess === "no" ? "Right." : "Not quite."} For ${op} at M = 1, tile 16 loads ${mb(one.loadBytes).toFixed(1)} MB and tile 128 loads ${mb(wide.loadBytes).toFixed(1)} MB, against ${mb(one.floorBytes).toFixed(1)} MB for the weights and x read once. There is one row of x to pair with each weight, so a weight is used once however big the tile, and the 127 extra tile rows are padding. Now set rows to 512 and drag the tile again.`}
+            `${guess === "no" ? "Right." : "Not quite."} For ${op} at M = 1, tile 16 loads ${mb(one.loadBytes).toFixed(1)} MB and tile 128 loads ${mb(wide.loadBytes).toFixed(1)} MB, against ${mb(one.floorBytes).toFixed(1)} MB for the weights and x read once. There is one row of x to pair with each weight, so a weight is used once however big the tile, and the 127 extra tile rows are padding. Now set rows to 512 and change the tile again.`}
         </div>
       </div>
 
@@ -145,20 +139,8 @@ export function TilingSandbox() {
             <Toggle label="matrix" choices={opNames} value={op} onChange={(v) => change(() => setOp(v))} />
             <Toggle label="rows M" choices={rowNames} value={rows} onChange={(v) => change(() => setRows(v))} />
             <Toggle label="k step" choices={bkNames} value={bk} onChange={(v) => change(() => setBk(v))} />
+            <Toggle label="tile" choices={tileNames} value={String(tile)} onChange={(v) => change(() => setTileIdx(tileNames.indexOf(v)))} />
           </div>
-          <label className="flex items-center gap-3">
-            <span className="w-14 shrink-0 text-muted">tile</span>
-            <SmoothRange
-              min={0}
-              max={tileSizes.length - 1}
-              step={1}
-              value={tileIdx}
-              onValue={(v) => change(() => setTileIdx(v))}
-              aria-valuetext={`${tile} by ${tile} outputs`}
-              className="min-w-40 flex-1 accent-[var(--accent)]"
-            />
-            <span className="w-20 shrink-0 text-text tabular-nums">{`${tile} × ${tile}`}</span>
-          </label>
           <label className="flex items-center gap-3">
             <span className="w-14 shrink-0 text-muted">k loop</span>
             <SmoothRange
