@@ -1845,3 +1845,11 @@
 - **easing between two layouts when a dragged input changes the target** => 
 - **snapping a dragged value to the nearest marked stop on release** => 
 - **why a low camera elevation magnifies the near side of a scene in perspective** => 
+
+## 3D book: attention v2 (Branch 106)
+
+- **interpolating a running softmax state between chunk boundaries for animation** => 
+- **a logarithmic slider mapping position to a power of two** => 
+- **extrapolating a measured linear cost past the last data point** => 
+- **shrinking canvas text to fit by measuring its width** => 
+- **why a standing label is hidden by taller objects in front at low camera elevations** => 

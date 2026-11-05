@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-attention-v2
+
+- Part A: frame the attention v2 close-ups wider and higher, lay the long status cards flatter and move v1's lane card to the front so no model or card covers a label.
+- Part A: attention v2 as chapter 6 of the book: four hatched ink models (v1's three passes over a shared-memory tray of every score, a draggable context rail against v1's and v2's shared memory and the 2,048-token cap, the online softmax over four chunks with m, l and acc rescaling, eight lanes reading one key row by row into a shuffle tree), the profile, decode-step and v1/v2 picker as flat overlays, camera tours and instructions; `/kernels/attention-v2` is now the book.
+- Part A: export the attention v2 story steps, captions, measured numbers, the profile and decode-step figures, the v1/v2 picker and the example chunk scores, so the book chapter can reuse them.
+
 ## web/book-chunked-prefill
 
 - Part A: raise the chapter 12 side views so the close-ups no longer zoom past their labels, move the spread model's readout, rail and measured cards forward so they never hide the decode rows, and keep schedule()'s dashed waiting outlines in the reduced motion final state.
