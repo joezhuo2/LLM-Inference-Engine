@@ -1554,3 +1554,5 @@
 - **the KV cache: which tensors it stores and why attention can reuse them** => 
 - **memory-bound against compute-bound: what limits a decode step** => 
 - **decoding without a KV cache: why every token would redo the work of all earlier tokens** => 
+- **reserving the worst-case length per request: why it strands memory** => 
+- **fixed-size blocks drawn from one shared pool** => 

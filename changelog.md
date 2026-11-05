@@ -6,6 +6,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Add a prologue "Prefill vs. Decode (the token lifecycle)" before "how it works" on the paged attention page (#136), as its own sticky story with new figures: prefill takes the whole prompt in one pass and fills the KV cache, decode generates one token per step and reads every cached key and value. Times come from `docs/results.md` through `sync-data.mjs`; token counts are labelled illustrative. (Part A)
 - Add the third prologue step, both phases side by side: prefill writes the KV cache and decode reads it, with the cost of recomputing the prefill for a new token (2,048-token prefill, from the prefill TTFT table) against one decode step at a 1,984-token context (from the CUDA Graphs split-attention table) as two bars. (Part A)
+- Add the fourth prologue step, the bridge into paged attention: a sequence's cache grows a token per step, is cut into 16-token blocks and placed in a shared pool, which is what the rest of the page explains. Export the example block table from `figures.tsx` so both figures show the same blocks. (Part A)
 
 ## sched/chunked-prefill-impl
 

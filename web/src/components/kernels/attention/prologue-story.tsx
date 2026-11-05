@@ -2,7 +2,7 @@
 
 import { measured } from "@/content/kernels/types";
 import { StickyStory, type StoryStep } from "../sticky-story";
-import { DecodeFigure, PrefillFigure, SideBySideFigure } from "./prologue-figures";
+import { CacheHomeFigure, DecodeFigure, PrefillFigure, SideBySideFigure } from "./prologue-figures";
 
 const prefill = "prefill-against-prompt-length";
 const ttft = (tokens: string) => measured(prefill, { system: "engine" }, tokens, 0, "results");
@@ -73,12 +73,29 @@ const steps: StoryStep[] = [
       </>
     ),
   },
+  {
+    id: "home",
+    title: "the cache has to live somewhere",
+    body: (
+      <>
+        <p>
+          The cache grows by one token per step for every request in flight, and nobody knows in advance how long an answer
+          will be. Reserving the longest possible answer for every request leaves memory the others could use.
+        </p>
+        <p>
+          So the cache is cut into 16-token blocks handed out as a sequence grows, all from one shared pool. Paged attention is
+          the kernel that reads them back, and how it does that is next.
+        </p>
+      </>
+    ),
+  },
 ];
 
 const captions = [
   `an illustrative 8-token prompt; the times are single-request TTFT, median of 5 runs, from docs/results.md`,
   `illustrative tokens; ${gbs} GB/s and ${percent}% are the engine at batch 1 without CUDA Graphs, from docs/results.md`,
   `${ttft2048.toLocaleString("en-US")} ms prefill of 2,048 tokens (docs/results.md) against ${stepMs} ms per decode step at a 1,984-token prompt, batch 1, with CUDA Graphs (docs/profiling.md)`,
+  "an illustrative 96-token sequence in a 16-block pool; the blocks and their order are made up",
 ];
 
 export function PrologueStory() {
@@ -92,8 +109,10 @@ export function PrologueStory() {
             return <PrefillFigure />;
           case 1:
             return <DecodeFigure percent={percent} />;
-          default:
+          case 2:
             return <SideBySideFigure prefillMs={ttft2048} stepMs={stepMs} />;
+          default:
+            return <CacheHomeFigure />;
         }
       }}
     />

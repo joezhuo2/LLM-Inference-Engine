@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
+import { others, table } from "./figures";
 
 const words = ["The", "cat", "sat", "on", "the", "mat", "and", "purrs", "at", "dawn", "then", "slept"];
 const pitch = 66;
@@ -141,6 +142,43 @@ export function SideBySideFigure({ prefillMs, stepMs }: { prefillMs: number; ste
       <motion.rect x={20} y={292} width={Math.max((full * stepMs) / prefillMs, 2)} height={14} rx={1} className="fill-accent" {...grow(0.5, 0.52)} />
       <Label x={20} y={324} className="fill-accent">{`${stepMs} ms, about ${ratio}x less`}</Label>
       <Label x={20} y={378}>a 2,048-token prefill against a decode step at 1,984 tokens, batch 1</Label>
+    </Frame>
+  );
+}
+
+export function CacheHomeFigure() {
+  const { grow, move } = useLoop(8);
+  const slice = 0.4 / table.length;
+  return (
+    <Frame label="A sequence's cache grows a token per step; it is cut into 16-token blocks and placed in free blocks of a pool shared by every request">
+      <Label x={20} y={24}>one sequence&apos;s cache, growing a token per step</Label>
+      {Array.from({ length: 16 }, (_, n) => (
+        <rect
+          key={n}
+          x={20 + (n % 4) * 132}
+          y={170 + Math.floor(n / 4) * 40}
+          width={126}
+          height={34}
+          rx={3}
+          className={others.has(n) ? "fill-baseline/25 stroke-border" : "fill-surface stroke-border"}
+        />
+      ))}
+      {table.map((phys, k) => {
+        const t = 0.02 + k * slice;
+        const dx = 20 + (phys % 4) * 132 + 22 - (20 + k * 88);
+        const dy = 170 + Math.floor(phys / 4) * 40 + 4 - 60;
+        return (
+          <g key={k}>
+            <rect x={20 + k * 88} y={60} width={82} height={26} rx={3} className="fill-surface stroke-border" />
+            <motion.rect x={20 + k * 88} y={60} width={82} height={26} rx={3} className="fill-accent/60" {...grow(t, t + slice)} />
+            <motion.rect x={20 + k * 88} y={60} width={82} height={26} rx={3} className="fill-accent/60 stroke-accent" {...move(0.5 + k * 0.03, 0.78, dx, dy, true, 0.94)} />
+          </g>
+        );
+      })}
+      <Label x={20} y={108}>16 tokens per block, 6 blocks = 96 tokens</Label>
+      <Label x={20} y={160}>KV pool on the GPU, shared by every request</Label>
+      <Label x={20} y={350}>placed in whichever blocks are free, in any order</Label>
+      <Label x={20} y={378}>paged attention is how the kernel reads them back</Label>
     </Frame>
   );
 }
