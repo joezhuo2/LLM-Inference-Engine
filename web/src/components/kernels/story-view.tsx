@@ -5,6 +5,7 @@ import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
+import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
 import { FoundationsStory } from "./foundations/story";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
@@ -58,6 +59,15 @@ export function KernelPrologueView({ slug }: { slug: string }) {
   switch (slug) {
     case "paged-kv":
       return <BatchingStory />;
+    default:
+      return null;
+  }
+}
+
+export function KernelSandboxView({ slug }: { slug: string }) {
+  switch (slug) {
+    case "gemm":
+      return <GemmSandbox />;
     default:
       return null;
   }
