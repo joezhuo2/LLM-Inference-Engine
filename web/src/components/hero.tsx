@@ -39,7 +39,7 @@ export function Hero({ next }: { next?: { href: string; label: string } }) {
             <div className="flex flex-wrap items-end justify-between gap-4 font-mono text-xs text-muted">
               <p className="max-w-md">
                 each falling word is a token the engine generated in a recorded run; heavier rain means more tokens per
-                second, amber marks a request&apos;s first token
+                second, clay marks a request&apos;s first token
               </p>
               {next && (
                 <a href={next.href} className="pressable hover-grow inline-flex origin-right items-center gap-2 text-text">

@@ -1724,3 +1724,4 @@
 - **choosing label ink from the mark behind it instead of the page theme** => 
 - **canvas colors read from CSS custom properties at draw time** => 
 - **why Open Graph cards hard-code colors instead of reading CSS variables** => 
+- **copy that names a color as a hidden dependency on the theme** => 

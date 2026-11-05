@@ -184,7 +184,7 @@ export function PagedAttentionSandbox() {
                   </div>
                 ))}
               </div>
-              <div className="text-muted">bar = weight exp(score - new m); the best score of the block is green</div>
+              <div className="text-muted">bar = weight exp(score - new m); the best score of the block is blue</div>
               <table className="w-full tabular-nums">
                 <tbody>
                   <tr className="border-t border-border">

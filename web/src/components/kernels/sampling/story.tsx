@@ -204,7 +204,7 @@ const captions = [
   "example keys; the bar is the kept share of the probability mass",
   "µs per call, first of two runs, RTX 5060 Laptop GPU (docs/profiling.md)",
   "Nsight Compute on one temperature-only launch; float times from a throwaway copy",
-  "µs per call, first of two runs; green is faster than sorting the row alone",
+  "µs per call, first of two runs; blue is faster than sorting the row alone",
 ];
 
 export function SamplingStory() {
