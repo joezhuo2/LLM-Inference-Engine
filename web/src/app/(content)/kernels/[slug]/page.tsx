@@ -1,7 +1,5 @@
-import { notFound } from "next/navigation";
-import { EveryByte } from "@/components/book/every-byte";
 import { kernelMetadata, ReadingView } from "@/components/kernels/reading-view";
-import { kernelStories, kernelStory } from "@/content/kernels";
+import { kernelStories } from "@/content/kernels";
 
 export const dynamicParams = false;
 
@@ -14,8 +12,5 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function KernelPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const story = kernelStory(slug);
-  if (!story) notFound();
-  return story.book ? <EveryByte /> : <ReadingView slug={slug} />;
+  return <ReadingView slug={(await params).slug} />;
 }

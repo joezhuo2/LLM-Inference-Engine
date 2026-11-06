@@ -130,7 +130,7 @@ export function BookView({ chapter }: { chapter: ChapterDef }) {
 
   const titles = useMemo(() => chapterTitles(chapter), [chapter]);
   const total = titles.length;
-  const readHref = `/kernels/${chapter.slug}/read`;
+  const readHref = `/kernels/${chapter.slug}`;
 
   useEffect(() => {
     const canvasEl = canvas.current;

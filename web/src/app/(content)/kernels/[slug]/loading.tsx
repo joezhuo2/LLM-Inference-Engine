@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/skeleton";
 export default function Loading() {
   return (
     <PageTransition>
-      <div role="status" aria-label="loading" className="mx-auto w-full max-w-5xl space-y-20 px-4 py-10 sm:px-6">
+      <div role="status" aria-label="loading" className="space-y-20">
         <div className="space-y-4">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-9 w-72" />

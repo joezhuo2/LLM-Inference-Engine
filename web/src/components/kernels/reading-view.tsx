@@ -43,7 +43,7 @@ export async function ReadingView({ slug }: { slug: string }) {
   const excerpts = await Promise.all(story.excerpts.map(loadExcerpt));
   return (
     <PageTransition>
-      <article className="mx-auto w-full max-w-5xl space-y-20 px-4 py-10 sm:px-6">
+      <article className="space-y-20">
         <header className="space-y-4">
           <div className="tabular-nums text-xs text-muted">
             <Link href="/kernels" transitionTypes={["nav-back"]} className="link-underline">
@@ -54,8 +54,8 @@ export async function ReadingView({ slug }: { slug: string }) {
           <PageTitle text={story.title} />
           <p className="max-w-2xl text-muted">{story.short}</p>
           {story.book && (
-            <Link href={`/kernels/${story.slug}`} className="link-underline inline-block text-sm text-accent">
-              open this chapter as a 3D book
+            <Link href={`/every-byte/${story.slug}`} className="link-underline inline-block text-sm text-accent">
+              read this chapter in Every Byte, the 3D book
             </Link>
           )}
           <div className="flex flex-wrap items-end gap-x-10 gap-y-4 tabular-nums">

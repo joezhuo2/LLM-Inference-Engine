@@ -3,6 +3,7 @@ import { kernelStory } from "@/content/kernels";
 import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, frames } from "./chapter";
 import type { BookPalette } from "./ink";
+import { bookHref } from "./paths";
 import type { Fonts } from "./typeset";
 
 export const bookParts = [
@@ -88,7 +89,7 @@ function contentsRows(parts: typeof bookParts, withErrata: boolean) {
     rows.push({ kind: "part", y, text: `Part ${part.numeral} · ${part.title}` });
     y += 78;
     for (const slug of part.slugs) {
-      rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: `/kernels/${slug}` });
+      rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug) });
       y += ROW;
     }
     y += 40;
@@ -164,7 +165,7 @@ function errataTitlePage(canvas: HTMLCanvasElement, palette: BookPalette, fonts:
 }
 
 function deadEndPage(d: DeadEnd, side: Side, offset: number) {
-  const link: PageLink = { side, box: [0, 0, 0, 0], href: `/kernels/${d.slug}`, label: d.kernel };
+  const link: PageLink = { side, box: [0, 0, 0, 0], href: bookOrder.includes(d.slug) ? bookHref(d.slug) : `/kernels/${d.slug}`, label: d.kernel };
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
     const width = x1 - x0;
@@ -330,7 +331,7 @@ export function introStop(def: ChapterDef): Stop {
   };
   const links: PageLink[] = rows
     .filter((r) => r.k !== undefined)
-    .map((r) => ({ side: "right", box: [170 / W, (r.y - step * 0.65) / H, (W - 130) / W, (r.y + step * 0.32) / H], href: `/kernels/${def.slug}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : `try it yourself, ${r.text}` }));
+    .map((r) => ({ side: "right", box: [170 / W, (r.y - step * 0.65) / H, (W - 130) / W, (r.y + step * 0.32) / H], href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : `try it yourself, ${r.text}` }));
   return {
     ...flatStop(0, `Chapter ${def.number}: ${title}`, title, [summary]),
     paint: { left, right },
