@@ -1,6 +1,9 @@
+import { splitTerms } from "@/lib/glossary";
 import type { BookPalette } from "./ink";
 
-export type Run = { text: string; accent: boolean };
+export type Run = { text: string; accent: boolean; term?: string };
+export type TermBox = { box: [number, number, number, number]; key: string };
+type Marks = { boxes: TermBox[]; w: number; h: number; color: string };
 export type PageText = { kicker: string; title: string; note?: string; paragraphs: Run[][]; folio: string };
 export type Fonts = { serif: string; sans: string };
 
@@ -28,7 +31,11 @@ export function readRuns(element: Element): Run[][] {
   });
 }
 
-type Word = { text: string; accent: boolean; width: number; glue: boolean };
+export function glossRuns(paragraphs: Run[][], seen: Set<string>): Run[][] {
+  return paragraphs.map((runs) => runs.flatMap((run) => splitTerms(run.text, seen).map((p) => ({ text: p.text, accent: run.accent, term: p.term }))));
+}
+
+type Word = { text: string; accent: boolean; width: number; glue: boolean; term?: string };
 
 function layoutWords(ctx: CanvasRenderingContext2D, runs: Run[]): Word[] {
   const words: Word[] = [];
@@ -41,14 +48,14 @@ function layoutWords(ctx: CanvasRenderingContext2D, runs: Run[]): Word[] {
         glue = false;
         continue;
       }
-      words.push({ text: part, accent: run.accent, width: ctx.measureText(part).width, glue });
+      words.push({ text: part, accent: run.accent, width: ctx.measureText(part).width, glue, term: run.term });
       glue = true;
     }
   }
   return words;
 }
 
-function drawParagraph(ctx: CanvasRenderingContext2D, runs: Run[], x: number, y: number, width: number, lineHeight: number, ink: string, accent: string, dry: boolean): number {
+function drawParagraph(ctx: CanvasRenderingContext2D, runs: Run[], x: number, y: number, width: number, lineHeight: number, ink: string, accent: string, dry: boolean, marks?: Marks): number {
   const words = layoutWords(ctx, runs);
   const space = ctx.measureText(" ").width;
   let cx = x;
@@ -64,19 +71,33 @@ function drawParagraph(ctx: CanvasRenderingContext2D, runs: Run[], x: number, y:
     if (!dry) {
       ctx.fillStyle = word.accent ? accent : ink;
       ctx.fillText(word.text, cx, cy);
+      if (word.term && marks) markWord(ctx, marks, word, cx, cy, lineHeight);
     }
     cx += word.width;
   }
   return cy + lineHeight;
 }
 
-export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, palette: BookPalette, fonts: Fonts): void {
+function markWord(ctx: CanvasRenderingContext2D, marks: Marks, word: Word, x: number, y: number, lineHeight: number): void {
+  const dot = Math.max(1.5, lineHeight * 0.05);
+  const under = y + lineHeight * 0.16;
+  ctx.save();
+  ctx.fillStyle = marks.color;
+  for (let dx = 0; dx < word.width; dx += dot * 2.4) ctx.fillRect(x + dx, under, dot, dot);
+  ctx.restore();
+  const top = y - lineHeight * 0.62;
+  marks.boxes.push({ key: word.term!, box: [x / marks.w, top / marks.h, (x + word.width) / marks.w, (under + dot * 3) / marks.h] });
+}
+
+export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, palette: BookPalette, fonts: Fonts, seen?: Set<string>): TermBox[] {
   const ctx = canvas.getContext("2d")!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const w = canvas.width;
   const h = canvas.height;
   ctx.clearRect(0, 0, w, h);
-  if (!page) return;
+  if (!page) return [];
+  const marks: Marks = { boxes: [], w, h, color: palette.blue };
+  const paragraphs = seen ? glossRuns(page.paragraphs, seen) : page.paragraphs;
   const unit = w / 1200;
   const marginX = 130 * unit;
   const marginR = 170 * unit;
@@ -105,13 +126,14 @@ export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, p
   }
   ctx.font = `${size * unit}px ${fonts.sans}`;
   let cy = y + size * unit;
-  for (const runs of page.paragraphs) cy = drawParagraph(ctx, runs, marginX, cy, textW, size * 1.46 * unit, palette.ink, palette.blue, false) + size * 0.7 * unit;
+  for (const runs of paragraphs) cy = drawParagraph(ctx, runs, marginX, cy, textW, size * 1.46 * unit, palette.ink, palette.blue, false, marks) + size * 0.7 * unit;
   ctx.fillStyle = palette.faint;
   ctx.font = `${26 * unit}px ${fonts.sans}`;
   ctx.fillText(page.folio, marginX, h - 90 * unit);
+  return marks.boxes;
 }
 
-export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, caption: string, instruction: string | undefined, folio: string, palette: BookPalette, fonts: Fonts): void {
+export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, caption: string, instruction: string | undefined, folio: string, palette: BookPalette, fonts: Fonts, seen?: Set<string>): TermBox[] {
   const ctx = canvas.getContext("2d")!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const w = canvas.width;
@@ -123,7 +145,9 @@ export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, capti
   let y = h - 300 * unit;
   ctx.textBaseline = "alphabetic";
   ctx.font = `italic ${28 * unit}px ${fonts.sans}`;
-  y = drawParagraph(ctx, [{ text: `${figure}. ${caption}`, accent: false }], x, y, width, 38 * unit, palette.faint, palette.faint, false) + 8 * unit;
+  const marks: Marks = { boxes: [], w, h, color: palette.blue };
+  const runs: Run[] = [{ text: `${figure}. `, accent: false }, ...(seen ? glossRuns([[{ text: caption, accent: false }]], seen)[0] : [{ text: caption, accent: false }])];
+  y = drawParagraph(ctx, runs, x, y, width, 38 * unit, palette.faint, palette.faint, false, marks) + 8 * unit;
   if (instruction) {
     ctx.font = `${40 * unit}px ${fonts.serif}`;
     drawParagraph(ctx, [{ text: instruction, accent: false }], x, y + 12 * unit, width, 48 * unit, palette.blue, palette.blue, false);
@@ -133,4 +157,5 @@ export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, capti
   ctx.textAlign = "right";
   ctx.fillText(folio, w - x, h - 90 * unit);
   ctx.textAlign = "left";
+  return marks.boxes;
 }

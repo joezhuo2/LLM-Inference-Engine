@@ -1944,3 +1944,4 @@
 - **React.Children.map and cloneElement to transform a tree** => 
 - **regex lookbehind for word boundaries** => 
 - **portal (createPortal) for overlays that escape overflow** => 
+- **hit-testing text drawn on a canvas texture through raycast UVs** => 

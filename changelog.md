@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/glossary
 
+- Part A: the 3D book underlines the first use of each term on every spread (left page, then the figure caption) with blue dots drawn into the page texture. `drawTextPage` and `drawCaptionPage` return each term's box in page UV, the scene hit-tests them like page links (help cursor, lens hidden), and the card opens beside the pointer; a click or tap on a term opens it instead of turning the page. At phone width the text panel under the book gets the same cards, first use per spread.
 - Part A: technical terms (FLOP, SM, DRAM, KV cache, warp, TTFT and about 40 more, in `web/src/lib/glossary.ts`) get a dotted underline at their first use on each page, and hovering, focusing or tapping one opens a small card with the full name and a line on why it matters. Story steps, the reading view intros, timelines, testing notes, dead ends, the results lead and the overview get them automatically through `gloss()`, and the card fades in after 260 ms and follows the word on scroll.
 
 ## web/book-about
