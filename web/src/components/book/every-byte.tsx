@@ -56,8 +56,7 @@ function compose(raw: Record<string, Stop[]>) {
   for (const key of keys) {
     const slug = key === "contents" || key === "errata" ? undefined : key;
     raw[key].forEach((s, i) => {
-      const at = (chapterPage(key) ?? 0) + 2 * i;
-      const folios = slug && i > 0 && s.page ? { page: { ...s.page, folio: String(at) }, folio: s.folio && String(at + 1) } : {};
+      const folios = slug && i > 0 && s.page ? { page: { ...s.page, folio: String((chapterPage(key) ?? 0) + i) } } : {};
       meta.push({ key, local: slug ? i - 1 : i, slug, exhibit: slug ? s.exhibit : null });
       stops.push({ ...s, ...folios, spread: stops.length, exhibit: slug && s.exhibit !== null ? chapterSlugs.indexOf(slug) : null });
     });
@@ -105,7 +104,7 @@ export function EveryByte() {
 
   const meta = layout.meta[stop];
   const segment = meta?.key ?? "contents";
-  const page = open && meta ? (chapterPage(meta.key) ?? 0) + 2 * (stop - layout.meta.findIndex((m) => m.key === meta.key)) : 1;
+  const page = open && meta ? (chapterPage(meta.key) ?? 0) + stop - layout.meta.findIndex((m) => m.key === meta.key) : 1;
   const def = meta?.slug ? defs[meta.slug] : undefined;
 
   useEffect(() => {
@@ -531,7 +530,7 @@ export function EveryByte() {
                     <button type="button" onClick={() => turnTo(def.slug, k)} className="link-underline text-left text-text">
                       {t}
                     </button>
-                    <span className="ml-auto tabular-nums">{(chapterPage(def.slug) ?? 0) + 2 * (k + 1)}</span>
+                    <span className="ml-auto tabular-nums">{(chapterPage(def.slug) ?? 0) + k + 1}</span>
                   </li>
                 ))}
               </ol>

@@ -19,10 +19,10 @@ const firstPage: Record<string, number> = {};
 export const chapterPage = (key: string): number | undefined => firstPage[key];
 
 export function numberPages(spreads: Record<string, number>): number {
-  let page = 3;
+  let page = 2;
   for (const key of ["contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "errata"]) {
     firstPage[key] = page;
-    page += 2 * (key === "contents" ? 1 : key === "errata" ? errataSpreads.length : spreads[key]);
+    page += key === "contents" ? 1 : key === "errata" ? errataSpreads.length : spreads[key];
   }
   return page - 1;
 }
@@ -136,7 +136,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       ctx.font = `40px ${fonts.serif}`;
       paragraph(ctx, "Click a chapter to open it.", x0, H - 250, x1 - x0, 48);
     }
-    folio(ctx, side === "left" ? "iii" : "iv", side, x0, x1, palette, fonts);
+    if (side === "left") folio(ctx, String(chapterPage("contents")), side, x0, x1, palette, fonts);
   };
   const x0 = side === "left" ? 130 : 170;
   const x1 = side === "left" ? W - 170 : W - 130;
@@ -208,7 +208,7 @@ function deadEndPage(d: DeadEnd, side: Side, offset: number) {
     };
     while (size > 24 && layout(false) > bottom) size -= 1;
     layout(true);
-    folio(ctx, String((chapterPage("errata") ?? 0) + offset), side, x0, x1, palette, fonts);
+    if (side === "left") folio(ctx, String((chapterPage("errata") ?? 0) + offset), side, x0, x1, palette, fonts);
   };
   return { paint, link };
 }
@@ -245,8 +245,8 @@ export const errataSpreads: ErrataSpread[] = Array.from({ length: Math.ceil((dea
 
 export function errataStops(firstSpread: number): Stop[] {
   return errataSpreads.map(({ left, right }, k) => {
-    const l = left ? deadEndPage(left, "left", 2 * k) : null;
-    const r = right ? deadEndPage(right, "right", 2 * k + 1) : null;
+    const l = left ? deadEndPage(left, "left", k) : null;
+    const r = right ? deadEndPage(right, "right", k) : null;
     const shown = [left, right].filter((d): d is DeadEnd => d !== null);
     return {
       ...flatStop(firstSpread + k, k === 0 ? `Errata: ${errataTitle}` : `Errata: ${shown.map((d) => d.kernel).join(" and ")}`, left?.title ?? "Errata", left ? [left.tried, left.happened, left.kept] : [errataIntro]),
@@ -311,7 +311,7 @@ export function introStop(def: ChapterDef): Stop {
       ctx.fillStyle = palette.faint;
       ctx.font = `${Math.round(step * 0.43)}px ${fonts.serif}`;
       if (row.number) ctx.fillText(row.number, x0, row.y);
-      const target = String(page(2 * (row.k + 1)));
+      const target = String(page(row.k + 1));
       ctx.font = `30px ${fonts.sans}`;
       const pw = ctx.measureText(target).width;
       ctx.fillText(target, x1 - pw, row.y);
@@ -327,7 +327,6 @@ export function introStop(def: ChapterDef): Stop {
     ctx.fillStyle = palette.blue;
     ctx.font = `40px ${fonts.serif}`;
     paragraph(ctx, "Click a step to turn to it.", x0, H - 250, x1 - x0, 48);
-    folio(ctx, String(page(1)), "right", x0, x1, palette, fonts);
   };
   const links: PageLink[] = rows
     .filter((r) => r.k !== undefined)
