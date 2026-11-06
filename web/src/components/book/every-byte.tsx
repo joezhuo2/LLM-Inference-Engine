@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { Group, Object3D } from "three";
+import { GlossProvider, type PointTerm, PointGloss } from "@/components/gloss";
+import { gloss } from "@/components/glossed";
 import { Scramble } from "@/components/scramble";
 import { kindLabel } from "@/content/dead-ends";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
@@ -99,6 +101,7 @@ export function EveryByte() {
   const [playing, setPlaying] = useState(false);
   const [overlay, setOverlay] = useState<OverlayRect | null>(null);
   const [lens, setLens] = useState<Lens | null>(null);
+  const [term, setTerm] = useState<PointTerm | null>(null);
   const [failed, setFailed] = useState(false);
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(false);
@@ -345,6 +348,7 @@ export function EveryByte() {
           },
           onOverlay: setOverlay,
           onLens: setLens,
+          onTerm: setTerm,
           onPageClick: (side) => hostEl.dispatchEvent(new CustomEvent("bookpage", { detail: side })),
           onCoverClick: () => hostEl.dispatchEvent(new CustomEvent("bookcover")),
           onLink: (link) => hostEl.dispatchEvent(new CustomEvent("booklink", { detail: link.href })),
@@ -484,6 +488,7 @@ export function EveryByte() {
       <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
         <canvas ref={canvas} role="img" aria-label={open ? `3D book "Every Byte", open at ${title}. ${caption}` : "3D book \"Every Byte\", closed on the desk"} className="absolute inset-0 size-full" />
         <Magnifier lens={lens} />
+        <PointGloss at={term} />
         <motion.nav
           aria-label="book"
           initial={false}
@@ -544,6 +549,7 @@ export function EveryByte() {
         )}
       </div>
       <div className="relative border-border bg-surface max-[720px]:border-t">
+        <GlossProvider key={stop} off={!narrow}>
         <article aria-live="polite" className="max-h-[32dvh] overflow-y-auto px-4 py-3 text-sm leading-relaxed text-muted min-[721px]:sr-only">
           {!open ? (
             <p>
@@ -573,14 +579,14 @@ export function EveryByte() {
           ) : chapterStep ? (
             <>
               <h1 className="font-serif text-2xl text-text">{chapterStep.title}</h1>
-              <div className="mt-2 space-y-2">{chapterStep.body}</div>
+              <div className="mt-2 space-y-2">{gloss(chapterStep.body)}</div>
             </>
           ) : bench ? (
             <>
               <h1 className="font-serif text-2xl text-text">{bench.title}</h1>
               <div className="mt-2 space-y-2">
                 {bench.paragraphs.map((p) => (
-                  <p key={p}>{p}</p>
+                  <p key={p}>{gloss(p)}</p>
                 ))}
               </div>
             </>
@@ -603,9 +609,9 @@ export function EveryByte() {
                         </Link>
                       </div>
                       <h2 className="font-serif text-xl text-text">{d.title}</h2>
-                      <p>{d.tried}</p>
-                      <p className="text-text">{d.happened}</p>
-                      <p>{d.kept}</p>
+                      <p>{gloss(d.tried)}</p>
+                      <p className="text-text">{gloss(d.happened)}</p>
+                      <p>{gloss(d.kept)}</p>
                     </section>
                   ),
               )}
@@ -636,6 +642,7 @@ export function EveryByte() {
             </>
           )}
         </article>
+        </GlossProvider>
       </div>
     </div>
   );

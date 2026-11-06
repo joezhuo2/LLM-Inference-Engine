@@ -13,6 +13,7 @@ import { kernelStory } from "@/content/kernels";
 import { docPath, docSections, environment, profilingTable } from "@/lib/data";
 import { loadExcerpt } from "@/lib/excerpt";
 import { ogImage } from "@/lib/og";
+import { gloss } from "../glossed";
 
 export async function kernelMetadata(slug: string): Promise<Metadata> {
   const story = kernelStory(slug);
@@ -52,7 +53,7 @@ export async function ReadingView({ slug }: { slug: string }) {
             / {String(story.index).padStart(2, "0")}
           </div>
           <PageTitle text={story.title} />
-          <p className="max-w-2xl text-muted">{story.short}</p>
+          <p className="max-w-2xl text-muted">{gloss(story.short)}</p>
           {story.book && (
             <Link href={`/every-byte/${story.slug}`} className="link-underline inline-block text-sm text-accent">
               read this chapter in Every Byte, the 3D book
@@ -80,14 +81,14 @@ export async function ReadingView({ slug }: { slug: string }) {
 
         {story.prologue && (
           <Section id="batching" title={story.prologue.title}>
-            <p className="max-w-2xl text-muted">{story.prologue.intro}</p>
+            <p className="max-w-2xl text-muted">{gloss(story.prologue.intro)}</p>
             <KernelPrologueView slug={story.slug} />
           </Section>
         )}
 
         {story.lead && (
           <Section id="lead" title={story.lead.title}>
-            <p className="max-w-2xl text-muted">{story.lead.intro}</p>
+            <p className="max-w-2xl text-muted">{gloss(story.lead.intro)}</p>
             <KernelLeadView slug={story.slug} />
           </Section>
         )}
@@ -98,7 +99,7 @@ export async function ReadingView({ slug }: { slug: string }) {
 
         {story.sandbox && (
           <Section id="sandbox" title={story.sandbox.title}>
-            <p className="max-w-2xl text-muted">{story.sandbox.intro}</p>
+            <p className="max-w-2xl text-muted">{gloss(story.sandbox.intro)}</p>
             <KernelSandboxView slug={story.slug} />
           </Section>
         )}
@@ -160,7 +161,7 @@ export async function ReadingView({ slug }: { slug: string }) {
 
         {story.testing && (
           <Section id="tested" title="how it is tested">
-            <p className="max-w-2xl text-muted">{story.testing}</p>
+            <p className="max-w-2xl text-muted">{gloss(story.testing)}</p>
           </Section>
         )}
 

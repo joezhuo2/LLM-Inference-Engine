@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BuildTimeline } from "@/components/build-timeline";
 import { Hero } from "@/components/hero";
 import { Scramble } from "@/components/scramble";
+import { Glossed } from "@/components/glossed";
 
 const cards = [
   { href: "/results", title: "results", text: "Throughput and latency against HuggingFace and llama.cpp, and serving under load against vLLM." },
@@ -19,10 +20,10 @@ export default function Overview() {
             <h2 id="built-heading" className="font-serif text-4xl leading-tight sm:text-5xl">
               <Scramble text="built from scratch" trigger="view" durationMs={1000} />
             </h2>
-            <p className="max-w-2xl text-muted">
+            <Glossed><p className="max-w-2xl text-muted">
               Five weeks, one pull request at a time: from summing a vector on the GPU to beating llama.cpp. Every
               step was checked against a slower version that was already known to be right.
-            </p>
+            </p></Glossed>
           </div>
           <BuildTimeline />
         </section>

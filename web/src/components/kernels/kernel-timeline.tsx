@@ -7,6 +7,7 @@ import { MetricView } from "@/components/build-timeline";
 import { repoUrl } from "@/content/build-log";
 import { authorLabel, type KernelEntry } from "@/content/kernels/types";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
+import { gloss } from "../glossed";
 
 const ease = [0.23, 1, 0.32, 1] as const;
 const inView = { once: true, margin: "0px 0px -15% 0px" };
@@ -59,7 +60,7 @@ export function KernelTimeline({ entries }: { entries: KernelEntry[] }) {
               <span className={clsx(e.author === "claude" ? "text-muted" : "text-text")}>· {authorLabel[e.author]}</span>
             </div>
             <h3 className="mt-2 font-serif text-2xl text-text">{e.title}</h3>
-            <p className="mt-1 max-w-2xl text-muted">{e.text}</p>
+            <p className="mt-1 max-w-2xl text-muted">{gloss(e.text)}</p>
             {e.metric && (
               <div className="mt-4 max-w-xl">
                 <MetricView metric={e.metric} reduced={reduced} />

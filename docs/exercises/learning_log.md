@@ -1936,3 +1936,12 @@
 - **greedy decoding** => 
 - **hit box centred on the visual centre of text** => 
 - **animating width to a measured intrinsic size** => 
+
+## Glossary tooltips (Branch 119)
+
+- **tooltip vs. popover (role="tooltip", aria-describedby)** => 
+- **Node.compareDocumentPosition for document order** => 
+- **React.Children.map and cloneElement to transform a tree** => 
+- **regex lookbehind for word boundaries** => 
+- **portal (createPortal) for overlays that escape overflow** => 
+- **hit-testing text drawn on a canvas texture through raycast UVs** => 

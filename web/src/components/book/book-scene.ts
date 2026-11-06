@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { type BookPalette, createKit, inkShared, type Kit, readBookPalette } from "./ink";
-import { drawCaptionPage, drawTextPage, type Fonts, type PageText } from "./typeset";
+import { drawCaptionPage, drawTextPage, type Fonts, type PageText, type TermBox } from "./typeset";
 
 export const PAGE_W = 1;
 export const PAGE_D = 1.38;
@@ -54,7 +54,10 @@ type SceneOptions = {
   coverFrame?: Frame;
   onCoverClick?: () => void;
   onLink?: (link: PageLink) => void;
+  onTerm?: (term: TermHit | null) => void;
 };
+
+export type TermHit = { key: string; x: number; y: number; tap: boolean };
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t: number) => 1 + 2.1 * Math.pow(t - 1, 3) + 1.1 * Math.pow(t - 1, 2);
@@ -170,6 +173,8 @@ export class BookScene {
   private camFrom = { ...this.cam };
   private camDuration = 1.8;
   private applied = { stop: -1, beat: 0 };
+  private terms = new WeakMap<Stop, { seen: Set<string>; left: TermBox[]; right: TermBox[] }>();
+  private hovered: string | null = null;
   private target = { stop: 0, beat: 0 };
   private running = false;
   private riffleNext = false;
@@ -360,8 +365,11 @@ export class BookScene {
         this.drag.y = event.clientY;
         return;
       }
-      canvas.style.cursor = this.pickHandle(event) ? "grab" : this.linkAt(event) || this.pageSide(event) || this.overCover(event) ? "pointer" : "default";
-      this.updateLens(event);
+      const term = this.pickHandle(event) ? null : this.termAt(event);
+      this.hoverTerm(term, event, false);
+      canvas.style.cursor = term ? "help" : this.pickHandle(event) ? "grab" : this.linkAt(event) || this.pageSide(event) || this.overCover(event) ? "pointer" : "default";
+      if (term) this.options.onLens(null);
+      else this.updateLens(event);
     };
     const onUp = (event: PointerEvent) => {
       if (this.drag?.mode === "handle") this.model.dragEnd?.();
@@ -372,6 +380,11 @@ export class BookScene {
         this.options.onCoverClick?.();
         return;
       }
+      const term = this.termAt(event);
+      if (term) {
+        this.hoverTerm(term, event, true);
+        return;
+      }
       const link = this.linkAt(event);
       if (link) {
         this.options.onLink?.(link);
@@ -380,7 +393,10 @@ export class BookScene {
       const side = this.pageSide(event);
       if (side) this.options.onPageClick(side);
     };
-    const onLeave = () => this.options.onLens(null);
+    const onLeave = () => {
+      this.options.onLens(null);
+      this.hoverTerm(null, null, false);
+    };
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp);
@@ -457,6 +473,26 @@ export class BookScene {
     const u = hit.uv.x;
     const v = 1 - hit.uv.y;
     return links.find((l) => l.side === side && u >= l.box[0] && u <= l.box[2] && v >= l.box[1] && v <= l.box[3]) ?? null;
+  }
+
+  private termAt(event: PointerEvent): string | null {
+    const marks = this.terms.get(this.options.stops[this.applied.stop]);
+    if (!marks || !this.opened || this.running || this.leaf.front.visible) return null;
+    this.setPointer(event);
+    const hit = this.raycaster.intersectObjects([this.leftPlane, this.rightPlane], false)[0];
+    if (!hit?.uv) return null;
+    const boxes = hit.object === this.leftPlane ? marks.left : marks.right;
+    const u = hit.uv.x;
+    const v = 1 - hit.uv.y;
+    return boxes.find((t) => u >= t.box[0] && u <= t.box[2] && v >= t.box[1] && v <= t.box[3])?.key ?? null;
+  }
+
+  private hoverTerm(key: string | null, event: PointerEvent | null, tap: boolean): void {
+    if (key === this.hovered && !tap) return;
+    this.hovered = key;
+    if (!key || !event) return this.options.onTerm?.(null);
+    const rect = this.options.canvas.getBoundingClientRect();
+    this.options.onTerm?.({ key, x: event.clientX - rect.left, y: event.clientY - rect.top, tap });
   }
 
   private pointOnPage(event: PointerEvent): number | null {
@@ -614,8 +650,9 @@ export class BookScene {
   }
 
   private drawLeft(canvas: HTMLCanvasElement, stop: Stop): void {
-    if (stop.paint?.left) stop.paint.left(canvas, this.kit.palette, this.options.fonts);
-    else drawTextPage(canvas, stop.page, this.kit.palette, this.options.fonts);
+    const seen = new Set<string>();
+    const left = stop.paint?.left ? (stop.paint.left(canvas, this.kit.palette, this.options.fonts), []) : drawTextPage(canvas, stop.page, this.kit.palette, this.options.fonts, seen);
+    this.terms.set(stop, { seen, left, right: [] });
   }
 
   private drawRight(canvas: HTMLCanvasElement, stop: Stop): void {
@@ -629,7 +666,9 @@ export class BookScene {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }
-    drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, stop.folio, this.kit.palette, this.options.fonts);
+    const marks = this.terms.get(stop);
+    const right = drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, stop.folio, this.kit.palette, this.options.fonts, new Set(marks?.seen));
+    if (marks) marks.right = right;
   }
 
   goTo(stop: number, beat: number, riffle = false): void {
@@ -655,6 +694,7 @@ export class BookScene {
 
   private async settle(): Promise<void> {
     this.running = true;
+    this.hoverTerm(null, null, false);
     while (this.opened && (this.applied.stop !== this.target.stop || this.applied.beat !== this.target.beat)) {
       const { stop, beat } = this.target;
       if (stop === this.applied.stop) {
