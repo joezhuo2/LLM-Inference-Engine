@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-about
 
+- Part A: GEMM opens with "what GEMM and GEMV mean": the BLAS names spelled out, every output as a dot product, M × N × K multiply-adds, and why one row of x is a GEMV and several are a GEMM. In the book a 3D x · Wᵀ = y that lifts each column of Wᵀ in turn and fills the outputs, with a rail for 1 to 4 rows of x; on the scroll page a 2D figure that plays the GEMV and then the GEMM.
 - Part A: a chapter can open with an unnumbered lead-in spread that says what the chapter's subject is: `withLead` puts the lead-in step, caption, instruction, tour and 3D exhibit in front of a chapter's own, and passes the chapter's model its old exhibit and stop numbers, so the existing spreads are untouched. The intro list shows the lead-in without a number, the steps after it keep 1 to n, its figure is Fig. n.0, and the page numbers after it move up by one. On the scroll pages a story with `about: true` gets a "what it is" section before the others, a one-step story with "the idea" in place of the step counter.
 
 ## web/book-tab

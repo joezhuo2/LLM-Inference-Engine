@@ -3,9 +3,11 @@
 import { createPortal } from "react-dom";
 import { TilingSandbox } from "@/components/kernels/gemm/sandbox";
 import { gemmCaptions, gemmNumbers, gemmSteps, RooflinePicker } from "@/components/kernels/gemm/story";
+import { gemmAbout, gemmAboutCaption } from "@/components/kernels/gemm/about";
 import { gemm } from "@/content/kernels/gemm";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { createGemmAboutModel } from "./gemm-about-model";
 import { createGemmModel } from "./gemm-model";
 
 const beats: Beat[][] = [
@@ -88,7 +90,7 @@ function GemmOverlay({ kind, target, narrow }: OverlayProps) {
   );
 }
 
-export const gemmChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "gemm",
   number: 2,
   title: "GEMM",
@@ -103,3 +105,16 @@ export const gemmChapter: ChapterDef = {
   buildModel: (kit, fonts) => createGemmModel(kit, fonts, gemmNumbers),
   Overlay: GemmOverlay,
 };
+
+export const gemmChapter = withLead(chapter, {
+  step: gemmAbout,
+  caption: gemmAboutCaption,
+  instruction: "Drag the pink ball to add rows to x: one row is a GEMV, more rows make it a GEMM.",
+  beats: [
+    overview("What GEMM and GEMV stand for, and what they compute"),
+    close("Close up: one column of Wᵀ meets every row of x", [0.5, 0.03, -0.24], 0.62, 0.36, -20, 40),
+    close("From the side: each output rises as its dot product finishes", [0.62, 0.04, -0.22], 0.6, 0.38, 26, 30),
+    close("The rail: drag the rows of x from 1 to 4", [0.5, 0.02, 0.16], 0.9, 0.34, 0, 46),
+  ],
+  buildModel: createGemmAboutModel,
+});

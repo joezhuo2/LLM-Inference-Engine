@@ -8,6 +8,7 @@ import { AttentionV2Story } from "./attention-v2/story";
 import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
 import { ChunkedPrefillStory } from "./chunked-prefill/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
+import { GemmAboutStory } from "./gemm/about";
 import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
 import { FoundationsSandbox } from "./foundations/sandbox";
@@ -54,6 +55,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
 
 export function KernelAboutView({ slug }: { slug: string }) {
   switch (slug) {
+    case "gemm":
+      return <GemmAboutStory />;
     default:
       return null;
   }

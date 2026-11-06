@@ -1890,3 +1890,6 @@
 ## 3D book: what each chapter is about (Branch 118)
 - **wrapping an object to shift the indices its callers use** => 
 - **routing a drag to the model that owns the grabbed handle** => 
+- **BLAS routine naming (GE, MM, MV)** => 
+- **an output element as a dot product of a row and a column** => 
+- **M × N × K multiply-adds for a matrix multiply** => 
