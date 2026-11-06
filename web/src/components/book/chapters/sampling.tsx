@@ -1,10 +1,12 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { samplingAbout, samplingAboutCaption } from "@/components/kernels/sampling/about";
 import { SamplingSandbox } from "@/components/kernels/sampling/sandbox";
 import { ModePicker, samplingCaptions, samplingNumbers, samplingSteps } from "@/components/kernels/sampling/story";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { createSamplingAboutModel } from "./sampling-about-model";
 import { createSamplingModel } from "./sampling-model";
 
 const beats: Beat[][] = [
@@ -102,7 +104,7 @@ function SamplingOverlay({ kind, target, narrow }: OverlayProps) {
   );
 }
 
-export const samplingChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "sampling",
   number: 10,
   title: "sampling",
@@ -117,3 +119,16 @@ export const samplingChapter: ChapterDef = {
   buildModel: (kit, fonts) => createSamplingModel(kit, fonts, samplingNumbers),
   Overlay: SamplingOverlay,
 };
+
+export const samplingChapter = withLead(chapter, {
+  step: samplingAbout,
+  caption: samplingAboutCaption,
+  instruction: "Drag the pink ball to change the temperature T and watch the blue odds sharpen or flatten under the draws.",
+  beats: [
+    overview("What sampling does with the 32,000 logits"),
+    close("Close up: the logits behind, their probabilities in front", [0.55, 0.04, -0.24], 0.8, 0.46, -18, 46),
+    close("From the side: each draw lands on a token by its odds", [0.58, 0.05, -0.2], 0.95, 0.5, 24, 38),
+    close("The rail: drag T from 0, greedy, to 2", [0.5, 0.02, 0.16], 0.9, 0.34, 0, 46),
+  ],
+  buildModel: createSamplingAboutModel,
+});

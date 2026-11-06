@@ -1931,3 +1931,6 @@
 - **streaming multiprocessor (SM) as the unit that runs thread blocks** => 
 - **thread block: a group of threads resident on one SM until it finishes** => 
 - **splitting the context so more blocks run side by side (split-K for attention)** => 
+- **logit** => 
+- **softmax temperature** => 
+- **greedy decoding** => 

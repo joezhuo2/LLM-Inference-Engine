@@ -25,6 +25,7 @@ import { KvVisualizer } from "./paged-kv/visualizer";
 import { RopeAboutStory } from "./rope/about";
 import { RopeSandbox } from "./rope/sandbox";
 import { RopeStory } from "./rope/story";
+import { SamplingAboutStory } from "./sampling/about";
 import { SamplingSandbox } from "./sampling/sandbox";
 import { SamplingStory } from "./sampling/story";
 import { SplitAboutStory } from "./split-attention/about";
@@ -87,6 +88,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <PagedAttentionAboutStory />;
     case "split-attention":
       return <SplitAboutStory />;
+    case "sampling":
+      return <SamplingAboutStory />;
     default:
       return null;
   }
