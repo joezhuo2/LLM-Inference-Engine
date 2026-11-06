@@ -12,6 +12,7 @@ import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmAboutStory } from "./gemm/about";
 import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
+import { FoundationsAboutStory } from "./foundations/about";
 import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
@@ -57,6 +58,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
 
 export function KernelAboutView({ slug }: { slug: string }) {
   switch (slug) {
+    case "foundations":
+      return <FoundationsAboutStory />;
     case "gemm":
       return <GemmAboutStory />;
     case "chunked-prefill":

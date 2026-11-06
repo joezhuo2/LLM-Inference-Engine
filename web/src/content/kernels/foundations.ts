@@ -11,6 +11,7 @@ export const foundations: KernelStory = {
   slug: "foundations",
   index: 0,
   book: true,
+  about: true,
   title: "foundations",
   short: "How a GPU runs a kernel, where its data lives, and why decoding one token waits on memory and not on arithmetic.",
   formula: "time ≈ max(bytes ÷ bandwidth, FLOPs ÷ compute)",

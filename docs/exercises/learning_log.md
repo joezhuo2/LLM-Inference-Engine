@@ -1902,3 +1902,7 @@
 - **Swish / SiLU, x × sigmoid(x)** => 
 - **gate, up and down projections in a gated MLP** => 
 - **why a gated MLP's width is 2/3 of 4 × hidden** => 
+- **decode step (one forward pass per generated token)** => 
+- **embedding table lookup by token id** => 
+- **LM head and logits** => 
+- **autoregressive generation (feeding the picked token back)** => 

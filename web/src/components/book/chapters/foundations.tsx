@@ -1,11 +1,13 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { foundationsAbout, foundationsAboutCaption } from "@/components/kernels/foundations/about";
 import { FoundationsSandbox } from "@/components/kernels/foundations/sandbox";
 import { foundationsCaptions, foundationsNumbers, foundationsSteps, RowsPicker } from "@/components/kernels/foundations/story";
 import { foundations } from "@/content/kernels/foundations";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { createFoundationsAboutModel } from "./foundations-about-model";
 import { createFoundationsModel } from "./foundations-model";
 
 const n = foundationsNumbers;
@@ -92,7 +94,7 @@ function FoundationsOverlay({ kind, target, narrow }: OverlayProps) {
   );
 }
 
-export const foundationsChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "foundations",
   number: 1,
   title: "foundations",
@@ -107,3 +109,16 @@ export const foundationsChapter: ChapterDef = {
   buildModel: (kit, fonts) => createFoundationsModel(kit, fonts, n),
   Overlay: FoundationsOverlay,
 };
+
+export const foundationsChapter = withLead(chapter, {
+  step: foundationsAbout,
+  caption: foundationsAboutCaption,
+  instruction: "Watch one token go through a decode step, or drag the pink ball to pick which token of the answer is generated.",
+  beats: [
+    overview("What an inference engine does with one token"),
+    close("Close up: the last token's id picks one row of the embedding table", [0.2, 0.03, -0.24], 0.5, 0.36, -20, 40),
+    close("Close up: the highest logit wins and joins the answer", [0.72, 0.04, -0.32], 0.52, 0.4, 16, 42),
+    close("The rail: pick which token of the answer is generated", [0.5, 0.02, 0.24], 0.9, 0.32, 0, 46),
+  ],
+  buildModel: createFoundationsAboutModel,
+});
