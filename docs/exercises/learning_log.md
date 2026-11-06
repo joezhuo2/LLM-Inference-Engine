@@ -1922,3 +1922,7 @@
 - **query and key vectors** => 
 - **relative position** => 
 - **dot product as a similarity score** => 
+- **KV cache** => 
+- **block table** => 
+- **paging (virtual memory)** => 
+- **bfloat16** => 

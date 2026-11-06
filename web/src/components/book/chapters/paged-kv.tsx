@@ -1,5 +1,6 @@
 "use client";
 
+import { pagedKvAbout, pagedKvAboutCaption } from "@/components/kernels/paged-kv/about";
 import { lengths, slots } from "@/components/kernels/paged-kv/batching";
 import { first, fullContext, lookup, tightBlocks } from "@/components/kernels/paged-kv/figures";
 import { batchingCaptions, batchingSteps, pagedKvCaptions, pagedKvSteps } from "@/components/kernels/paged-kv/story";
@@ -7,7 +8,8 @@ import { KvVisualizer } from "@/components/kernels/paged-kv/visualizer";
 import { pagedKv } from "@/content/kernels/paged-kv";
 import { kvDemo, kvReplay } from "@/lib/data";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, type OverlayProps, overview, type WorkbenchPage } from "../chapter";
+import { type ChapterDef, close, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { createPagedKvAboutModel } from "./paged-kv-about-model";
 import { createPagedKvModel } from "./paged-kv-model";
 
 const demo = kvDemo();
@@ -100,7 +102,7 @@ function PagedKvOverlay({ kind, target }: OverlayProps) {
   return <KvVisualizer pages={{ pool: kind === "visualizer-pool" ? target : null, tables: kind === "visualizer-tables" ? target : null }} />;
 }
 
-export const pagedKvChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "paged-kv",
   number: 4,
   title: "paged KV cache",
@@ -115,3 +117,16 @@ export const pagedKvChapter: ChapterDef = {
   buildModel: createPagedKvModel,
   Overlay: PagedKvOverlay,
 };
+
+export const pagedKvChapter = withLead(chapter, {
+  step: pagedKvAbout,
+  caption: pagedKvAboutCaption,
+  instruction: `Drag the pink ball to set how many tokens the request has; a new block is taken every ${B}.`,
+  beats: [
+    overview("What a KV cache keeps, and what paging it means"),
+    close("Close up: one column per token, its key in front and its value behind", [0.5, 0.03, -0.37], 0.6, 0.32, -18, 44),
+    close("From the side: the block table points each logical block at a free physical one", [0.5, 0.05, -0.25], 0.86, 0.42, 24, 36),
+    close(`The rail: drag the tokens from 1 to ${4 * B}`, [0.5, 0.02, 0.12], 0.9, 0.34, 0, 46),
+  ],
+  buildModel: createPagedKvAboutModel,
+});

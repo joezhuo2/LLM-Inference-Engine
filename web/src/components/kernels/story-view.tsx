@@ -18,6 +18,7 @@ import { GemmStory } from "./gemm/story";
 import { FoundationsAboutStory } from "./foundations/about";
 import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
+import { PagedKvAboutStory } from "./paged-kv/about";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
 import { RopeAboutStory } from "./rope/about";
@@ -78,6 +79,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <CudaGraphsAboutStory />;
     case "rope":
       return <RopeAboutStory />;
+    case "paged-kv":
+      return <PagedKvAboutStory />;
     default:
       return null;
   }
