@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { KernelTimeline } from "@/components/kernels/kernel-timeline";
 import { StoryNav } from "@/components/kernels/story-nav";
-import { KernelLeadView, KernelPrologueView, KernelSandboxView, KernelStoryView } from "@/components/kernels/story-view";
+import { KernelAboutView, KernelLeadView, KernelPrologueView, KernelSandboxView, KernelStoryView } from "@/components/kernels/story-view";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
 import { Scramble } from "@/components/scramble";
@@ -71,6 +71,12 @@ export async function ReadingView({ slug }: { slug: string }) {
             </div>
           </div>
         </header>
+
+        {story.about && (
+          <Section id="about" title="what it is">
+            <KernelAboutView slug={story.slug} />
+          </Section>
+        )}
 
         {story.prologue && (
           <Section id="batching" title={story.prologue.title}>

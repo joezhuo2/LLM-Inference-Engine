@@ -1,7 +1,7 @@
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { kernelStory } from "@/content/kernels";
 import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
-import { type ChapterDef, chapterTitles, frames } from "./chapter";
+import { type ChapterDef, chapterTitles, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
 import { bookHref } from "./paths";
 import type { Fonts } from "./typeset";
@@ -261,14 +261,14 @@ function introRows(def: ChapterDef) {
   const titles = chapterTitles(def);
   const steps = def.steps.length;
   const step = Math.min(ROW, (H - 700) / (titles.length + (titles.length > steps ? 1.5 : 0)));
-  const rows: { y: number; text: string; number?: string; k?: number }[] = [];
+  const rows: { y: number; text: string; number?: string; bench?: boolean; k?: number }[] = [];
   let y = 380;
   titles.forEach((text, k) => {
     if (k === steps) {
       rows.push({ y: y + step * 0.2, text: "try it yourself" });
       y += step * 1.5;
     }
-    rows.push({ y, text, number: k < steps ? String(k + 1) : undefined, k });
+    rows.push({ y, text, number: stepNumber(def, k) || undefined, bench: k >= steps, k });
     y += step;
   });
   return { rows, step };
@@ -331,7 +331,7 @@ export function introStop(def: ChapterDef): Stop {
   };
   const links: PageLink[] = rows
     .filter((r) => r.k !== undefined)
-    .map((r) => ({ side: "right", box: [170 / W, (r.y - step * 0.65) / H, (W - 130) / W, (r.y + step * 0.32) / H], href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : `try it yourself, ${r.text}` }));
+    .map((r) => ({ side: "right", box: [170 / W, (r.y - step * 0.65) / H, (W - 130) / W, (r.y + step * 0.32) / H], href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : r.bench ? `try it yourself, ${r.text}` : r.text }));
   return {
     ...flatStop(0, `Chapter ${def.number}: ${title}`, title, [summary]),
     paint: { left, right },

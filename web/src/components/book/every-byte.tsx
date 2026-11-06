@@ -10,7 +10,7 @@ import { kindLabel } from "@/content/dead-ends";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
-import { type ChapterDef, chapterStops, chapterTitles } from "./chapter";
+import { type ChapterDef, chapterStops, chapterTitles, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
 import { bookOrder, bookParts, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, introStop, numberPages } from "./front-matter";
 import type { Kit } from "./ink";
@@ -527,7 +527,7 @@ export function EveryByte() {
               <ol>
                 {chapterTitles(def).map((t, k) => (
                   <li key={t} className="flex gap-2">
-                    <span className="w-5 tabular-nums">{k < def.steps.length ? k + 1 : ""}</span>
+                    <span className="w-5 tabular-nums">{stepNumber(def, k)}</span>
                     <button type="button" onClick={() => turnTo(def.slug, k)} className="link-underline text-left text-text">
                       {t}
                     </button>

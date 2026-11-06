@@ -52,6 +52,13 @@ export function KernelStoryView({ slug }: { slug: string }) {
   }
 }
 
+export function KernelAboutView({ slug }: { slug: string }) {
+  switch (slug) {
+    default:
+      return null;
+  }
+}
+
 export function KernelLeadView({ slug }: { slug: string }) {
   switch (slug) {
     case "paged-attention":

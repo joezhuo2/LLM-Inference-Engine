@@ -1886,3 +1886,7 @@
 ## 3D book behind a tab (Branch 113)
 - **one constant for a URL prefix so a section can move** => 
 - **an active nav tab from the path prefix** => 
+
+## 3D book: what each chapter is about (Branch 118)
+- **wrapping an object to shift the indices its callers use** => 
+- **routing a drag to the model that owns the grabbed handle** => 

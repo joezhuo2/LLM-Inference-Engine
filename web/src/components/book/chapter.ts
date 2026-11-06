@@ -21,6 +21,15 @@ export type ChapterDef = {
   workbench: WorkbenchPage[];
   buildModel: (kit: Kit, fonts: Fonts) => BookModel;
   Overlay?: ComponentType<OverlayProps>;
+  lead?: number;
+};
+
+export type LeadDef = {
+  step: StoryStep;
+  caption: string;
+  instruction: string;
+  beats: Beat[];
+  buildModel: (kit: Kit, fonts: Fonts) => BookModel;
 };
 
 export type ChapterText = { title: string; paragraphs: Run[][] };
@@ -45,6 +54,45 @@ export function chapterTitles(chapter: ChapterDef): string[] {
   return [...chapter.steps.map((s) => s.title), ...chapter.workbench.map((w) => w.title)];
 }
 
+export function stepNumber(chapter: ChapterDef, k: number): string {
+  const lead = chapter.lead ?? 0;
+  return k >= lead && k < chapter.steps.length ? String(k + 1 - lead) : "";
+}
+
+function joinLead(lead: BookModel, base: BookModel): BookModel {
+  const own = new Set(lead.handles);
+  let held: BookModel | null = null;
+  return {
+    exhibits: [lead.exhibits[0], ...base.exhibits],
+    handles: [...lead.handles, ...base.handles],
+    dragStart: (handle) => {
+      held = own.has(handle) ? lead : base;
+      held.dragStart?.(handle);
+    },
+    drag: (x) => held?.drag?.(x),
+    dragEnd: () => {
+      held?.dragEnd?.();
+      held = null;
+    },
+    update: (dt, exhibit, stop, reduced) => (exhibit === 0 ? lead.update(dt, 0, 0, reduced) : base.update(dt, exhibit - 1, stop - 1, reduced)),
+    enter: (stop) => (stop === 0 ? lead.enter?.(0) : base.enter?.(stop - 1)),
+  };
+}
+
+export function withLead(chapter: ChapterDef, lead: LeadDef): ChapterDef {
+  return {
+    ...chapter,
+    lead: 1,
+    steps: [lead.step, ...chapter.steps],
+    captions: [lead.caption, ...chapter.captions],
+    exhibits: [0, ...chapter.exhibits.map((e) => (e === null ? null : e + 1))],
+    overlays: [null, ...chapter.overlays],
+    instructions: [lead.instruction, ...chapter.instructions],
+    beats: [lead.beats, ...chapter.beats],
+    buildModel: (kit, fonts) => joinLead(lead.buildModel(kit, fonts), chapter.buildModel(kit, fonts)),
+  };
+}
+
 export function chapterStops(chapter: ChapterDef, text: ChapterText[]): Stop[] {
   const kicker = `chapter ${chapter.number} · ${chapter.title}`;
   const steps = text.map((t, i): Stop => {
@@ -53,7 +101,7 @@ export function chapterStops(chapter: ChapterDef, text: ChapterText[]): Stop[] {
       exhibit: chapter.exhibits[i] ?? null,
       spread: i,
       page,
-      figure: `Fig. ${chapter.number}.${i + 1}`,
+      figure: `Fig. ${chapter.number}.${i + 1 - (chapter.lead ?? 0)}`,
       caption: chapter.captions[i] ?? "",
       instruction: chapter.instructions[i],
       folio: "",

@@ -15,11 +15,13 @@ export function StickyStory({
   figure,
   caption,
   morph = false,
+  kicker,
 }: {
   steps: StoryStep[];
   figure: (step: number) => ReactNode;
   caption: (step: number) => ReactNode;
   morph?: boolean;
+  kicker?: string;
 }) {
   const [visits, setVisits] = useState(0);
   const [inView, setInView] = useState(false);
@@ -79,7 +81,7 @@ export function StickyStory({
               }}
             >
               <div className="tabular-nums text-xs text-muted">
-                {String(i + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}
+                {kicker ?? `${String(i + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`}
               </div>
               <h2
                 className={clsx(
