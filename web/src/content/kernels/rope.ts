@@ -8,6 +8,7 @@ export const rope: KernelStory = {
   slug: "rope",
   index: 3,
   book: true,
+  about: true,
   title: "RoPE",
   short: "Pairs of dimensions rotated by position, from one thread per head to every pair in parallel.",
   formula: "x′ᵢ = xᵢ cos pθᵢ − xᵢ₊d/₂ sin pθᵢ,  θᵢ = 10000^(−2i/d)",

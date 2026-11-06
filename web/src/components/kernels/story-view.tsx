@@ -20,6 +20,7 @@ import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
 import { BatchingStory, PagedKvStory } from "./paged-kv/story";
 import { KvVisualizer } from "./paged-kv/visualizer";
+import { RopeAboutStory } from "./rope/about";
 import { RopeSandbox } from "./rope/sandbox";
 import { RopeStory } from "./rope/story";
 import { SamplingSandbox } from "./sampling/sandbox";
@@ -75,6 +76,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <AddRmsnormAboutStory />;
     case "cuda-graphs":
       return <CudaGraphsAboutStory />;
+    case "rope":
+      return <RopeAboutStory />;
     default:
       return null;
   }

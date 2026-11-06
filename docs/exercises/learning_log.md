@@ -1918,3 +1918,7 @@
 - **CUDA stream** => 
 - **graph node and edge** => 
 - **launch overhead vs kernel duration** => 
+- **rotary position embedding** => 
+- **query and key vectors** => 
+- **relative position** => 
+- **dot product as a similarity score** => 
