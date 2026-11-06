@@ -624,7 +624,9 @@ export class BookScene {
       return;
     }
     if (stop.overlay) {
-      canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
+      const ctx = canvas.getContext("2d")!;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }
     drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, stop.folio, this.kit.palette, this.options.fonts);
@@ -680,6 +682,7 @@ export class BookScene {
     const to = this.options.stops[stop];
     this.overlayKey = "";
     this.frozen = false;
+    this.frozenSoon = false;
     this.options.onOverlay(null);
     const exhibitChanges = from.exhibit !== to.exhibit || from.spread !== to.spread;
     if (exhibitChanges && from.exhibit !== null) await this.foldDown(from.exhibit);

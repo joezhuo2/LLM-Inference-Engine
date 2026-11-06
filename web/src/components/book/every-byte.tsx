@@ -10,14 +10,17 @@ import { kindLabel } from "@/content/dead-ends";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
-import { type ChapterDef, chapterStops } from "./chapter";
+import { type ChapterDef, chapterStops, chapterTitles } from "./chapter";
 import { bookChapters } from "./chapters";
-import { bookOrder, bookParts, chapterPage, chapterTitle, contentsStop, errataIntro, errataPage, errataSpreads, errataStops, errataTitle } from "./front-matter";
+import { bookOrder, bookParts, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, introStop, numberPages } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 
 const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
 const beatMs = 6500;
+let numbered: Promise<number> | undefined;
+const numberBook = () =>
+  (numbered ??= Promise.all(chapterSlugs.map((slug) => bookChapters[slug]().then((c) => [slug, 1 + c.steps.length + c.workbench.length] as const))).then((pairs) => numberPages(Object.fromEntries(pairs))));
 
 type Meta = { key: string; local: number; slug?: string; exhibit: number | null };
 type Place = { closed: true } | { closed: false; key: string; local: number };
@@ -52,9 +55,10 @@ function compose(raw: Record<string, Stop[]>) {
   const meta: Meta[] = [];
   for (const key of keys) {
     const slug = key === "contents" || key === "errata" ? undefined : key;
-    raw[key].forEach((s, local) => {
-      meta.push({ key, local, slug, exhibit: slug ? s.exhibit : null });
-      stops.push({ ...s, spread: stops.length, exhibit: slug && s.exhibit !== null ? chapterSlugs.indexOf(slug) : null });
+    raw[key].forEach((s, i) => {
+      const folios = slug && i > 0 && s.page ? { page: { ...s.page, folio: String((chapterPage(key) ?? 0) + i) } } : {};
+      meta.push({ key, local: slug ? i - 1 : i, slug, exhibit: slug ? s.exhibit : null });
+      stops.push({ ...s, ...folios, spread: stops.length, exhibit: slug && s.exhibit !== null ? chapterSlugs.indexOf(slug) : null });
     });
   }
   return { stops, meta };
@@ -94,19 +98,13 @@ export function EveryByte() {
   const [failed, setFailed] = useState(false);
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(false);
-  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    for (const slug of chapterSlugs) void bookChapters[slug]().then((c) => setCounts((n) => ({ ...n, [slug]: c.steps.length + c.workbench.length })));
-  }, []);
+  useEffect(() => void numberBook().then(setTotal), []);
 
   const meta = layout.meta[stop];
   const segment = meta?.key ?? "contents";
-  const keys = ["contents", ...chapterSlugs, "errata"];
-  const lengthOf = (key: string) => (key === "contents" || key === "errata" ? base[key].length : counts[key]);
-  const counted = chapterSlugs.every((slug) => counts[slug] !== undefined);
-  const total = 1 + keys.reduce((sum, key) => sum + (lengthOf(key) ?? 0), 0);
-  const page = open && meta ? 2 + keys.slice(0, keys.indexOf(meta.key)).reduce((sum, key) => sum + (lengthOf(key) ?? 0), 0) + meta.local : 1;
+  const page = open && meta ? (chapterPage(meta.key) ?? 0) + stop - layout.meta.findIndex((m) => m.key === meta.key) : 1;
   const def = meta?.slug ? defs[meta.slug] : undefined;
 
   useEffect(() => {
@@ -149,10 +147,11 @@ export function EveryByte() {
       const box = el.querySelector(`[data-chapter="${slug}"]`);
       if (!box) continue;
       const text = [...box.children].map((child, i) => ({ title: c.steps[i].title, paragraphs: readRuns(child) }));
-      const chapterRaw = chapterStops(c, text);
+      const chapterRaw = [introStop(c), ...chapterStops(c, text)];
       queued.current.add(slug);
       queue.current = queue.current.then(async () => {
         const s = await sceneReady.current.promise;
+        await numberBook();
         await s.idle();
         attach(slug);
         const before = book.current.meta.map((m) => `${m.key}:${m.local}`);
@@ -207,7 +206,7 @@ export function EveryByte() {
 
   const goKey = useCallback(
     async (key: string, riffle: boolean, push = true, last = false) => {
-      await ensure(key);
+      await Promise.all([ensure(key), numberBook()]);
       const index = firstOf(key, last);
       if (scene.current && !scene.current.isOpen) {
         stopRef.current = index;
@@ -255,14 +254,18 @@ export function EveryByte() {
     [go, goKey, closeBook],
   );
 
+  const turnTo = useCallback((slug: string, k: number) => go(firstOf(slug) + 1 + k, k > 0), [go]);
+
   const onLinkHref = useCallback(
     (href: string) => {
       if (href === "#errata") return void goKey("errata", true);
-      const slug = href.startsWith("/kernels/") ? href.slice(9) : "";
+      const [path, at] = href.split("#");
+      const slug = path.startsWith("/kernels/") ? path.slice(9) : "";
+      if (at && chapterSlugs.includes(slug)) return turnTo(slug, Number(at));
       if (chapterSlugs.includes(slug)) return void goKey(slug, true);
       router.push(href);
     },
-    [goKey, router],
+    [goKey, router, turnTo],
   );
 
   useEffect(() => {
@@ -295,7 +298,7 @@ export function EveryByte() {
           active = m?.slug;
           if (!m?.slug) return;
           containers.current[chapterSlugs.indexOf(m.slug)].children.forEach((child, k) => (child.visible = k === m.exhibit));
-          models.current[m.slug]?.enter?.(m.local);
+          if (m.local >= 0) models.current[m.slug]?.enter?.(m.local);
         },
         update: (dt, _exhibit, i, isReduced) => {
           const m = book.current.meta[i];
@@ -467,7 +470,7 @@ export function EveryByte() {
           <button type="button" aria-label={playing ? "pause the tour" : "play the tour"} disabled={!open || beatCount < 2} onClick={togglePlay} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
             <Icon d={playing ? "M5 3v10M11 3v10" : "M5 3l8 5-8 5z"} />
           </button>
-          {counted && (
+          {total > 0 && (
             <span className="shrink-0 text-text">
               <Scramble key={page} text={`${page} / ${total}`} numeric durationMs={700} />
             </span>
@@ -514,6 +517,24 @@ export function EveryByte() {
                 Open the book
               </button>
             </p>
+          ) : def && meta && meta.local < 0 ? (
+            <>
+              <h2 className="text-xs">{bookParts.filter((p) => p.slugs.includes(def.slug)).map((p) => `Part ${p.numeral} · ${p.title}`)}</h2>
+              <h1 className="font-serif text-2xl text-text">{`Chapter ${def.number}: ${chapterTitle(def.slug)}`}</h1>
+              <p className="mt-1">{stops[stop]?.page?.paragraphs[0]?.[0]?.text}</p>
+              <h2 className="mt-2 text-xs">in this chapter</h2>
+              <ol>
+                {chapterTitles(def).map((t, k) => (
+                  <li key={t} className="flex gap-2">
+                    <span className="w-5 tabular-nums">{k < def.steps.length ? k + 1 : ""}</span>
+                    <button type="button" onClick={() => turnTo(def.slug, k)} className="link-underline text-left text-text">
+                      {t}
+                    </button>
+                    <span className="ml-auto tabular-nums">{(chapterPage(def.slug) ?? 0) + k + 1}</span>
+                  </li>
+                ))}
+              </ol>
+            </>
           ) : chapterStep ? (
             <>
               <h1 className="font-serif text-2xl text-text">{chapterStep.title}</h1>
@@ -575,7 +596,7 @@ export function EveryByte() {
               ))}
               <button type="button" onClick={() => void goKey("errata", true)} className="link-underline mt-2 flex w-full text-text">
                 {`Errata: ${errataTitle}`}
-                <span className="ml-auto tabular-nums text-muted">{errataPage}</span>
+                <span className="ml-auto tabular-nums text-muted">{chapterPage("errata")}</span>
               </button>
             </>
           )}
