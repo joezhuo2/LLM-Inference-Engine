@@ -1906,3 +1906,7 @@
 - **embedding table lookup by token id** => 
 - **LM head and logits** => 
 - **autoregressive generation (feeding the picked token back)** => 
+- **softmax** => 
+- **online softmax** => 
+- **running maximum** => 
+- **numerically stable exponent (subtracting the max)** => 

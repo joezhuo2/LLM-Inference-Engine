@@ -4,6 +4,7 @@ import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionSandbox } from "./attention/sandbox";
 import { PagedAttentionStory } from "./attention/story";
+import { AttentionV2AboutStory } from "./attention-v2/about";
 import { AttentionV2Story } from "./attention-v2/story";
 import { ChunkedPrefillAboutStory } from "./chunked-prefill/about";
 import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
@@ -66,6 +67,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <ChunkedPrefillAboutStory />;
     case "swiglu":
       return <SwigluAboutStory />;
+    case "attention-v2":
+      return <AttentionV2AboutStory />;
     default:
       return null;
   }
