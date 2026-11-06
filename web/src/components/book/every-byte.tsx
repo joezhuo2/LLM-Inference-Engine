@@ -18,6 +18,7 @@ import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
 
 const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
+const sectionKeys = ["contents", ...chapterSlugs, "errata"];
 const beatMs = 6500;
 let numbered: Promise<number> | undefined;
 const numberBook = () =>
@@ -257,6 +258,15 @@ export function EveryByte() {
     [go, goKey, closeBook],
   );
 
+  const jump = useCallback(
+    (delta: 1 | -1) => {
+      const key = book.current.meta[stopRef.current]?.key ?? "contents";
+      const next = sectionKeys[sectionKeys.indexOf(key) + delta];
+      if (next) void goKey(next, true);
+    },
+    [goKey],
+  );
+
   const turnTo = useCallback((slug: string, k: number) => go(firstOf(slug) + 1 + k, k > 0), [go]);
 
   const onLinkHref = useCallback(
@@ -467,6 +477,9 @@ export function EveryByte() {
           aria-label="book"
           className="absolute bottom-4 left-1/2 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/30 bg-surface/55 py-1 pl-1.5 pr-4 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
         >
+          <button type="button" aria-label="previous chapter" disabled={!open || sectionKeys.indexOf(segment) <= 0} onClick={() => jump(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <Icon d="M8 3 3 8l5 5M13 3 8 8l5 5" />
+          </button>
           <button type="button" aria-label={stop === 0 ? "close the book" : "previous page"} disabled={!open} onClick={() => step(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
             <Icon d="M10 3 5 8l5 5" />
           </button>
@@ -492,6 +505,9 @@ export function EveryByte() {
           </span>
           <button type="button" aria-label={open ? "next page" : "open the book"} disabled={open && stop === stops.length - 1} onClick={() => (open ? step(1) : void goKey("contents", false))} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
             <Icon d="M6 3l5 5-5 5" />
+          </button>
+          <button type="button" aria-label="next chapter" disabled={!open || sectionKeys.indexOf(segment) >= sectionKeys.length - 1} onClick={() => jump(1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <Icon d="M3 3l5 5-5 5M8 3l5 5-5 5" />
           </button>
           <Link href={otherHref} className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
             {def ? "reading view" : "list view"}
