@@ -4,7 +4,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
-import type { Group } from "three";
+import type { Group, Object3D } from "three";
 import { Scramble } from "@/components/scramble";
 import { kindLabel } from "@/content/dead-ends";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
@@ -79,6 +79,7 @@ export function EveryByte() {
   const book = useRef(initial);
   const models = useRef<Record<string, BookModel>>({});
   const containers = useRef<Group[]>([]);
+  const handles = useRef<Object3D[]>([]);
   const kit = useRef<{ kit: Kit; fonts: Fonts } | null>(null);
   const queue = useRef(Promise.resolve());
   const ready = useRef<Record<string, Promise<void>>>({});
@@ -121,6 +122,7 @@ export function EveryByte() {
     if (!c || !kit.current || models.current[slug]) return;
     const model = c.buildModel(kit.current.kit, kit.current.fonts);
     models.current[slug] = model;
+    handles.current.push(...model.handles);
     const container = containers.current[chapterSlugs.indexOf(slug)];
     for (const exhibit of model.exhibits) {
       exhibit.visible = false;
@@ -287,10 +289,11 @@ export function EveryByte() {
       if (cancelled) return;
       containers.current = chapterSlugs.map(() => new ThreeGroup());
       models.current = {};
+      handles.current.length = 0;
       let active: string | undefined;
       const composite: BookModel = {
         exhibits: containers.current,
-        handles: [],
+        handles: handles.current,
         dragStart: (h) => (active ? models.current[active]?.dragStart?.(h) : undefined),
         drag: (x) => (active ? models.current[active]?.drag?.(x) : undefined),
         dragEnd: () => (active ? models.current[active]?.dragEnd?.() : undefined),
@@ -333,7 +336,6 @@ export function EveryByte() {
       const built = instance;
       const addModels = () => {
         for (const slug of Object.keys(raw.current)) attach(slug);
-        composite.handles.splice(0, composite.handles.length, ...Object.values(models.current).flatMap((m) => m.handles));
       };
       addModels();
       scene.current = built;
