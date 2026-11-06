@@ -1894,3 +1894,7 @@
 - **an output element as a dot product of a row and a column** => 
 - **M × N × K multiply-adds for a matrix multiply** => 
 - **sharing one array by reference so later additions are seen** => 
+- **prefill** => 
+- **decode step** => 
+- **TTFT (time to first token)** => 
+- **token budget** => 

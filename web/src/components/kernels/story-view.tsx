@@ -5,6 +5,7 @@ import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionSandbox } from "./attention/sandbox";
 import { PagedAttentionStory } from "./attention/story";
 import { AttentionV2Story } from "./attention-v2/story";
+import { ChunkedPrefillAboutStory } from "./chunked-prefill/about";
 import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
 import { ChunkedPrefillStory } from "./chunked-prefill/story";
 import { CudaGraphsStory } from "./cuda-graphs/story";
@@ -57,6 +58,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
   switch (slug) {
     case "gemm":
       return <GemmAboutStory />;
+    case "chunked-prefill":
+      return <ChunkedPrefillAboutStory />;
     default:
       return null;
   }
