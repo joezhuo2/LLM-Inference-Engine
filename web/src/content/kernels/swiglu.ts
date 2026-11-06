@@ -10,6 +10,7 @@ export const swiglu: KernelStory = {
   index: 4,
   title: "SwiGLU",
   book: true,
+  about: true,
   short: "Eight values per 16-byte load, and a scalar path for batches too small to fill the GPU.",
   formula: "outⱼ = silu(gateⱼ) · upⱼ,  silu(g) = g / (1 + e⁻ᵍ)",
   headline: {

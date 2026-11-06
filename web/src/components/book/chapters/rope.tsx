@@ -1,10 +1,12 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { ropeAbout, ropeAboutCaption } from "@/components/kernels/rope/about";
 import { RopeSandbox } from "@/components/kernels/rope/sandbox";
 import { ropeCaptions, ropeNumbers, ropeSteps, TokensPicker } from "@/components/kernels/rope/story";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { createRopeAboutModel } from "./rope-about-model";
 import { createRopeModel } from "./rope-model";
 
 const beats: Beat[][] = [
@@ -80,7 +82,7 @@ function RopeOverlay({ kind, target, narrow }: OverlayProps) {
   );
 }
 
-export const ropeChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "rope",
   number: 3,
   title: "RoPE",
@@ -95,3 +97,16 @@ export const ropeChapter: ChapterDef = {
   buildModel: (kit, fonts) => createRopeModel(kit, fonts, ropeNumbers),
   Overlay: RopeOverlay,
 };
+
+export const ropeChapter = withLead(chapter, {
+  step: ropeAbout,
+  caption: ropeAboutCaption,
+  instruction: "Drag the pink ball to set how far apart the query and key are; as both move along, the angle between them stays put.",
+  beats: [
+    overview("What RoPE stands for, and what turning does to a score"),
+    close("Close up: the query and the key, each turned by its own position", [0.29, 0.04, -0.2], 0.62, 0.42, -22, 40),
+    close("From the side: the angle between them stays as both move along", [0.73, 0.05, -0.12], 0.5, 0.36, 24, 30),
+    close("The rail: drag the gap from 0 to 7 positions", [0.5, 0.02, 0.2], 0.9, 0.34, 0, 46),
+  ],
+  buildModel: createRopeAboutModel,
+});

@@ -7,6 +7,7 @@ export const pagedAttention: KernelStory = {
   slug: "paged-attention",
   index: 1,
   book: true,
+  about: true,
   title: "paged attention",
   short: "One new query per sequence against its whole cached context, read through a block table: v1, then an online softmax, then one context split across the GPU.",
   formula: "out = softmax(q · Kᵀ / √d) · V",

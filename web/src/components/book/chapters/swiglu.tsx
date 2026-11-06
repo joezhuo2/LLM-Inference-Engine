@@ -1,9 +1,11 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { swigluAbout, swigluAboutCaption } from "@/components/kernels/swiglu/about";
 import { swigluCaptions, swigluNumbers, swigluSteps, TokensPicker } from "@/components/kernels/swiglu/story";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
+import { createSwigluAboutModel } from "./swiglu-about-model";
 import { createSwigluModel } from "./swiglu-model";
 
 const beats: Beat[][] = [
@@ -57,7 +59,7 @@ function SwigluOverlay({ kind, target, narrow }: OverlayProps) {
     : null;
 }
 
-export const swigluChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "swiglu",
   number: 9,
   title: "SwiGLU",
@@ -72,3 +74,16 @@ export const swigluChapter: ChapterDef = {
   buildModel: (kit, fonts) => createSwigluModel(kit, fonts, swigluNumbers),
   Overlay: SwigluOverlay,
 };
+
+export const swigluChapter = withLead(chapter, {
+  step: swigluAbout,
+  caption: swigluAboutCaption,
+  instruction: "Drag the pink ball to set the outlined value's gate and watch how much of its up value passes.",
+  beats: [
+    overview("What SwiGLU stands for, and where it sits in the MLP"),
+    close("Close up: two projections up, one value per pair, one projection down", [0.52, 0.03, -0.33], 0.86, 0.36, -18, 40),
+    close("From the side: silu rises with g, sigmoid levels off at 1", [0.45, 0.05, 0.0], 0.7, 0.3, 24, 22),
+    close("The rail: drag the gate from −4 to 4", [0.5, 0.02, 0.2], 0.9, 0.32, 0, 46),
+  ],
+  buildModel: createSwigluAboutModel,
+});

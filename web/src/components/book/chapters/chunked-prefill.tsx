@@ -2,9 +2,11 @@
 
 import { ChunkedPrefillSandbox } from "@/components/kernels/chunked-prefill/sandbox";
 import { chunkedPrefillCaptions, chunkedPrefillNumbers, chunkedPrefillSteps } from "@/components/kernels/chunked-prefill/story";
+import { chunkedPrefillAbout, chunkedPrefillAboutCaption } from "@/components/kernels/chunked-prefill/about";
 import { chunkedPrefill } from "@/content/kernels/chunked-prefill";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { createChunkedPrefillAboutModel } from "./chunked-prefill-about-model";
 import { createChunkedPrefillModel } from "./chunked-prefill-model";
 
 const n = chunkedPrefillNumbers;
@@ -81,7 +83,7 @@ function ChunkedPrefillOverlay({ kind, target }: OverlayProps) {
   return <ChunkedPrefillSandbox pages={{ predict: kind === "sandbox-predict" ? target : null, lanes: kind === "sandbox-lanes" ? target : null }} />;
 }
 
-export const chunkedPrefillChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "chunked-prefill",
   number: 12,
   title: "chunked prefill",
@@ -96,3 +98,16 @@ export const chunkedPrefillChapter: ChapterDef = {
   buildModel: (kit, fonts) => createChunkedPrefillModel(kit, fonts, chunkedPrefillNumbers),
   Overlay: ChunkedPrefillOverlay,
 };
+
+export const chunkedPrefillChapter = withLead(chapter, {
+  step: chunkedPrefillAbout,
+  caption: chunkedPrefillAboutCaption,
+  instruction: "Drag the pink ball to lengthen the prompt: the single step grows, the chunked steps stay within the budget.",
+  beats: [
+    overview("What prefill and decode are, and what chunking changes"),
+    close("Close up: prefill fills the cache in one pass, decode adds one token a step", [0.5, 0.03, -0.37], 0.9, 0.32, -18, 40),
+    close("From the side: one long step against steps within the budget", [0.55, 0.03, -0.04], 0.9, 0.36, 22, 46),
+    close("The rail: drag the prompt from 128 to 2,048 tokens", [0.55, 0.02, 0.26], 0.9, 0.3, 0, 48),
+  ],
+  buildModel: createChunkedPrefillAboutModel,
+});

@@ -7,6 +7,7 @@ export const sampling: KernelStory = {
   slug: "sampling",
   index: 10,
   book: true,
+  about: true,
   title: "sampling",
   short: "Greedy, temperature, top-k and top-p on the GPU without sorting the vocabulary: Gumbel-max turns sampling into an argmax, and binary-searched thresholds replace the sort.",
   formula: "id = argmax(logits / T + g),  g = −log(−log u)",

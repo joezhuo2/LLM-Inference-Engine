@@ -38,6 +38,7 @@ export const chunkedPrefill: KernelStory = {
   slug: "chunked-prefill",
   index: 11,
   book: true,
+  about: true,
   title: "chunked prefill",
   short: "A token budget for every step: each decoding sequence gets its row first and the rest goes to the one prompt in prefill, so a long prompt spreads over several steps instead of stopping the others.",
   formula: "chunk = min(budget − decode rows, prompt tokens left)",

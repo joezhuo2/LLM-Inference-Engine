@@ -1,11 +1,13 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { attentionV2About, attentionV2AboutCaption, onlineScores, onlineStates } from "@/components/kernels/attention-v2/about";
 import { chunkScores } from "@/components/kernels/attention-v2/figures";
 import { attentionV2Captions, attentionV2Numbers, attentionV2Steps, AttentionV2Profile, AttentionV2Step, V1V2Picker } from "@/components/kernels/attention-v2/story";
 import { attentionV2 } from "@/content/kernels/attention-v2";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
+import { createAttentionV2AboutModel } from "./attention-v2-about-model";
 import { createAttentionV2Model } from "./attention-v2-model";
 
 const beats: Beat[][] = [
@@ -60,7 +62,7 @@ function AttentionV2Overlay({ kind, target, narrow }: OverlayProps) {
   return null;
 }
 
-export const attentionV2Chapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "attention-v2",
   number: 6,
   title: "attention v2",
@@ -75,3 +77,16 @@ export const attentionV2Chapter: ChapterDef = {
   buildModel: (kit, fonts) => createAttentionV2Model(kit, fonts, { ...attentionV2Numbers, scores: chunkScores }),
   Overlay: AttentionV2Overlay,
 };
+
+export const attentionV2Chapter = withLead(chapter, {
+  step: attentionV2About,
+  caption: attentionV2AboutCaption,
+  instruction: "Drag the pink ball to feed in the scores one by one: watch m rise and the blue terms shrink.",
+  beats: [
+    overview("What softmax computes, and how it can run in one pass"),
+    close("Close up: the pink rod is the running max m", [0.55, 0.05, -0.32], 1.15, 0.58, -16, 40),
+    close("From the side: when m rises, every blue term shrinks", [0.58, 0.04, -0.27], 1.15, 0.62, 24, 34),
+    close("The rail: drag how many scores have been seen", [0.5, 0.02, 0.14], 1.25, 0.5, 0, 46),
+  ],
+  buildModel: (kit, fonts) => createAttentionV2AboutModel(kit, fonts, onlineStates(onlineScores)),
+});

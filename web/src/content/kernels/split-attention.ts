@@ -11,6 +11,7 @@ const at2048 = { rows: "1", context: "2,048" };
 export const splitAttention: KernelStory = {
   slug: "split-attention",
   book: true,
+  about: true,
   index: 8,
   title: "split-context attention",
   short: "At batch 1 attention launches one block per head, a fifth of what the GPU can hold. Cutting each context into ranges fills it, and a merge puts the pieces back in a fixed order.",
