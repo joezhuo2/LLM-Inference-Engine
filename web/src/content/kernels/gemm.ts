@@ -13,6 +13,7 @@ export const gemm: KernelStory = {
   slug: "gemm",
   index: 5,
   title: "GEMM and GEMV",
+  book: true,
   short: "Not hand-written: cuBLAS with the row-major trick, and how close batch 1 runs to the memory bandwidth roof.",
   formula: "y[B, out] = x[B, in] · Wᵀ,  W is [out, in]",
   headline: {

@@ -9,6 +9,23 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: reset the canvas transform before every page is drawn, so the scale a front-matter page (contents, errata, a chapter intro) leaves on its canvas no longer doubles the size of the text pages and figure captions drawn later on the same canvas, which made every other spread's left page text far too big on high-density screens.
 - Part A: every chapter of the book opens on an introduction spread: the part, the chapter number, the title and the story's summary on the left, and "in this chapter" on the right, listing the steps and the try-it-yourself spreads with dotted leaders and page numbers, each row a link that turns to its spread. The contents links and `/kernels/<slug>` now land on the intro, and the folios, the contents page numbers and the bar's page count are numbered through the whole book from each chapter's real length, so they agree.
 
+## web/book-swiglu
+
+- Part A: SwiGLU book fixes from the screenshots: empty SM slabs no longer leave their top faces visible, the BF16 bins get larger labels with the balls clear of the line titles, the token readout gets its own lines, and the rounding close-ups show both balls.
+- Part A: chapter 9 of the book, SwiGLU: five pop-up models (the gate/up row zipped into the output with a draggable gate on the silu curve, the two BF16 roundings as balls landing in BF16 bins, the first draft's 2D grid hitting gridDim.y's ceiling and flattening into one grid, scalar against 16-byte loads with bandwidth bars under the peak plane, and 26 SMs filled by the vector or scalar path with a draggable token count) and the token picker as a flat overlay, served at `/kernels/swiglu` with `book: true`.
+- Part A: export the SwiGLU story steps, captions, measured times, bandwidths and token picker, and the BF16 rounding, silu and SM count from its figures, so the book can reuse them.
+
+## web/book-foundations
+
+- Part A: step the bytes-against-FLOPs clock card in 5 µs ticks so it redraws its texture less often.
+- Part A: add the foundations chapter (chapter 1) to the book at `/kernels/foundations`: a hatched ink pop-up model for each step (22 blocks landing on the 26 SMs with one block opened into 8 warps and one warp's 32 threads moving in lockstep, the four memory tiers with a tile that waits longer at each slower tier and a result that climbs back, the decode and prefill memory and compute bars filling against one clock, the roofline as a wall with a draggable batch ball and the measured gate/up dots, and the unfused and fused add + RMSNorm counting their trips to DRAM), the rows picker on a flat page, a camera tour per step, and the roofline sandbox as two try-it-yourself spreads.
+- Part A: let the foundations sandbox render its two parts (the roofline with its controls, and the readouts) into two given elements through portals (`pages` prop), and export the foundations story steps, captions, measured numbers and the rows picker so the book can reuse them.
+
+## web/book-gemm
+
+- Part A: turn the GEMM story into chapter 2 of the book (`/kernels/gemm`): five hatched ink pop-up models (the five projections as towers of bytes and time, one row of W in memory, row-major and column-major, the batch-1 GEMV streaming weight rows past x, the five GEMVs under a glass roof at the measured bandwidth, and one weight row shared by up to 16 rows with a draggable batch), the roofline picker as a flat overlay, and the tiling sandbox's two parts on their own try-it-yourself spreads.
+- Part A: let the GEMM tiling sandbox render its two parts (the prediction, controls and thread block; the controls and the byte readouts) into two given elements through portals (`pages` prop), and export the GEMM story steps, captions and measured numbers so the book can reuse them.
+
 ## web/book-attention-v2
 
 - Part A: frame the attention v2 close-ups wider and higher, lay the long status cards flatter and move v1's lane card to the front so no model or card covers a label.

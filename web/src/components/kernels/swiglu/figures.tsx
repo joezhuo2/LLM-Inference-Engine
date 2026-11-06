@@ -6,14 +6,14 @@ import { useLoop } from "../loop";
 
 export const peakGbs = 323.6;
 
-function bf16(x: number) {
+export function bf16(x: number) {
   const f = new Float32Array([x]);
   const u = new Uint32Array(f.buffer);
   u[0] = (u[0] + 0x7fff + ((u[0] >>> 16) & 1)) & 0xffff0000;
   return f[0];
 }
 
-const silu = (g: number) => Math.fround(g / Math.fround(1 + Math.fround(Math.exp(-g))));
+export const silu = (g: number) => Math.fround(g / Math.fround(1 + Math.fround(Math.exp(-g))));
 
 function TimeBars({ rows, y, label, digits = 1 }: { rows: { label: string; us: number; accent?: boolean }[]; y: number; label: string; digits?: number }) {
   const { grow } = useLoop(8);
@@ -295,7 +295,7 @@ export function VectorFigure({ bars }: { bars: { label: string; gbs: number; acc
   );
 }
 
-const sms = 26;
+export const sms = 26;
 
 export function SmFigure({ naive, vector, dispatch }: { naive: number; vector: number; dispatch: number }) {
   const { on, grow } = useLoop(12);

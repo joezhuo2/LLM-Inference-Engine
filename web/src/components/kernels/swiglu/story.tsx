@@ -40,7 +40,7 @@ const stepOp = (() => {
   return us !== undefined && launches !== undefined ? { us, launches } : undefined;
 })();
 
-function TokensPicker() {
+export function TokensPicker() {
   const [tokens, setTokens] = useState("4096");
   const times = versions.map((v) => ({ ...v, us: measured(fast, at(tokens), v.column) }));
   const max = Math.max(...times.map((t) => t.us));
@@ -213,6 +213,20 @@ const captions = [
   "Nsight Compute, RTX 5060 Laptop GPU, median of three launches after thirty warm-ups",
 ];
 
+export const swigluSteps = steps;
+export const swigluCaptions = captions;
+export const swigluNumbers = {
+  naive1,
+  draft1,
+  naiveBig,
+  vectorBig,
+  smallNaive,
+  smallVector,
+  smallFast,
+  peakGbs,
+  bandwidth: versions.map((v, k) => ({ label: v.label === "first draft" ? "draft" : v.label, gbs: gbs("4096", v.column), accent: k === 2 })),
+};
+
 export function SwigluStory() {
   return (
     <StickyStory
@@ -229,7 +243,7 @@ export function SwigluStory() {
           case 3:
             return (
               <VectorFigure
-                bars={versions.map((v, k) => ({ label: v.label === "first draft" ? "draft" : v.label, gbs: gbs("4096", v.column), accent: k === 2 }))}
+                bars={swigluNumbers.bandwidth}
               />
             );
           case 4:

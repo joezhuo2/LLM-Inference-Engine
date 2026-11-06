@@ -1854,6 +1854,27 @@
 - **shrinking canvas text to fit by measuring its width** => 
 - **why a standing label is hidden by taller objects in front at low camera elevations** => 
 
+## 3D book: GEMM (Branch 103)
+- **sharing one set of controls between two portal targets** => 
+- **the same bytes read row-major and column-major as a matrix and its transpose** => 
+- **a 3D bar chart where two quantities share one shape** => 
+- **easing a value toward a goal each frame with a capped rate** => 
+
+## 3D book: foundations (Branch 102)
+
+- **splitting one component's JSX into named parts that render either inline or into portals** => 
+- **extruding a 2D shape into a solid with ExtrudeGeometry** => 
+- **mapping a log scale onto a length** => 
+- **inverting a log scale to turn a drag position back into a value** => 
+- **throttling canvas texture redraws by quantizing the value drawn** => 
+
+## 3D book: SwiGLU (Branch 109)
+- **sharing one module's helpers between a figure and a 3D model** => 
+- **dragging between several handles in one scene by remembering the grabbed one** => 
+- **instanced meshes with per-instance colour for stacked blocks** => 
+- **round-robin placement of blocks onto SMs** => 
+- **a zero-height box still draws its top face** => 
+
 ## 3D book: chapter intros (Branch 117)
 
 - **numbering pages from lazily loaded chapter lengths** => 

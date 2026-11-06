@@ -53,7 +53,7 @@ const lx = (v: number) => pad.l + ((Math.log10(v) - Math.log10(xr[0])) / (Math.l
 const ly = (v: number) => H - pad.b - ((Math.log10(v) - Math.log10(yr[0])) / (Math.log10(yr[1]) - Math.log10(yr[0]))) * (H - pad.t - pad.b);
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
 
-function RooflinePicker() {
+export function RooflinePicker() {
   const [rows, setRows] = useState("1");
   const { reduced } = useLoop(1);
   const ease = { duration: reduced ? 0 : 0.7, ease: "easeInOut" as const };
@@ -251,6 +251,30 @@ const captions = [
   "µs per step from the batch-1 and batch-16 profiles; TFLOP/s from scripts/roofline.py",
   "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
 ];
+
+const roofPoint = (rows: string) => ({
+  ops: gemmOps.map((op) => ({ x: roofline(op, rows, "FLOP/byte"), y: roofline(op, rows, "TFLOP/s") })),
+  attention: { x: roofline("attention", rows, "FLOP/byte"), y: roofline("attention", rows, "TFLOP/s") },
+  step: { x: step("engine + graphs", rows, "FLOP/byte"), y: step("engine + graphs", rows, "TFLOP/s"), pct: step("engine + graphs", rows, "% of roof") },
+  gateUp: roofline("gate_up", rows, "TFLOP/s"),
+});
+
+export const gemmSteps = steps;
+export const gemmCaptions = captions;
+export const gemmNumbers = {
+  projections,
+  weightBytes,
+  share,
+  peak,
+  ridge,
+  tpotUs: tpotGraphs,
+  roofRows,
+  us1: sum("1"),
+  us16: sum("16"),
+  roof1: roofPoint("1"),
+  roof16: roofPoint("16"),
+};
+export type GemmNumbers = typeof gemmNumbers;
 
 export function GemmStory() {
   return (

@@ -75,7 +75,7 @@ const tiers: Tier[] = [
   { name: "registers", size: `${whole(chip.regKb)} KB per SM`, lines: ["private to one thread", `${mb(chip.regTotalKb)} over ${hw.sms} SMs`, `FMA to FMA: ${Math.round(chip.fmaCycles)} cycles`], box: { x: 85, y: 298, w: 130, h: 44 } },
 ];
 
-function RowsPicker() {
+export function RowsPicker() {
   const [rows, setRows] = useState("1");
   const n = Number(rows);
   const bars = [
@@ -279,6 +279,25 @@ const captions = [
   "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
   `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, docs/profiling.md; each packet stands for a whole tensor, not to scale`,
 ];
+
+export const foundationsSteps = steps;
+export const foundationsCaptions = captions;
+export const foundationsNumbers = {
+  sms: hw.sms,
+  blocks,
+  threadsPerBlock,
+  tiers,
+  chip,
+  lanes,
+  measuredDecodeUs: measuredUs("1"),
+  gbs: peak.gbs,
+  tflops: peak.tflops,
+  ridge,
+  prefillRows,
+  flopPerByte1,
+  measured: measuredRows.map((rows) => ({ rows: Number(rows), x: roofline("gate_up", rows, "FLOP/byte"), y: roofline("gate_up", rows, "TFLOP/s") })),
+  fusion,
+};
 
 export function FoundationsStory() {
   return (
