@@ -27,6 +27,7 @@ import { RopeSandbox } from "./rope/sandbox";
 import { RopeStory } from "./rope/story";
 import { SamplingSandbox } from "./sampling/sandbox";
 import { SamplingStory } from "./sampling/story";
+import { SplitAboutStory } from "./split-attention/about";
 import { SplitAttentionStory } from "./split-attention/story";
 import { SwigluAboutStory } from "./swiglu/about";
 import { SwigluStory } from "./swiglu/story";
@@ -84,6 +85,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <PagedKvAboutStory />;
     case "paged-attention":
       return <PagedAttentionAboutStory />;
+    case "split-attention":
+      return <SplitAboutStory />;
     default:
       return null;
   }

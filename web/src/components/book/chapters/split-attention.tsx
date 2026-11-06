@@ -1,9 +1,11 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { splitAbout, splitAboutCaption } from "@/components/kernels/split-attention/about";
 import { SplitPicker, splitCaptions, splitNumbers, splitSteps } from "@/components/kernels/split-attention/story";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
+import { createSplitAboutModel } from "./split-attention-about-model";
 import { createSplitModel } from "./split-attention-model";
 
 const beats: Beat[][] = [
@@ -76,7 +78,7 @@ function SplitOverlay({ kind, target, narrow }: OverlayProps) {
   );
 }
 
-export const splitAttentionChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "split-attention",
   number: 7,
   title: "split attention",
@@ -91,3 +93,16 @@ export const splitAttentionChapter: ChapterDef = {
   buildModel: (kit, fonts) => createSplitModel(kit, fonts, splitNumbers),
   Overlay: SplitOverlay,
 };
+
+export const splitAttentionChapter = withLead(chapter, {
+  step: splitAbout,
+  caption: splitAboutCaption,
+  instruction: "Drag the pink ball to 1, 2, 4 or 8 splits and count the SMs that one head keeps busy.",
+  beats: [
+    overview("What an SM and a thread block are, and what splitting does"),
+    close("Close up: the context cut into pieces, one block for each", [0.34, 0.03, -0.32], 0.62, 0.38, -20, 40),
+    close("From the side: partial results travel to the merge kernel", [0.62, 0.04, -0.28], 0.62, 0.4, 26, 30),
+    close("The rail: drag from 1 to 8 splits", [0.5, 0.02, 0.1], 0.9, 0.36, 0, 46),
+  ],
+  buildModel: createSplitAboutModel,
+});
