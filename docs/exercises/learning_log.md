@@ -1935,3 +1935,4 @@
 - **softmax temperature** => 
 - **greedy decoding** => 
 - **hit box centred on the visual centre of text** => 
+- **animating width to a measured intrinsic size** => 

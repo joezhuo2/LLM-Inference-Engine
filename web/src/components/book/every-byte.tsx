@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { motion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
@@ -267,6 +268,16 @@ export function EveryByte() {
     [goKey],
   );
 
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barWidth, setBarWidth] = useState<number>();
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setBarWidth(el.offsetWidth + 2));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const turnTo = useCallback((slug: string, k: number) => go(firstOf(slug) + 1 + k, k > 0), [go]);
 
   const onLinkHref = useCallback(
@@ -473,46 +484,51 @@ export function EveryByte() {
       <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
         <canvas ref={canvas} role="img" aria-label={open ? `3D book "Every Byte", open at ${title}. ${caption}` : "3D book \"Every Byte\", closed on the desk"} className="absolute inset-0 size-full" />
         <Magnifier lens={lens} />
-        <nav
+        <motion.nav
           aria-label="book"
-          className="absolute bottom-4 left-1/2 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/30 bg-surface/55 py-1 pl-1.5 pr-4 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
+          initial={false}
+          animate={{ width: barWidth }}
+          transition={{ duration: reduced ? 0 : 0.7, ease: "easeInOut" }}
+          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 overflow-hidden rounded-full border border-white/30 bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
         >
-          <button type="button" aria-label="previous chapter" disabled={!open || sectionKeys.indexOf(segment) <= 0} onClick={() => jump(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
-            <Icon d="M8 3 3 8l5 5M13 3 8 8l5 5" />
-          </button>
-          <button type="button" aria-label={stop === 0 ? "close the book" : "previous page"} disabled={!open} onClick={() => step(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
-            <Icon d="M10 3 5 8l5 5" />
-          </button>
-          <button type="button" aria-label={playing ? "pause the tour" : "play the tour"} disabled={!open || beatCount < 2} onClick={togglePlay} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
-            <Icon d={playing ? "M5 3v10M11 3v10" : "M5 3l8 5-8 5z"} />
-          </button>
-          {total > 0 && (
-            <span className="shrink-0 text-text">
-              <Scramble key={page} text={`${page} / ${total}`} numeric durationMs={700} />
+          <div ref={barRef} className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 py-1 pl-1.5 pr-4">
+            <button type="button" aria-label="previous chapter" disabled={!open || sectionKeys.indexOf(segment) <= 0} onClick={() => jump(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+              <Icon d="M8 3 3 8l5 5M13 3 8 8l5 5" />
+            </button>
+            <button type="button" aria-label={stop === 0 ? "close the book" : "previous page"} disabled={!open} onClick={() => step(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+              <Icon d="M10 3 5 8l5 5" />
+            </button>
+            <button type="button" aria-label={playing ? "pause the tour" : "play the tour"} disabled={!open || beatCount < 2} onClick={togglePlay} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+              <Icon d={playing ? "M5 3v10M11 3v10" : "M5 3l8 5-8 5z"} />
+            </button>
+            {total > 0 && (
+              <span className="shrink-0 text-text">
+                <Scramble key={page} text={`${page} / ${total}`} numeric durationMs={700} />
+              </span>
+            )}
+            <span className="min-w-0 max-w-[22rem] truncate">
+              <Scramble key={caption} text={caption} durationMs={900} />
             </span>
-          )}
-          <span className="min-w-0 max-w-[22rem] truncate">
-            <Scramble key={caption} text={caption} durationMs={900} />
-          </span>
-          <span className="flex shrink-0 items-center gap-0.5">
-            {open &&
-              beats.length > 1 &&
-              beats.map((b, i) => (
-                <button key={b.caption} type="button" aria-label={b.caption} aria-current={i === beat} onClick={() => pickBeat(i)} className="p-1.5">
-                  <span className={clsx("block size-1.5 rounded-full transition-colors duration-300", i === beat ? "bg-accent" : "bg-border")} />
-                </button>
-              ))}
-          </span>
-          <button type="button" aria-label={open ? "next page" : "open the book"} disabled={open && stop === stops.length - 1} onClick={() => (open ? step(1) : void goKey("contents", false))} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
-            <Icon d="M6 3l5 5-5 5" />
-          </button>
-          <button type="button" aria-label="next chapter" disabled={!open || sectionKeys.indexOf(segment) >= sectionKeys.length - 1} onClick={() => jump(1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
-            <Icon d="M3 3l5 5-5 5M8 3l5 5-5 5" />
-          </button>
-          <Link href={otherHref} className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
-            {def ? "reading view" : "list view"}
-          </Link>
-        </nav>
+            <span className="flex shrink-0 items-center gap-0.5">
+              {open &&
+                beats.length > 1 &&
+                beats.map((b, i) => (
+                  <button key={b.caption} type="button" aria-label={b.caption} aria-current={i === beat} onClick={() => pickBeat(i)} className="p-1.5">
+                    <span className={clsx("block size-1.5 rounded-full transition-colors duration-300", i === beat ? "bg-accent" : "bg-border")} />
+                  </button>
+                ))}
+            </span>
+            <button type="button" aria-label={open ? "next page" : "open the book"} disabled={open && stop === stops.length - 1} onClick={() => (open ? step(1) : void goKey("contents", false))} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+              <Icon d="M6 3l5 5-5 5" />
+            </button>
+            <button type="button" aria-label="next chapter" disabled={!open || sectionKeys.indexOf(segment) >= sectionKeys.length - 1} onClick={() => jump(1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+              <Icon d="M3 3l5 5-5 5M8 3l5 5-5 5" />
+            </button>
+            <Link href={otherHref} className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
+              {def ? "reading view" : "list view"}
+            </Link>
+          </div>
+        </motion.nav>
         {overlay && narrow && (
           <div data-theme="light" className="book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]">
             <div ref={setPageEl} />

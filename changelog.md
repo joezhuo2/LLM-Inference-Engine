@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-about
 
+- Part A: the book bar eases its width over 0.7 s when its caption or buttons change, instead of jumping, and jumps straight to the new width with reduced motion.
 - Part A: the book bar gets « and » buttons either side of < and > that jump to the start of the previous or next chapter, with the contents and the Errata at the two ends.
 - Part A: the click area of each row in a chapter intro's "in this chapter" list and in the contents is centred on its text, and the last row of the list reaches further below it, so a click just under the bottom entry turns to that entry instead of falling through to the next page.
 - Part A: sampling opens with "what sampling is": the LM head's 32,000 logits, softmax with a temperature, greedy against sampling, and how T sharpens or flattens the odds, all numbers from TinyLlama's real logits for two contexts. In the book the story context's top 8 logits behind their probability columns, a pink ball hopping between simulated draws and a rail for T from 0 (greedy) to 2; on the scroll page a 2D figure that eases the probabilities between T = 0.5, 1 and 1.5 with one draw each.
