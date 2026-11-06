@@ -1934,3 +1934,4 @@
 - **logit** => 
 - **softmax temperature** => 
 - **greedy decoding** => 
+- **hit box centred on the visual centre of text** => 

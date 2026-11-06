@@ -80,7 +80,7 @@ function paragraph(ctx: Ctx, text: string, x: number, y: number, width: number, 
 }
 
 const ROW = 92;
-const toBox = (x0: number, x1: number, y: number): [number, number, number, number] => [x0 / W, (y - 62) / H, x1 / W, (y + 30) / H];
+const toBox = (x0: number, x1: number, y: number): [number, number, number, number] => [x0 / W, (y - 56) / H, x1 / W, (y + 36) / H];
 
 function contentsRows(parts: typeof bookParts, withErrata: boolean) {
   const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string }[] = [];
@@ -329,9 +329,11 @@ export function introStop(def: ChapterDef): Stop {
     ctx.font = `40px ${fonts.serif}`;
     paragraph(ctx, "Click a step to turn to it.", x0, H - 250, x1 - x0, 48);
   };
-  const links: PageLink[] = rows
-    .filter((r) => r.k !== undefined)
-    .map((r) => ({ side: "right", box: [170 / W, (r.y - step * 0.65) / H, (W - 130) / W, (r.y + step * 0.32) / H], href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : r.bench ? `try it yourself, ${r.text}` : r.text }));
+  const entries = rows.filter((r) => r.k !== undefined);
+  const links: PageLink[] = entries.map((r, i) => ({
+      side: "right",
+      box: [170 / W, (r.y - step * 0.63) / H, (W - 130) / W, (r.y + step * (i === entries.length - 1 ? 0.75 : 0.37)) / H],
+      href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : r.bench ? `try it yourself, ${r.text}` : r.text }));
   return {
     ...flatStop(0, `Chapter ${def.number}: ${title}`, title, [summary]),
     paint: { left, right },
