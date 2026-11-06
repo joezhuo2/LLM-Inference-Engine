@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Footer } from "@/components/footer";
+import { GlossProvider } from "@/components/gloss";
 import { IntroLoader } from "@/components/intro-loader";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { TopBar } from "@/components/top-bar";
@@ -40,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ScrollToTop />
           <TopBar />
           <main id="content" tabIndex={-1} className="flex-1 scroll-mt-12">
-            {children}
+            <GlossProvider>{children}</GlossProvider>
           </main>
           <Footer />
         </ThemeProvider>

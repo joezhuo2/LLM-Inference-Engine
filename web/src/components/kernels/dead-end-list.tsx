@@ -10,6 +10,7 @@ import { type DeadEndKind, deadEnds, kindLabel } from "@/content/dead-ends";
 import { authorLabel } from "@/content/kernels/types";
 import { radioKeyDown } from "@/lib/radio-keys";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
+import { gloss } from "../glossed";
 
 const ease = [0.65, 0, 0.35, 1] as const;
 type Filter = "all" | DeadEndKind;
@@ -74,11 +75,11 @@ export function DeadEndList() {
               <h2 className="mt-2 font-serif text-2xl text-text">{d.title}</h2>
               <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[6rem_minmax(0,1fr)]">
                 <dt className="tabular-nums text-xs text-muted sm:pt-0.5">tried</dt>
-                <dd className="text-muted">{d.tried}</dd>
+                <dd className="text-muted">{gloss(d.tried)}</dd>
                 <dt className="tabular-nums text-xs text-muted sm:pt-0.5">happened</dt>
-                <dd className="text-text">{d.happened}</dd>
+                <dd className="text-text">{gloss(d.happened)}</dd>
                 <dt className="tabular-nums text-xs text-muted sm:pt-0.5">kept</dt>
-                <dd className="text-muted">{d.kept}</dd>
+                <dd className="text-muted">{gloss(d.kept)}</dd>
               </dl>
               {d.metric && (
                 <div className="mt-4 max-w-xl">

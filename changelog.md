@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/glossary
+
+- Part A: technical terms (FLOP, SM, DRAM, KV cache, warp, TTFT and about 40 more, in `web/src/lib/glossary.ts`) get a dotted underline at their first use on each page, and hovering, focusing or tapping one opens a small card with the full name and a line on why it matters. Story steps, the reading view intros, timelines, testing notes, dead ends, the results lead and the overview get them automatically through `gloss()`, and the card fades in after 260 ms and follows the word on scroll.
+
 ## web/book-about
 
 - Part A: the book bar eases its width over 0.7 s when its caption or buttons change, instead of jumping, and jumps straight to the new width with reduced motion.

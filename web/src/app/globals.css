@@ -157,6 +157,16 @@ html {
   transition-duration: var(--duration-press);
 }
 
+.gloss-term {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  text-underline-offset: 4px;
+  cursor: help;
+  border-radius: 2px;
+}
+
 .link-underline {
   text-decoration-line: underline;
   text-decoration-color: transparent;

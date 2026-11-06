@@ -6,6 +6,7 @@ import { repoUrl } from "@/content/build-log";
 import { benchRun } from "@/content/results";
 import { batches, environment, format, medianOf, systems } from "@/lib/data";
 import { ogImage } from "@/lib/og";
+import { Glossed } from "@/components/glossed";
 
 const description = "Throughput, time per token, the decode step profile and the roofline of the engine against HuggingFace and llama.cpp, and serving under load against vLLM, all measured on one laptop GPU.";
 
@@ -21,7 +22,7 @@ export default function Results() {
       <div className="space-y-20">
         <header className="space-y-4">
           <PageTitle text="results" />
-          <p className="max-w-2xl text-muted">
+          <Glossed><p className="max-w-2xl text-muted">
             What the engine measures on {benchRun.gpu}, against HuggingFace transformers and llama.cpp, and under load against
             vLLM. Scroll through the
             steps; hover or focus a chart for its exact values. Every number is read from <code className="font-mono text-text">results/</code> and{" "}
@@ -29,7 +30,7 @@ export default function Results() {
               docs/results.md
             </a>{" "}
             when the site is built.
-          </p>
+          </p></Glossed>
         </header>
         <ResultsStory />
         <section aria-labelledby="runs" className="space-y-4">

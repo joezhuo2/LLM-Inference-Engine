@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
+import { gloss } from "../glossed";
 import { useActiveStep } from "./use-active-step";
 
 export type StoryStep = { id: string; title: string; body: ReactNode };
@@ -91,7 +92,7 @@ export function StickyStory({
               >
                 {s.title}
               </h2>
-              <div className="mt-3 space-y-3 text-muted">{s.body}</div>
+              <div className="mt-3 space-y-3 text-muted">{gloss(s.body)}</div>
             </div>
           </section>
         ))}

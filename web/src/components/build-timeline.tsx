@@ -9,6 +9,7 @@ import { useActiveStep } from "@/components/kernels/use-active-step";
 import { Scramble } from "@/components/scramble";
 import { type Entry, type Metric, type Milestone, milestones, repoUrl } from "@/content/build-log";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
+import { gloss } from "./glossed";
 
 const ease = [0.23, 1, 0.32, 1] as const;
 const inView = { once: true, margin: "0px 0px -15% 0px" };
@@ -193,7 +194,7 @@ function EntryView({ entry, reduced, stepRef }: { entry: Entry; reduced: boolean
       <h3 className="mt-2 font-serif text-2xl text-text">
         <Scramble text={entry.title} trigger="view" durationMs={900} />
       </h3>
-      <p className="mt-1 max-w-xl text-muted">{entry.text}</p>
+      <p className="mt-1 max-w-xl text-muted">{gloss(entry.text)}</p>
       {entry.metric && (
         <div className="mt-4 max-w-xl">
           <MetricView metric={entry.metric} reduced={reduced} />
@@ -216,7 +217,7 @@ function MilestoneView({ milestone, reduced, start, refs }: { milestone: Milesto
         <h2 id={`milestone-${milestone.id}`} className="mt-1 font-serif text-3xl text-text">
           <Scramble text={milestone.name} trigger="view" durationMs={900} />
         </h2>
-        <p className="mt-2 text-sm text-muted">{milestone.goal}</p>
+        <p className="mt-2 text-sm text-muted">{gloss(milestone.goal)}</p>
       </header>
       <div ref={ref} className="relative">
         <div aria-hidden="true" className="absolute bottom-0 left-0 top-2 w-px bg-border" />
