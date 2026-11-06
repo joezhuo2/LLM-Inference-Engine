@@ -21,6 +21,7 @@ import { RopeStory } from "./rope/story";
 import { SamplingSandbox } from "./sampling/sandbox";
 import { SamplingStory } from "./sampling/story";
 import { SplitAttentionStory } from "./split-attention/story";
+import { SwigluAboutStory } from "./swiglu/about";
 import { SwigluStory } from "./swiglu/story";
 
 export function KernelStoryView({ slug }: { slug: string }) {
@@ -60,6 +61,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <GemmAboutStory />;
     case "chunked-prefill":
       return <ChunkedPrefillAboutStory />;
+    case "swiglu":
+      return <SwigluAboutStory />;
     default:
       return null;
   }

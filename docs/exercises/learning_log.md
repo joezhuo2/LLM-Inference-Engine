@@ -1898,3 +1898,7 @@
 - **decode step** => 
 - **TTFT (time to first token)** => 
 - **token budget** => 
+- **gated linear unit (GLU)** => 
+- **Swish / SiLU, x × sigmoid(x)** => 
+- **gate, up and down projections in a gated MLP** => 
+- **why a gated MLP's width is 2/3 of 4 × hidden** => 
