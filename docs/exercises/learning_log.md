@@ -1882,3 +1882,7 @@
 - **a 2D canvas context keeps its transform between draws** => 
 - **a deferred flag that must be cleared when the state it waits for is abandoned** => 
 - **one source of truth for a number shown in several places** => 
+
+## 3D book behind a tab (Branch 113)
+- **one constant for a URL prefix so a section can move** => 
+- **an active nav tab from the path prefix** => 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { KernelCards } from "@/components/kernels/kernel-cards";
 import { LayerMap } from "@/components/kernels/layer-map";
 import { PageTitle } from "@/components/page-title";
@@ -16,6 +17,9 @@ export default function Kernels() {
             How each kernel of the decode step works and how it got faster, version by version, with the measurements
             behind every change.
           </p>
+          <Link href="/every-byte" className="link-underline inline-block text-sm text-accent">
+            read them as Every Byte, a 3D book
+          </Link>
         </header>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
           <LayerMap />

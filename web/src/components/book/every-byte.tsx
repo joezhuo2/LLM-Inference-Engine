@@ -15,6 +15,7 @@ import { bookChapters } from "./chapters";
 import { bookOrder, bookParts, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, introStop, numberPages } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
+import { BOOK, bookHref } from "./paths";
 
 const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
 const beatMs = 6500;
@@ -25,11 +26,11 @@ const numberBook = () =>
 type Meta = { key: string; local: number; slug?: string; exhibit: number | null };
 type Place = { closed: true } | { closed: false; key: string; local: number };
 
-const urlOf = (key: string) => (key === "contents" ? "/kernels/contents" : key === "errata" ? "/kernels/contents#errata" : `/kernels/${key}`);
+const urlOf = bookHref;
 
 function parsePlace(): Place {
   const path = window.location.pathname.replace(/\/$/, "");
-  if (path === "/kernels") return { closed: true };
+  if (path === BOOK) return { closed: true };
   const slug = path.split("/")[2];
   if (slug && chapterSlugs.includes(slug)) return { closed: false, key: slug, local: 0 };
   return { closed: false, key: window.location.hash === "#errata" ? "errata" : "contents", local: 0 };
@@ -230,7 +231,7 @@ export function EveryByte() {
       stopRef.current = 0;
       setStop(0);
       void scene.current.close();
-      if (push && window.location.pathname !== "/kernels") window.history.pushState(null, "", "/kernels");
+      if (push && window.location.pathname !== BOOK) window.history.pushState(null, "", BOOK);
     },
     [],
   );
@@ -260,7 +261,7 @@ export function EveryByte() {
     (href: string) => {
       if (href === "#errata") return void goKey("errata", true);
       const [path, at] = href.split("#");
-      const slug = path.startsWith("/kernels/") ? path.slice(9) : "";
+      const slug = path.startsWith(`${BOOK}/`) ? path.slice(BOOK.length + 1) : "";
       if (at && chapterSlugs.includes(slug)) return turnTo(slug, Number(at));
       if (chapterSlugs.includes(slug)) return void goKey(slug, true);
       router.push(href);
@@ -429,7 +430,7 @@ export function EveryByte() {
   const spread = segment === "errata" && meta ? errataSpreads[meta.local] : null;
   const chapterStep = def && meta ? def.steps[meta.local] : undefined;
   const bench = def && meta ? def.workbench[meta.local - def.steps.length] : undefined;
-  const otherHref = def ? `/kernels/${def.slug}/read` : "/kernels/list";
+  const otherHref = def ? `/kernels/${def.slug}` : "/kernels";
 
   if (failed) {
     return (
@@ -437,7 +438,7 @@ export function EveryByte() {
         <h1 className="font-serif text-4xl">This book needs WebGL</h1>
         <p className="text-muted">
           Your browser could not start 3D graphics. The{" "}
-          <Link href="/kernels/list" className="link-underline text-text">
+          <Link href="/kernels" className="link-underline text-text">
             list of kernels
           </Link>{" "}
           has every chapter as a scroll page.
@@ -563,7 +564,7 @@ export function EveryByte() {
                     <section key={d.title} className="mt-3 space-y-1">
                       <div className="text-xs">
                         {`${d.date} · ${kindLabel[d.kind]} · `}
-                        <Link href={`/kernels/${d.slug}`} onClick={chapterSlugs.includes(d.slug) ? (e) => inBook(e, d.slug) : undefined} className="link-underline text-accent">
+                        <Link href={chapterSlugs.includes(d.slug) ? bookHref(d.slug) : `/kernels/${d.slug}`} onClick={chapterSlugs.includes(d.slug) ? (e) => inBook(e, d.slug) : undefined} className="link-underline text-accent">
                           {d.kernel}
                         </Link>
                       </div>
@@ -585,7 +586,7 @@ export function EveryByte() {
                     {part.slugs.map((slug) => (
                       <li key={slug} className="flex gap-2">
                         <span className="w-5 tabular-nums">{bookOrder.indexOf(slug) + 1}</span>
-                        <Link href={`/kernels/${slug}`} onClick={chapterSlugs.includes(slug) ? (e) => inBook(e, slug) : undefined} className="link-underline text-text">
+                        <Link href={bookHref(slug)} onClick={chapterSlugs.includes(slug) ? (e) => inBook(e, slug) : undefined} className="link-underline text-text">
                           {chapterTitle(slug)}
                         </Link>
                         <span className="ml-auto tabular-nums">{chapterPage(slug)}</span>

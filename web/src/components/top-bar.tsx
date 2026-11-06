@@ -9,6 +9,7 @@ const links = [
   { href: "/", label: "overview" },
   { href: "/results", label: "results" },
   { href: "/kernels", label: "kernels" },
+  { href: "/every-byte", label: "every byte" },
   { href: "/dashboard", label: "dashboard" },
 ];
 

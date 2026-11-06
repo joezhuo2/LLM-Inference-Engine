@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-tab
+
+- Part A: add an "every byte" tab to the top bar for the 3D book, and a link to it under the title of the kernel index.
+- Part A: serve the scroll pages as the default again: `/kernels` is the kernel index (cards and layer map, formerly `/kernels/list`) and `/kernels/<slug>` is each story's scroll page (formerly `/kernels/<slug>/read`), while the 3D book moves to `/every-byte` (cover), `/every-byte/contents` and `/every-byte/<slug>`; the book's links, contents entries, errata links and back links follow, and each scroll page offers "read this chapter in Every Byte, the 3D book".
+
 ## web/book-intro
 
 - Part A: number the book by spreads, the same numbers the bar shows (the cover is 1, the contents 2): each spread prints its number once, at the outer corner of the left page, and the contents rows, the Errata row and the chapter intro rows use it too, in place of the folios that jumped to chapter number × 20.
