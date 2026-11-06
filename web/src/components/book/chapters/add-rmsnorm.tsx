@@ -1,9 +1,12 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { addRmsnormAbout, addRmsnormAboutCaption } from "@/components/kernels/add-rmsnorm/about";
 import { addRmsnormCaptions, addRmsnormNumbers, addRmsnormSteps, TokensPicker } from "@/components/kernels/add-rmsnorm/story";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
+import { modelShape } from "@/lib/data";
+import { createAddRmsnormAboutModel } from "./add-rmsnorm-about-model";
 import { createAddRmsnormModel } from "./add-rmsnorm-model";
 
 const beats: Beat[][] = [
@@ -62,7 +65,7 @@ function AddRmsnormOverlay({ kind, target, narrow }: OverlayProps) {
   );
 }
 
-export const addRmsnormChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "add-rmsnorm",
   number: 8,
   title: "fused add + RMSNorm",
@@ -77,3 +80,18 @@ export const addRmsnormChapter: ChapterDef = {
   buildModel: (kit, fonts) => createAddRmsnormModel(kit, fonts, addRmsnormNumbers),
   Overlay: AddRmsnormOverlay,
 };
+
+const shape = modelShape();
+
+export const addRmsnormChapter = withLead(chapter, {
+  step: addRmsnormAbout,
+  caption: addRmsnormAboutCaption,
+  instruction: "Drag the pink ball to make the arriving stream bigger; the pink copies each block reads stay the same size.",
+  beats: [
+    overview("What the residual add and RMSNorm are, and where they sit in a layer"),
+    close("Close up: RMSNorm hands attention a copy of the stream", [0.36, 0.04, -0.26], 0.58, 0.36, -20, 40),
+    close("From the side: the stream grows with each add, the copies do not", [0.5, 0.06, -0.1], 0.9, 0.36, 26, 26),
+    close("The rail: drag the size of the stream arriving", [0.5, 0.02, 0.2], 0.9, 0.34, 0, 46),
+  ],
+  buildModel: (kit, fonts) => createAddRmsnormAboutModel(kit, fonts, { hidden: shape.hidden.toLocaleString("en-US"), blocks: 2 * shape.layers }),
+});

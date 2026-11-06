@@ -1,5 +1,6 @@
 "use client";
 
+import { AddRmsnormAboutStory } from "./add-rmsnorm/about";
 import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionSandbox } from "./attention/sandbox";
@@ -69,6 +70,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <SwigluAboutStory />;
     case "attention-v2":
       return <AttentionV2AboutStory />;
+    case "add-rmsnorm":
+      return <AddRmsnormAboutStory />;
     default:
       return null;
   }

@@ -1910,3 +1910,7 @@
 - **online softmax** => 
 - **running maximum** => 
 - **numerically stable exponent (subtracting the max)** => 
+- **residual stream** => 
+- **root mean square (RMS)** => 
+- **RMSNorm against LayerNorm** => 
+- **pre-norm transformer block** => 
