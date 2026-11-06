@@ -1914,3 +1914,7 @@
 - **root mean square (RMS)** => 
 - **RMSNorm against LayerNorm** => 
 - **pre-norm transformer block** => 
+- **kernel launch** => 
+- **CUDA stream** => 
+- **graph node and edge** => 
+- **launch overhead vs kernel duration** => 

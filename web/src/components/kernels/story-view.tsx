@@ -10,6 +10,7 @@ import { AttentionV2Story } from "./attention-v2/story";
 import { ChunkedPrefillAboutStory } from "./chunked-prefill/about";
 import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
 import { ChunkedPrefillStory } from "./chunked-prefill/story";
+import { CudaGraphsAboutStory } from "./cuda-graphs/about";
 import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmAboutStory } from "./gemm/about";
 import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
@@ -72,6 +73,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <AttentionV2AboutStory />;
     case "add-rmsnorm":
       return <AddRmsnormAboutStory />;
+    case "cuda-graphs":
+      return <CudaGraphsAboutStory />;
     default:
       return null;
   }

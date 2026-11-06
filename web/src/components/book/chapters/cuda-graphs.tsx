@@ -2,9 +2,11 @@
 
 import { createPortal } from "react-dom";
 import { cudaGraphsCaptions, cudaGraphsNumbers, cudaGraphsSteps, ReplayPicker } from "@/components/kernels/cuda-graphs/story";
+import { cudaGraphsAbout, cudaGraphsAboutCaption } from "@/components/kernels/cuda-graphs/about";
 import { cudaGraphs } from "@/content/kernels/cuda-graphs";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
+import { createCudaGraphsAboutModel } from "./cuda-graphs-about-model";
 import { createCudaGraphsModel } from "./cuda-graphs-model";
 
 const beats: Beat[][] = [
@@ -50,7 +52,7 @@ function CudaGraphsOverlay({ kind, target }: OverlayProps) {
   return kind === "replay" && target && createPortal(<ReplayPicker />, target);
 }
 
-export const cudaGraphsChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "cuda-graphs",
   number: 11,
   title: "CUDA Graphs",
@@ -65,3 +67,16 @@ export const cudaGraphsChapter: ChapterDef = {
   buildModel: (kit, fonts) => createCudaGraphsModel(kit, fonts, cudaGraphsNumbers),
   Overlay: CudaGraphsOverlay,
 };
+
+export const cudaGraphsChapter = withLead(chapter, {
+  step: cudaGraphsAbout,
+  caption: cudaGraphsAboutCaption,
+  instruction: "Drag the pink ball to change how long each kernel runs: the shorter the kernels, the more of the time is gap.",
+  beats: [
+    overview("What a kernel launch is, and what a CUDA Graph is"),
+    close("Close up: one launch drops onto every kernel, a gap before each", [0.56, 0.03, -0.37], 0.62, 0.34, -20, 40),
+    close("From the side: the graph's whole chain drops in at once", [0.56, 0.04, -0.13], 0.66, 0.36, 26, 30),
+    close("The rail: drag from the shortest kernel to the longest", [0.5, 0.02, 0.17], 0.9, 0.36, 0, 46),
+  ],
+  buildModel: createCudaGraphsAboutModel,
+});
