@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-about
 
+- Part A: the paged attention chapter opens with "what paged attention is": query, key and value, one token's query scored against every cached key and softmaxed into weights, and the block table that finds each key in a scattered pool, with a draggable token picker in 3D and an animated figure on the scroll page.
 - Part A: the paged KV cache chapter opens with "what a paged KV cache is": keys and values kept per token per layer (22,528 bytes a token for TinyLlama), blocks of 16 found through a block table, a 3D pool with a tokens rail and arcs from logical to physical blocks, and a matching scroll figure.
 - Part A: the RoPE chapter opens with "what RoPE does": rotary position embedding spelled out, a query and a key turned by their positions on three dials, a rail to drag the gap between them while both move along with the same score, and the same idea as a 2D figure in the new "what it is" section of the scroll page.
 - Part A: the CUDA Graphs chapter opens with "what a CUDA Graph is": a kernel, a kernel launch and a stream, then the chain of launches recorded once as a graph and launched once, with a 3D exhibit where you drag the kernel length on a log rail and watch the measured 3.08 µs eager gap swamp short kernels while the 0.24 µs graph gap does not, and an animated 2D figure on the scroll page.

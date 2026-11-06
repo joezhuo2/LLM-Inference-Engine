@@ -1,10 +1,12 @@
 "use client";
 
+import { pagedAttentionAbout, pagedAttentionAboutCaption } from "@/components/kernels/attention/about";
 import { prologueCaptions, prologueNumbers, prologueSteps } from "@/components/kernels/attention/prologue-story";
 import { PagedAttentionSandbox } from "@/components/kernels/attention/sandbox";
 import { attentionCaptions, attentionNumbers, attentionSteps } from "@/components/kernels/attention/story";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, type OverlayProps, overview, type WorkbenchPage } from "../chapter";
+import { type ChapterDef, close, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { createPagedAttentionAboutModel } from "./paged-attention-about-model";
 import { createPagedAttentionModel } from "./paged-attention-model";
 
 const beats: Beat[][] = [
@@ -107,7 +109,7 @@ function PagedAttentionOverlay({ kind, target }: OverlayProps) {
   return <PagedAttentionSandbox pages={{ table: kind === "sandbox-table" ? target : null, step: kind === "sandbox-step" ? target : null, check: kind === "sandbox-check" ? target : null }} />;
 }
 
-export const pagedAttentionChapter: ChapterDef = {
+const chapter: ChapterDef = {
   slug: "paged-attention",
   number: 5,
   title: "paged attention",
@@ -122,3 +124,16 @@ export const pagedAttentionChapter: ChapterDef = {
   buildModel: (kit, fonts) => createPagedAttentionModel(kit, fonts, { ...prologueNumbers, ...attentionNumbers }),
   Overlay: PagedAttentionOverlay,
 };
+
+export const pagedAttentionChapter = withLead(chapter, {
+  step: pagedAttentionAbout,
+  caption: pagedAttentionAboutCaption,
+  instruction: "Drag the pink ball to pick a token and follow its key through the block table to its block.",
+  beats: [
+    overview("What attention computes for the newest token, and what paged adds"),
+    close("Close up: the query scores every key, then softmax turns scores into weights", [0.5, 0.04, -0.36], 0.96, 0.36, -16, 50),
+    close("From the side: each key is read from its block in the pool", [0.5, 0.03, -0.16], 0.92, 0.4, 24, 32),
+    close("The rail: pick a token and follow it through the block table", [0.5, 0.02, 0.18], 0.92, 0.36, 0, 46),
+  ],
+  buildModel: createPagedAttentionAboutModel,
+});

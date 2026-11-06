@@ -1926,3 +1926,5 @@
 - **block table** => 
 - **paging (virtual memory)** => 
 - **bfloat16** => 
+- **query, key and value** => 
+- **virtual memory paging** => 

@@ -2,6 +2,7 @@
 
 import { AddRmsnormAboutStory } from "./add-rmsnorm/about";
 import { AddRmsnormStory } from "./add-rmsnorm/story";
+import { PagedAttentionAboutStory } from "./attention/about";
 import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionSandbox } from "./attention/sandbox";
 import { PagedAttentionStory } from "./attention/story";
@@ -81,6 +82,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <RopeAboutStory />;
     case "paged-kv":
       return <PagedKvAboutStory />;
+    case "paged-attention":
+      return <PagedAttentionAboutStory />;
     default:
       return null;
   }
