@@ -1990,3 +1990,4 @@
 - **causal mask** => 
 - **grouped-query attention vs. multi-head attention** => 
 - **prediction before observation (the generation effect)** => 
+- **weight reuse per byte (FLOP per byte grows with rows M)** => 

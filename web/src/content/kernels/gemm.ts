@@ -21,6 +21,10 @@ export const gemm: KernelStory = {
     value: `${Math.min(...b1Roof)}–${Math.max(...b1Roof)}%`,
     label: "of the bandwidth roof for the five GEMVs at batch 1",
   },
+  lead: {
+    title: "stream it yourself",
+    intro: "At one row a decode step reads every weight from DRAM and uses it for a single multiply-add, so the GPU spends its time waiting for bytes. The board is one weight matrix cut into 256 pieces. Press play and watch the SMs pull the tiles in, one wave at a time: each tile's slab is its bytes and its pillar is how many times each of those weights gets used. Answer the prediction, then switch rows M from 1 to 16 and on to 512: the bytes stay the same, the uses grow, and at 512 the pillars rise through the ridge and the compute ceiling takes over from memory. Hover a tile for its rows, columns and bytes; the table counts the bytes and FLOPs of a whole step and puts the measured times next to them.",
+  },
   sandbox: {
     title: "tile it yourself",
     intro: "cuBLAS picks its own tile sizes and this engine does not touch them, so this is a model of the idea, not of the kernel: one thread block computes a square tile of outputs, loading a tile of x and a tile of W into shared memory for each step of the K loop and reusing both for every output in the tile. The shapes are TinyLlama's. Answer the prediction, then pick rows and change the tile; step the K loop and watch the bytes. The byte counts are computed, the two ceilings are measured.",

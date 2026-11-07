@@ -17,6 +17,7 @@ import { CudaGraphsStory } from "./cuda-graphs/story";
 import { GemmAboutStory } from "./gemm/about";
 import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
+import { GemmStream } from "./gemm/stream";
 import { FoundationsAboutStory } from "./foundations/about";
 import { FoundationsIdeasStory } from "./foundations/ideas";
 import { FoundationsSandbox } from "./foundations/sandbox";
@@ -114,6 +115,8 @@ export function KernelLeadView({ slug }: { slug: string }) {
       return <PrologueStory />;
     case "paged-kv":
       return <KvVisualizer />;
+    case "gemm":
+      return <GemmStream />;
     default:
       return null;
   }

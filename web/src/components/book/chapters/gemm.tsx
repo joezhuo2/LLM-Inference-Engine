@@ -3,12 +3,16 @@
 import { createPortal } from "react-dom";
 import { TilingSandbox } from "@/components/kernels/gemm/sandbox";
 import { gemmCaptions, gemmNumbers, gemmSteps, RooflinePicker } from "@/components/kernels/gemm/story";
+import { GemmStream } from "@/components/kernels/gemm/stream";
 import { gemmAbout, gemmAboutCaption } from "@/components/kernels/gemm/about";
 import { gemm } from "@/content/kernels/gemm";
+import { hardware } from "@/lib/data";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createGemmAboutModel } from "./gemm-about-model";
 import { createGemmModel } from "./gemm-model";
+
+const sms = hardware().sms;
 
 const beats: Beat[][] = [
   [
@@ -51,6 +55,28 @@ const instructions = [
 
 const workbench: WorkbenchPage[] = [
   {
+    title: "stream it yourself",
+    overlay: "stream-view",
+    caption: "Stream it yourself: the weights",
+    paragraphs: [
+      `The board is one weight matrix of a decode step, gate/up to start with, cut into 16 by 16 tiles. Press play and the GPU's ${sms} SMs read the tiles from DRAM in waves, one tile per SM per wave, colored by the SM that read it.`,
+      "When a tile arrives its slab rises: that is its bytes, the same at any batch. The pillar on top is how many multiply-adds each of those weights feeds, which is the number of rows M, one step up for every doubling.",
+      "The strip along the front left is x, one row per request in the batch; the strip along the front right is y, and each of its cells fills as the K loop works through the columns of its rows. Hover a tile for its rows, columns, bytes and the FLOPs it feeds.",
+      "Switch rows M between 1, 16 and 512 while it plays. The slabs do not change, only the pillars, and at 512 they rise through the dashed ridge. The board is downsampled and which SM reads which tile is illustrative; cuBLAS picks its own.",
+    ],
+  },
+  {
+    title: "the bytes and the ceilings",
+    overlay: "stream-table",
+    caption: "Stream it yourself: the bytes and the ceilings",
+    paragraphs: [
+      "Answer the prediction first. The table then counts one whole decode step for the matrix you picked at all three batch sizes: the weight bytes of one layer, the x and y bytes, the bytes of the step across all ${gemmNumbers.projections[0].per} layers (the LM head is read once), and the FLOPs.",
+      `FLOPs divided by bytes is the arithmetic intensity. The ridge at ${Math.round(gemmNumbers.ridge)} FLOP per byte is where the two measured ceilings meet, ${gemmNumbers.peak.gbs} GB/s and ${gemmNumbers.peak.tflops} TFLOP/s: under it the bytes set the time, over it the tensor cores do.`,
+      "Each weight costs 2 bytes and feeds 2 FLOPs per row of x, so the intensity is about M. At 1 and 16 rows that is far under the ridge, and the measured time per step barely moves: 16 tokens for the price of one.",
+      "At 512 rows the compute bar passes the memory bar and the matrix is compute bound. The profiles only measured 1 and 16 rows, so the table says not measured there; the two roof times are computed from the measured ceilings.",
+    ],
+  },
+  {
     title: "one thread block, step by step",
     overlay: "sandbox-one",
     caption: "Tile it yourself: one thread block",
@@ -85,6 +111,7 @@ function GemmOverlay({ kind, target, narrow }: OverlayProps) {
           </div>,
           target,
         )}
+      <GemmStream pages={{ view: kind === "stream-view" ? target : null, table: kind === "stream-table" ? target : null }} />
       <TilingSandbox pages={{ one: kind === "sandbox-one" ? target : null, two: kind === "sandbox-two" ? target : null }} />
     </>
   );
