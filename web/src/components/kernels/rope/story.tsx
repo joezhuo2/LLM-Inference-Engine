@@ -94,7 +94,7 @@ const steps: StoryStep[] = [
           it the order by turning the query and key vectors, not by adding anything to them.
         </p>
         <p>
-          Each head&apos;s 64 values are read as 32 pairs, and pair i is turned by the angle position · θᵢ. A query at
+          Each head&apos;s 64 values are read as <span className="text-accent">32 pairs</span>, and pair i is turned by the angle position · θᵢ. A query at
           position p and a key at position p′ then meet at an angle that depends only on p − p′. The first pairs turn
           fast and tell nearby tokens apart; the last ones barely move and carry the long distances.
         </p>
@@ -112,7 +112,7 @@ const steps: StoryStep[] = [
           alone.
         </p>
         <p>
-          Inside a head, value i pairs with value i + 32, not with its neighbour; that is how Hugging Face&apos;s
+          Inside a head, value i pairs with value i + <span className="text-accent">32</span>, not with its neighbour; that is how Hugging Face&apos;s
           rotate_half lays it out, and the weights were trained that way. Each pair costs one cosine, one sine, four
           products and two sums.
         </p>
@@ -130,7 +130,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The frequencies were the trap. A device powf differs from the host&apos;s in the last bit for 2 of the 32, the
-          angle multiplies that error by the position, and near 2,047 a sine lands on the other side of a BF16 rounding
+          angle multiplies that error by the position, and near <span className="text-accent">2,047</span> a sine lands on the other side of a BF16 rounding
           boundary. The subtraction then turns one ulp into dozens. Both kernels now take the frequencies from a table the
           host computes.
         </p>
@@ -150,7 +150,7 @@ const steps: StoryStep[] = [
           Correct once the frequencies came from the host, but a flat{" "}
           <span className="text-text">{draftFlat}</span> at 1 to 512 tokens, against{" "}
           <span className="text-text">{naive1.toFixed(1)} µs</span> for the naive kernel at one token. The time
-          was the chain of 32 pairs per thread, not the memory: only at 512 tokens did the naive kernel get slower (
+          was the chain of <span className="text-accent">32 pairs</span> per thread, not the memory: only at 512 tokens did the naive kernel get slower (
           <span className="text-text">{naive512.toFixed(1)}</span> against{" "}
           <span className="text-text">{draft512.toFixed(1)} µs</span>).
         </p>
