@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/exercises
 
+- Part A: every kernel page with an exercise gets a "build it yourself" section between the sandbox and the timeline, with that chapter's exercises in the same cards as the exercises page (paged KV has three: BlockManager, Scheduler, write_kv) and a link to the page for the requirements.
 - Part A: a new /exercises page (also a top-bar tab) turns the stub commits into exercises. Each of the 11 Part C pieces with a stub (BlockManager, Scheduler, write_kv, paged attention v1, v2 and split, add_rmsnorm, fast RoPE and SwiGLU, DecodeGraphs, schedule_chunked) gets the commit just before its implementation PR (the PR's own base), the commands to build there and run only its todo_joe tests, the file to write, its TODO(JOE) spec copied from that commit, a one-line nudge, and the implementation PR plus a `git diff` to compare against. The bandwidth test is an open exercise for foundations. CPU-only exercises come first. `web/scripts/exercise-specs.mjs` regenerates `web/src/content/exercise-specs.json` from git; all 11 start commits build today and their tests fail against the stub (the layout tests of paged attention v1, v2 and split, 1, 1 and 4 of them, already pass). At phone width the top-bar tabs stay on one line and scroll without a visible scrollbar.
 
 ## web/glossary
