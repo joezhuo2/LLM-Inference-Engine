@@ -137,7 +137,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Most of a transformer is matrix multiplication. Each of TinyLlama&apos;s 22 layers multiplies the hidden state by
+          Most of a transformer is matrix multiplication. Each of TinyLlama&apos;s <span className="text-accent">22 layers</span> multiplies the hidden state by
           four weight matrices: QKV (the three attention inputs, stored as one matrix), the attention output, gate/up (the
           MLP&apos;s two widening projections, also one matrix) and down. After the last layer the LM head turns the hidden
           state into 32,000 logits.
@@ -161,7 +161,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           So the wrapper asks for the transposed problem. With the first operand transposed, cuBLAS computes W · Xᵀ, which
-          is Yᵀ, and Yᵀ written column-major is exactly Y in row-major memory. One call, BF16 inputs and output, FP32
+          is Yᵀ, and Yᵀ written column-major is exactly Y in row-major memory. <span className="text-accent">One call</span>, BF16 inputs and output, FP32
           accumulation.
         </p>
       </>
@@ -180,7 +180,7 @@ const steps: StoryStep[] = [
         <p>
           Every token reads all{" "}
           <span className="text-text">{`${(weightBytes / 1e9).toFixed(2)} GB`}</span>, which sets a floor of{" "}
-          <span className="text-text">{`${(weightBytes / (peak.gbs * 1e6)).toFixed(2)} ms`}</span> per token on
+          <span className="text-accent">{`${(weightBytes / (peak.gbs * 1e6)).toFixed(2)} ms`}</span> per token on
           this GPU. cuBLAS sees the single row and runs a dedicated gemv kernel instead of a GEMM.
         </p>
       </>
@@ -235,7 +235,7 @@ const steps: StoryStep[] = [
           the projections slide up the slope, attention stays where it is, because every row reads its own keys and values.
         </p>
         <p>
-          Nothing in a decode step gets near the ridge at {Math.round(ridge)} FLOP/byte, so nothing here is compute bound.
+          Nothing in a decode step gets near the ridge at <span className="text-accent">{Math.round(ridge)} FLOP/byte</span>, so nothing here is compute bound.
           The way past the roof is fewer bytes per token: quantized weights, or more rows sharing each weight read.
         </p>
       </>
