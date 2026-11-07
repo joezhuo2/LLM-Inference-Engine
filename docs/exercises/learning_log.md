@@ -1979,3 +1979,7 @@
 ## Chapter reviews (Branch 125)
 
 - **retrieval practice: answering before reading the answer** => 
+
+## Teaching pass (Branch 126)
+
+- **a chapter's one-sentence lesson as the anchor for its details** => 

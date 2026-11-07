@@ -5,6 +5,7 @@ const peak = ceilings();
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
 
 export const review: ChapterReview = {
+  lesson: "At the memory roof, the only way to go faster is to move fewer bytes.",
   why: "It shows that the projections already use nearly all the available memory bandwidth, so improving decode means reading fewer weight bytes per token or sharing each read across requests.",
   takeaways: [
     "The wrapper asks cuBLAS for the transposed product so row-major weights and activations can stay where they are. No copy or transpose in memory is needed.",

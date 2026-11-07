@@ -10,6 +10,7 @@ const floorMs = (readBytes / (peak.gbs * 1e9)) * 1e3;
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
 
 export const review: ChapterReview = {
+  lesson: "Decode is limited by the bytes it moves, not by the arithmetic it does.",
   why: "It says the engine already moves bytes almost as fast as this GPU's memory allows, so what is left to win comes from moving fewer bytes or sharing them across a batch, not from faster arithmetic.",
   takeaways: [
     `Decoding one token reads every weight once, so its floor is bytes ÷ bandwidth: ${(readBytes / 1e9).toFixed(2)} GB ÷ ${peak.gbs} GB/s, about ${floorMs.toFixed(1)} ms, whatever the arithmetic costs.`,

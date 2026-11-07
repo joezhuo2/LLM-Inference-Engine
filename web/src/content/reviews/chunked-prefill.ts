@@ -2,6 +2,7 @@ import { chunkBudget } from "@/content/kernels/chunked-prefill";
 import type { ChapterReview } from "./types";
 
 export const review: ChapterReview = {
+  lesson: "Cap the tokens in each step so one long prompt cannot stall everyone else.",
   why: "It shows how limiting the work in a step lets running requests keep producing tokens while a long prompt fills its cache.",
   takeaways: [
     `A token budget of ${chunkBudget} caps all rows in a step. Decode rows go first and the prompt fills what is left.`,

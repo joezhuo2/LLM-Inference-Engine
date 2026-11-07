@@ -606,6 +606,7 @@ export function EveryByte() {
               <>
                 <h2 className="text-xs">review</h2>
                 <h1 className="font-serif text-2xl text-text">what to remember</h1>
+                <p className="mt-2 font-serif text-lg text-accent">{review.lesson}</p>
                 <p className="mt-2 text-text">{gloss(review.why)}</p>
                 <ol className="mt-2 list-decimal space-y-1 pl-4">
                   {review.takeaways.map((t) => (

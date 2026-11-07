@@ -15,6 +15,7 @@ const tpot = (system: string, batch: string) => measured("throughput-and-latency
 const savedShare = (batch: string) => (100 * (tpot("engine", batch) - tpot("engine + graphs", batch))) / tpot("engine", batch);
 
 export const review: ChapterReview = {
+  lesson: "When kernels are short, the gaps between launches cost time: record the step once and replay it.",
   why: "It shows that a batch-1 step can leave the GPU waiting even when every kernel is fast, so the speed of a step depends on how many launches it needs, not only on how long each kernel runs.",
   takeaways: [
     `Launched one by one, every kernel is preceded by a gap of a few microseconds while the GPU takes the next launch and sets up its grid. Those gaps leave the GPU idle for ${eager.idle_pct}% of a batch-1 decode step, and faster kernels would not remove them.`,

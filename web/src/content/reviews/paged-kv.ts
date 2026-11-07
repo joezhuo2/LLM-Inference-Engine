@@ -13,6 +13,7 @@ const exampleBlocks = Math.ceil(exampleLen / B);
 const doubledBlock = 2 * B;
 
 export const review: ChapterReview = {
+  lesson: "Hand out memory in small blocks as tokens arrive, never for a worst case up front.",
   why: "It shows how small a share of the pool even a busy run needs when blocks are handed out as requests grow, which is what lets one pool serve many requests side by side instead of each reserving its worst case.",
   takeaways: [
     `Nobody knows a request's final length when it arrives, so a contiguous row must reserve the worst case. Handing out ${B}-token blocks as the request grows took ${shareText}% of what worst-case reservation would have taken at the recorded run's busiest step.`,

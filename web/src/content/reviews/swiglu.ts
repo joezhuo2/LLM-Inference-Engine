@@ -1,6 +1,7 @@
 import type { ChapterReview } from "./types";
 
 export const review: ChapterReview = {
+  lesson: "Wide loads win on big inputs; small inputs need enough blocks to fill the GPU.",
   why: "The speedup shows how wider memory accesses can bring an activation kernel to the GPU's bandwidth limit when enough tokens keep it busy.",
   takeaways: [
     "SwiGLU multiplies each up value by a transformed gate. Matching the reference also requires rounding the gate's activation before the product.",

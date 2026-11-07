@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/teaching-pass
+
+- Part A: every chapter review opens with its lesson, one sentence in blue under "the lesson" (kernel page), under "what to remember" (Every Byte left page) and in the phone panel: foundations "Decode is limited by the bytes it moves, not by the arithmetic it does", GEMM "At the memory roof, the only way to go faster is to move fewer bytes", and one for each of the other ten chapters, in `lesson` of `web/src/content/reviews/<slug>.ts`.
+
 ## web/chapter-review
 
 - Part A: chunked prefill gets its review (why the headline number matters, three things to remember, two questions) and a numbers pass on its steps, the one number each step's argument rests on in blue; drafted by Codex, checked and corrected by Claude.

@@ -2,6 +2,7 @@ import { sampling } from "@/content/kernels/sampling";
 import type { ChapterReview } from "./types";
 
 export const review: ChapterReview = {
+  lesson: "Gumbel noise turns sampling into an argmax, so one kernel serves every mode.",
   why: "It shows that choosing the next token does not require sorting the vocabulary, and that avoiding the sort can save time even before a sort-based sampler does its draw.",
   takeaways: [
     "Adding independent Gumbel noise to the scaled logits and taking the argmax draws from the softmax distribution. The sampler does not need to build that distribution explicitly.",

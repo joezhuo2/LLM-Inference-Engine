@@ -21,6 +21,7 @@ const after = tokensPerSecond("after (79c1f91)");
 const gain = (i: number) => ((after[i] / before[i] - 1) * 100).toFixed(1);
 
 export const review: ChapterReview = {
+  lesson: "Change how a kernel keeps its state, and the same math can run several times faster.",
   why: "It shows that restructuring how a kernel reads memory and keeps its state can cut its time several times over with the same softmax and the same result, and that the saving survives inside a real decode step.",
   takeaways: [
     `An online softmax keeps a running maximum and sum and rescales them whenever a chunk brings a larger score. That makes it one pass, and shared memory holds one chunk, ${v2Bytes.toLocaleString("en-US")} bytes at any context length, instead of growing with the context.`,

@@ -1,6 +1,7 @@
 import type { ChapterReview } from "./types";
 
 export const review: ChapterReview = {
+  lesson: "Fusing two kernels saves bytes; saving time takes a kernel that stops waiting on itself.",
   why: "It shows that combining a residual add with its norm speeds up inference only when the fused kernel also cuts the waits inside the work it replaces.",
   takeaways: [
     "The residual add writes the row that the next norm reads, so fusion can save memory traffic and a launch. Fewer bytes alone do not guarantee less time.",

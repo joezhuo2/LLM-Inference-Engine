@@ -8,6 +8,7 @@ const v2SixteenRows = measured(split, sixteenRows, "v2");
 const splitSixteenRows = measured(split, sixteenRows, "8");
 
 export const review: ChapterReview = {
+  lesson: "A block table lets attention read a context scattered anywhere in the pool.",
   why: "It shows that with one sequence the kernel left most of the GPU idle, so cutting the same work into pieces that run side by side, not doing less of it, is what made decoding faster.",
   takeaways: [
     "The KV cache is one pool of 16-token blocks, and a block table says where each of a sequence's blocks sits. The kernel looks every key up there, so the arithmetic is unchanged and only where each key is read from changes.",

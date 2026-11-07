@@ -639,7 +639,10 @@ function reviewLeft(def: ChapterDef, r: ChapterReview, page: () => number) {
     ctx.font = `92px ${fonts.serif}`;
     ctx.fillText("what to remember", x0, 260);
     fitLayout((scale, draw) => {
-      let y = 330;
+      let y = 300;
+      ctx.fillStyle = palette.blue;
+      ctx.font = `${44 * scale}px ${fonts.serif}`;
+      y = paragraph(ctx, r.lesson, x0, y + 30 * scale, width, 54 * scale, draw) + 40 * scale;
       ctx.fillStyle = palette.faint;
       ctx.font = `${24 * scale}px ${fonts.sans}`;
       if (draw) ctx.fillText("the number that matters", x0, y + 10);
@@ -742,7 +745,7 @@ export function reviewStops(def: ChapterDef): Stop[] {
     beats: [flat(caption)],
   });
   return [
-    { ...base(first, reviewTitles[0], "Review: what to remember, then check yourself", [r.why, ...r.takeaways]), paint: { left: reviewLeft(def, r, page(first)), right: reviewRight(def, r) } },
+    { ...base(first, reviewTitles[0], "Review: what to remember, then check yourself", [r.lesson, r.why, ...r.takeaways]), paint: { left: reviewLeft(def, r, page(first)), right: reviewRight(def, r) } },
     { ...base(first + 1, reviewTitles[1], "Review: the answers", r.questions.map((q) => `${q.answer} ${q.why}`)), paint: { left: answerPage(def, r, 0, "left", page(first + 1)), right: answerPage(def, r, 1, "right", page(first + 1)) } },
   ];
 }

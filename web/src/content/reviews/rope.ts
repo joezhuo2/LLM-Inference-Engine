@@ -1,6 +1,7 @@
 import type { ChapterReview } from "./types";
 
 export const review: ChapterReview = {
+  lesson: "A faster kernel first has to match the old one bit for bit.",
   why: "It shows that exposing independent rotations and sharing trigonometry across heads can speed up a kernel while preserving the model's exact results.",
   takeaways: [
     "RoPE turns query and key pairs by position. For fixed query and key vectors, their attention score depends on the gap between positions and stays the same when both move together.",

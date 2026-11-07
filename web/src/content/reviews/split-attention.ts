@@ -17,6 +17,7 @@ const before = measured(graphs, longPrompt, "main graphs");
 const after = measured(graphs, longPrompt, "this branch graphs");
 
 export const review: ChapterReview = {
+  lesson: "A long job on too few blocks leaves most of the GPU idle: cut it up.",
   why: "It shows that a kernel can be slow because its launch is too small for the GPU, not because memory is slow, and that a fix only pays off when the path that really runs, here the replayed CUDA graph, launches it.",
   takeaways: [
     `At batch 1 attention launches one block per query head, ${v2Blocks} blocks, which fills only a fifth of what this GPU can hold. DRAM sits nearly idle, so the kernel is limited by too few warps to hide load latency, not by bandwidth.`,
