@@ -16,13 +16,13 @@ import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, exerciseStops, introStop, numberPages } from "./front-matter";
+import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, exerciseStops, introStop, numberPages, startStops, startText } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
 
 const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
-const sectionKeys = ["contents", ...chapterSlugs, "errata"];
+const sectionKeys = ["start", "contents", ...chapterSlugs, "errata"];
 const beatMs = 6500;
 let numbered: Promise<number> | undefined;
 const numberBook = () =>
@@ -38,6 +38,7 @@ function parsePlace(): Place {
   if (path === BOOK) return { closed: true };
   const slug = path.split("/")[2];
   if (slug && chapterSlugs.includes(slug)) return { closed: false, key: slug, local: 0 };
+  if (slug === "start") return { closed: false, key: "start", local: 0 };
   return { closed: false, key: window.location.hash === "#errata" ? "errata" : "contents", local: 0 };
 }
 
@@ -56,11 +57,11 @@ function Icon({ d }: { d: string }) {
 }
 
 function compose(raw: Record<string, Stop[]>) {
-  const keys = ["contents", ...chapterSlugs.filter((s) => raw[s]), "errata"];
+  const keys = ["start", "contents", ...chapterSlugs.filter((s) => raw[s]), "errata"];
   const stops: Stop[] = [];
   const meta: Meta[] = [];
   for (const key of keys) {
-    const slug = key === "contents" || key === "errata" ? undefined : key;
+    const slug = key === "start" || key === "contents" || key === "errata" ? undefined : key;
     raw[key].forEach((s, i) => {
       const folios = slug && i > 0 && s.page ? { page: { ...s.page, folio: String((chapterPage(key) ?? 0) + i) } } : {};
       meta.push({ key, local: slug ? i - 1 : i, slug, exhibit: slug ? s.exhibit : null });
@@ -70,7 +71,7 @@ function compose(raw: Record<string, Stop[]>) {
   return { stops, meta };
 }
 
-const base: Record<string, Stop[]> = { contents: [contentsStop()], errata: errataStops(0) };
+const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], errata: errataStops(0) };
 const initial = compose(base);
 
 export function EveryByte() {
@@ -250,7 +251,7 @@ export function EveryByte() {
       const m = book.current.meta[i];
       const edge = book.current.meta[i + delta]?.key !== m.key;
       if (edge) {
-        const keys = ["contents", ...chapterSlugs, "errata"];
+        const keys = sectionKeys;
         const nextKey = keys[keys.indexOf(m.key) + delta];
         if (nextKey && chapterSlugs.includes(nextKey) && !raw.current[nextKey]) {
           void goKey(nextKey, false, true, delta < 0);
@@ -385,7 +386,7 @@ export function EveryByte() {
     const hostEl = host.current;
     if (!hostEl) return;
     const onPage = (event: Event) => step((event as CustomEvent<"prev" | "next">).detail === "next" ? 1 : -1);
-    const onCover = () => void goKey("contents", false);
+    const onCover = () => void goKey("start", false);
     const onLink = (event: Event) => onLinkHref((event as CustomEvent<string>).detail);
     hostEl.addEventListener("bookpage", onPage);
     hostEl.addEventListener("bookcover", onCover);
@@ -413,7 +414,7 @@ export function EveryByte() {
       if (target instanceof Element && target.closest("input, textarea, select, [role='radiogroup'], [role='radio']")) return;
       if (event.key === "ArrowRight") {
         if (open) step(1);
-        else void goKey("contents", false);
+        else void goKey("start", false);
       }
       if (event.key === "ArrowLeft" && open) step(-1);
     };
@@ -525,7 +526,7 @@ export function EveryByte() {
                   </button>
                 ))}
             </span>
-            <button type="button" aria-label={open ? "next page" : "open the book"} disabled={open && stop === stops.length - 1} onClick={() => (open ? step(1) : void goKey("contents", false))} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <button type="button" aria-label={open ? "next page" : "open the book"} disabled={open && stop === stops.length - 1} onClick={() => (open ? step(1) : void goKey("start", false))} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
               <Icon d="M6 3l5 5-5 5" />
             </button>
             <button type="button" aria-label="next chapter" disabled={!open || sectionKeys.indexOf(segment) >= sectionKeys.length - 1} onClick={() => jump(1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
@@ -556,7 +557,7 @@ export function EveryByte() {
           {!open ? (
             <p>
               Every Byte, an inference engine kernel by kernel.{" "}
-              <button type="button" onClick={() => void goKey("contents", false)} className="link-underline text-text">
+              <button type="button" onClick={() => void goKey("start", false)} className="link-underline text-text">
                 Open the book
               </button>
             </p>
@@ -601,6 +602,48 @@ export function EveryByte() {
                 The steps, the spec and the commands to copy →
               </Link>
             </>
+          ) : segment === "start" && meta ? (
+            meta.local === 0 ? (
+              <>
+                <h1 className="font-serif text-2xl text-text">start here</h1>
+                <div className="mt-2 space-y-2">
+                  {startText.forWho.map((p) => (
+                    <p key={p}>{gloss(p)}</p>
+                  ))}
+                </div>
+                <h2 className="mt-3 font-serif text-xl text-text">what you need first</h2>
+                <ul className="mt-1 list-disc space-y-1 pl-4">
+                  {startText.needFirst.map((p) => (
+                    <li key={p}>{gloss(p)}</li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <>
+                <h1 className="font-serif text-2xl text-text">the life of a token</h1>
+                <div className="mt-2 space-y-2">
+                  {startText.tokenLife.map((p) => (
+                    <p key={p}>{gloss(p)}</p>
+                  ))}
+                </div>
+                <h2 className="mt-3 font-serif text-xl text-text">one decode step</h2>
+                <ol className="mt-1">
+                  {startText.map().map((r) => (
+                    <li key={r.y} className={clsx("flex gap-2", r.inLayer && "pl-3")}>
+                      {r.slugs.length ? (
+                        <Link href={bookHref(r.slugs[0])} onClick={(e) => inBook(e, r.slugs[0])} className="link-underline text-text">
+                          {r.label}
+                        </Link>
+                      ) : (
+                        <span>{r.label}</span>
+                      )}
+                      {r.slugs.length > 0 && <span className="ml-auto tabular-nums">{`ch ${r.slugs.map((x) => bookOrder.indexOf(x) + 1).join(", ")}`}</span>}
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-1 text-xs">Every layer repeats the indented rows, 22 times.</p>
+              </>
+            )
           ) : spread ? (
             <>
               {!spread.left && (
