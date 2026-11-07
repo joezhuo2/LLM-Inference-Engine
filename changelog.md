@@ -9,6 +9,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## runtime/graph-buckets-stub
 
+- Add 18 todo_joe tests in `tests/todo/unit/test_graph_buckets.cpp` (target `todo_unit_tests`): exact grids at 1, 2, 4 and 8 steps per octave, max_batch on and off the grid, bucket counts to 256, and for every max_batch to 300 the properties the spec promises (today's grid at 1 step, every power of two kept, finer grids containing coarser ones, bounded gaps and padding, 17 sequences under 32 landing in 32, 24, 20 and 18), plus the errors. They pass against a throwaway implementation that is not committed, and 8 of 9 deliberate mutants fail at least one test (the ninth is equivalent). (Part C stub)
 - Add the `decode_graph_buckets(max_batch, steps_per_octave)` Part C stub (`include/engine/sched/graph_buckets.h`, `src/sched/graph_buckets.cpp`, in engine_core) with its TODO(JOE) spec: a CUDA Graph bucket grid with `steps_per_octave` buckets per power of two, where 1 is today's powers-of-two grid, so the #121 sweep past batch 16 can measure what padding costs (17 sequences under `--max-batch 32` run 32 rows). The stub throws `logic_error("unimplemented: decode_graph_buckets")`, and nothing calls it yet. (Part C stub)
 
 ## web/book-about
