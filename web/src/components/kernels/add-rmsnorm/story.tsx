@@ -141,7 +141,7 @@ const steps: StoryStep[] = [
         <p>
           It moves a third fewer bytes, but takes the same time as the pair:{" "}
           <span className="text-text">{pair1.toFixed(1)}</span> against{" "}
-          <span className="text-text">{first1.toFixed(1)} µs</span> for one token. 64 rows of 4 KB are under 2 µs of
+          <span className="text-accent">{first1.toFixed(1)} µs</span> for one token. 64 rows of 4 KB are under 2 µs of
           memory traffic; the rest is waiting on dependent loads and two barriers.
         </p>
       </>
@@ -170,7 +170,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           A row of 2,048 BF16 values is 256 pieces of 16 bytes, one per thread. The tuned kernel loads each piece with one
-          128-bit instruction instead of 8 separate 2-byte loads, for x and the residual alike.
+          <span className="text-accent">128-bit</span> instruction instead of 8 separate 2-byte loads, for x and the residual alike.
         </p>
         <p>
           It also keeps the 8 rounded sums in registers, so the second pass never goes back to memory for them, and writes
@@ -190,7 +190,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           With xor shuffles, each lane swaps partial sums with the lane whose index differs in one bit. After five swaps
-          all 32 lanes hold the warp&apos;s total; after one barrier and one more round over the 8 warps, every thread holds
+          all 32 lanes hold the warp&apos;s total; after <span className="text-accent">one barrier</span> and one more round over the 8 warps, every thread holds
           the row&apos;s total and computes rstd itself.
         </p>
       </>
