@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/chapter-review
 
+- Part A: foundations gets a numbers pass on its steps, the one number each step's argument rests on in blue; drafted by Kiro, checked and corrected by Claude.
 - Part A: chapters can end with a review: the chapter's headline number with a line on why it matters, three things to remember, and two questions to answer before looking. On the kernel page it is a "review" section before "build it yourself", each answer behind an animated "show the answer"; in Every Byte it is two spreads before the exercises, "what to remember" with "check yourself" on the facing page, then the answers on the next spread so the page turn reveals them. Both spreads appear in the chapter's "in this chapter" list under "review" and in the page numbers, and the phone panel shows the same text. Content lives in `web/src/content/reviews/<slug>.ts`; foundations has the first one.
 
 ## web/big-ideas
