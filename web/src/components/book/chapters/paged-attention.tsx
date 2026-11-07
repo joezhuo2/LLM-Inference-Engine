@@ -80,7 +80,7 @@ const workbench: WorkbenchPage[] = [
     caption: "Step through it yourself: the block table",
     paragraphs: [
       "Set a context length and a block size. The context is cut into blocks of that many tokens, and each logical block is given a physical block somewhere in a pool of 64, in no particular order. Block 0 is the null block and is never handed out.",
-      "The grid is the pool: a number is the logical block that sits there. The list beside it is the block table, logical to physical, which is all the kernel has to find a key. Click an entry to jump to that block.",
+      "The square of cells is the pool: a number is the logical block that sits there. The list beside it is the block table, logical to physical, which is all the kernel has to find a key. Click an entry to jump to that block.",
       "Press next block or play and watch the pool light up in logical order while the physical blocks are scattered. New random data reshuffles the blocks and the numbers.",
       "The values are illustrative: head dim 4 and seeded random numbers instead of the model's 64. The order of operations is the kernel's, one block per step here where the engine reads 256 tokens at a time.",
     ],
