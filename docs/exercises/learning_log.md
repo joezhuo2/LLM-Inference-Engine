@@ -1989,3 +1989,4 @@
 - **scaled dot-product attention (why divide by √d)** => 
 - **causal mask** => 
 - **grouped-query attention vs. multi-head attention** => 
+- **prediction before observation (the generation effect)** => 

@@ -10,6 +10,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ContrastFigure, FusionFigure, HierarchyFigure, type Lane, MemoryFigure, RooflineFigure, type Tier } from "./figures";
+import { type Prediction, Predict } from "../predict";
 
 const hw = hardware();
 const peak = ceilings();
@@ -75,6 +76,13 @@ const tiers: Tier[] = [
   { name: "registers", size: `${whole(chip.regKb)} KB per SM`, lines: ["private to one thread", `${mb(chip.regTotalKb)} over ${hw.sms} SMs`, `FMA to FMA: ${Math.round(chip.fmaCycles)} cycles`], box: { x: 85, y: 298, w: 130, h: 44 } },
 ];
 
+const prediction: Prediction = {
+  question: "From 1 row to 16, what happens to the time it takes to read gate/up's weights?",
+  choices: ["16 times longer", "a little longer", "it stays the same"],
+  answer: "it stays the same",
+  why: `All the rows share one read of the same weights, so the bytes, and the memory time, do not move. Only the FLOPs grow with the rows, and they overtake memory only past the ridge, about ${Math.round(ridge)} rows.`,
+};
+
 export function RowsPicker() {
   const [rows, setRows] = useState("1");
   const n = Number(rows);
@@ -86,6 +94,7 @@ export function RowsPicker() {
   const isMeasured = measuredRows.includes(rows);
   return (
     <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...prediction} />
       <Toggle label="rows" choices={rowChoices} value={rows} onChange={setRows} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">gate/up of one layer, µs at the ceilings</div>

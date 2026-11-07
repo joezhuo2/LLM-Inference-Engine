@@ -8,6 +8,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ArgmaxFigure, CostFigure, Fp64Figure, GumbelFigure, type Mode, PhiloxFigure, TopKFigure, TopPFigure } from "./figures";
+import { type Prediction, Predict } from "../predict";
 
 const section = "sampling-branch-65";
 
@@ -36,6 +37,14 @@ const floatRuns = (() => {
 
 const costModes: Mode[] = columns.map((c) => ({ label: c.label, us: one(c.column), accent: c.column === "top-k 50", warn: c.warn }));
 
+const greedyRatio = at("16", "greedy") / at("1", "greedy");
+const prediction: Prediction = {
+  question: "From 1 row to 16, how much longer does greedy decoding take?",
+  choices: ["about 16 times", "a few times", "barely longer"],
+  answer: greedyRatio > 8 ? "about 16 times" : greedyRatio > 1.6 ? "a few times" : "barely longer",
+  why: `${at("1", "greedy").toFixed(1)} µs for 1 row, ${at("16", "greedy").toFixed(1)} µs for 16. Each row gets its own block, so the 16 rows run side by side on different SMs.`,
+};
+
 export function ModePicker() {
   const [rows, setRows] = useState("1");
   const times = columns.map((c) => ({ ...c, us: at(rows, c.column) }));
@@ -43,6 +52,7 @@ export function ModePicker() {
   const sort = at(rows, "full sort alone");
   return (
     <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...prediction} />
       <Toggle label="rows" choices={["1", "16"]} value={rows} onChange={setRows} />
       <div className="flex-1 space-y-2 pt-1">
         {times.map((t) => (

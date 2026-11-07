@@ -11,6 +11,7 @@ import { Toggle } from "../toggle";
 import { useLoop } from "../loop";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
 import { CaptureFigure, EagerTimelineFigure, eagerLayer, GapFigure, graphLayer, GraphGridFigure, layerIndex, StageFigure } from "./figures";
+import { type Prediction, Predict } from "../predict";
 
 const eager = launchGaps("eager");
 const replay = launchGaps("graphs");
@@ -34,6 +35,13 @@ const total = Math.ceil(layerUs(eagerLayer) / 10) * 10 + 10;
 const px = (t: number) => (lane * t) / total;
 const gemm = new Set(["qkv", "o_proj", "gate_up", "down"]);
 
+const prediction: Prediction = {
+  question: "Switch the step from eager to graph. What gets shorter?",
+  choices: ["the kernels", "the gaps between them", "both"],
+  answer: "the gaps between them",
+  why: `The same ten kernels run for the same time; what shrinks is the wait before each one, and the GPU's idle share of the step drops from ${eager.idle_pct}% to ${replay.idle_pct}%.`,
+};
+
 export function ReplayPicker() {
   const [mode, setMode] = useState("eager");
   const [batch, setBatch] = useState("1");
@@ -50,6 +58,7 @@ export function ReplayPicker() {
   const g = tpot("engine + graphs", batch);
   return (
     <div className="flex h-full flex-col gap-2 tabular-nums text-xs">
+      <Predict {...prediction} />
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         <Toggle label="step" choices={["eager", "graph"]} value={mode} onChange={setMode} />
         <Toggle label="batch" choices={["1", "4", "16"]} value={batch} onChange={setBatch} />

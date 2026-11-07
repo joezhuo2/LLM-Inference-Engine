@@ -9,6 +9,7 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ChainFigure, GridFigure, peakGbs, SmFigure, VectorFigure, ZipFigure } from "./figures";
 import { Author } from "../authorship";
+import { type Prediction, Predict } from "../predict";
 
 const fast = "fast-swiglu-branch-32";
 const small = "small-batches-branch-33";
@@ -41,6 +42,14 @@ const stepOp = (() => {
   return us !== undefined && launches !== undefined ? { us, launches } : undefined;
 })();
 
+const vector1 = measured(fast, at("1"), "fast (us)");
+const prediction: Prediction = {
+  question: "At 1 token, is the vector kernel, with its 16-byte loads, faster than naive?",
+  choices: ["faster", "about the same", "slower"],
+  answer: vector1 / naive1 < 0.9 ? "faster" : vector1 / naive1 <= 1.1 ? "about the same" : "slower",
+  why: `At 1 token it takes ${vector1.toFixed(1)} µs against naive's ${naive1.toFixed(1)} µs. 5,632 values make only 704 vectors, 3 blocks for 26 SMs, so wide loads have little to save. Switch to 4,096 tokens to see where they pay.`,
+};
+
 export function TokensPicker() {
   const [tokens, setTokens] = useState("4096");
   const times = versions.map((v) => ({ ...v, us: measured(fast, at(tokens), v.column) }));
@@ -48,6 +57,7 @@ export function TokensPicker() {
   const bandwidth = gbs(tokens, "fast (us)");
   return (
     <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...prediction} />
       <Toggle label="tokens" choices={tokenChoices} value={tokens} onChange={setTokens} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">µs per launch, ff 5,632</div>

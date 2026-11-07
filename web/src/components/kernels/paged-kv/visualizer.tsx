@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { kvDemo, kvReplay } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
+import { type Prediction, Predict } from "../predict";
 import { Toggle } from "../toggle";
 import { type Cell, type Mode, Pool } from "./allocator";
 
@@ -70,6 +71,30 @@ class Sim {
     return this.paged.busy() || this.contiguous.busy() || (this.scripted && this.t <= lastArrival);
   }
 }
+
+const demoRun = (() => {
+  const sim = new Sim(true);
+  const most = { paged: 0, contiguous: 0 };
+  const empty = { paged: 0, contiguous: 0 };
+  for (let i = 0; i < 2000 && sim.busy(); i++) {
+    sim.advance();
+    for (const m of ["paged", "contiguous"] as const) {
+      const t = sim[m].totals();
+      most[m] = Math.max(most[m], t.waiting);
+      if (t.held) empty[m] = Math.max(empty[m], t.empty / (t.held * B));
+    }
+  }
+  return { most, empty };
+})();
+
+const demoAnswer = demoRun.most.paged && demoRun.most.contiguous ? "both" : demoRun.most.contiguous ? "contiguous" : demoRun.most.paged ? "paged" : "neither";
+
+const demoPrediction: Prediction = {
+  question: "Press replay demo: the same requests arrive at both caches, 63 blocks each. Which one makes requests wait for room?",
+  choices: ["paged", "contiguous", "both", "neither"],
+  answer: demoAnswer,
+  why: `At the worst moment ${demoRun.most.contiguous} wait in the contiguous cache and ${demoRun.most.paged} in the paged one. Contiguous reserves prompt + 256 slots up front, and up to ${Math.round(demoRun.empty.contiguous * 100)}% of what it holds is never written; paged takes a block only when the last one fills, so at most ${Math.round(demoRun.empty.paged * 100)}% sits empty.`,
+};
 
 type Shown = { h: number; ghost: number; kind: number; seq: number };
 
@@ -584,6 +609,7 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
       </div>
 
       <div className="space-y-5">
+        <Predict {...demoPrediction} />
         {table}
         {tables}
       </div>
