@@ -77,7 +77,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Ties go to the lowest index, so the result never depends on thread timing:{" "}
-          <span className="text-text">{one("greedy")} µs</span> per call.
+          <span className="text-accent">{one("greedy")} µs</span> per call.
         </p>
       </>
     ),
@@ -93,7 +93,7 @@ const steps: StoryStep[] = [
           the argmax. The winner is distributed exactly as the softmax.
         </p>
         <p>
-          So temperature sampling is the greedy kernel with noise added. The figure draws a sample every 0.7 s; the
+          So temperature sampling is the greedy kernel with noise added. The figure draws repeated samples; the
           picks settle onto the softmax outline.
         </p>
       </>
@@ -106,7 +106,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           The noise comes from Philox, a counter-based generator: token i at decode step s gets the number at offset
-          s × 32,000 + i of the request&apos;s seed. Nothing is stored between calls.
+          s × <span className="text-accent">32,000</span> + i of the request&apos;s seed. Nothing is stored between calls.
         </p>
         <p>
           The same seed repeats a whole answer, and a row draws the same token whether it runs alone or in a batch of
@@ -127,7 +127,7 @@ const steps: StoryStep[] = [
           block sum, and the cut moves up or down.
         </p>
         <p>
-          Logits become 32-bit keys that sort like the floats, so 32 passes find the exact cut, and every token tied
+          Logits become 32-bit keys that sort like the floats, so <span className="text-accent">32 passes</span> find the exact cut, and every token tied
           with the k-th largest stays in.
         </p>
       </>
@@ -171,7 +171,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           The noise uses double-precision log. A laptop GPU runs FP64 at a small fraction of its FP32 rate, and Nsight
-          Compute shows the FP64 pipe busy {busy}% of the time for {share}% of the instructions. With temperature alone
+          Compute shows the FP64 pipe busy <span className="text-accent">{busy}%</span> of the time for {share}% of the instructions. With temperature alone
           every one of 32,000 tokens gets noise; with top-k only the 50 kept ones do.
         </p>
         <p>
@@ -187,7 +187,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Every mode launches one block per row, so one row uses one of the 26 SMs and 16 rows use 16. That is why the
+          Every mode launches one block per row, so one row uses one of the <span className="text-accent">26 SMs</span> and 16 rows use 16. That is why the
           times barely change with the batch: the rows run side by side.
         </p>
         <p>Try both row counts on the right.</p>
