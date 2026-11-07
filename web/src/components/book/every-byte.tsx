@@ -8,6 +8,7 @@ import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react
 import type { Group, Object3D } from "three";
 import { GlossProvider, type PointTerm, PointGloss } from "@/components/gloss";
 import { gloss } from "@/components/glossed";
+import { BookText } from "@/components/kernels/authorship";
 import { Scramble } from "@/components/scramble";
 import { kindLabel } from "@/content/dead-ends";
 import { chapterExercises } from "@/content/exercises";
@@ -480,13 +481,15 @@ export function EveryByte() {
   return (
     <div className="flex h-[calc(100dvh-3rem)] flex-col overflow-hidden">
       <div ref={bodies} hidden>
-        {Object.values(defs).map((c) => (
-          <div key={c.slug} data-chapter={c.slug}>
-            {c.steps.map((s) => (
-              <div key={s.id}>{s.body}</div>
-            ))}
-          </div>
-        ))}
+        <BookText>
+          {Object.values(defs).map((c) => (
+            <div key={c.slug} data-chapter={c.slug}>
+              {c.steps.map((s) => (
+                <div key={s.id}>{s.body}</div>
+              ))}
+            </div>
+          ))}
+        </BookText>
       </div>
       <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
         <canvas ref={canvas} role="img" aria-label={open ? `3D book "Every Byte", open at ${title}. ${caption}` : "3D book \"Every Byte\", closed on the desk"} className="absolute inset-0 size-full" />
@@ -582,7 +585,9 @@ export function EveryByte() {
           ) : chapterStep ? (
             <>
               <h1 className="font-serif text-2xl text-text">{chapterStep.title}</h1>
-              <div className="mt-2 space-y-2">{gloss(chapterStep.body)}</div>
+              <div className="mt-2 space-y-2">
+                <BookText>{gloss(chapterStep.body)}</BookText>
+              </div>
             </>
           ) : bench ? (
             <>

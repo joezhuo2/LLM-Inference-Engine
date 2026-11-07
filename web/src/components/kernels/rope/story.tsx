@@ -8,6 +8,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { BitsFigure, LayoutFigure, ParallelFigure, RotateFigure, SerialFigure } from "./figures";
+import { Author } from "../authorship";
 
 const fast = "fast-rope-branch-31";
 
@@ -142,7 +143,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Joe&apos;s first draft gave each head one thread: 128 threads per token, of which 36 had a head, each walking its
+          <Author story="Joe's first draft" book="The first draft" /> gave each head one thread: 128 threads per token, of which 36 had a head, each walking its
           32 pairs one after another and computing every sine and cosine again for every head.
         </p>
         <p>

@@ -8,6 +8,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ChainFigure, GridFigure, peakGbs, SmFigure, VectorFigure, ZipFigure } from "./figures";
+import { Author } from "../authorship";
 
 const fast = "fast-swiglu-branch-32";
 const small = "small-batches-branch-33";
@@ -133,7 +134,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Joe&apos;s first draft kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: 22
+          <Author story="Joe's first draft" book="The first draft" /> kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: 22
           blocks of 256 threads along a row of 5,632, and the row on blockIdx.y. It was bit-identical from the start and a
           little faster than naive at every size,{" "}
           <span className="text-text">{draft1.toFixed(1)} µs</span> against{" "}

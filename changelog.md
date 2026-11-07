@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-no-history
+
+- Part A: Every Byte no longer shows who wrote what or the build history; the /kernels story pages keep both. The Errata pages drop each dead end's branch and PR numbers (the date and the kernel link stay), and the RoPE and SwiGLU steps that begin "Joe's first draft" read "The first draft" in the book, through an `Author` component that renders the book wording inside `BookText` (the book's hidden step text and its phone panel) and the story wording everywhere else.
+
 ## web/start-here
 
 - Part A: Every Byte opens on two "start here" spreads between the cover and the contents (new URL /every-byte/start; opening the cover, the open button and the right arrow on the cover now land there). The first says who the book is for and what it leaves out, and what to know first, with Karpathy's Let's build GPT and Alammar's The Illustrated Transformer for readers new to transformers. The second walks through the life of a token (tokenizer, prefill, decode, sampling) and how to read the book, next to a map of one decode step: the embedding row, the ten ops of a layer inside a "× 22 layers" box, the final RMSNorm, the LM head and sampling, each with its chapter numbers in blue, plus a line on CUDA Graphs and chunked prefill around the step. Clicking a row opens its chapter. The contents, chapters and Errata move two pages later, and at phone width the text panel shows the same text and a linked list of the map's rows.

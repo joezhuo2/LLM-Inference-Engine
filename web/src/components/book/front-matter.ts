@@ -184,8 +184,6 @@ function deadEndPage(d: DeadEnd, side: Side, offset: number) {
     ctx.fillStyle = palette.blue;
     ctx.fillText(d.kernel, kx, y);
     link.box = [(kx - 8) / W, (y - 40) / H, (kx + ctx.measureText(d.kernel).width + 8) / W, (y + 14) / H];
-    ctx.fillStyle = palette.faint;
-    ctx.fillText(` · ${d.branch} · ${d.prs.map((n) => `#${n}`).join(" ")}`, kx + ctx.measureText(d.kernel).width, y);
     y += 40;
     const parts: [string, string][] = [
       ["tried", d.tried],
