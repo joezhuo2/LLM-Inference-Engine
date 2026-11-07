@@ -39,6 +39,7 @@ export type KernelStory = {
   measurements: KernelMeasurement[];
   timeline: KernelEntry[];
   about?: boolean;
+  ideas?: { title: string; intro: string };
   prologue?: { title: string; intro: string };
   lead?: { title: string; intro: string };
   sandbox?: { title: string; intro: string };

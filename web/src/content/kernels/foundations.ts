@@ -12,6 +12,10 @@ export const foundations: KernelStory = {
   index: 0,
   book: true,
   about: true,
+  ideas: {
+    title: "five big ideas",
+    intro: "Before the GPU details, the five ideas the rest of the book keeps coming back to. Each has one diagram and one number measured on this GPU; the chapters after this one are the engine's answers to them.",
+  },
   title: "foundations",
   short: "How a GPU runs a kernel, where its data lives, and why decoding one token waits on memory and not on arithmetic.",
   formula: "time ≈ max(bytes ÷ bandwidth, FLOPs ÷ compute)",
