@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { repoUrl } from "@/content/build-log";
 import specs from "@/content/exercise-specs.json";
 import { compareCommand, type Exercise, exerciseCommands, implLabel, prUrl } from "@/content/exercises";
+import { Disclosure } from "./disclosure";
 import { gloss } from "./glossed";
 
 function Commands({ lines }: { lines: string[] }) {
@@ -53,10 +54,9 @@ export function ExerciseCard({ exercise: e, chapterLink = false }: { exercise: E
         )}
       </header>
       {e.kind === "stub" ? <StubSteps e={e} /> : <OpenSteps e={e} />}
-      <details className="group text-sm">
-        <summary className="cursor-pointer text-muted hover:text-text">a nudge, if you are stuck</summary>
-        <p className="mt-2 max-w-2xl text-muted">{gloss(e.nudge)}</p>
-      </details>
+      <Disclosure summary="a nudge, if you are stuck">
+        <p className="max-w-2xl text-muted">{gloss(e.nudge)}</p>
+      </Disclosure>
     </article>
   );
 }
@@ -106,9 +106,8 @@ function StubSteps({ e }: { e: Extract<Exercise, { kind: "stub" }> }) {
         </Step>
       </ol>
       {spec.length > 0 && (
-        <details className="group text-sm">
-          <summary className="cursor-pointer text-muted hover:text-text">the spec, as Joe got it</summary>
-          <div className="mt-3 max-w-2xl space-y-3 text-muted">
+        <Disclosure summary="the spec, as Joe got it">
+          <div className="max-w-2xl space-y-3 pt-1 text-muted">
             {spec.map((p, i) => (
               <p key={i}>
                 {p.label && <span className="text-text">{p.label}. </span>}
@@ -125,7 +124,7 @@ function StubSteps({ e }: { e: Extract<Exercise, { kind: "stub" }> }) {
               .
             </p>
           </div>
-        </details>
+        </Disclosure>
       )}
     </>
   );
