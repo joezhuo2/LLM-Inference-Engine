@@ -134,7 +134,7 @@ const steps: StoryStep[] = [
           slots.
         </p>
         <p>
-          {v2.blocks} of {perSm * 26} is <span className="text-text">{v2.waves}</span> of a wave. Every block
+          {v2.blocks} of {perSm * 26} is <span className="text-accent">{v2.waves}</span> of a wave. Every block
           walks its head&apos;s whole context alone, and most of the GPU has nothing to do.
         </p>
       </>
@@ -152,7 +152,7 @@ const steps: StoryStep[] = [
         <p>
           It is short of warps. A load that has to go to DRAM waits about{" "}
           <span className="text-text">{dramCycles} cycles</span> on this GPU ({l2Cycles} when it hits L2, both
-          measured with a pointer chase), and a GPU hides that wait by running other warps in the meantime. With <span className="text-text">{v2.warps}%</span> of warp slots filled, there are
+          measured with a pointer chase), and a GPU hides that wait by running other warps in the meantime. With <span className="text-accent">{v2.warps}%</span> of warp slots filled, there are
           too few to switch to.
         </p>
       </>
@@ -167,7 +167,7 @@ const steps: StoryStep[] = [
           The split kernel adds a grid dimension: blocks are (split, head, row). Each split takes a range of whole KV
           blocks, so no 16-token block is shared by two ranges, and runs the same online-softmax loop as v2 over it.
         </p>
-        <p>One head&apos;s 2,048 tokens become 8 ranges of 256, worked on at the same time.</p>
+        <p>One head&apos;s 2,048 tokens become <span className="text-accent">8</span> ranges of 256, worked on at the same time.</p>
       </>
     ),
   },
@@ -181,7 +181,7 @@ const steps: StoryStep[] = [
           wave, and the time halves each time: {waves.map((w) => w.us.toFixed(1)).join(", ")} µs for 1, 2, 4 and 8 splits.
         </p>
         <p>
-          At 8 splits the grid is {waves[3].waves} waves. The first {perSm * 26} blocks run together and the last{" "}
+          At 8 splits the grid is <span className="text-accent">{waves[3].waves}</span> waves. The first {perSm * 26} blocks run together and the last{" "}
           {waves[3].blocks - perSm * 26} wait for a second, mostly empty wave, so each block has half the work and the
           time barely moves.
         </p>
@@ -199,7 +199,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The buffer was a new argument to the kernel, which is why split attention needed its own signature. The runner
-          owns {scratchBytes.toLocaleString("en-US")} bytes of it.
+          owns <span className="text-accent">{scratchBytes.toLocaleString("en-US")}</span> bytes of it.
         </p>
       </>
     ),
@@ -244,7 +244,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          With 16 rows v2 already launches 512 blocks, more than three waves, and splitting only adds the partial writes
+          With 16 rows v2 already launches <span className="text-accent">512</span> blocks, more than three waves, and splitting only adds the partial writes
           and the merge. At 128 tokens a split holds too few keys to pay for its second launch.
         </p>
         <p>
