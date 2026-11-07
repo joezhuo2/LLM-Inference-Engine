@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/chapter-review
 
+- Part A: CUDA Graphs gets its review (why the headline number matters, three things to remember, two questions); drafted by Kiro, checked and corrected by Claude.
 - Part A: sampling gets its review (why the headline number matters, three things to remember, two questions) and a numbers pass on its steps, the one number each step's argument rests on in blue; drafted by Codex, checked and corrected by Claude.
 - Part A: SwiGLU gets its review (why the headline number matters, three things to remember, two questions) and a numbers pass on its steps, the one number each step's argument rests on in blue; drafted by Codex, checked and corrected by Claude.
 - Part A: fused add + RMSNorm gets its review (why the headline number matters, three things to remember, two questions) and a numbers pass on its steps, the one number each step's argument rests on in blue; drafted by Codex, checked and corrected by Claude.
