@@ -1964,3 +1964,7 @@
 
 - **front matter: the pages of a book before its contents** => 
 - **one decode step end to end: embedding, 22 layers, final norm, LM head, sampling** => 
+
+## Book without build history (Branch 123)
+
+- **React context to render the same component differently by where it is mounted** => 
