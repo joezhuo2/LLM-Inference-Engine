@@ -9,8 +9,10 @@ import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
 import { Scramble } from "@/components/scramble";
 import { ExerciseCard } from "@/components/exercise-card";
+import { ReviewView } from "@/components/review";
 import { repoUrl } from "@/content/build-log";
 import { chapterExercises } from "@/content/exercises";
+import { chapterReview } from "@/content/reviews";
 import { kernelStory } from "@/content/kernels";
 import { docPath, docSections, environment, profilingTable } from "@/lib/data";
 import { loadExcerpt } from "@/lib/excerpt";
@@ -112,6 +114,17 @@ export async function ReadingView({ slug }: { slug: string }) {
             <KernelSandboxView slug={story.slug} />
           </Section>
         )}
+
+        {(() => {
+          const review = chapterReview(story.slug);
+          return (
+            review && (
+              <Section id="review" title="review">
+                <ReviewView story={story} review={review} />
+              </Section>
+            )
+          );
+        })()}
 
         {chapterExercises(story.slug).length > 0 && (
           <Section id="build" title="build it yourself">

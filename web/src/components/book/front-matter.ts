@@ -1,6 +1,8 @@
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel } from "@/content/exercises";
 import { kernelStory, layerOps } from "@/content/kernels";
+import { chapterReview } from "@/content/reviews";
+import type { ChapterReview } from "@/content/reviews/types";
 import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
@@ -256,22 +258,30 @@ export function errataStops(firstSpread: number): Stop[] {
   });
 }
 
-export const bookTitles = (def: ChapterDef) => [...chapterTitles(def), ...chapterExercises(def.slug).map((e) => e.title)];
+export const reviewTitles = ["what to remember", "answers"];
+
+export const reviewCount = (slug: string) => (chapterReview(slug) ? reviewTitles.length : 0);
+
+export const bookTitles = (def: ChapterDef) => [...chapterTitles(def), ...(chapterReview(def.slug) ? reviewTitles : []), ...chapterExercises(def.slug).map((e) => e.title)];
 
 function introRows(def: ChapterDef) {
   const titles = bookTitles(def);
   const steps = def.steps.length;
-  const built = steps + def.workbench.length;
-  const headers = (def.workbench.length > 0 ? 1 : 0) + (titles.length > built ? 1 : 0);
-  const step = Math.min(ROW, (H - 700) / (titles.length + headers * 1.5));
-  const rows: { y: number; text: string; number?: string; kind?: "bench" | "build"; k?: number }[] = [];
+  const reviewed = steps + def.workbench.length;
+  const built = reviewed + reviewCount(def.slug);
+  const starts: Record<number, string> = {};
+  if (def.workbench.length > 0) starts[steps] = "try it yourself";
+  if (built > reviewed) starts[reviewed] = "review";
+  if (titles.length > built) starts[built] = "build it yourself";
+  const step = Math.min(ROW, (H - 700) / (titles.length + Object.keys(starts).length * 1.5));
+  const rows: { y: number; text: string; number?: string; kind?: "bench" | "review" | "build"; k?: number }[] = [];
   let y = 380;
   titles.forEach((text, k) => {
-    if ((k === steps && def.workbench.length > 0) || k === built) {
-      rows.push({ y: y + step * 0.2, text: k === built ? "build it yourself" : "try it yourself" });
+    if (starts[k]) {
+      rows.push({ y: y + step * 0.2, text: starts[k] });
       y += step * 1.5;
     }
-    rows.push({ y, text, number: stepNumber(def, k) || undefined, kind: k >= built ? "build" : k >= steps ? "bench" : undefined, k });
+    rows.push({ y, text, number: stepNumber(def, k) || undefined, kind: k >= built ? "build" : k >= reviewed ? "review" : k >= steps ? "bench" : undefined, k });
     y += step;
   });
   return { rows, step };
@@ -336,7 +346,7 @@ export function introStop(def: ChapterDef): Stop {
   const links: PageLink[] = entries.map((r, i) => ({
       side: "right",
       box: [170 / W, (r.y - step * 0.63) / H, (W - 130) / W, (r.y + step * (i === entries.length - 1 ? 0.75 : 0.37)) / H],
-      href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : r.kind === "bench" ? `try it yourself, ${r.text}` : r.kind === "build" ? `build it yourself, ${r.text}` : r.text }));
+      href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : r.kind === "bench" ? `try it yourself, ${r.text}` : r.kind === "build" ? `build it yourself, ${r.text}` : r.kind === "review" ? `review, ${r.text}` : r.text }));
   return {
     ...flatStop(0, `Chapter ${def.number}: ${title}`, title, [summary]),
     paint: { left, right },
@@ -462,7 +472,7 @@ function exerciseRight(e: Exercise) {
 }
 
 export function exerciseStops(def: ChapterDef): Stop[] {
-  const first = def.steps.length + def.workbench.length;
+  const first = def.steps.length + def.workbench.length + reviewCount(def.slug);
   return chapterExercises(def.slug).map((e, j) => {
     const local = first + j;
     const left = exerciseLeft(def, e, () => (chapterPage(def.slug) ?? 0) + local + 1);
@@ -608,5 +618,131 @@ export function startStops(): Stop[] {
       paint: { left: textPage("left", "Every Byte · start here", "the life of a token", tokenLife, next, 32), right: tokenMapPage },
       links: mapLinks(),
     },
+  ];
+}
+
+function fitLayout(layout: (scale: number, draw: boolean) => number, bottom: number) {
+  let scale = 1;
+  while (scale > 0.6 && layout(scale, false) > bottom) scale -= 0.02;
+  layout(scale, true);
+}
+
+function reviewLeft(def: ChapterDef, r: ChapterReview, page: () => number) {
+  const story = kernelStory(def.slug);
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, "left");
+    const width = x1 - x0;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`chapter ${def.number} · ${chapterTitle(def.slug)} · review`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText("what to remember", x0, 260);
+    fitLayout((scale, draw) => {
+      let y = 330;
+      ctx.fillStyle = palette.faint;
+      ctx.font = `${24 * scale}px ${fonts.sans}`;
+      if (draw) ctx.fillText("the number that matters", x0, y + 10);
+      y += 40 * scale;
+      if (story) {
+        ctx.fillStyle = palette.blue;
+        ctx.font = `${76 * scale}px ${fonts.serif}`;
+        if (draw) ctx.fillText(story.headline.value, x0, y + 60 * scale);
+        y += 100 * scale;
+        ctx.fillStyle = palette.ink;
+        ctx.font = `${28 * scale}px ${fonts.sans}`;
+        y = paragraph(ctx, story.headline.label, x0, y, width, 40 * scale, draw) + 6 * scale;
+      }
+      ctx.fillStyle = palette.faint;
+      ctx.font = `${28 * scale}px ${fonts.sans}`;
+      y = paragraph(ctx, r.why, x0, y + 10 * scale, width, 40 * scale, draw) + 50 * scale;
+      r.takeaways.forEach((t, i) => {
+        ctx.fillStyle = palette.blue;
+        ctx.font = `${40 * scale}px ${fonts.serif}`;
+        if (draw) ctx.fillText(String(i + 1), x0, y + 30 * scale);
+        ctx.fillStyle = palette.ink;
+        ctx.font = `${31 * scale}px ${fonts.sans}`;
+        y = paragraph(ctx, t, x0 + 50, y + 30 * scale, width - 50, 45 * scale, draw) + 24 * scale;
+      });
+      return y;
+    }, H - 170);
+    folio(ctx, String(page()), "left", x0, x1, palette, fonts);
+  };
+}
+
+function reviewRight(def: ChapterDef, r: ChapterReview) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, "right");
+    const width = x1 - x0;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`chapter ${def.number} · review`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText("check yourself", x0, 260);
+    fitLayout((scale, draw) => {
+      let y = 360;
+      r.questions.forEach((q, i) => {
+        ctx.fillStyle = palette.blue;
+        ctx.font = `${44 * scale}px ${fonts.serif}`;
+        if (draw) ctx.fillText(String(i + 1), x0, y);
+        ctx.fillStyle = palette.ink;
+        ctx.font = `${34 * scale}px ${fonts.sans}`;
+        y = paragraph(ctx, q.question, x0 + 56, y, width - 56, 50 * scale, draw) + 60 * scale;
+      });
+      return y;
+    }, H - 320);
+    ctx.fillStyle = palette.blue;
+    ctx.font = `40px ${fonts.serif}`;
+    paragraph(ctx, "Decide your answers, then turn the page.", x0, H - 250, width, 48);
+  };
+}
+
+function answerPage(def: ChapterDef, r: ChapterReview, k: number, side: Side, page: () => number) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    const width = x1 - x0;
+    const q = r.questions[k];
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`chapter ${def.number} · review · answers`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText(`answer ${k + 1}`, x0, 260);
+    if (q) {
+      fitLayout((scale, draw) => {
+        ctx.fillStyle = palette.faint;
+        ctx.font = `${30 * scale}px ${fonts.sans}`;
+        let y = paragraph(ctx, q.question, x0, 350, width, 44 * scale, draw) + 50 * scale;
+        ctx.fillStyle = palette.blue;
+        ctx.font = `${50 * scale}px ${fonts.serif}`;
+        y = paragraph(ctx, q.answer, x0, y + 20 * scale, width, 62 * scale, draw) + 30 * scale;
+        ctx.fillStyle = palette.ink;
+        ctx.font = `${32 * scale}px ${fonts.sans}`;
+        return paragraph(ctx, q.why, x0, y, width, 48 * scale, draw);
+      }, H - 170);
+    }
+    if (side === "left") folio(ctx, String(page()), side, x0, x1, palette, fonts);
+  };
+}
+
+export function reviewStops(def: ChapterDef): Stop[] {
+  const r = chapterReview(def.slug);
+  if (!r) return [];
+  const first = def.steps.length + def.workbench.length;
+  const page = (local: number) => () => (chapterPage(def.slug) ?? 0) + local + 1;
+  const base = (local: number, title: string, caption: string, paragraphs: string[]): Stop => ({
+    exhibit: null,
+    spread: local,
+    page: { kicker: `chapter ${def.number} · review`, title, paragraphs: paragraphs.map((text) => [{ text, accent: false }]), folio: "" },
+    figure: "",
+    caption: "",
+    folio: "",
+    overlay: null,
+    beats: [flat(caption)],
+  });
+  return [
+    { ...base(first, reviewTitles[0], "Review: what to remember, then check yourself", [r.why, ...r.takeaways]), paint: { left: reviewLeft(def, r, page(first)), right: reviewRight(def, r) } },
+    { ...base(first + 1, reviewTitles[1], "Review: the answers", r.questions.map((q) => `${q.answer} ${q.why}`)), paint: { left: answerPage(def, r, 0, "left", page(first + 1)), right: answerPage(def, r, 1, "right", page(first + 1)) } },
   ];
 }

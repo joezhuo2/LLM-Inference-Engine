@@ -12,12 +12,13 @@ import { BookText } from "@/components/kernels/authorship";
 import { Scramble } from "@/components/scramble";
 import { kindLabel } from "@/content/dead-ends";
 import { chapterExercises } from "@/content/exercises";
+import { chapterReview } from "@/content/reviews";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, exerciseStops, introStop, numberPages, startStops, startText } from "./front-matter";
+import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
@@ -27,7 +28,7 @@ const sectionKeys = ["start", "contents", ...chapterSlugs, "errata"];
 const beatMs = 6500;
 let numbered: Promise<number> | undefined;
 const numberBook = () =>
-  (numbered ??= Promise.all(chapterSlugs.map((slug) => bookChapters[slug]().then((c) => [slug, 1 + c.steps.length + c.workbench.length + chapterExercises(slug).length] as const))).then((pairs) => numberPages(Object.fromEntries(pairs))));
+  (numbered ??= Promise.all(chapterSlugs.map((slug) => bookChapters[slug]().then((c) => [slug, 1 + c.steps.length + c.workbench.length + reviewCount(slug) + chapterExercises(slug).length] as const))).then((pairs) => numberPages(Object.fromEntries(pairs))));
 
 type Meta = { key: string; local: number; slug?: string; exhibit: number | null };
 type Place = { closed: true } | { closed: false; key: string; local: number };
@@ -158,7 +159,7 @@ export function EveryByte() {
       const box = el.querySelector(`[data-chapter="${slug}"]`);
       if (!box) continue;
       const text = [...box.children].map((child, i) => ({ title: c.steps[i].title, paragraphs: readRuns(child) }));
-      const chapterRaw = [introStop(c), ...chapterStops(c, text), ...exerciseStops(c)];
+      const chapterRaw = [introStop(c), ...chapterStops(c, text), ...reviewStops(c), ...exerciseStops(c)];
       queued.current.add(slug);
       queue.current = queue.current.then(async () => {
         const s = await sceneReady.current.promise;
@@ -460,7 +461,9 @@ export function EveryByte() {
   const spread = segment === "errata" && meta ? errataSpreads[meta.local] : null;
   const chapterStep = def && meta ? def.steps[meta.local] : undefined;
   const bench = def && meta ? def.workbench[meta.local - def.steps.length] : undefined;
-  const exercise = def && meta ? chapterExercises(def.slug)[meta.local - def.steps.length - def.workbench.length] : undefined;
+  const reviewAt = def && meta ? meta.local - def.steps.length - def.workbench.length : -1;
+  const review = def && reviewAt >= 0 && reviewAt < reviewCount(def.slug) ? chapterReview(def.slug) : undefined;
+  const exercise = def && meta ? chapterExercises(def.slug)[reviewAt - reviewCount(def.slug)] : undefined;
   const otherHref = def ? `/kernels/${def.slug}` : "/kernels";
 
   if (failed) {
@@ -598,6 +601,38 @@ export function EveryByte() {
                 ))}
               </div>
             </>
+          ) : review ? (
+            reviewAt === 0 ? (
+              <>
+                <h2 className="text-xs">review</h2>
+                <h1 className="font-serif text-2xl text-text">what to remember</h1>
+                <p className="mt-2 text-text">{gloss(review.why)}</p>
+                <ol className="mt-2 list-decimal space-y-1 pl-4">
+                  {review.takeaways.map((t) => (
+                    <li key={t}>{gloss(t)}</li>
+                  ))}
+                </ol>
+                <h2 className="mt-3 font-serif text-xl text-text">check yourself</h2>
+                <ol className="mt-1 list-decimal space-y-1 pl-4">
+                  {review.questions.map((q) => (
+                    <li key={q.question}>{gloss(q.question)}</li>
+                  ))}
+                </ol>
+                <p className="mt-1 text-xs">Decide your answers, then turn the page.</p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xs">review</h2>
+                <h1 className="font-serif text-2xl text-text">answers</h1>
+                {review.questions.map((q, i) => (
+                  <section key={q.question} className="mt-2 space-y-1">
+                    <p className="text-xs">{`${i + 1}. ${q.question}`}</p>
+                    <p className="text-text">{gloss(q.answer)}</p>
+                    <p>{gloss(q.why)}</p>
+                  </section>
+                ))}
+              </>
+            )
           ) : exercise ? (
             <>
               <h2 className="text-xs">build it yourself</h2>

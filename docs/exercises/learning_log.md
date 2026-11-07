@@ -1975,3 +1975,7 @@
 - **KV cache size per token (layers × 2 × KV heads × head dim × bytes)** => 
 - **throughput vs. latency (tokens per second vs. time per output token)** => 
 - **internal fragmentation from reserving the maximum length** => 
+
+## Chapter reviews (Branch 125)
+
+- **retrieval practice: answering before reading the answer** => 
