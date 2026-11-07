@@ -1951,3 +1951,11 @@
 - **padding a batch up to a captured graph's bucket: what the extra rows cost** => 
 - **a geometric bucket grid (steps per octave) and its worst-case padding** => 
 - **why graph count multiplies capture time and graph memory** => 
+
+## Exercises from stub commits (Branch 121)
+
+- **detached HEAD (git switch --detach) and getting back to a branch** => 
+- **a PR's base commit vs. its merge commit** => 
+- **git diff between two commits, limited to one path** => 
+- **ctest -L (labels) and -R (name regex) to run a subset of tests** => 
+- **CMAKE_CUDA_ARCHITECTURES=native and nvcc -arch=native** => 

@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/exercises
+
+- Part A: a new /exercises page (also a top-bar tab) turns the stub commits into exercises. Each of the 11 Part C pieces with a stub (BlockManager, Scheduler, write_kv, paged attention v1, v2 and split, add_rmsnorm, fast RoPE and SwiGLU, DecodeGraphs, schedule_chunked) gets the commit just before its implementation PR (the PR's own base), the commands to build there and run only its todo_joe tests, the file to write, its TODO(JOE) spec copied from that commit, a one-line nudge, and the implementation PR plus a `git diff` to compare against. The bandwidth test is an open exercise for foundations. CPU-only exercises come first. `web/scripts/exercise-specs.mjs` regenerates `web/src/content/exercise-specs.json` from git; all 11 start commits build today and their tests fail against the stub (the layout tests of paged attention v1, v2 and split, 1, 1 and 4 of them, already pass). At phone width the top-bar tabs stay on one line and scroll without a visible scrollbar.
+
 ## web/glossary
 
 - Part A: the 3D book underlines the first use of each term on every spread (left page, then the figure caption) with blue dots drawn into the page texture. `drawTextPage` and `drawCaptionPage` return each term's box in page UV, the scene hit-tests them like page links (help cursor, lens hidden), and the card opens beside the pointer; a click or tap on a term opens it instead of turning the page. At phone width the text panel under the book gets the same cards, first use per spread.
