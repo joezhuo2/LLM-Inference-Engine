@@ -112,7 +112,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Each thread also computes a whole dot product alone. One row at 2,048 tokens:{" "}
-          <span className="text-text">{v1At2048} µs</span>.
+          <span className="text-accent">{v1At2048} µs</span>.
         </p>
       </>
     ),
@@ -129,7 +129,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The memory itself was not the wall: at 2,048 tokens v1 uses{" "}
-          <span className="text-text">{(sharedPoints[2].v1 ?? 0).toLocaleString("en-US")} bytes</span> per block,
+          <span className="text-accent">{(sharedPoints[2].v1 ?? 0).toLocaleString("en-US")} bytes</span> per block,
           a fifth of the default limit. The cap was a design choice that a longer model would have hit.
         </p>
       </>
@@ -159,7 +159,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          In v1 neighbouring threads read keys 128 bytes apart. In v2 a group of 8 lanes shares one key: at every step
+          In v1 neighbouring threads read keys 128 bytes apart. In v2 a group of <span className="text-accent">8</span> lanes shares one key: at every step
           they read 8 neighbouring dimensions together, one 16-byte read, and three shuffles add their partial sums.
         </p>
         <p>The values step also uses every thread instead of 64.</p>
@@ -204,7 +204,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          From 512 tokens up v2 is about 3x faster than v1 ({(v1At2048 / v2At2048).toFixed(1)}x at one row and 2,048
+          From 512 tokens up v2 is about <span className="text-accent">3x</span> faster than v1 ({(v1At2048 / v2At2048).toFixed(1)}x at one row and 2,048
           tokens); at 128 tokens with one row there is little to overlap and the gain is smaller. Try the measured times
           on the right.
         </p>
