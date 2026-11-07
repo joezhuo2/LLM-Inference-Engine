@@ -17,6 +17,7 @@ import { GemmAboutStory } from "./gemm/about";
 import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
 import { FoundationsAboutStory } from "./foundations/about";
+import { FoundationsIdeasStory } from "./foundations/ideas";
 import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
 import { PagedKvAboutStory } from "./paged-kv/about";
@@ -62,6 +63,10 @@ export function KernelStoryView({ slug }: { slug: string }) {
     default:
       return null;
   }
+}
+
+export function KernelIdeasView({ slug }: { slug: string }) {
+  return slug === "foundations" ? <FoundationsIdeasStory /> : null;
 }
 
 export function KernelAboutView({ slug }: { slug: string }) {

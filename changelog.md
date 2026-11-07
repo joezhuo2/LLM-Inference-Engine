@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/big-ideas
+
+- Part A: foundations opens with "five big ideas", each with an animated diagram and one measured number, on the /kernels/foundations page (its own section between "what it is" and "how it works") and in Every Byte (steps 1 to 5 of chapter 1, after the lead-in, the diagram on the right page through the chapter overlay). Decode waits on memory: every token reads 2.07 GB of weights, 6.4 ms at 323.6 GB/s, against 0.06 ms of arithmetic and a 7.8 ms measured step. The KV cache remembers: without it 36 K and V computations in 8 steps, with it 8, at 22,528 bytes per token. Batching shares the read: 127 to 1,402 tokens per second from batch 1 to 16 while the step goes from 7.8 to 9.7 ms. Memory is the budget: 8.5 GB split into 2.20 GB of weights and a 206,640-token KV pool, 101 full-length reservations against about 993 paged 200-token chats. Latency against throughput: 11 times the tokens per second at 9.7 ms a token, and a long prefill stalling three conversations until chunked prefill spreads it out. Every number is computed from config.json, docs/hardware.md, the ceilings and the measured runs; the chapter's 3D model gets its step index shifted by the five new steps so the roofline still resets on its own spread.
+
 ## web/book-no-history
 
 - Part A: Every Byte no longer shows who wrote what or the build history; the /kernels story pages keep both. The Errata pages drop each dead end's branch and PR numbers (the date and the kernel link stay), and the RoPE and SwiGLU steps that begin "Joe's first draft" read "The first draft" in the book, through an `Author` component that renders the book wording inside `BookText` (the book's hidden step text and its phone panel) and the story wording everywhere else.

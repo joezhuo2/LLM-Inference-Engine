@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { foundationsAbout, foundationsAboutCaption } from "@/components/kernels/foundations/about";
+import { foundationsIdeas, IdeaFigure, ideaCaptions, ideaInstructions } from "@/components/kernels/foundations/ideas";
 import { FoundationsSandbox } from "@/components/kernels/foundations/sandbox";
 import { foundationsCaptions, foundationsNumbers, foundationsSteps, RowsPicker } from "@/components/kernels/foundations/story";
 import { foundations } from "@/content/kernels/foundations";
@@ -12,7 +13,10 @@ import { createFoundationsModel } from "./foundations-model";
 
 const n = foundationsNumbers;
 
+const ideaBeats: Beat[][] = foundationsIdeas.map((step) => [flat(`Big idea: ${step.title}`)]);
+
 const beats: Beat[][] = [
+  ...ideaBeats,
   [
     overview(`One launch: ${n.blocks} blocks on ${n.sms} SMs`),
     close("Close up: each block sits on one SM", [0.5, 0.03, -0.46], 0.9, 0.36, -18, 40),
@@ -45,6 +49,7 @@ const beats: Beat[][] = [
 ];
 
 const instructions = [
+  ...ideaInstructions,
   "Watch the blocks land on the SMs and the pink warp's threads move in lockstep.",
   "Watch the tile wait at each tier and the result climb back up.",
   "Watch which bar is still filling after the other has stopped.",
@@ -81,6 +86,14 @@ const workbench: WorkbenchPage[] = [
 function FoundationsOverlay({ kind, target, narrow }: OverlayProps) {
   return (
     <>
+      {kind?.startsWith("idea-") &&
+        target &&
+        createPortal(
+          <div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>
+            <IdeaFigure index={Number(kind.slice(5))} />
+          </div>,
+          target,
+        )}
       {kind === "rows" &&
         target &&
         createPortal(
@@ -99,14 +112,17 @@ const chapter: ChapterDef = {
   number: 1,
   title: "foundations",
   formula: foundations.formula,
-  steps: foundationsSteps,
-  captions: foundationsCaptions,
-  exhibits: [0, 1, 2, 3, null, 4],
-  overlays: [null, null, null, null, "rows", null],
+  steps: [...foundationsIdeas, ...foundationsSteps],
+  captions: [...ideaCaptions, ...foundationsCaptions],
+  exhibits: [...foundationsIdeas.map(() => null), 0, 1, 2, 3, null, 4],
+  overlays: [...foundationsIdeas.map((_, k) => `idea-${k}`), null, null, null, null, "rows", null],
   instructions,
   beats,
   workbench,
-  buildModel: (kit, fonts) => createFoundationsModel(kit, fonts, n),
+  buildModel: (kit, fonts) => {
+    const model = createFoundationsModel(kit, fonts, n);
+    return { ...model, enter: (stop) => model.enter?.(stop - foundationsIdeas.length) };
+  },
   Overlay: FoundationsOverlay,
 };
 

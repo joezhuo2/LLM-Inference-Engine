@@ -1968,3 +1968,10 @@
 ## Book without build history (Branch 123)
 
 - **React context to render the same component differently by where it is mounted** => 
+
+## Five big ideas (Branch 124)
+
+- **minimum time per decode token = weight bytes ÷ memory bandwidth** => 
+- **KV cache size per token (layers × 2 × KV heads × head dim × bytes)** => 
+- **throughput vs. latency (tokens per second vs. time per output token)** => 
+- **internal fragmentation from reserving the maximum length** => 
