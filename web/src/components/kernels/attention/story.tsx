@@ -27,7 +27,7 @@ const steps: StoryStep[] = [
           Each decode step adds one token to every sequence. Attention compares that token&apos;s query with the key of
           every token before it, turns the scores into weights with a softmax, and sums the values with those weights.
         </p>
-        <p>32 query heads, 64 dimensions each, against a context that grows by one token every step.</p>
+        <p><span className="text-accent">32</span> query heads, 64 dimensions each, against a context that grows by one token every step.</p>
       </>
     ),
   },
@@ -37,7 +37,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The KV cache is one pool of 16-token blocks shared by every request. A sequence owns a list of blocks, its
+          The KV cache is one pool of <span className="text-accent">16</span>-token blocks shared by every request. A sequence owns a list of blocks, its
           block table, and they can sit anywhere in the pool.
         </p>
         <p>So the kernel cannot read a context as one contiguous array: every key goes through the table first.</p>
