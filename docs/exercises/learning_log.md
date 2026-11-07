@@ -1945,3 +1945,9 @@
 - **regex lookbehind for word boundaries** => 
 - **portal (createPortal) for overlays that escape overflow** => 
 - **hit-testing text drawn on a canvas texture through raycast UVs** => 
+
+## CUDA Graph buckets (Branch 120)
+
+- **padding a batch up to a captured graph's bucket: what the extra rows cost** => 
+- **a geometric bucket grid (steps per octave) and its worst-case padding** => 
+- **why graph count multiplies capture time and graph memory** => 

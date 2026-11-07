@@ -15,6 +15,7 @@ add_library(engine_core
   model/config.cpp
   model/weights.cpp
   sampling/params.cpp
+  sched/graph_buckets.cpp
   sched/paged_batch.cpp
   sched/request.cpp
   sched/scheduler.cpp
