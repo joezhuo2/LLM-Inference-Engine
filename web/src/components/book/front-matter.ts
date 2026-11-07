@@ -1,6 +1,6 @@
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel } from "@/content/exercises";
-import { kernelStory } from "@/content/kernels";
+import { kernelStory, layerOps } from "@/content/kernels";
 import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
@@ -22,9 +22,9 @@ export const chapterPage = (key: string): number | undefined => firstPage[key];
 
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
-  for (const key of ["contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "errata"]) {
+  for (const key of ["start", "contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "errata"]) {
     firstPage[key] = page;
-    page += key === "contents" ? 1 : key === "errata" ? errataSpreads.length : spreads[key];
+    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "errata" ? errataSpreads.length : spreads[key];
   }
   return page - 1;
 }
@@ -481,4 +481,134 @@ export function exerciseStops(def: ChapterDef): Stop[] {
       links: [{ side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: `/exercises#${e.id}`, label: `${e.title}: ${LINK_TEXT}` }],
     };
   });
+}
+
+const startSpreads = 2;
+
+const forWho = [
+  "This book follows one token through an inference engine written from scratch in C++ and CUDA, kernel by kernel. The model is TinyLlama 1.1B and the hardware is one laptop GPU, an RTX 5060, and every number in the book was measured on it.",
+  "It is for you if you have used a language model through PyTorch or an API and want to know what happens underneath: why generating text is slow, where the time goes, and what engines like vLLM and llama.cpp do about it.",
+  "It is not about training, about how transformers were designed, or about serving across many GPUs. It covers one small engine in depth and says when something is left out.",
+];
+
+const needFirst = [
+  "Python and a little PyTorch: tensors, shapes and a matrix multiply.",
+  "A transformer at the level of a diagram: tokens become vectors, attention mixes information between them, and an MLP transforms each one. Chapter 1 and the first spread of every chapter explain the rest as they go.",
+  "Neither C++ nor a GPU is needed to read the book. Reading the code takes some C++, and the GPU exercises take an NVIDIA GPU with CUDA.",
+  "If transformers are new to you, start with Andrej Karpathy's video Let's build GPT or Jay Alammar's The Illustrated Transformer, then come back.",
+];
+
+const tokenLife = [
+  "A prompt arrives as text. The tokenizer cuts it into tokens, numbers from a vocabulary of 32,000, and each token becomes a vector of 2,048 values.",
+  "Prefill runs the whole prompt through the model at once. Decode then writes the answer one token at a time: the newest token goes through all 22 layers, and its last vector becomes 32,000 scores, one for every possible next token. Sampling picks one and the loop starts again.",
+  "Every layer does the same ten things, shown in the map of one decode step. Most of the time goes to reading weights and cached keys and values from memory, not to arithmetic. Chapter 1 shows why, and the rest of the book is about moving fewer bytes and wasting less time between kernels.",
+  "Read it in order the first time, because the parts follow the token. Each chapter says what its piece is, walks through how it works, and ends with something to try and an exercise to build.",
+];
+
+function textPage(side: Side, kicker: string, title: string, paragraphs: string[], page: () => number | undefined, size = 34) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(kicker, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText(title, x0, 260);
+    let px = size;
+    const fit = (draw: boolean) => {
+      ctx.font = `${px}px ${fonts.sans}`;
+      let y = 360;
+      for (const text of paragraphs) y = paragraph(ctx, text, x0, y, x1 - x0, px * 1.5, draw) + px * 0.8;
+      return y;
+    };
+    while (px > 26 && fit(false) > H - 170) px -= 1;
+    ctx.fillStyle = palette.ink;
+    fit(true);
+    if (side === "left") folio(ctx, String(page() ?? ""), side, x0, x1, palette, fonts);
+  };
+}
+
+const chapterNumber = (slug: string) => bookOrder.indexOf(slug) + 1;
+
+type MapRow = { y: number; label: string; slugs: string[]; inLayer: boolean };
+
+function mapRows(): { rows: MapRow[]; layerTop: number; layerBottom: number } {
+  const rows: MapRow[] = [];
+  let y = 360;
+  const add = (label: string, slugs: string[], inLayer = false, gap = 64) => {
+    rows.push({ y, label, slugs, inLayer });
+    y += gap;
+  };
+  add("token in, its embedding row read", [], false, 92);
+  const layerTop = y - 50;
+  for (const op of layerOps) add(op.label, op.slug === "paged-attention" ? ["paged-attention", "attention-v2", "split-attention"] : [op.slug], true);
+  const layerBottom = y - 26;
+  y += 46;
+  add("final RMSNorm", ["add-rmsnorm"]);
+  add("LM head: 32,000 scores", ["gemm"]);
+  add("sampling: the next token", ["sampling"]);
+  return { rows, layerTop, layerBottom };
+}
+
+function tokenMapPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) {
+  const { ctx, x0, x1 } = begin(canvas, "right");
+  ctx.fillStyle = palette.faint;
+  ctx.font = `26px ${fonts.sans}`;
+  ctx.fillText("Every Byte · start here", x0, 150);
+  ctx.fillStyle = palette.ink;
+  ctx.font = `92px ${fonts.serif}`;
+  ctx.fillText("one decode step", x0, 260);
+  const { rows, layerTop, layerBottom } = mapRows();
+  ctx.strokeStyle = palette.faint;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x0, layerTop, x1 - x0, layerBottom - layerTop, 14);
+  ctx.stroke();
+  ctx.fillStyle = palette.faint;
+  ctx.font = `26px ${fonts.sans}`;
+  ctx.textAlign = "right";
+  ctx.fillText("× 22 layers", x1 - 20, layerTop - 14);
+  ctx.textAlign = "left";
+  for (const row of rows) {
+    const x = row.inLayer ? x0 + 30 : x0;
+    ctx.fillStyle = palette.ink;
+    ctx.font = `36px ${fonts.serif}`;
+    ctx.fillText(row.label, x, row.y);
+    if (row.slugs.length) {
+      ctx.fillStyle = palette.blue;
+      ctx.font = `28px ${fonts.sans}`;
+      const text = `ch ${row.slugs.map(chapterNumber).join(", ")}`;
+      ctx.textAlign = "right";
+      ctx.fillText(text, x1 - (row.inLayer ? 30 : 0), row.y);
+      ctx.textAlign = "left";
+    }
+  }
+  ctx.fillStyle = palette.faint;
+  ctx.font = `28px ${fonts.sans}`;
+  paragraph(ctx, `Around the whole step: CUDA Graphs (ch ${chapterNumber("cuda-graphs")}) replay it with one launch, and the scheduler with chunked prefill (ch ${chapterNumber("chunked-prefill")}) decides which requests share it. Click a row to open its chapter.`, x0, H - 250, x1 - x0, 40);
+}
+
+function mapLinks(): PageLink[] {
+  const { rows } = mapRows();
+  return rows
+    .filter((r) => r.slugs.length)
+    .map((r) => ({ side: "right" as const, box: [170 / W, (r.y - 46) / H, (W - 130) / W, (r.y + 16) / H] as [number, number, number, number], href: bookHref(r.slugs[0]), label: `${r.label}, chapter ${chapterNumber(r.slugs[0])}` }));
+}
+
+export const startText = { forWho, needFirst, tokenLife, map: () => mapRows().rows };
+
+export function startStops(): Stop[] {
+  const page = () => chapterPage("start");
+  const next = () => (chapterPage("start") ?? 0) + 1;
+  return [
+    {
+      ...flatStop(0, "Start here: who this book is for", "start here", [...forWho, ...needFirst]),
+      paint: { left: textPage("left", "Every Byte", "start here", forWho, page, 36), right: textPage("right", "Every Byte · start here", "what you need first", needFirst, page, 34) },
+    },
+    {
+      ...flatStop(1, "Start here: the life of a token", "the life of a token", tokenLife),
+      paint: { left: textPage("left", "Every Byte · start here", "the life of a token", tokenLife, next, 32), right: tokenMapPage },
+      links: mapLinks(),
+    },
+  ];
 }

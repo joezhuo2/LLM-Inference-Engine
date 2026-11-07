@@ -1959,3 +1959,8 @@
 - **git diff between two commits, limited to one path** => 
 - **ctest -L (labels) and -R (name regex) to run a subset of tests** => 
 - **CMAKE_CUDA_ARCHITECTURES=native and nvcc -arch=native** => 
+
+## Start-here pages (Branch 122)
+
+- **front matter: the pages of a book before its contents** => 
+- **one decode step end to end: embedding, 22 layers, final norm, LM head, sampling** => 
