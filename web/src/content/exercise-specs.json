@@ -1,0 +1,376 @@
+{
+ "block-manager": [
+  {
+   "label": "Purpose",
+   "text": "The block manager owns the bookkeeping of the paged KV cache: it splits the cache into fixed-size blocks of block_size token slots, hands blocks to sequences as they grow, takes them back when sequences finish, and translates a sequence's token position into the physical slot that holds that token's K and V. It exists so that many sequences of unknown final length can share one preallocated cache without reserving the maximum context for each of them (the fragmentation a contiguous per-sequence cache causes), and so that exactly one place decides which slot belongs to which token. The scheduler asks it whether a request fits before admitting it and whether every running sequence can grow before a decode step, and the model runner reads block tables, slots and lengths from it to fill block_tables, slot_mapping and context_lens. It is pure C++ with no CUDA so it can be tested exhaustively on the CPU; it never touches the cache memory itself."
+  },
+  {
+   "label": "Blocks and slots",
+   "text": "Physical blocks are numbered 0 to num_blocks - 1, and block p holds the slots p * block_size to p * block_size + block_size - 1. Block 0 is reserved as the null block and is never given to a sequence, so padded batch entries in later branches can point at it safely; the usable capacity is num_blocks - 1 blocks. A sequence of length L owns exactly ceil(L / block_size) blocks, listed in logical order in its block table, and the token at position pos (0-based) lives in slot table[pos / block_size] * block_size + pos % block_size. A sequence takes a new block only when its length crosses a multiple of block_size, and never holds a block it is not using."
+  },
+  {
+   "label": "Interface",
+   "text": "BlockManager(num_blocks, block_size) starts with every block except block 0 free and no sequences; it requires num_blocks >= 2 and block_size >= 1. can_allocate(num_tokens) says whether ceil(num_tokens / block_size) blocks are free right now. allocate(seq, num_tokens) registers a new sequence with length num_tokens and gives it that many blocks; these slots are where the prompt's K and V will be written. can_append(seq) says whether the sequence can grow by one token, which is true when its current length is not a multiple of block_size (the last block has room) or when at least one block is free. append_slot(seq) grows the sequence by one token, taking a new block exactly when the old length is a multiple of block_size, and returns the slot of the new token, which is the token at position old length; afterwards slot(seq, length(seq) - 1) returns the same value. free(seq) returns all of the sequence's blocks to the free pool and forgets the sequence, so its id may be allocated again. slot(seq, pos) returns the slot of position pos. table(seq) returns the sequence's block table (physical block ids in logical order); the reference is valid until the next non-const call. length(seq) returns the number of tokens the sequence holds. num_free() returns the number of free blocks. SeqId is a caller-chosen 64-bit id (the request id); the block manager does not interpret it. The private representation is yours to choose; the public interface above is what the tests and later branches use."
+  },
+  {
+   "label": "Errors",
+   "text": "Every violated precondition throws std::invalid_argument with a message that names the offending sequence id or argument, and leaves the block manager exactly as it was before the call (no blocks taken, no lengths changed, no sequence added or removed). The preconditions are: num_blocks >= 2 and block_size >= 1 for the constructor; num_tokens >= 1 for can_allocate and allocate; seq not already registered for allocate; seq registered for every other call that takes a seq; enough free blocks for allocate (the caller is expected to ask can_allocate first); can_append(seq) for append_slot; 0 <= pos < length(seq) for slot. std::invalid_argument is required, not just any std::logic_error, so a rejection test cannot pass against this stub."
+  },
+  {
+   "label": "Invariants",
+   "text": "At every point between calls: no block is owned by two sequences; block 0 is owned by nobody and never free; num_free() plus the total number of blocks in all tables equals num_blocks - 1; every table has exactly ceil(length / block_size) entries; and the slots of all positions of all sequences are pairwise distinct. The result is deterministic: two block managers given the same sequence of calls hand out the same block ids. Which free block is handed out next is otherwise unspecified, and nothing may assume that a sequence's blocks are contiguous or increasing."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "With block_size 16, lengths 15, 16 and 17 own 1, 1 and 2 blocks; appending to a sequence of length 15 or 17 takes no block, appending to one of length 16 takes one. can_allocate must say no once ceil(num_tokens / block_size) exceeds num_free(), including when the cache is exactly full; a full cache must still let sequences whose last block has room keep appending. A length of 2,048 (the MVP context limit, 128 blocks at block_size 16) must work like any other; enforcing that limit is the scheduler's job, not this class's. Sizes that would overflow int are out of scope."
+  },
+  {
+   "label": "What to compare against",
+   "text": "A shadow model in the test that tracks each sequence's length and checks the invariants and the slot formula after every call."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/unit/test_block_manager.cpp: constructor checks, the block counts at 15, 16, 17 and 2,048, block 0 never handed out, the slot formula, append taking a block only at multiples of block_size, a full cache, freeing and reusing an id, every rejected call with the state unchanged afterwards, determinism, and 10,000 random allocate, append and free operations checked against the shadow model after each one. They run in the todo_unit_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/unit/, add it to unit_tests and delete todo_unit_tests if it is empty."
+  }
+ ],
+ "write-kv": [
+  {
+   "label": "Purpose",
+   "text": "write_kv stores the keys and values of the tokens of one forward step into the paged KV cache of one layer, so the paged attention kernels of this and every later step can read them. It replaces naive::store_kv, which appends the rows of a single sequence to a contiguous cache: in a batched step the T tokens belong to different sequences, each sequence's tokens live in blocks scattered over the cache, and some rows of the batch are padding. Where each token goes is decided on the CPU by the block manager and arrives as slot_mapping; write_kv only moves data. The model runner calls it once per layer, after RoPE and before attention, with that layer's K and V views of the KvCache."
+  },
+  {
+   "label": "Interface",
+   "text": "k_cache and v_cache are BF16 tensors of the same shape [num_blocks, kv_heads, block_size, head_dim], contiguous and row-major (the views KvCache::k(layer) and KvCache::v(layer) return). qkv is the BF16 [T, width] output of the fused QKV GEMM after RoPE; with kv_width = kv_heads * head_dim, the K values of a token are the columns width - 2 * kv_width to width - kv_width - 1 and the V values the last kv_width columns, so the Q columns in front of them are never read and no head count other than the cache's is needed (the same convention as naive::store_kv). Within the K slice, column h * head_dim + d is head h, dimension d, and likewise for V. slot_mapping is an I32 tensor [T] in device memory. stream is the stream to run on. A slot s names token position s % block_size of physical block s / block_size. For every token t with s = slot_mapping[t] >= 0, and every kv head h and dimension d, write_kv sets k_cache[s / block_size][h][s % block_size][d] to the K value of token t at head h, dimension d, and v_cache[s / block_size][h][s % block_size][d] to the V value. A slot of -1 marks a padding row: nothing is written for it. Nothing else in either cache changes, and qkv and slot_mapping are not modified."
+  },
+  {
+   "label": "Numerics",
+   "text": "This is a copy: every written value is bit-identical to the BF16 value in qkv, with no conversion or rounding."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "Before launching anything, throw std::invalid_argument with a message naming write_kv when: k_cache or v_cache is not BF16 or not 4-dimensional, or their shapes differ; qkv is not BF16 or not 2-dimensional; qkv's width is not larger than 2 * kv_width (there must be at least one query column in front of K and V); slot_mapping is not I32, not 1-dimensional, or its length is not T. The caller guarantees, without checks (they would need a copy back to the host), that every slot is -1 or between 0 and num_blocks * block_size - 1, and that the non-negative slots of one call are pairwise distinct; the result is undefined otherwise. The launch is asynchronous on stream, with the usual KERNEL_CHECK after it."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "T = 0 is a valid call that does nothing and must not launch a kernel with an empty grid. Slots at the first and last position of a block (s % block_size equal to 0 and to block_size - 1), slot 0, the last slot of the cache and slots in block 0 (the null block is just memory to this kernel) are all written like any other. It must be correct for any positive block_size, kv_heads and head_dim, not only TinyLlama's 16, 4 and 64, and for T up to at least 2,048 (a full-length prefill). Indices into the cache must not overflow 32 bits for the cache sizes KvCache produces from free memory on an 8 GB card."
+  },
+  {
+   "label": "What to compare against",
+   "text": "A host reference in the test that applies the definition above element by element to a copy of the caches."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_write_kv.cpp: a sequence of 37 tokens through a shuffled block table on TinyLlama's layout, padding rows, the boundary slots, block sizes 1 and 5 with an odd head layout, a 2,048-token prefill, a 16-sequence decode batch, T = 0, guard bytes around both caches proving nothing outside them is written, qkv and slot_mapping unchanged, and every rejected argument. The caches are filled with random values first and compared in full, so a write to a wrong place fails even when the right place is also written. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them."
+  }
+ ],
+ "scheduler": [
+  {
+   "label": "Purpose",
+   "text": "The scheduler is the continuous (iteration-level) batching policy of the engine: it holds the waiting, running and finished requests, decides before every forward pass which sequences take part and whether that pass is a prefill or a decode, keeps the block manager in step with the tokens the runner is about to write, and takes the sampled tokens back afterwards. Requests join the batch as soon as there is room and leave as soon as they finish, instead of the whole batch waiting for its slowest member, which is where batching's throughput comes from. When the KV cache runs out it preempts by recompute: the victim's blocks are freed and it is later prefilled again over its prompt plus everything it has generated, which gives the same tokens because the model is deterministic and the sampling step is the number of tokens generated so far. It is pure C++ with no CUDA, so the whole policy is tested on the CPU with a fake model; the model runner (branch 20) is the only thing that turns its steps into forward passes."
+  },
+  {
+   "label": "Ownership",
+   "text": "Scheduler(config) creates and owns its BlockManager(config.num_blocks, config.block_size); blocks() gives read access to it, and nothing else may change it. The runner reads block tables, slots and lengths from blocks() to build block_tables, slot_mapping and context_lens. Requests are owned by the scheduler from submit until take_finished; request(id) gives read access to a waiting, running or finished (not yet taken) request."
+  },
+  {
+   "label": "Configuration",
+   "text": "num_blocks and block_size are passed to the block manager (its own checks apply, with its std::invalid_argument). max_batch is the most sequences in one step, max_prefill_tokens the most tokens one prefill step may feed (the build plan's 2,048 budget), max_context the longest sequence a request may reach (what validate(request, max_context) checks), and eos_id the token that ends a request (the default -1 means none, since token ids are never negative). The constructor requires max_batch >= 1, max_context >= 1, max_prefill_tokens >= max_context, and a cache that holds one sequence of max_context tokens on its own, num_blocks - 1 >= ceil(max_context / block_size). Together with validate these guarantee that a request at the front of the queue always fits once nothing else is running, so the scheduler can never stall."
+  },
+  {
+   "label": "Lifecycle",
+   "text": "submit(request) checks validate(request, config.max_context) and that request.id is not already held by the scheduler (waiting, running or finished and not yet taken), then sets state = Waiting, preemptions = 0 and arrived = Clock::now(), and appends the request to the back of the waiting queue; any other value the caller left in those three fields is overwritten. It may be called at any time, including between schedule() and update(). A request moves to Running when it is admitted, back to Waiting when it is preempted, and to Finished when update() gives it its last token. take_finished() returns the finished requests in the order they finished, by value, and forgets them, after which request(id) throws and the id may be submitted again."
+  },
+  {
+   "label": "",
+   "text": "One step: schedule(). Every call returns a Step whose seqs are the sequences of the next forward pass, in the order of the logits rows the runner will produce, and either prefill is true and every sequence feeds all of its tokens, or prefill is false and every sequence feeds only its newest token (the MVP never mixes the two). First, admission: while the waiting queue is not empty, fewer than max_batch sequences are running, the front request's length L = prompt.size() + output.size() fits the free blocks (blocks().can_allocate(L)), and L plus the tokens already admitted in this call is at most max_prefill_tokens, the front request is allocated L tokens in the block manager, becomes Running, and is appended to the step. Admission is strictly first come, first served: it stops at the first request that does not fit and never skips ahead to a smaller one behind it. If at least one request was admitted, the step is a prefill of exactly the admitted requests, in admission order, and nothing else changes in this call. Otherwise, if any sequence is running, the step is a decode of every running sequence, built as described under Preemption. Otherwise the scheduler is idle and the step is empty (prefill false, no seqs). After a non-empty step, for every sequence s in seqs, blocks().length(s) equals request(s).length(), so the tokens to feed are positions 0 to length - 1 for a prefill and position length - 1 for a decode, and blocks().slot(s, pos) is where each one's K and V go."
+  },
+  {
+   "label": "Preemption",
+   "text": "A decode step visits the running sequences from the earliest admitted to the most recently admitted (a re-admitted request counts as admitted when it was re-admitted). Before sequence s takes its slot, as long as blocks().can_append(s) is false, the most recently admitted sequence still running is preempted, which may be s itself, in which case s is not part of this step. Preempting a sequence frees all of its blocks, keeps its output, increments its preemptions count, sets its state to Waiting, and puts it at the front of the waiting queue; several sequences preempted in one call end up at the front in the order they were admitted, ahead of every request that was already waiting. Once s can append, it takes one slot (blocks().append_slot(s)) and joins the step. A preempted request is admitted again later like any other waiting request, with L counting its prompt and its output so far, so its prefill recomputes the K and V of every token it had, and its next sampled token continues where it stopped. The configuration checks above guarantee that the earliest admitted sequence never needs to preempt itself, so a decode step is never empty while anything is running."
+  },
+  {
+   "label": "",
+   "text": "Taking tokens back: update(tokens). After every non-empty step, the caller passes exactly one sampled token per sequence of that step, in the same order, and update appends each token to its request's output in that order. When a request's output reaches length 1, first_token is set to Clock::now(); a preempted request keeps its first_token. A request whose new token equals eos_id, or whose output now holds max_new_tokens tokens, is finished: its blocks are freed, its state becomes Finished, finished is set to Clock::now(), it leaves the running set, and it joins the finished list (several in one call keep the step's order). The token that ended a request, EOS included, stays in its output, as in generate(). Token values are not checked. Every other sequence of the step stays running with blocks().length(s) equal to request(s).length() - 1, because its newest token has no K and V yet; the next step it takes part in feeds it."
+  },
+  {
+   "label": "Errors",
+   "text": "Every violated precondition throws std::invalid_argument with a message that names the offending request id or argument, and leaves the scheduler exactly as it was (no request added, admitted, preempted or changed, no blocks taken or freed). The preconditions are: the constructor's checks above; validate and a fresh id for submit; for schedule, that the previous non-empty step has been given its update; for update, that a non-empty step is pending and tokens.size() equals its number of sequences; a held id for request. An empty step needs no update. std::invalid_argument is required, not just any std::logic_error, so a rejection test cannot pass against this stub. With these preconditions met, no BlockManager call made by the scheduler may ever throw."
+  },
+  {
+   "label": "Invariants",
+   "text": "Between calls: every request is in exactly one of the waiting queue, the running set and the finished list, and its state says which; at most max_batch sequences run; exactly the running sequences are known to the block manager, so its free blocks plus the blocks of all running tables equal num_blocks - 1 (waiting, preempted and finished requests hold no blocks); a running sequence that is not part of a pending step holds request.length() - 1 tokens in the block manager; arrived <= first_token <= finished once they are set. The scheduler is deterministic: two schedulers given the same calls with the same tokens return the same steps."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "A request with max_new_tokens = 1 finishes in the update that follows its prefill and never decodes. A request whose first token is EOS finishes the same way. A prompt of exactly max_context tokens is admitted with max_new_tokens = 1. A prefill whose total is exactly max_prefill_tokens is allowed, one more token is not. A cache that is exactly full after admission is fine; the next decode step preempts as needed. Requests submitted while a step is pending wait for the next schedule()."
+  },
+  {
+   "label": "What to compare against",
+   "text": "A fake model in the test: a fake KV cache of token ids that the test fills through blocks().slot() exactly as the runner will write K and V, and a next-token function of the whole context read back through blocks().table(), the seed and the step. Each request's output must equal what the same fake model produces for that request on its own, which is the build plan's \"16 concurrent requests produce the same text as 16 sequential runs\", and it must stay equal when a tiny cache forces preemption. The real-model version of that check arrives with the paged model runner in branch 20."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/unit/test_scheduler.cpp: the constructor and submit checks, an idle scheduler, first come first served admission up to max_batch and the prefill budget, admission stopping at the first request that does not fit the free blocks, prefill before decode, the block manager lengths after each step, retiring on EOS and on max_new_tokens with the blocks freed, max_new_tokens = 1, an exact preemption scenario (victim choice, a sequence preempting itself, the waiting queue order, the recomputed prefill), the timestamps, take_finished and request(id), every rejected call leaving the state unchanged, determinism, 16 concurrent requests against 16 solo runs with a large cache and with a tiny one that forces preemption, and 10,000 random steps with random submissions checked against the invariants after every call. They run in the todo_unit_tests target with the todo_joe label (ctest --preset debug -L todo_joe) and also need your BlockManager. When they all pass, move the file to tests/unit/, add it to unit_tests and delete todo_unit_tests if it is empty."
+  }
+ ],
+ "paged-attention": [
+  {
+   "label": "Purpose",
+   "text": "paged_attention_decode is the attention of one decode step over the paged KV cache: each row of the batch is one query token of one sequence, and it attends to every token of that sequence in the cache, itself included, by following the sequence's block table. It replaces naive::attention, which reads a single sequence from a contiguous cache. The model runner calls it once per layer, after write_kv has stored the step's keys and values, so the current token's K and V are read from the cache like those of every earlier token. Because each row carries its own block table and context length, the same kernel can also serve a prefill, one row per prompt token with context length pos + 1 and all rows of a prompt sharing one block table (the build plan's MVP prefill); whether the runner does that is decided in branch 20."
+  },
+  {
+   "label": "Interface",
+   "text": "k_cache and v_cache are BF16 tensors of the same shape [num_blocks, kv_heads, block_size, head_dim], contiguous and row-major (the views KvCache::k(layer) and KvCache::v(layer) return): the K vector of kv head g for the token in slot s is k_cache[s / block_size][g][s % block_size][0 .. head_dim - 1], and likewise for V. out is BF16 [B, heads * head_dim], which fixes heads = out.shape[1] / head_dim. qkv is the BF16 [B, width] output of the fused QKV GEMM after RoPE, width = (heads + 2 * kv_heads) * head_dim; only its Q columns are read, and columns h * head_dim to h * head_dim + head_dim - 1 are the query q_h of head h (the K and V columns are never read). block_tables is I32 [B, max_blocks] and context_lens is I32 [B], both in device memory. stream is the stream to run on. For row b with L = context_lens[b] > 0, token j of the row's sequence (0 <= j < L) is in physical block block_tables[b][j / block_size] at offset j % block_size, and query head h reads kv head h / (heads / kv_heads) (grouped-query attention: in TinyLlama 8 query heads share each of the 4 kv heads). Then out[b][h * head_dim + d] = sum over j < L of p_j * V_j[d], where p is the softmax over j < L of the scores s_j = scale * (q_h . K_j) and scale = 1 / sqrt(head_dim). A row with L = 0 is padding: nothing of out row b is written. qkv, both caches, block_tables and context_lens are not modified."
+  },
+  {
+   "label": "Numerics",
+   "text": "Each score is rounded the way HF's eager BF16 attention rounds it (a BF16 matmul, then a BF16 multiply by the scale): s_j = bf16(bf16(q_h . K_j) * scale), with the dot product accumulated in FP32 before the first rounding. On the traced reference prompt, scores kept in FP32 instead put up to 16 outputs of a layer outside the HF bound below (in 4 of the 22 layers), because real scores are large enough that one BF16 ulp of a score shows in the output. After the scores, the result may differ from naive::attention within the tolerance below: the probabilities may stay in FP32 or be rounded to BF16 as naive::attention rounds them, the sums may run in any order as long as they accumulate in FP32, and the output is rounded to BF16 once. The result must stay finite and correct when scores are large: the tests reach scores of 128, where exp overflows in FP32. A row's output depends only on its query, the first ceil(L / block_size) entries of its block table and the L cached tokens they reach: the slots past position L - 1 in its last block, every other block, and the table entries after the ones in use must not change a single bit of it, even when they hold NaN (a debug KvCache starts as 0xFF bytes, BF16 NaN) or huge values. The result is deterministic, and a row's output is bit-identical whether it is computed alone or in any batch; the M3 criterion that 16 concurrent requests produce the same text as 16 sequential runs relies on this."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "Before launching anything, throw std::invalid_argument with a message naming paged_attention_decode when: k_cache or v_cache is not BF16 or not 4-dimensional, or their shapes differ; out is not BF16 or not 2-dimensional, its width is not a multiple of head_dim, or heads is not a positive multiple of kv_heads; qkv is not BF16 or not 2-dimensional, its row count differs from out's, or its width is not (heads + 2 * kv_heads) * head_dim; block_tables is not I32 or not 2-dimensional, its row count is not B, or it has no columns; context_lens is not I32 or not 1-dimensional, or its length is not B. The caller guarantees, without checks (they would need a copy back to the host), that 0 <= context_lens[b] <= max_blocks * block_size and that the first ceil(context_lens[b] / block_size) entries of row b of block_tables are between 0 and num_blocks - 1; later entries may hold anything, including -1. Several rows may read the same blocks. The launch is asynchronous on stream, with the usual KERNEL_CHECK after it."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "B = 0 is a valid call that does nothing and must not launch a kernel with an empty grid. A context of one token gives exactly V_0 for every head, bit for bit. Contexts of block_size - 1, block_size and block_size + 1 tokens, and 2,048 tokens (the MVP context cap: a full 128-entry table of 16-token blocks) must all be right, and block 0 (the null block) is read like any other. It must be correct for any positive block_size, kv_heads and head_dim, any heads that is a multiple of kv_heads (the tests use head dims 4 to 128 and block sizes 1 to 32), and every context length up to 2,048. It may reject, with std::invalid_argument, a table whose capacity max_blocks * block_size exceeds 2,048 tokens, but must accept every width up to that."
+  },
+  {
+   "label": "What to compare against",
+   "text": "naive::attention on a contiguous copy of the row's L cached tokens with start = L - 1, within 1/64 of (sum over j of p_j * |V_j[d]|) + |naive output| per element, where p is the exact softmax computed in double from the BF16 inputs; and HF's attn output of every layer on the traced reference prompt, within 2^-7 times the largest |V| of the visible tokens in that column, the bound naive::attention meets in tests/gpu/test_attention.cpp."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_paged_attention.cpp: a 37-token sequence through a shuffled block table, context lengths 1, 2, 15, 16, 17, 31, 32 and 33 alone and as one batch, 2,048-token contexts with a full table, a 16-sequence decode batch with mixed lengths, padding rows (with guard elements around out proving nothing outside the real rows is written), scores up to 128, a one-token context equal to V bit for bit, NaN and huge values outside the contexts and -1 table entries leaving the output bit-identical, batch invariance and repeatability, rows sharing one table as a prefill, six odd head and block layouts, HF's attn on all 22 layers, B = 0, and every rejected argument. The caches are filled with random values first, so a read of a wrong slot shows. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them."
+  }
+ ],
+ "attention-v2": [
+  {
+   "label": "Purpose",
+   "text": "paged_attention_decode_v2 is the second version of the paged decode attention: the same operation as paged_attention_decode (every row of the batch is one query token that attends to all the cached tokens of its sequence by following its block table), written so that it stays fast and correct as the context grows. Version 1 keeps one FP32 score per context token in shared memory and goes over the context three times (scores, then the maximum and the sum, then the weighted sum of V), so its shared memory grows with the table capacity and its cost per token of context stays high; the build plan's v2 is the single-pass online softmax, which never needs the scores of the whole row at once, keeps a running maximum and a running sum for the row, and so works for any context length. The decode step of PagedRunner is dominated by the weight GEMVs at short contexts, but attention grows linearly with the context and is the part this kernel improves; experiment E5 of the build plan plots v1 against v2 from 128 to 2,048 tokens. Version 1 stays in the tree as the reference and the \"before\" number."
+  },
+  {
+   "label": "Interface",
+   "text": "Exactly the arguments, shapes, layouts and semantics of paged_attention_decode (include/engine/kernels/paged_attention.h): k_cache and v_cache are BF16 [num_blocks, kv_heads, block_size, head_dim] views of the paged cache, out is BF16 [B, heads * head_dim], qkv is the BF16 [B, (heads + 2 * kv_heads) * head_dim] output of the fused QKV GEMM after RoPE of which only the Q columns are read, block_tables is I32 [B, max_blocks], context_lens is I32 [B], and stream is the stream to run on. For row b with L = context_lens[b] > 0, token j < L is in physical block block_tables[b][j / block_size] at offset j % block_size, query head h reads kv head h / (heads / kv_heads), and out[b][h * head_dim + d] = sum over j < L of p_j * V_j[d] with p the softmax over j < L of s_j = scale * (q_h . K_j) and scale = 1 / sqrt(head_dim). A row with L = 0 is padding and nothing of out row b is written. qkv, both caches, block_tables and context_lens are not modified. It is a drop-in replacement: the model runner would call either function with the same tensors."
+  },
+  {
+   "label": "Numerics",
+   "text": "The scores are rounded the way v1 and HF's eager BF16 attention round them: s_j = bf16(bf16(q_h . K_j) * scale), the dot product accumulated in FP32 before the first rounding; v1's spec records why (scores kept in FP32 put outputs of the traced reference prompt outside the HF bound in 4 of the 22 layers). Everything after the scores is free as long as the result stays within the tolerance below: the running sum and the weighted sum of V must accumulate in FP32, the probabilities may or may not be rounded, and the output is rounded to BF16 once. The order of the additions is not that of v1, so v2 is not required to be bit-identical to v1 or to naive::attention, only within the tolerance; what is required is that every row of the output is finite and correct when the maximum score changes on almost every token (a context whose scores rise steadily, or fall steadily, or have one spike in the middle), when scores are large enough that exp overflows in FP32 without the maximum subtracted (the tests reach 128), and for contexts of thousands of tokens, where a sum of probabilities accumulated carelessly loses precision. A row's output depends only on its query, the first ceil(L / block_size) entries of its block table and the L cached tokens they reach: the slots past position L - 1 in its last block, every other block and the table entries after the ones in use must not change a single bit of it, even when they hold NaN or huge values or the entry is -1. The result is deterministic, and a row's output is bit-identical whether it is computed alone or in any batch, with any other rows next to it, because the M3 criterion that 16 concurrent requests produce the same text as 16 sequential runs relies on it; a split of one row's work over several blocks or threads must therefore combine its parts in an order that does not depend on the other rows."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "Before launching anything, throw std::invalid_argument with a message naming paged_attention_decode_v2 for exactly the argument errors of v1: k_cache or v_cache not BF16 or not 4-dimensional or of different shapes; out not BF16 or not 2-dimensional, with a width that is not a multiple of head_dim, or heads not a positive multiple of kv_heads; qkv not BF16 or not 2-dimensional, with a row count different from out's or a width other than (heads + 2 * kv_heads) * head_dim; block_tables not I32 or not 2-dimensional, with a row count other than B or no columns; context_lens not I32 or not 1-dimensional or not of length B. Unlike v1 there is no cap on the table capacity: max_blocks * block_size may be any size, and the tests call it with 8,192 tokens. The caller guarantees, without checks, that 0 <= context_lens[b] <= max_blocks * block_size and that the first ceil(context_lens[b] / block_size) entries of row b of block_tables are between 0 and num_blocks - 1; later entries may hold anything, including -1. Several rows may read the same blocks. The launch is asynchronous on stream, with the usual KERNEL_CHECK after it."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "B = 0 is a valid call that does nothing and must not launch a kernel with an empty grid. A context of one token gives exactly V_0 for every head, bit for bit. Contexts of block_size - 1, block_size and block_size + 1 tokens, of one less than, exactly and one more than a power of two up to 1,025, and of 2,048, 4,096 and 8,192 tokens must all be right, and block 0 is read like any other. It must be correct for any positive block_size, kv_heads and head_dim, any heads that is a multiple of kv_heads (the tests use head dims 4 to 128 and block sizes 1 to 32), and every context length the table can hold. A row of 8,192 tokens next to a row of one token and a padding row in the same batch must all be right: the batch is not uniform."
+  },
+  {
+   "label": "What to compare against",
+   "text": "The same references as v1: naive::attention on a contiguous copy of the row's L cached tokens with start = L - 1, within 1/64 of (sum over j of p_j * |V_j[d]|) + |naive output| per element, where p is the exact softmax computed in double from the BF16 inputs; and HF's attn output of every layer on the traced reference prompt, within 2^-7 times the largest |V| of the visible tokens in that column. For speed, compare with paged_attention_decode under Nsight Compute on TinyLlama's layout (32 heads, 4 kv heads, head dim 64, block size 16) with 1 and 16 rows at contexts of 128, 512 and 2,048 tokens, and record the table in docs/profiling.md; report where v2 beats v1 and by how much. That comparison is the result of experiment E5 and is not a test."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_paged_attention_v2.cpp: every test of tests/gpu/test_paged_attention.cpp run against v2 (a 37-token sequence through a shuffled table, contexts around the block boundaries alone and as one batch, 2,048-token contexts, a 16-sequence batch with mixed lengths, padding rows with guard elements around out, scores up to 128, a one-token context equal to V bit for bit, NaN and huge values outside the contexts and -1 table entries leaving the output bit-identical, batch invariance and repeatability, rows sharing one table as a prefill, six odd head and block layouts, HF's attn on all 22 layers, B = 0 and every rejected argument), plus contexts of 4,096 and 8,192 tokens, contexts around 256, 512 and 1,024, a running maximum that rises on every token, falls on every token or has one spike, and a batch of an 8,192-token row, a 1-token row and a padding row whose rows each equal the same row computed alone. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them. Wiring v2 into PagedRunner and switching the end-to-end numbers is a separate branch once these pass."
+  }
+ ],
+ "split-attention": [
+  {
+   "label": "Purpose",
+   "text": "paged_attention_decode_split is the third version of the paged decode attention: the same operation as paged_attention_decode_v2, with the context of every row cut into several pieces that different thread blocks work on at the same time, and the pieces combined afterwards. Version 2 launches one thread block per (row, query head), so a decode step with one row runs 32 blocks on a GPU with several dozen SMs and each block walks the whole context by itself; Nsight Compute shows DRAM throughput of 6% or less at contexts of 512 to 2,048 tokens, and the attention share of a decode step grows with the context while the weight GEMVs do not. Splitting the context (the \"flash decoding\" idea) gives a row of L tokens up to num_splits times more blocks, so the memory system is kept busy even at batch 1. The price is a scratch buffer for the partial results and a second kernel (or a second phase) that merges them; that is why this is a different function with an extra argument and not a change inside v2. v2 stays in the tree as the reference and the \"before\" number, and wiring this function into PagedRunner (which must own and size the scratch buffer) is a separate branch once the tests pass."
+  },
+  {
+   "label": "Interface",
+   "text": "The arguments of paged_attention_decode_v2 (include/engine/kernels/paged_attention_v2.h) in the same order, plus scratch before stream. k_cache and v_cache are BF16 [num_blocks, kv_heads, block_size, head_dim] views of the paged cache, out is BF16 [B, heads * head_dim], qkv is the BF16 [B, (heads + 2 * kv_heads) * head_dim] output of the fused QKV GEMM after RoPE of which only the Q columns are read, block_tables is I32 [B, max_blocks], context_lens is I32 [B], and stream is the stream to run on. scratch is F32 [B, heads, num_splits, head_dim + 2] on the device, owned by the caller and used as workspace: num_splits is its third dimension, so the caller chooses the split count by the shape of the buffer it passes, and any num_splits >= 1 must work. For (row b, head h, split s) the vector scratch[b][h][s] holds the partial result of the tokens of split s: element 0 is the maximum score m, element 1 is the sum l of exp(score - m) and elements 2 to head_dim + 1 are the sum of exp(score - m) * V_j[d] over the tokens j of the split, in FP32 and not normalized. How the kernel uses that layout inside is yours as long as the shape is accepted; the contents of scratch before the call must not matter and after the call are unspecified. Semantics are those of v2: for row b with L = context_lens[b] > 0, token j < L is in physical block block_tables[b][j / block_size] at offset j % block_size, query head h reads kv head h / (heads / kv_heads), and out[b][h * head_dim + d] = sum over j < L of p_j * V_j[d] with p the softmax over j < L of s_j = scale * (q_h . K_j) and scale = 1 / sqrt(head_dim). A row with L = 0 is padding: nothing of out row b is written (scratch may be). qkv, both caches, block_tables and context_lens are not modified."
+  },
+  {
+   "label": "How the context is cut",
+   "text": "Split s of a row with L tokens covers one contiguous range of token positions, the ranges of splits 0 to num_splits - 1 are in order and together cover [0, L) exactly once, and the boundaries are a function of L, num_splits and block_size only (cutting on block boundaries is allowed and probably wise, a split may be empty when L is small, for example L = 1 and num_splits = 64 leaves 63 empty splits). Empty splits must not influence the result: they contribute nothing, not a NaN from 0 / 0 or exp(-inf - -inf) and not a maximum of -1e20 that distorts the combination. The merge goes over the non-empty splits of a (row, head) in increasing split index with one running maximum M = max of the m_s, the total l = sum of exp(m_s - M) * l_s, the weighted sum acc[d] = sum of exp(m_s - M) * acc_s[d], and out = bf16(acc[d] / l). The order of the merge, like the order inside a split, may only depend on that row's own L and num_splits, never on the other rows of the batch, on the contents of the scratch before the call or on the timing of the blocks (no atomics on floats, no \"last block to finish merges\" unless the order it adds in is fixed)."
+  },
+  {
+   "label": "Numerics",
+   "text": "The scores are rounded exactly as in v1 and v2: s_j = bf16(bf16(q_h . K_j) * scale), the dot product accumulated in FP32 before the first rounding. The running sums and the weighted sum of V are FP32, the output is rounded to BF16 once, and the result must be finite and right when the maximum moves on almost every token, when exp would overflow without subtracting the maximum (scores up to 128 in the tests), for contexts of 8,192 tokens and when the global maximum is in a split other than the first. The result is not required to be bit-identical to v2 or to a different num_splits, only within the tolerance below; what is required is that for a fixed num_splits the output of a row is deterministic and bit-identical whether the row is computed alone or in any batch next to any other rows, because the M3 criterion that 16 concurrent requests produce the same text as 16 sequential runs relies on it. A row's output depends only on its query, the first ceil(L / block_size) entries of its block table and the L cached tokens they reach: the slots past position L - 1 in its last block, every other block and the table entries after the ones in use (which may hold NaN-producing garbage or -1) must not change a single bit of it. A context of one token gives exactly V_0 for every head, bit for bit, for every num_splits."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "Before launching anything, throw std::invalid_argument with a message naming paged_attention_decode_split for exactly the argument errors of v2 (k_cache or v_cache not BF16 or not 4-dimensional or of different shapes; out not BF16 or not 2-dimensional, with a width that is not a multiple of head_dim, or heads not a positive multiple of kv_heads; qkv not BF16 or not 2-dimensional, with a row count different from out's or a width other than (heads + 2 * kv_heads) * head_dim; block_tables not I32 or not 2-dimensional, with a row count other than B or no columns; context_lens not I32 or not 1-dimensional or not of length B), plus for scratch: not F32, not 4-dimensional, a shape other than [B, heads, num_splits, head_dim + 2] in the first, second and fourth dimensions, or num_splits = 0. There is no cap on the table capacity and the tests call it with 8,192 tokens. The caller guarantees, without checks, that 0 <= context_lens[b] <= max_blocks * block_size and that the first ceil(context_lens[b] / block_size) entries of row b of block_tables are between 0 and num_blocks - 1. The launch is asynchronous on stream (every kernel you launch, in stream order, with the usual KERNEL_CHECK after each) and the call must be safe to repeat on the same scratch buffer, including right after another call on the same stream."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "B = 0 is a valid call that does nothing and must not launch a kernel with an empty grid (scratch may then be an empty tensor with a null data pointer). num_splits larger than the number of tokens or of blocks of a row, num_splits = 1 (which must still produce a correct result) and a batch whose rows have very different lengths (8,192, 1 and 0 in the same call) must all be right. It must be correct for any positive block_size, kv_heads and head_dim, any heads that is a multiple of kv_heads (the tests use head dims 4 to 128 and block sizes 1 to 32)."
+  },
+  {
+   "label": "What to compare against",
+   "text": "The same references as v1 and v2: naive::attention on a contiguous copy of the row's L cached tokens with start = L - 1, within 1/64 of (sum over j of p_j * |V_j[d]|) + |naive output| per element, with p the exact softmax in double from the BF16 inputs, and HF's attn output of every layer of the traced reference prompt within 2^-7 times the largest |V| of the visible tokens in that column. For speed, compare with paged_attention_decode_v2 under Nsight Compute on TinyLlama's layout (32 heads, 4 kv heads, head dim 64, block size 16) with 1 and 16 rows at contexts of 512, 2,048 and 8,192 tokens, trying num_splits of 1, 2, 4, 8 and 16, and record the table in docs/profiling.md; report where splitting wins, by how much, what the best num_splits is per context and where the extra merge launch makes it lose. A rule for choosing num_splits from the batch size and the longest context is what the wiring branch needs from you."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_paged_attention_split.cpp: every test of tests/gpu/test_paged_attention_v2.cpp run against this function for num_splits of 1, 3, 16 and 64 (a 37-token sequence through a shuffled table, contexts around the block boundaries, contexts up to 8,192 tokens, contexts around 256, 512 and 1,024, a 16-sequence batch with mixed lengths, padding rows with guard elements around out, scores up to 128, a one-token context equal to V bit for bit, NaN and huge values outside the contexts and -1 table entries leaving the output bit-identical, batch invariance and repeatability, rows sharing one table as a prefill, six odd head and block layouts, a running maximum that rises, falls or spikes, HF's attn on all 22 layers, B = 0 and every rejected argument), plus a scratch buffer filled with NaN giving the bit-identical output of a scratch buffer filled with zeros, and every rejected scratch shape. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them."
+  }
+ ],
+ "add-rmsnorm": [
+  {
+   "label": "Purpose",
+   "text": "add_rmsnorm fuses the residual add and the RMSNorm that follows it in every decoder layer. Today PagedRunner runs naive::add (x = x + proj) and then naive::rmsnorm (norm = rmsnorm(x)) as two kernels, so the new hidden state is written to global memory by the first kernel and read back by the second. A decode step at batch 1 is memory bound (it streams the 2.2 GB of weights, and the activations are 4 KB per row), but the two extra launches and the round trip sit on the critical path of 22 layers times 2 norms, and they are what the nsys timeline shows as gaps once CUDA Graphs remove the launch latency. The fused kernel reads x and residual once, writes the sum and the normalized row once, and is one launch instead of two. The model runner will call it twice per layer (after the attention output projection with ln2, after the MLP down projection with the next layer's ln1 or the final norm), so its output must be usable as the next residual stream."
+  },
+  {
+   "label": "Interface",
+   "text": "All tensors are BF16 and 2-dimensional [T, hidden] except weight, which is BF16 [hidden]. sum, norm, x and residual have the same shape. x is the residual stream, residual is the branch output being added to it (proj in the runner), weight is the RMSNorm scale of the norm that follows, eps its epsilon. stream is the stream to run on. For every row t: sum[t] = x[t] + residual[t] elementwise, and norm[t] = rmsnorm(sum[t]) with the definition of naive::rmsnorm (see src/kernels/rmsnorm.cu): rstd = rsqrt(mean(sum[t]^2) + eps) with the mean over the BF16-rounded sum values accumulated in FP32, and norm[t][i] = bf16(weight[i] * bf16(sum[t][i] * rstd)). Both outputs are fully written; x, residual and weight are not modified, except that sum may be the very same tensor (same data pointer) as x or as residual, which is how the runner uses it (sum = x). norm must not overlap sum, x or residual."
+  },
+  {
+   "label": "Numerics",
+   "text": "sum is bit-identical to naive::add: float(x) + float(residual) rounded once to BF16. The norm is computed from the rounded sum, not from the unrounded FP32 sum, exactly as the unfused pair does, so fusing changes no rounding step. The only permitted difference from naive::rmsnorm is the summation order of the FP32 sum of squares (at most 2 BF16 ulps on at most 0.1% of the elements, the close_up_to_reduction_order criterion the naive kernel itself is tested with). A given row must produce bit-identical output whatever T is and wherever the row sits in the batch (batch invariance: a sequence decoded alone and in a batch of 16 must not differ because of this kernel), and two runs on the same input must be bit-identical (no atomics in the reduction)."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "Before launching anything, throw std::invalid_argument with a message naming add_rmsnorm when: any of sum, norm, x, residual or weight is not BF16; x is not 2-dimensional; residual, sum or norm does not have exactly x's shape; weight is not 1-dimensional of length hidden. Overlap other than the exact aliasing of sum with x or with residual is the caller's bug and is not checked. The launch is asynchronous on stream with the usual KERNEL_CHECK after it."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "T = 0 is a valid call that does nothing, with no launch of an empty grid, and the tensors' data pointers may be null. hidden is any positive integer up to at least 8192 (1, 2, 100, 2047 and 2049 included, not only multiples of 8): if you load 128 bits at a time you need a scalar path for the tail and for rows whose address is not 16-byte aligned, and the tests pass pointers offset by one element so the base pointer itself is not aligned. Rows of different T must not influence one another. An all-zero row gives sum 0 and norm 0 (no NaN from the normalization). The output must not depend on the contents of memory outside the tensors."
+  },
+  {
+   "label": "What to compare against",
+   "text": "A host reference in the test (round the sum to BF16, then the double-accumulated RMSNorm of the naive test), and the unfused naive::add followed by naive::rmsnorm on the GPU."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_add_rmsnorm.cpp: TinyLlama's hidden size 2048 at T = 1, 16 and 64, 5632 and 8192, the odd hidden sizes above, an unaligned base pointer for each, sum aliasing x and aliasing residual, guard bytes around every tensor proving nothing outside them is written and the inputs are unchanged, row results independent of T and of the row's position, determinism, T = 0, an all-zero row and every rejected argument. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them, then ncu the kernel at T = 1 and T = 16 against the naive pair and record the before and after in docs."
+  }
+ ],
+ "rope": [
+  {
+   "label": "Purpose",
+   "text": "fast::rope is the optimized replacement of naive::rope (src/kernels/rope.cu) in the decode and prefill path of PagedRunner. RoPE rotates the Q and K slices of every row of the fused QKV GEMM output in place, by an angle that depends on the token's position; it is pure elementwise work with a transcendental per element, so on a memory-bound decode step its cost is the launch plus the uncoalesced 2-byte accesses of the naive loop (one thread per pair, two scattered BF16 loads and stores) and the per-pair cosf and sinf. The fast kernel must do the same rotation with 128-bit accesses and without recomputing what can be shared, and give exactly the same bits."
+  },
+  {
+   "label": "Interface",
+   "text": "Same as naive::rope. qkv is BF16 [T, (heads + 2 * kv_heads) * head_dim] and is modified in place: within each row, the first heads * head_dim columns are the query heads and the next kv_heads * head_dim the key heads; the last kv_heads * head_dim columns (V) are not touched. positions is I32 [T] in device memory, one position per row. head_dim is derived as width / (heads + 2 * kv_heads) and must be even. theta is the RoPE base (10000 for TinyLlama). stream is the stream to run on. The rotation is HF rotate_half style: for head h and index i in [0, head_dim / 2), with angle = position * theta^(-2i / head_dim), x[i] and x[i + head_dim / 2] of the head become x[i] * cos - x[i + half] * sin and x[i + half] * cos + x[i] * sin. Everything outside the Q and K columns of qkv, and positions, is unchanged."
+  },
+  {
+   "label": "Numerics",
+   "text": "Bit-identical to naive::rope for every input, which is the only reference: cos and sin are computed with the accurate cosf and sinf in FP32 from the angle position * inv_freq[i] (inv_freq[i] = 1 / pow(theta, 2i / head_dim) as the naive launcher computes it on the host), each rounded to BF16; every product (lo * cos, hi * cos, lo * sin, -hi * sin) is rounded to BF16 on its own and the two terms of each output are added in FP32 and rounded once more. The fast-math intrinsics (__sinf, __cosf, --use_fast_math) change the bits and are not allowed; if you use sincosf, the tests must still show bit identity. This rounding sequence is what the HF reference does, so any shortcut that fuses a multiply and an add (fmaf) is a mismatch."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "Before launching anything, throw std::invalid_argument with a message naming rope when: heads or kv_heads is not positive; qkv is not BF16 or not 2-dimensional; positions is not I32, not 1-dimensional or its length is not T; the width is not a multiple of heads + 2 * kv_heads, or the head_dim it gives is odd or larger than 256. Positions are the caller's responsibility (non-negative and below the model's max positions). The launch is asynchronous on stream with the usual KERNEL_CHECK after it."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "T = 0 is a valid call that does nothing (no launch of an empty grid; the data pointers may be null). head_dim is any even value from 2 to 256, not only 64: 128-bit accesses need head_dim / 2 to be a multiple of 8, so the other cases (2, 6, 10, 50 and so on) need a scalar path, and the base pointer of qkv and the row stride (width * 2 bytes) are not always multiples of 16 (the tests offset the pointer by one element). Rows are independent, so the result of a row must not depend on T or on the row's place in the batch. Positions up to 2047 and an arbitrary order of positions within a batch (a decode batch is 16 unrelated sequences) must work, and the same position in two rows must give identical rotations. When the number of query heads differs from the key heads (GQA, 32 and 4 in TinyLlama) both are rotated with the same angles."
+  },
+  {
+   "label": "What to compare against",
+   "text": "naive::rope on the same input (it is itself checked against HF on all 22 layers), and an untouched-V check in the test."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_rope_fast.cpp: bit identity with naive::rope on TinyLlama's layout (32, 4, 64) at T = 1, 16 and 2048 with consecutive and random positions, other head layouts (heads, kv_heads, head_dim) including head_dim 2, 6, 50, 128 and 256 and one kv head, theta 10000 and 500000, an unaligned base pointer, guard bytes around qkv, V columns and positions unchanged, determinism, T = 0 and every rejected argument. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them and ncu before and after."
+  }
+ ],
+ "swiglu": [
+  {
+   "label": "Purpose",
+   "text": "fast::swiglu is the optimized replacement of naive::swiglu (src/kernels/swiglu.cu) between the gate/up GEMM and the down projection in every MLP of PagedRunner. The activation of one token is silu(gate) * up over ff = 5632 values, read from the two halves of one row of the fused gate_up GEMM output. At decode the arithmetic is negligible and the whole kernel is bandwidth and launch bound: the naive version issues one thread per output element with two 2-byte loads and a 2-byte store each, which wastes most of every memory transaction. The fast kernel must move the same bytes with 128-bit accesses, and compute the same bits."
+  },
+  {
+   "label": "Interface",
+   "text": "Same as naive::swiglu. gate_up is BF16 [T, 2 * ff], row-major: columns 0 to ff - 1 of a row are the gate values and columns ff to 2 * ff - 1 the up values (the fused wgu layout of the weights). out is BF16 [T, ff]. stream is the stream to run on. For every row t and column j, out[t][j] = silu(gate_up[t][j]) * gate_up[t][ff + j] with the rounding described below. gate_up is not modified, and out must not overlap gate_up."
+  },
+  {
+   "label": "Numerics",
+   "text": "Bit-identical to naive::swiglu for every input, including large magnitudes and special values: g and u are the BF16 inputs converted to float, silu is g / (1 + expf(-g)) with the accurate expf (not __expf, not --use_fast_math, no reciprocal approximation) rounded to BF16 on its own, and the result is float(silu_bf16) * u rounded to BF16 once. This is the sequence HF performs (silu on a BF16 tensor, then a BF16 multiply), which is why the naive kernel matches HF on all 22 layers with zero mismatches. For g very negative expf(-g) overflows to infinity and silu becomes -0 (not NaN); for g = +inf silu is +inf; a NaN input gives a NaN output (only NaN-ness is compared, not the payload). The tests check all of this."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "Before launching anything, throw std::invalid_argument with a message naming swiglu when: gate_up is not BF16 or not 2-dimensional, or its width is odd; out is not BF16, not 2-dimensional, does not have T rows or its width is not half of gate_up's. The launch is asynchronous on stream with the usual KERNEL_CHECK after it."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "T = 0 is a valid call that does nothing (the data pointers may be null, no launch of an empty grid). ff is any positive integer, 1 included, not only a multiple of 8: with 128-bit accesses you need a scalar path for ff values that are not multiples of 8, and note that the up half of a row starts at byte offset ff * 2 within a row that starts at 2 * 2 * ff * t, so the alignment of the up values and of the next row depends on ff. The base pointers of gate_up and out are not always 16-byte aligned either (the tests offset them by one element). Index arithmetic must not overflow 32 bits (T * 2 * ff up to at least 2,048 * 2 * 5632 is within int32 but a large batch times a large ff is not; use 64-bit indices). Every row is independent and the result must not depend on T or the row position, and runs must be bit-identical."
+  },
+  {
+   "label": "What to compare against",
+   "text": "naive::swiglu on the same input, a host reference for the special values, and the HF activations through the naive kernel."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_swiglu_fast.cpp: bit identity with naive::swiglu on TinyLlama's ff = 5632 at T = 1, 16 and 64, on odd and small ff values (1, 3, 7, 8, 9, 100, 5631), on an unaligned base pointer for each buffer, on inputs with magnitudes up to 100 and on special values (negative overflow, infinities, NaN, signed zeros), guard bytes around out, gate_up unchanged, determinism, T = 0 and every rejected argument. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them and ncu before and after."
+  }
+ ],
+ "cuda-graphs": [
+  {
+   "label": "Purpose",
+   "text": "A decode step of TinyLlama is about 300 small kernel launches (22 layers times RMSNorm, QKV GEMM, RoPE, write_kv, attention, output GEMM, add, RMSNorm, gate/up GEMM, SwiGLU, down GEMM, add) and each launch costs the CPU a few microseconds, which at batch 1 is as much as the kernels themselves take: the GPU idles between kernels waiting for the host. A CUDA Graph records the whole sequence once and replays it with a single cudaGraphLaunch, so the launches are submitted together and the gaps in the nsys timeline disappear. That is half of the M4 exit criterion (\"nsys timeline shows no launch gaps\"; the other half is 60% of measured bandwidth at batch 1). DecodeGraphs owns one captured graph per batch-size bucket (1, 2, 4, 8, 16) of PagedRunner's decode step and replays the one that fits a decode batch. Prefill is not graphed: its shape changes every step."
+  },
+  {
+   "label": "Interface",
+   "text": "DecodeGraphs(runner, buckets) takes the runner by reference (it must outlive this object and must not be used from another thread while a graph is captured or replayed) and the bucket sizes, strictly increasing positive integers each at most runner.max_seqs() and runner.max_tokens(). covers(batch) is true exactly when the batch is a decode batch (prefill false, num_tokens() = num_seqs >= 1), num_seqs is at most the largest bucket and batch.max_blocks equals runner.max_blocks(). bucket_for(seqs) is the smallest bucket that is at least seqs, or 0 when there is none. num_captured() is the number of graphs captured so far. forward(batch) pads the batch to its bucket with pad_decode_batch (include/engine/sched/paged_batch.h: padded rows write nothing to the KV cache and attend to nothing), stages it with runner.stage, launches the bucket's graph on runner.stream() and returns the logits as a BF16 tensor [batch.num_seqs, vocab], a view of the first rows of the runner's logits buffer, valid until the runner's next forward. Like PagedRunner::forward it is asynchronous on the runner's stream: the caller synchronizes (the sampler's copy back does)."
+  },
+  {
+   "label": "How a graph is made",
+   "text": "The kernels of PagedRunner::run_staged only read device buffers that are allocated once (the packed int inputs, the activations, the KV cache, the weights) and the host never touches the data between kernels, which is what makes a capture replayable: every replay reads the new token ids, positions, slots, context lengths and block tables that stage() has just copied to the same device addresses, and runs the same kernels on them. Per bucket: run_staged(bucket, bucket) once eagerly on an all-padding batch first (cuBLAS picks its algorithm and loads its kernels on the first call, and neither can be captured), then cudaStreamBeginCapture on runner.stream(), run_staged(bucket, bucket), cudaStreamEndCapture, cudaGraphInstantiate, keeping the executable graph. Capture only works on a stream that is not the legacy default stream; nothing in the captured region may allocate, synchronize or copy from pageable host memory (the runner was changed so it does not), and PagedRunner::stage must stay outside the capture (the H2D copy of the batch is not part of the graph). Choose the capture mode with the cuBLAS and multi-threading hazards in mind and be ready to explain the choice. The destructor destroys every executable graph and graph; it must not throw and must not run while a replay is pending, so it synchronizes the stream first."
+  },
+  {
+   "label": "When graphs are captured",
+   "text": "In the constructor, all of them, so the first real request does not pay for capture and a capture failure surfaces at startup. Capturing uses an all-padding batch, so the KV cache is left exactly as it was found (padded rows have slot -1 and context length 0): the tests snapshot the whole cache around the constructor."
+  },
+  {
+   "label": "Numerics",
+   "text": "Replaying a graph runs the same kernels with the same arguments as runner.run_staged(bucket, bucket) eagerly on the same padded batch, so its logits are bit-identical to that eager run. They are not guaranteed bit-identical to runner.forward on the unpadded batch: the GEMMs run with bucket rows instead of num_seqs rows and cuBLAS may then choose another algorithm, which changes BF16 rounding, so the tests compare the unpadded eager run with the same tolerance as the paged runner tests (relative L2 at most 0.05) and the padded eager run exactly. Decoding a sequence through a graph over many steps must produce exactly the tokens the padded eager run produces, whatever the batch composition does between steps (a batch shrinking across buckets, sequences finishing, the cache blocks being reused)."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "The constructor throws std::invalid_argument with a message naming DecodeGraphs for an empty bucket list, a bucket that is not positive, buckets not strictly increasing, and a bucket above runner.max_seqs() or runner.max_tokens(). forward throws std::invalid_argument when covers(batch) is false. CUDA errors go through CUDA_CHECK as everywhere else. Mixing graph replays and eager runner.forward calls on the same runner (prefill steps are eager, decode steps are replays) must work, since they share the runner's buffers and are ordered by the one stream."
+  },
+  {
+   "label": "Edge cases and boundaries",
+   "text": "A bucket list with a single bucket (only batch 1, or only 16) works; a batch of exactly a bucket size needs no padding rows; a batch of one more than a bucket uses the next bucket; the same graph is replayed thousands of times without growing memory; forward may be called with batches whose sequences, positions and block tables are different every time (nothing about the first batch may be baked into the graph except shapes)."
+  },
+  {
+   "label": "What to compare against",
+   "text": "runner.run_staged(bucket, bucket) after runner.stage(pad_decode_batch(batch, bucket)) for exact equality, runner.forward(batch) for tolerance, and a full multi-step decode against the same loop run eagerly at padded size."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_decode_graphs.cpp: bit identity with the padded eager step for batches of 1, 2, 3, 5, 8, 13 and 16, closeness to the unpadded eager step, a 16-sequence greedy decode in which sequences finish at different steps and the batch crosses every bucket, a cache snapshot before and after construction, 200 replays of one graph with changing inputs, interleaving eager prefill with replays, covers and bucket_for, single-bucket lists and every rejected argument. They run in the todo_gpu_tests target with the todo_joe label (ctest --preset debug -L todo_joe). When they all pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests if it is empty; also run compute-sanitizer --tool memcheck on them, and record an nsys timeline of a 64-token decode at batch 1 with and without graphs (the launch gaps and the tokens per second) in docs. Wiring the graphs into serve() and the --graphs flag of engine bench is branch 23, once these pass."
+  }
+ ],
+ "chunked-prefill": [
+  {
+   "label": "Purpose",
+   "text": "schedule() makes every step all prefill or all decode, and prefill goes first, so one long prompt stalls every running sequence: the batch-16 profile's 113 ms prefill costs about 12 decode steps, and a 2,048-token prompt takes about 1.6 s alone (docs/results.md). Under Poisson load vLLM reaches 6.1 req/s of goodput against the engine's 3.2 with the same token ids and arrivals, and prefill stalls are the likely cause, not yet measured on their own (#101). This method gives each step a token budget, gives every decoding sequence its row first, and spends what is left on prefill, so a long prompt spreads over several steps while the others keep decoding. schedule() stays as it is; a scheduler uses one of the two for its whole life, and nothing calls this one until the runner wiring lands."
+  },
+  {
+   "label": "Interface",
+   "text": "ChunkedStep Scheduler::schedule_chunked(int token_budget), declared in include/engine/sched/scheduler.h with PrefillChunk and ChunkedStep. decode lists the sequences that get one row each, for their last token, in running order. prefill lists the chunks in the order their rows go into the batch, after the decode rows: chunk {id, first, count} covers positions first to first + count - 1 of request id, in the numbering of Request::token. sampled lists the sequences that need a token from this step, in row order: every decode entry, then each sequence whose chunk reaches the end of its length. A chunk that does not reach the end has no entry and no logits. The existing update(tokens) consumes the step and takes exactly one token per sampled entry, in that order. It may therefore be empty, and an empty update still has to be called: a step with only unfinished chunks is pending like any other non-empty step."
+  },
+  {
+   "label": "Filling a step",
+   "text": "First, every running sequence whose prefill is complete gets a decode row, exactly as schedule() does it: append a slot, and when can_append is false preempt from the back of the running list, with the same rule for the victim, the waiting queue and Request::preemptions. Then the rest of the budget goes to the sequence still in prefill, of which there is at most one, because the next is admitted only when budget is left over. Then, while budget remains, waiting requests are admitted first come, first served, up to max_batch, stopping at the first one can_allocate refuses and never skipping it. num_tokens() never exceeds token_budget, and whenever a sequence is left with unfinished prefill the step has used the whole budget."
+  },
+  {
+   "label": "Blocks and progress",
+   "text": "Admission allocates blocks for the request's whole length at once, as schedule() does, so a sequence in prefill can never run out of blocks halfway and blocks().length(id) equals request(id).length() from its first chunk on. The sequence state is Running from admission. Chunks of one sequence are contiguous and start at 0. Where the progress is kept is up to you, but it has to be forgotten in every way a sequence can leave: preemption, finishing, and cancel. A preempted sequence, whether it was decoding or still in prefill, starts again at position 0 over prompt plus output, like schedule()'s prefill, and an id submitted again after a cancel starts at 0 too."
+  },
+  {
+   "label": "What must hold",
+   "text": "Outputs do not depend on the budget: with a correct KV cache every answer equals the request's answer alone, since Request::output and the KV contents are all a sequence's sampling depends on. A sequence whose prefill is complete and that was not preempted gets a row in every step, which is the point of this work. The sequence in prefill is always the last in the running list, so preemption takes partly prefilled work first. first_token is stamped by update when the first token arrives, not at the first chunk, and a request with max_new_tokens = 1 finishes on the step of its last chunk and frees its blocks then. max_prefill_tokens does not apply here: the budget is the limit, and a prompt longer than the budget is the case this exists for."
+  },
+  {
+   "label": "Errors",
+   "text": "Throw std::invalid_argument and change nothing when token_budget is below config_.max_batch (below that, a full batch of decodes could leave a sequence in prefill with no tokens forever), and when a step is pending, as schedule() does. cancel while a chunk-only step is pending must be rejected as well."
+  },
+  {
+   "label": "Edge cases",
+   "text": "An idle scheduler returns an empty step that is not pending. A prompt exactly the size of the remaining budget finishes in that step and decodes in the next. A budget equal to max_batch still advances a sequence in prefill by at least one token per step, because it holds one of the max_batch rows. A sequence with one prompt token left is still in prefill: its last row is a chunk, needs no new slot, and is not a decode row. A chunk-only step changes no output and no length. Several requests can share a step: one finishing its last chunk and the next starting its first."
+  },
+  {
+   "label": "What is not here",
+   "text": "The batch builder for a mixed step, serve_step, the sampler and a CLI flag come in the next branch, once this passes. PagedRunner::stage and run_staged reject a batch with zero sequences today, which is what a chunk-only step produces, and DecodeGraphs::covers only takes pure decode batches, so mixed steps run eager and lose about 1 ms each unless that changes. Issue #101 asks for p99 TPOT under --request-rate before and after."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/unit/test_scheduler_chunked.cpp (target todo_unit_tests, label todo_joe). Run them with ctest --preset cpu -L todo_joe. When they pass, move the file into tests/unit/, add it to unit_tests and delete todo_unit_tests."
+  }
+ ]
+}

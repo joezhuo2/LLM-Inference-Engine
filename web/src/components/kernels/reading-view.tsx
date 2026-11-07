@@ -8,7 +8,9 @@ import { KernelAboutView, KernelLeadView, KernelPrologueView, KernelSandboxView,
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
 import { Scramble } from "@/components/scramble";
+import { ExerciseCard } from "@/components/exercise-card";
 import { repoUrl } from "@/content/build-log";
+import { chapterExercises } from "@/content/exercises";
 import { kernelStory } from "@/content/kernels";
 import { docPath, docSections, environment, profilingTable } from "@/lib/data";
 import { loadExcerpt } from "@/lib/excerpt";
@@ -101,6 +103,21 @@ export async function ReadingView({ slug }: { slug: string }) {
           <Section id="sandbox" title={story.sandbox.title}>
             <p className="max-w-2xl text-muted">{gloss(story.sandbox.intro)}</p>
             <KernelSandboxView slug={story.slug} />
+          </Section>
+        )}
+
+        {chapterExercises(story.slug).length > 0 && (
+          <Section id="build" title="build it yourself">
+            <p className="max-w-2xl text-muted">
+              Start from the commit where the stub landed, make its tests pass, then compare with what shipped. All the exercises, and what you need to run them, are on the{" "}
+              <Link href="/exercises" className="link-underline text-text">
+                exercises page
+              </Link>
+              .
+            </p>
+            {chapterExercises(story.slug).map((e) => (
+              <ExerciseCard key={e.id} exercise={e} />
+            ))}
           </Section>
         )}
 

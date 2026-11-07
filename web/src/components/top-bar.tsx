@@ -10,6 +10,7 @@ const links = [
   { href: "/results", label: "results" },
   { href: "/kernels", label: "kernels" },
   { href: "/every-byte", label: "every byte" },
+  { href: "/exercises", label: "exercises" },
   { href: "/dashboard", label: "dashboard" },
 ];
 
@@ -21,11 +22,11 @@ export function TopBar() {
         <Link href="/" className="text-accent">
           llmie
         </Link>
-        <ul className="flex min-w-0 flex-1 gap-3 overflow-x-auto sm:gap-4">
+        <ul className="flex min-w-0 flex-1 gap-3 overflow-x-auto [scrollbar-width:none] sm:gap-4">
           {links.map(({ href, label }) => {
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
-              <li key={href} className={clsx(href === "/" && "max-sm:hidden")}>
+              <li key={href} className={clsx("whitespace-nowrap", href === "/" && "max-sm:hidden")}>
                 <Link
                   href={href}
                   aria-current={active ? "page" : undefined}

@@ -5,17 +5,18 @@ export type Run = { text: string; accent: boolean; term?: string };
 export type TermBox = { box: [number, number, number, number]; key: string };
 type Marks = { boxes: TermBox[]; w: number; h: number; color: string };
 export type PageText = { kicker: string; title: string; note?: string; paragraphs: Run[][]; folio: string };
-export type Fonts = { serif: string; sans: string };
+export type Fonts = { serif: string; sans: string; mono: string };
 
 export function readFonts(): Fonts {
   const s = getComputedStyle(document.documentElement);
   const serif = s.getPropertyValue("--font-instrument-serif").trim() || "Georgia, serif";
   const inter = s.getPropertyValue("--font-inter").trim();
-  return { serif, sans: `"Segoe UI", ${inter ? `${inter}, ` : ""}system-ui, sans-serif` };
+  const jetbrains = s.getPropertyValue("--font-jetbrains").trim();
+  return { serif, sans: `"Segoe UI", ${inter ? `${inter}, ` : ""}system-ui, sans-serif`, mono: `${jetbrains ? `${jetbrains}, ` : ""}ui-monospace, monospace` };
 }
 
 export async function loadFonts(fonts: Fonts): Promise<void> {
-  await Promise.allSettled([document.fonts.load(`88px ${fonts.serif}`), document.fonts.load(`34px ${fonts.sans}`)]);
+  await Promise.allSettled([document.fonts.load(`88px ${fonts.serif}`), document.fonts.load(`34px ${fonts.sans}`), document.fonts.load(`24px ${fonts.mono}`)]);
 }
 
 export function readRuns(element: Element): Run[][] {

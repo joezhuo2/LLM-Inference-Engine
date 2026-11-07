@@ -10,12 +10,13 @@ import { GlossProvider, type PointTerm, PointGloss } from "@/components/gloss";
 import { gloss } from "@/components/glossed";
 import { Scramble } from "@/components/scramble";
 import { kindLabel } from "@/content/dead-ends";
+import { chapterExercises } from "@/content/exercises";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
-import { type ChapterDef, chapterStops, chapterTitles, stepNumber } from "./chapter";
+import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { bookOrder, bookParts, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, introStop, numberPages } from "./front-matter";
+import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, exerciseStops, introStop, numberPages } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
@@ -25,7 +26,7 @@ const sectionKeys = ["contents", ...chapterSlugs, "errata"];
 const beatMs = 6500;
 let numbered: Promise<number> | undefined;
 const numberBook = () =>
-  (numbered ??= Promise.all(chapterSlugs.map((slug) => bookChapters[slug]().then((c) => [slug, 1 + c.steps.length + c.workbench.length] as const))).then((pairs) => numberPages(Object.fromEntries(pairs))));
+  (numbered ??= Promise.all(chapterSlugs.map((slug) => bookChapters[slug]().then((c) => [slug, 1 + c.steps.length + c.workbench.length + chapterExercises(slug).length] as const))).then((pairs) => numberPages(Object.fromEntries(pairs))));
 
 type Meta = { key: string; local: number; slug?: string; exhibit: number | null };
 type Place = { closed: true } | { closed: false; key: string; local: number };
@@ -155,7 +156,7 @@ export function EveryByte() {
       const box = el.querySelector(`[data-chapter="${slug}"]`);
       if (!box) continue;
       const text = [...box.children].map((child, i) => ({ title: c.steps[i].title, paragraphs: readRuns(child) }));
-      const chapterRaw = [introStop(c), ...chapterStops(c, text)];
+      const chapterRaw = [introStop(c), ...chapterStops(c, text), ...exerciseStops(c)];
       queued.current.add(slug);
       queue.current = queue.current.then(async () => {
         const s = await sceneReady.current.promise;
@@ -457,6 +458,7 @@ export function EveryByte() {
   const spread = segment === "errata" && meta ? errataSpreads[meta.local] : null;
   const chapterStep = def && meta ? def.steps[meta.local] : undefined;
   const bench = def && meta ? def.workbench[meta.local - def.steps.length] : undefined;
+  const exercise = def && meta ? chapterExercises(def.slug)[meta.local - def.steps.length - def.workbench.length] : undefined;
   const otherHref = def ? `/kernels/${def.slug}` : "/kernels";
 
   if (failed) {
@@ -565,8 +567,8 @@ export function EveryByte() {
               <p className="mt-1">{stops[stop]?.page?.paragraphs[0]?.[0]?.text}</p>
               <h2 className="mt-2 text-xs">in this chapter</h2>
               <ol>
-                {chapterTitles(def).map((t, k) => (
-                  <li key={t} className="flex gap-2">
+                {bookTitles(def).map((t, k) => (
+                  <li key={`${k}-${t}`} className="flex gap-2">
                     <span className="w-5 tabular-nums">{stepNumber(def, k)}</span>
                     <button type="button" onClick={() => turnTo(def.slug, k)} className="link-underline text-left text-text">
                       {t}
@@ -589,6 +591,15 @@ export function EveryByte() {
                   <p key={p}>{gloss(p)}</p>
                 ))}
               </div>
+            </>
+          ) : exercise ? (
+            <>
+              <h2 className="text-xs">build it yourself</h2>
+              <h1 className="font-serif text-2xl text-text">{exercise.title}</h1>
+              <p className="mt-2">{gloss(exercise.task)}</p>
+              <Link href={`/exercises#${exercise.id}`} className="link-underline mt-2 inline-block text-text">
+                The steps, the spec and the commands to copy →
+              </Link>
             </>
           ) : spread ? (
             <>
