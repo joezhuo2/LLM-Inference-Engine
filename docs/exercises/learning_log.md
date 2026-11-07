@@ -1986,3 +1986,6 @@
 - **memory coalescing and 32-byte sectors** => 
 - **warp shuffle (__shfl_xor_sync) reduction** => 
 - **wave quantization (a grid slightly over one wave)** => 
+- **scaled dot-product attention (why divide by √d)** => 
+- **causal mask** => 
+- **grouped-query attention vs. multi-head attention** => 

@@ -15,6 +15,10 @@ export const pagedAttention: KernelStory = {
     value: `${(measured(split, { rows: "1", context: "2,048" }, "v2") / measured(split, { rows: "1", context: "2,048" }, "8")).toFixed(1)}x`,
     label: "faster with 8 splits, one row at 2,048 tokens",
   },
+  ideas: {
+    title: "attention, step by step",
+    intro: "What attention computes for one token before any of it is a kernel: the three vectors, the scores and the weighted sum, why decode needs only one row of scores, and how heads that share keys and values shrink the KV cache. Sizes are TinyLlama's; the small examples are illustrative.",
+  },
   lead: {
     title: "Prefill vs. Decode (the token lifecycle)",
     intro: "A model reads a prompt once and then writes its answer one token at a time. Before the kernel, here is what each phase does and why the KV cache sits between them. Token counts in the figures are illustrative; every time is measured on this engine.",
