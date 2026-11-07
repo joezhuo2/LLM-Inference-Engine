@@ -1983,3 +1983,6 @@
 ## Teaching pass (Branch 126)
 
 - **a chapter's one-sentence lesson as the anchor for its details** => 
+- **memory coalescing and 32-byte sectors** => 
+- **warp shuffle (__shfl_xor_sync) reduction** => 
+- **wave quantization (a grid slightly over one wave)** => 

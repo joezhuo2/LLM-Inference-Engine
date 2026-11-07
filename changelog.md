@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/teaching-pass
 
+- Part A: the glossary gains 33 terms for the CUDA and attention words the chapters use without explaining them: kernel, thread, grid, wave, lane, warp shuffle, barrier, reduction, coalesced loads, sector, 16-byte loads, latency, bandwidth, memory bound, compute bound, ridge, dependent loads, row-major, leading dimension, tiling, epilogue, eager mode, stream capture, FP64, Philox, argmax, online softmax, attention head, GQA, block table, residual stream, goodput and preemption. They get the same dotted underline and hover card on the kernel pages and in Every Byte, first use per page or spread.
 - Part A: every chapter review opens with its lesson, one sentence in blue under "the lesson" (kernel page), under "what to remember" (Every Byte left page) and in the phone panel: foundations "Decode is limited by the bytes it moves, not by the arithmetic it does", GEMM "At the memory roof, the only way to go faster is to move fewer bytes", and one for each of the other ten chapters, in `lesson` of `web/src/content/reviews/<slug>.ts`.
 
 ## web/chapter-review
