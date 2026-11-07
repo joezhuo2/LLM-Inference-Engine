@@ -51,7 +51,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           schedule_chunked(token_budget) caps the rows of a step. Every sequence whose prefill is done gets its decode
-          row first. What is left goes to the one sequence still in prefill, as a chunk that starts where it stopped.
+          row first. What is left goes to the <span className="text-accent">one</span> sequence still in prefill, as a chunk that starts where it stopped.
         </p>
         <p>
           Only if budget remains is the next waiting request admitted, first come, first served. A step never exceeds
@@ -74,7 +74,7 @@ const steps: StoryStep[] = [
           Measured with a {fmt(stallPrompt)}-token prompt arriving among {stallDecoding} decoding requests: with no budget the longest gap is{" "}
           <span className="text-text">{fmt(stallMs("none", "largest gap ms"))} ms</span> and the prompt&apos;s first
           token comes after <span className="text-text">{fmt(stallMs("none", "TTFT of the long prompt ms"))} ms</span>; with
-          a budget of {chunkBudget} the gap is <span className="text-text">{fmt(stallMs(chunkBudget, "largest gap ms"))} ms</span> and
+          a budget of {chunkBudget} the gap is <span className="text-accent">{fmt(stallMs(chunkBudget, "largest gap ms"))} ms</span> and
           the first token <span className="text-text">{fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms</span>.
         </p>
         <p>
@@ -97,7 +97,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The sequence in prefill is always last, so partly prefilled work goes first. It returns to the front of the
-          waiting queue and starts again at position 0.
+          waiting queue and starts again at position <span className="text-accent">0</span>.
         </p>
       </>
     ),
