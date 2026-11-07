@@ -1,7 +1,8 @@
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
+import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel } from "@/content/exercises";
 import { kernelStory } from "@/content/kernels";
 import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
-import { type ChapterDef, chapterTitles, frames, stepNumber } from "./chapter";
+import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
 import { bookHref } from "./paths";
 import type { Fonts } from "./typeset";
@@ -257,18 +258,22 @@ export function errataStops(firstSpread: number): Stop[] {
   });
 }
 
+export const bookTitles = (def: ChapterDef) => [...chapterTitles(def), ...chapterExercises(def.slug).map((e) => e.title)];
+
 function introRows(def: ChapterDef) {
-  const titles = chapterTitles(def);
+  const titles = bookTitles(def);
   const steps = def.steps.length;
-  const step = Math.min(ROW, (H - 700) / (titles.length + (titles.length > steps ? 1.5 : 0)));
-  const rows: { y: number; text: string; number?: string; bench?: boolean; k?: number }[] = [];
+  const built = steps + def.workbench.length;
+  const headers = (def.workbench.length > 0 ? 1 : 0) + (titles.length > built ? 1 : 0);
+  const step = Math.min(ROW, (H - 700) / (titles.length + headers * 1.5));
+  const rows: { y: number; text: string; number?: string; kind?: "bench" | "build"; k?: number }[] = [];
   let y = 380;
   titles.forEach((text, k) => {
-    if (k === steps) {
-      rows.push({ y: y + step * 0.2, text: "try it yourself" });
+    if ((k === steps && def.workbench.length > 0) || k === built) {
+      rows.push({ y: y + step * 0.2, text: k === built ? "build it yourself" : "try it yourself" });
       y += step * 1.5;
     }
-    rows.push({ y, text, number: stepNumber(def, k) || undefined, bench: k >= steps, k });
+    rows.push({ y, text, number: stepNumber(def, k) || undefined, kind: k >= built ? "build" : k >= steps ? "bench" : undefined, k });
     y += step;
   });
   return { rows, step };
@@ -333,10 +338,147 @@ export function introStop(def: ChapterDef): Stop {
   const links: PageLink[] = entries.map((r, i) => ({
       side: "right",
       box: [170 / W, (r.y - step * 0.63) / H, (W - 130) / W, (r.y + step * (i === entries.length - 1 ? 0.75 : 0.37)) / H],
-      href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : r.bench ? `try it yourself, ${r.text}` : r.text }));
+      href: `${bookHref(def.slug)}#${r.k}`, label: r.number ? `step ${r.number}, ${r.text}` : r.kind === "bench" ? `try it yourself, ${r.text}` : r.kind === "build" ? `build it yourself, ${r.text}` : r.text }));
   return {
     ...flatStop(0, `Chapter ${def.number}: ${title}`, title, [summary]),
     paint: { left, right },
     links,
   };
+}
+
+const MONO_INDENT = 28;
+
+function monoLines(ctx: Ctx, command: string, width: number): string[] {
+  const out: string[] = [];
+  let line = "";
+  for (const word of command.split(" ")) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(next).width > width - (out.length ? MONO_INDENT : 0)) {
+      out.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+type ExerciseStep = { title: string; text?: string; commands?: string[] };
+
+function exerciseSteps(e: Exercise): ExerciseStep[] {
+  if (e.kind === "open") {
+    return [
+      { title: "Write it from scratch", text: "A single .cu file built with nvcc is enough; nothing in the engine changes.", commands: ["nvcc -O3 -arch=native copy.cu -o copy && ./copy"] },
+      { title: "Check it", text: e.check },
+      { title: "Compare", text: e.compare.map((c) => `${c.path}: ${c.label}.`).join(" ") },
+    ];
+  }
+  const [checkout, build, test] = exerciseCommands(e);
+  return [
+    { title: "Go back to the day the stub landed", text: `Commit ${e.start}: the function throws, the tests are written.`, commands: [cloneCommand, checkout, build] },
+    { title: "Run the tests and watch them fail", commands: [test] },
+    { title: "Make them pass", text: `Write it in ${e.file}, from the spec and the tests in ${e.tests}.` },
+    { title: "Compare", text: `Then read ${implLabel(e)} in PR ${e.implPrs.join(", PR ")}, or diff it against the stub:`, commands: [compareCommand(e)] },
+  ];
+}
+
+function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, "left");
+    const width = x1 - x0;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`chapter ${def.number} · ${chapterTitle(def.slug)} · build it yourself`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.font = `${Math.min(92, (92 * width) / ctx.measureText(e.title).width)}px ${fonts.serif}`;
+    ctx.fillText(e.title, x0, 260);
+    ctx.fillStyle = palette.faint;
+    ctx.font = `28px ${fonts.sans}`;
+    const tags = [e.gpu ? "needs an NVIDIA GPU" : "no GPU needed", e.kind === "stub" && e.model ? "some tests load TinyLlama" : e.kind === "open" ? "no tests, open ended" : ""].filter(Boolean);
+    ctx.fillText(tags.join(" · "), x0, 320);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `36px ${fonts.sans}`;
+    let y = paragraph(ctx, e.task, x0, 410, width, 54) + 40;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `24px ${fonts.sans}`;
+    ctx.fillText("a nudge, if you are stuck", x0, y);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `32px ${fonts.sans}`;
+    y = paragraph(ctx, e.nudge, x0, y + 48, width, 46);
+    folio(ctx, String(folioPage()), "left", x0, x1, palette, fonts);
+  };
+}
+
+const LINK_TEXT = "The full spec, with commands to copy →";
+
+function exerciseRight(e: Exercise) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, "right");
+    const width = x1 - x0;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(e.kind === "stub" ? "four steps" : "three steps", x0, 150);
+    const steps = exerciseSteps(e);
+    const bottom = H - 300;
+    const layout = (scale: number, draw: boolean) => {
+      let y = 230;
+      steps.forEach((st, i) => {
+        const head = 40 * scale;
+        ctx.font = `${head}px ${fonts.serif}`;
+        if (draw) {
+          ctx.fillStyle = palette.faint;
+          ctx.fillText(String(i + 1), x0, y);
+          ctx.fillStyle = palette.ink;
+          ctx.fillText(st.title, x0 + 50, y);
+        }
+        y += head * 0.5;
+        if (st.text) {
+          ctx.font = `${28 * scale}px ${fonts.sans}`;
+          ctx.fillStyle = palette.ink;
+          y = paragraph(ctx, st.text, x0 + 50, y + 34 * scale, width - 50, 40 * scale, draw) - 40 * scale;
+        }
+        for (const command of st.commands ?? []) {
+          ctx.font = `${23 * scale}px ${fonts.mono}`;
+          const lines = monoLines(ctx, command, width - 74);
+          const top = y + 22 * scale;
+          const lh = 34 * scale;
+          if (draw) {
+            ctx.fillStyle = palette.blue;
+            ctx.fillRect(x0 + 50, top, 3, lines.length * lh + 6 * scale);
+            ctx.fillStyle = palette.ink;
+            lines.forEach((line, k) => ctx.fillText(line, x0 + 70 + (k ? MONO_INDENT : 0), top + lh * (k + 0.8)));
+          }
+          y = top + lines.length * lh;
+        }
+        y += 70 * scale;
+      });
+      return y;
+    };
+    let scale = 1;
+    while (scale > 0.6 && layout(scale, false) > bottom) scale -= 0.02;
+    layout(scale, true);
+    ctx.fillStyle = palette.blue;
+    ctx.font = `38px ${fonts.serif}`;
+    ctx.fillText(LINK_TEXT, x0, H - 200);
+  };
+}
+
+export function exerciseStops(def: ChapterDef): Stop[] {
+  const first = def.steps.length + def.workbench.length;
+  return chapterExercises(def.slug).map((e, j) => {
+    const local = first + j;
+    const left = exerciseLeft(def, e, () => (chapterPage(def.slug) ?? 0) + local + 1);
+    return {
+      exhibit: null,
+      spread: local,
+      page: { kicker: `chapter ${def.number} · build it yourself`, title: e.title, paragraphs: [[{ text: e.task, accent: false }]], folio: "" },
+      figure: "",
+      caption: "",
+      folio: "",
+      overlay: null,
+      beats: [flat(`Build it yourself: ${e.title}`)],
+      paint: { left, right: exerciseRight(e) },
+      links: [{ side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: `/exercises#${e.id}`, label: `${e.title}: ${LINK_TEXT}` }],
+    };
+  });
 }
