@@ -26,7 +26,7 @@ export const review: ChapterReview = {
     {
       question: "At batch 1 the gate/up projection does about 1 FLOP for every byte it reads. Roughly how many rows must share one read of its weights before it stops being memory bound?",
       answer: `About ${Math.round(ridge)}.`,
-      why: `Each extra row adds FLOPs but almost no bytes, so FLOPs per byte grows with the rows until it reaches the ridge, ${Math.round(ridge)} FLOP per byte. That is why batch 16 still runs at the bandwidth roof.`,
+      why: `Each extra row adds FLOPs but almost no bytes, so FLOPs per byte grows with the rows until it reaches the ridge, ${Math.round(ridge)} FLOP per byte. That is why gate/up at 16 rows still runs at the bandwidth roof.`,
     },
   ],
 };

@@ -56,7 +56,7 @@ const steps: StoryStep[] = [
           The newest token compares its query with the key of every token so far: one dot product each, divided by √{headDim} = {scale} so the scores do not grow with the vector length. A high score means a good match.
         </p>
         <p>
-          Softmax turns the scores into weights that are all positive and add up to 1, so the best match gets most of the weight: here &quot;{words[top]}&quot; gets <span className="text-accent">{Math.round(weights[top] * 100)}%</span>. The output is the values added up with those weights, one vector of {headDim} numbers per head.
+          Softmax turns the scores into weights that are all positive and add up to 1, so the best match gets the largest share: here &quot;{words[top]}&quot; gets <span className="text-accent">{Math.round(weights[top] * 100)}%</span>. The output is the values added up with those weights, one vector of {headDim} numbers per head.
         </p>
         <p>That is the whole formula, out = softmax(q · Kᵀ / √d) · V. Everything later in this chapter is about reading K and V fast.</p>
       </>
@@ -102,7 +102,7 @@ export const basicsCaptions = [
 
 export const basicsInstructions = [
   "Watch one token's vector split into a long query and a short key and value.",
-  "Watch the scores fill, then the softmax hand most of the weight to one token.",
+  "Watch the scores fill, then the softmax hand the largest share to one token.",
   "Watch prefill fill the triangle, then decode add a single row.",
   "Follow each group of query heads to the one key and value head it shares.",
 ];

@@ -9,7 +9,7 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { BitsFigure, LayoutFigure, ParallelFigure, RotateFigure, SerialFigure } from "./figures";
 import { Author } from "../authorship";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const fast = "fast-rope-branch-31";
 
@@ -41,12 +41,12 @@ const versions = [
 
 const fastOne = measured(fast, at("1"), "fast (us)");
 const fast64 = measured(fast, at("64"), "fast (us)");
-const prediction: Prediction = {
+const prediction: Prediction = expectAnswer({
   question: "From 1 token to 64, how much longer does the fast kernel take?",
   choices: ["about 64 times", "a few times", "barely longer"],
   answer: fast64 / fastOne > 20 ? "about 64 times" : fast64 / fastOne > 2 ? "a few times" : "barely longer",
   why: `${fastOne.toFixed(1)} µs at 1 token, ${fast64.toFixed(1)} µs at 64. A few hundred KB at most is far from the memory limit, so the launch and one chain of load, sine and store set the time. Try 512.`,
-};
+}, "barely longer");
 
 export function TokensPicker() {
   const [tokens, setTokens] = useState("1");

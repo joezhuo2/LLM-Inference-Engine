@@ -8,7 +8,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { CutFigure, type GraphKey, GraphsFigure, MergeFigure, type Occupancy, OccupancyFigure, ScratchFigure, WaitingFigure, WaveFigure } from "./figures";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const split = "split-context-attention-branch-40";
 const wired = "split-attention-in-the-forward-pass-branch-42";
@@ -78,12 +78,12 @@ const options = [
 
 const v2At128 = measured(split, { rows: "1", context: "128" }, "v2");
 const eightAt128 = measured(split, { rows: "1", context: "128" }, "8");
-const prediction: Prediction = {
+const prediction: Prediction = expectAnswer({
   question: "One row at only 128 tokens: do 8 splits beat v2?",
   choices: ["yes", "no"],
   answer: eightAt128 < v2At128 ? "yes" : "no",
   why: `8 splits take ${eightAt128.toFixed(1)} µs, v2 ${v2At128.toFixed(1)} µs. Each split gets only 16 keys, too few to pay for the partial results and the second launch of the merge. Set the context to 128 to see it.`,
-};
+}, "no");
 
 export function SplitPicker() {
   const [rows, setRows] = useState("1");

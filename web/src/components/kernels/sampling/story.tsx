@@ -8,7 +8,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ArgmaxFigure, CostFigure, Fp64Figure, GumbelFigure, type Mode, PhiloxFigure, TopKFigure, TopPFigure } from "./figures";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const section = "sampling-branch-65";
 
@@ -38,12 +38,12 @@ const floatRuns = (() => {
 const costModes: Mode[] = columns.map((c) => ({ label: c.label, us: one(c.column), accent: c.column === "top-k 50", warn: c.warn }));
 
 const greedyRatio = at("16", "greedy") / at("1", "greedy");
-const prediction: Prediction = {
+const prediction: Prediction = expectAnswer({
   question: "From 1 row to 16, how much longer does greedy decoding take?",
   choices: ["about 16 times", "a few times", "barely longer"],
   answer: greedyRatio > 8 ? "about 16 times" : greedyRatio > 1.6 ? "a few times" : "barely longer",
   why: `${at("1", "greedy").toFixed(1)} µs for 1 row, ${at("16", "greedy").toFixed(1)} µs for 16. Each row gets its own block, so the 16 rows run side by side on different SMs.`,
-};
+}, "barely longer");
 
 export function ModePicker() {
   const [rows, setRows] = useState("1");

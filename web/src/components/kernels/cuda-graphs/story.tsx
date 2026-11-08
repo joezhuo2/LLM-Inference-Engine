@@ -11,7 +11,7 @@ import { Toggle } from "../toggle";
 import { useLoop } from "../loop";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
 import { CaptureFigure, EagerTimelineFigure, eagerLayer, GapFigure, graphLayer, GraphGridFigure, layerIndex, StageFigure } from "./figures";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const eager = launchGaps("eager");
 const replay = launchGaps("graphs");
@@ -35,12 +35,15 @@ const total = Math.ceil(layerUs(eagerLayer) / 10) * 10 + 10;
 const px = (t: number) => (lane * t) / total;
 const gemm = new Set(["qkv", "o_proj", "gate_up", "down"]);
 
-const prediction: Prediction = {
+const fmtUs = (v: number) => Math.round(v).toLocaleString("en-US");
+const kernelSaved = eager.busy_us - replay.busy_us;
+const gapSaved = eager.span_us - eager.busy_us - (replay.span_us - replay.busy_us);
+const prediction: Prediction = expectAnswer({
   question: "Switch the step from eager to graph. What gets shorter?",
-  choices: ["the kernels", "the gaps between them", "both"],
-  answer: "the gaps between them",
-  why: `The same ten kernels run for the same time; what shrinks is the wait before each one, and the GPU's idle share of the step drops from ${eager.idle_pct}% to ${replay.idle_pct}%.`,
-};
+  choices: ["mostly the kernels", "mostly the gaps between them", "both about equally"],
+  answer: gapSaved > 2 * kernelSaved ? "mostly the gaps between them" : kernelSaved > 2 * gapSaved ? "mostly the kernels" : "both about equally",
+  why: `The step shrinks from ${fmtUs(eager.span_us)} to ${fmtUs(replay.span_us)} µs in the profiles. The kernels are busy for ${fmtUs(eager.busy_us)} and ${fmtUs(replay.busy_us)} µs, ${Math.abs(kernelSaved) < 0.02 * eager.busy_us ? "about the same" : `${Math.round(Math.abs(kernelSaved / eager.busy_us) * 100)}% ${kernelSaved > 0 ? "less" : "more"}`}; the rest is the wait before each kernel, as the GPU's idle share drops from ${eager.idle_pct}% to ${replay.idle_pct}%.`,
+}, "mostly the gaps between them");
 
 export function ReplayPicker() {
   const [mode, setMode] = useState("eager");

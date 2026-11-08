@@ -55,10 +55,10 @@ const ly = (v: number) => H - pad.b - ((Math.log10(v) - Math.log10(yr[0])) / (Ma
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
 
 const prediction: Prediction = {
-  question: "Switch from 1 row to 16. Which dots climb the slope?",
+  question: "Decode 16 tokens at once instead of 1 (16 rows of x). Which dots climb the slope?",
   choices: ["the five projections", "attention", "all of them"],
   answer: "the five projections",
-  why: `gate/up goes from ${roofline("gate_up", "1", "TFLOP/s").toFixed(2)} to ${roofline("gate_up", "16", "TFLOP/s").toFixed(2)} TFLOP/s, because 16 rows share each weight read. Attention stays where it is: every row reads its own keys and values.`,
+  why: `gate/up goes from ${roofline("gate_up", "1", "TFLOP/s").toFixed(2)} to ${roofline("gate_up", "16", "TFLOP/s").toFixed(2)} TFLOP/s, because 16 rows share each weight read. Attention only creeps from ${roofline("attention", "1", "TFLOP/s").toFixed(2)} to ${roofline("attention", "16", "TFLOP/s").toFixed(2)}: its FLOPs per byte stay put, because every row reads its own keys and values.`,
 };
 
 export function RooflinePicker() {
@@ -241,7 +241,7 @@ const steps: StoryStep[] = [
         <p>
           A roofline puts each op at its FLOPs per byte and its speed, under two measured ceilings: {peak.gbs} GB/s on the
           slope, {peak.tflops} TFLOP/s from square cuBLAS GEMMs on the flat part. Switch between 1 and 16 rows on the right:
-          the projections slide up the slope, attention stays where it is, because every row reads its own keys and values.
+          the projections slide up the slope, attention moves up only a little, because every row reads its own keys and values.
         </p>
         <p>
           Nothing in a decode step gets near the ridge at <span className="text-accent">{Math.round(ridge)} FLOP/byte</span>, so nothing here is compute bound.

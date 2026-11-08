@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { kvDemo, kvReplay } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 import { Toggle } from "../toggle";
 import { type Cell, type Mode, Pool } from "./allocator";
 
@@ -89,12 +89,12 @@ const demoRun = (() => {
 
 const demoAnswer = demoRun.most.paged && demoRun.most.contiguous ? "both" : demoRun.most.contiguous ? "contiguous" : demoRun.most.paged ? "paged" : "neither";
 
-const demoPrediction: Prediction = {
-  question: "Press replay demo: the same requests arrive at both caches, 63 blocks each. Which one makes requests wait for room?",
+const demoPrediction: Prediction = expectAnswer({
+  question: `Press replay demo: the same requests arrive at both caches, ${NB - 1} blocks each. Which one makes requests wait for room?`,
   choices: ["paged", "contiguous", "both", "neither"],
   answer: demoAnswer,
-  why: `At the worst moment ${demoRun.most.contiguous} wait in the contiguous cache and ${demoRun.most.paged} in the paged one. Contiguous reserves prompt + 256 slots up front, and up to ${Math.round(demoRun.empty.contiguous * 100)}% of what it holds is never written; paged takes a block only when the last one fills, so at most ${Math.round(demoRun.empty.paged * 100)}% sits empty.`,
-};
+  why: `At the worst moment ${demoRun.most.contiguous} wait in the contiguous cache and ${demoRun.most.paged} in the paged one. Contiguous reserves prompt + ${demo.max_new_tokens} slots up front, and up to ${Math.round(demoRun.empty.contiguous * 100)}% of what it holds is not yet written; paged takes a block only when the last one fills, so at most ${Math.round(demoRun.empty.paged * 100)}% sits empty.`,
+}, "contiguous");
 
 type Shown = { h: number; ghost: number; kind: number; seq: number };
 

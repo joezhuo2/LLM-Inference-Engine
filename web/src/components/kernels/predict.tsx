@@ -7,6 +7,11 @@ import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 
 export type Prediction = { question: string; choices: string[]; answer: string; why: string };
 
+export function expectAnswer(p: Prediction, expected: string): Prediction {
+  if (p.answer !== expected) throw new Error(`prediction "${p.question}": the data now gives "${p.answer}", but its explanation was written for "${expected}"`);
+  return p;
+}
+
 export function Predict({ question, choices, answer, why }: Prediction) {
   const [guess, setGuess] = useState<string | null>(null);
   const reduced = usePrefersReducedMotion();

@@ -9,7 +9,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { LanesFigure, OnlineSoftmaxFigure, type Pair, ProfileFigure, type SharedBytes, SharedMemoryFigure, StepFigure, ThreePassFigure } from "./figures";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const v2Section = "paged-attention-v2-branch-37";
 const wired = "paged-attention-v2-in-the-forward-pass-branch-38";
@@ -58,12 +58,12 @@ const contextChoices = ["128", "512", "2,048", "8,192"];
 
 const v1At512 = measured(v2Section, { rows: "16", context: "512" }, "v1 (us)");
 const v2At512 = measured(v2Section, { rows: "16", context: "512" }, "v2 (us)");
-const prediction: Prediction = {
+const prediction: Prediction = expectAnswer({
   question: "16 rows at 512 tokens: how many times faster is v2 than v1?",
   choices: ["under 2x", "2x to 5x", "over 5x"],
   answer: v1At512 / v2At512 < 2 ? "under 2x" : v1At512 / v2At512 <= 5 ? "2x to 5x" : "over 5x",
   why: `${(v1At512 / v2At512).toFixed(1)}x: ${v1At512.toFixed(1)} µs against ${v2At512.toFixed(1)} µs. Neither kernel is near the memory limit; v2 wins by keeping more warps busy and letting eight lanes share each key. Set rows 16 and context 512 to check.`,
-};
+}, "2x to 5x");
 
 export function V1V2Picker() {
   const [rows, setRows] = useState("1");

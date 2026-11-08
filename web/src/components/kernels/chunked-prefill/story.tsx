@@ -5,7 +5,7 @@ import { chunkBudget, chunked, chunkedSteps, fmt, largestGap, medianGap, peakGoo
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { AllPrefillFigure, BudgetBarFigure, PreemptFigure, SampledFigure, SpreadFigure } from "./figures";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const aloneTokens = "2,048";
 const alone = prefillMs("engine", aloneTokens);
@@ -15,12 +15,12 @@ const budgets = ["16", "32", "64"];
 
 const steps16 = chunkedSteps(16, decoders, prompt).length;
 const steps64 = chunkedSteps(64, decoders, prompt).length;
-const prediction: Prediction = {
+const prediction: Prediction = expectAnswer({
   question: "Raise the budget from 16 tokens to 64. Does the long prompt's first token come sooner or later?",
   choices: ["sooner", "later", "no change"],
   answer: steps64 < steps16 ? "sooner" : steps64 > steps16 ? "later" : "no change",
-  why: `With ${decoders} decoders taking a row each, the ${prompt}-token prompt needs ${steps16} steps at 16 and ${steps64} at 64. A small budget keeps each step short for the decoders and makes the prompt wait longer.`,
-};
+  why: `With ${decoders} decoders taking a row each, the ${prompt}-token prompt needs ${steps16} steps at 16 and ${steps64} at 64. Fewer steps, each a little longer: a small budget keeps every step short for the decoders and makes the prompt wait longer.`,
+}, "sooner");
 
 function SpreadPicker() {
   const [budget, setBudget] = useState("16");

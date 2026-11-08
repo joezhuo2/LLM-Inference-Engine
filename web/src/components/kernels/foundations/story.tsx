@@ -77,7 +77,7 @@ const tiers: Tier[] = [
 ];
 
 const prediction: Prediction = {
-  question: "From 1 row to 16, what happens to the time it takes to read gate/up's weights?",
+  question: "Decode 16 tokens at once instead of 1 (16 rows of x). What happens to the time it takes to read gate/up's weights?",
   choices: ["16 times longer", "a little longer", "it stays the same"],
   answer: "it stays the same",
   why: `All the rows share one read of the same weights, so the bytes, and the memory time, do not move. Only the FLOPs grow with the rows, and they overtake memory only past the ridge, about ${Math.round(ridge)} rows.`,

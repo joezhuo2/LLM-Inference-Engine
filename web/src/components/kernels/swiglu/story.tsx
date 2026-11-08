@@ -9,7 +9,7 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ChainFigure, GridFigure, peakGbs, SmFigure, VectorFigure, ZipFigure } from "./figures";
 import { Author } from "../authorship";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const fast = "fast-swiglu-branch-32";
 const small = "small-batches-branch-33";
@@ -43,12 +43,12 @@ const stepOp = (() => {
 })();
 
 const vector1 = measured(fast, at("1"), "fast (us)");
-const prediction: Prediction = {
+const prediction: Prediction = expectAnswer({
   question: "At 1 token, is the vector kernel, with its 16-byte loads, faster than naive?",
   choices: ["faster", "about the same", "slower"],
   answer: vector1 / naive1 < 0.9 ? "faster" : vector1 / naive1 <= 1.1 ? "about the same" : "slower",
   why: `At 1 token it takes ${vector1.toFixed(1)} µs against naive's ${naive1.toFixed(1)} µs. 5,632 values make only 704 vectors, 3 blocks for 26 SMs, so wide loads have little to save. Switch to 4,096 tokens to see where they pay.`,
-};
+}, "about the same");
 
 export function TokensPicker() {
   const [tokens, setTokens] = useState("4096");

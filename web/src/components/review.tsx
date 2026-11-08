@@ -8,7 +8,7 @@ export function ReviewView({ story, review }: { story: KernelStory; review: Chap
     <div className="space-y-10">
       <div className="space-y-1 border-l-2 border-accent pl-4">
         <div className="text-xs text-muted">the lesson</div>
-        <p className="font-serif text-2xl text-accent md:text-3xl">{review.lesson}</p>
+        <p className="font-serif text-2xl text-accent md:text-3xl">{gloss(review.lesson)}</p>
       </div>
       <div className="grid gap-10 md:grid-cols-2">
         <div className="space-y-6">

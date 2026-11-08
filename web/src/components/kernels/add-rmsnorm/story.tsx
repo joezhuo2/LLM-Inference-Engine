@@ -8,7 +8,7 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { FirstFusedFigure, fusedKb64, JobFigure, naiveKb64, RoundingFigure, RoundTripFigure, ShuffleFigure, VectorFigure } from "./figures";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const fused = "fused-add-rmsnorm-branch-30";
 const tuned = "tuning-add-rmsnorm-branch-39";
@@ -40,12 +40,13 @@ const versions = [
 
 const firstPair = measured(tuned, at("1"), "naive pair (us)");
 const firstFused = measured(tuned, at("1"), "first fused (us)");
-const prediction: Prediction = {
-  question: "The first fused kernel moves about a third fewer bytes than the naive pair. At 1 token, how does its time compare?",
-  choices: ["a third faster", "about the same", "slower"],
-  answer: firstFused / firstPair < 0.8 ? "a third faster" : firstFused / firstPair <= 1.1 ? "about the same" : "slower",
+const fewer1 = Math.round((1 - measured(fused, at("1"), "fast DRAM (KB)") / measured(fused, at("1"), "naive DRAM (KB)")) * 100);
+const prediction: Prediction = expectAnswer({
+  question: `At 1 token the first fused kernel moves ${fewer1}% fewer DRAM bytes than the naive pair. How does its time compare?`,
+  choices: ["about that much faster", "about the same", "slower"],
+  answer: firstFused / firstPair < 0.85 ? "about that much faster" : firstFused / firstPair <= 1.1 ? "about the same" : "slower",
   why: `At 1 token it takes ${firstFused.toFixed(1)} µs against the pair's ${firstPair.toFixed(1)} µs. A few KB is nothing to DRAM, so dependent loads and two barriers set the time, not bytes. Compare the tuned kernel below it.`,
-};
+}, "about the same");
 
 export function TokensPicker() {
   const [tokens, setTokens] = useState("1");

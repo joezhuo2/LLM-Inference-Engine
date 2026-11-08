@@ -2,7 +2,7 @@ import type { ChapterReview } from "./types";
 
 export const review: ChapterReview = {
   lesson: "A faster kernel first has to match the old one bit for bit.",
-  why: "It shows that exposing independent rotations and sharing trigonometry across heads can speed up a kernel while preserving the model's exact results.",
+  why: "It shows that exposing independent rotations and sharing trigonometry across heads can speed up a kernel while staying bit-identical to the naive kernel, which matches Hugging Face.",
   takeaways: [
     "RoPE turns query and key pairs by position. For fixed query and key vectors, their attention score depends on the gap between positions and stays the same when both move together.",
     "Independent pairs can run in parallel, and heads can share the same sine and cosine. This removes the draft's long chain of pair rotations and avoids repeating trigonometry for every head.",
