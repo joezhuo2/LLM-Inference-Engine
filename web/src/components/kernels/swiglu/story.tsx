@@ -9,6 +9,7 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ChainFigure, GridFigure, peakGbs, SmFigure, VectorFigure, ZipFigure } from "./figures";
 import { Author } from "../authorship";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const fast = "fast-swiglu-branch-32";
 const small = "small-batches-branch-33";
@@ -41,6 +42,14 @@ const stepOp = (() => {
   return us !== undefined && launches !== undefined ? { us, launches } : undefined;
 })();
 
+const vector1 = measured(fast, at("1"), "fast (us)");
+const prediction: Prediction = expectAnswer({
+  question: "At 1 token, is the vector kernel, with its 16-byte loads, faster than naive?",
+  choices: ["faster", "about the same", "slower"],
+  answer: vector1 / naive1 < 0.9 ? "faster" : vector1 / naive1 <= 1.1 ? "about the same" : "slower",
+  why: `At 1 token it takes ${vector1.toFixed(1)} µs against naive's ${naive1.toFixed(1)} µs. 5,632 values make only 704 vectors, 3 blocks for 26 SMs, so wide loads have little to save. Switch to 4,096 tokens to see where they pay.`,
+}, "about the same");
+
 export function TokensPicker() {
   const [tokens, setTokens] = useState("4096");
   const times = versions.map((v) => ({ ...v, us: measured(fast, at(tokens), v.column) }));
@@ -48,6 +57,7 @@ export function TokensPicker() {
   const bandwidth = gbs(tokens, "fast (us)");
   return (
     <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...prediction} />
       <Toggle label="tokens" choices={tokenChoices} value={tokens} onChange={setTokens} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">µs per launch, ff 5,632</div>
@@ -102,7 +112,7 @@ const steps: StoryStep[] = [
         <p>
           Every layer&apos;s MLP widens the hidden state from 2,048 to 5,632 values twice, with a gate projection and an up
           projection, mixes the two, and narrows it back down. The engine runs both projections as one GEMM, so each token
-          comes out as a single row of 11,264 values: the gate half, then the up half.
+          comes out as a single row of <span className="text-accent">11,264 values</span>: the gate half, then the up half.
         </p>
         <p>
           SwiGLU is the mixing. Output j is silu(gate j) times up j. silu is close to zero for a negative gate and close to
@@ -123,7 +133,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Every faster version had to keep that chain. Skipping the first rounding looks harmless and gives a different
-          answer: in the example on the right the output moves by one BF16 step.
+          answer: in the example on the right the output moves by <span className="text-accent">one BF16 step</span>.
         </p>
       </>
     ),
@@ -137,7 +147,7 @@ const steps: StoryStep[] = [
           <Author story="Joe's first draft" book="The first draft" /> kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: 22
           blocks of 256 threads along a row of 5,632, and the row on blockIdx.y. It was bit-identical from the start and a
           little faster than naive at every size,{" "}
-          <span className="text-text">{draft1.toFixed(1)} µs</span> against{" "}
+          <span className="text-accent">{draft1.toFixed(1)} µs</span> against{" "}
           <span className="text-text">{naive1.toFixed(1)} µs</span> at one token.
         </p>
         <p>
@@ -197,7 +207,7 @@ const steps: StoryStep[] = [
           counts on the right.
         </p>
         <p>
-          In a decode step SwiGLU is about 0.4% of the time, so none of this moves the token rate. The real fix would be to
+          In a decode step SwiGLU is about <span className="text-accent">0.4%</span> of the time, so none of this moves the token rate. The real fix would be to
           fold it into the gate/up GEMM&apos;s epilogue, where it would disappear as a kernel altogether; that is not done.
         </p>
       </>

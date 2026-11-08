@@ -9,6 +9,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { LanesFigure, OnlineSoftmaxFigure, type Pair, ProfileFigure, type SharedBytes, SharedMemoryFigure, StepFigure, ThreePassFigure } from "./figures";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const v2Section = "paged-attention-v2-branch-37";
 const wired = "paged-attention-v2-in-the-forward-pass-branch-38";
@@ -55,6 +56,15 @@ const limit = 48 * 1024;
 const rowsChoices = ["1", "16"];
 const contextChoices = ["128", "512", "2,048", "8,192"];
 
+const v1At512 = measured(v2Section, { rows: "16", context: "512" }, "v1 (us)");
+const v2At512 = measured(v2Section, { rows: "16", context: "512" }, "v2 (us)");
+const prediction: Prediction = expectAnswer({
+  question: "16 rows at 512 tokens: how many times faster is v2 than v1?",
+  choices: ["under 2x", "2x to 5x", "over 5x"],
+  answer: v1At512 / v2At512 < 2 ? "under 2x" : v1At512 / v2At512 <= 5 ? "2x to 5x" : "over 5x",
+  why: `${(v1At512 / v2At512).toFixed(1)}x: ${v1At512.toFixed(1)} µs against ${v2At512.toFixed(1)} µs. Neither kernel is near the memory limit; v2 wins by keeping more warps busy and letting eight lanes share each key. Set rows 16 and context 512 to check.`,
+}, "2x to 5x");
+
 export function V1V2Picker() {
   const [rows, setRows] = useState("1");
   const [context, setContext] = useState("2,048");
@@ -67,6 +77,7 @@ export function V1V2Picker() {
   const max = Math.max(v2, rejected ? 0 : v1);
   return (
     <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...prediction} />
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         <Toggle label="rows" choices={rowsChoices} value={rows} onChange={setRows} />
         <Toggle label="context" choices={contextChoices} value={context} onChange={setContext} />
@@ -112,7 +123,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Each thread also computes a whole dot product alone. One row at 2,048 tokens:{" "}
-          <span className="text-text">{v1At2048} µs</span>.
+          <span className="text-accent">{v1At2048} µs</span>.
         </p>
       </>
     ),
@@ -129,7 +140,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The memory itself was not the wall: at 2,048 tokens v1 uses{" "}
-          <span className="text-text">{(sharedPoints[2].v1 ?? 0).toLocaleString("en-US")} bytes</span> per block,
+          <span className="text-accent">{(sharedPoints[2].v1 ?? 0).toLocaleString("en-US")} bytes</span> per block,
           a fifth of the default limit. The cap was a design choice that a longer model would have hit.
         </p>
       </>
@@ -159,7 +170,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          In v1 neighbouring threads read keys 128 bytes apart. In v2 a group of 8 lanes shares one key: at every step
+          In v1 neighbouring threads read keys 128 bytes apart. In v2 a group of <span className="text-accent">8</span> lanes shares one key: at every step
           they read 8 neighbouring dimensions together, one 16-byte read, and three shuffles add their partial sums.
         </p>
         <p>The values step also uses every thread instead of 64.</p>
@@ -204,7 +215,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          From 512 tokens up v2 is about 3x faster than v1 ({(v1At2048 / v2At2048).toFixed(1)}x at one row and 2,048
+          From 512 tokens up v2 is about <span className="text-accent">3x</span> faster than v1 ({(v1At2048 / v2At2048).toFixed(1)}x at one row and 2,048
           tokens); at 128 tokens with one row there is little to overlap and the gain is smaller. Try the measured times
           on the right.
         </p>

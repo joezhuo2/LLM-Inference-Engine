@@ -9,6 +9,7 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { BitsFigure, LayoutFigure, ParallelFigure, RotateFigure, SerialFigure } from "./figures";
 import { Author } from "../authorship";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const fast = "fast-rope-branch-31";
 
@@ -38,6 +39,15 @@ const versions = [
   { column: "fast (us)", label: "fast" },
 ];
 
+const fastOne = measured(fast, at("1"), "fast (us)");
+const fast64 = measured(fast, at("64"), "fast (us)");
+const prediction: Prediction = expectAnswer({
+  question: "From 1 token to 64, how much longer does the fast kernel take?",
+  choices: ["about 64 times", "a few times", "barely longer"],
+  answer: fast64 / fastOne > 20 ? "about 64 times" : fast64 / fastOne > 2 ? "a few times" : "barely longer",
+  why: `${fastOne.toFixed(1)} µs at 1 token, ${fast64.toFixed(1)} µs at 64. A few hundred KB at most is far from the memory limit, so the launch and one chain of load, sine and store set the time. Try 512.`,
+}, "barely longer");
+
 export function TokensPicker() {
   const [tokens, setTokens] = useState("1");
   const times = versions.map((v) => ({ ...v, us: measured(fast, at(tokens), v.column) }));
@@ -46,6 +56,7 @@ export function TokensPicker() {
   const fastTime = times[2].us;
   return (
     <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...prediction} />
       <Toggle label="tokens" choices={tokenChoices} value={tokens} onChange={setTokens} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">µs per launch, 32 + 4 heads of 64</div>
@@ -94,7 +105,7 @@ const steps: StoryStep[] = [
           it the order by turning the query and key vectors, not by adding anything to them.
         </p>
         <p>
-          Each head&apos;s 64 values are read as 32 pairs, and pair i is turned by the angle position · θᵢ. A query at
+          Each head&apos;s 64 values are read as <span className="text-accent">32 pairs</span>, and pair i is turned by the angle position · θᵢ. A query at
           position p and a key at position p′ then meet at an angle that depends only on p − p′. The first pairs turn
           fast and tell nearby tokens apart; the last ones barely move and carry the long distances.
         </p>
@@ -112,7 +123,7 @@ const steps: StoryStep[] = [
           alone.
         </p>
         <p>
-          Inside a head, value i pairs with value i + 32, not with its neighbour; that is how Hugging Face&apos;s
+          Inside a head, value i pairs with value i + <span className="text-accent">32</span>, not with its neighbour; that is how Hugging Face&apos;s
           rotate_half lays it out, and the weights were trained that way. Each pair costs one cosine, one sine, four
           products and two sums.
         </p>
@@ -130,7 +141,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The frequencies were the trap. A device powf differs from the host&apos;s in the last bit for 2 of the 32, the
-          angle multiplies that error by the position, and near 2,047 a sine lands on the other side of a BF16 rounding
+          angle multiplies that error by the position, and near <span className="text-accent">2,047</span> a sine lands on the other side of a BF16 rounding
           boundary. The subtraction then turns one ulp into dozens. Both kernels now take the frequencies from a table the
           host computes.
         </p>
@@ -150,7 +161,7 @@ const steps: StoryStep[] = [
           Correct once the frequencies came from the host, but a flat{" "}
           <span className="text-text">{draftFlat}</span> at 1 to 512 tokens, against{" "}
           <span className="text-text">{naive1.toFixed(1)} µs</span> for the naive kernel at one token. The time
-          was the chain of 32 pairs per thread, not the memory: only at 512 tokens did the naive kernel get slower (
+          was the chain of <span className="text-accent">32 pairs</span> per thread, not the memory: only at 512 tokens did the naive kernel get slower (
           <span className="text-text">{naive512.toFixed(1)}</span> against{" "}
           <span className="text-text">{draft512.toFixed(1)} µs</span>).
         </p>

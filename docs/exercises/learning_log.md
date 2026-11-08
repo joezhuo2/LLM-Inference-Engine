@@ -1975,3 +1975,19 @@
 - **KV cache size per token (layers × 2 × KV heads × head dim × bytes)** => 
 - **throughput vs. latency (tokens per second vs. time per output token)** => 
 - **internal fragmentation from reserving the maximum length** => 
+
+## Chapter reviews (Branch 125)
+
+- **retrieval practice: answering before reading the answer** => 
+
+## Teaching pass (Branch 126)
+
+- **a chapter's one-sentence lesson as the anchor for its details** => 
+- **memory coalescing and 32-byte sectors** => 
+- **warp shuffle (__shfl_xor_sync) reduction** => 
+- **wave quantization (a grid slightly over one wave)** => 
+- **scaled dot-product attention (why divide by √d)** => 
+- **causal mask** => 
+- **grouped-query attention vs. multi-head attention** => 
+- **prediction before observation (the generation effect)** => 
+- **weight reuse per byte (FLOP per byte grows with rows M)** => 

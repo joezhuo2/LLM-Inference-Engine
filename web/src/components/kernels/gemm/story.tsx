@@ -10,6 +10,7 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { useLoop } from "../loop";
 import { bytesOf, GemvFigure, type Projection, ProjectionsFigure, ReuseFigure, RoofBarsFigure, TransposeFigure } from "./figures";
+import { type Prediction, Predict } from "../predict";
 
 const peak = ceilings();
 
@@ -53,6 +54,13 @@ const lx = (v: number) => pad.l + ((Math.log10(v) - Math.log10(xr[0])) / (Math.l
 const ly = (v: number) => H - pad.b - ((Math.log10(v) - Math.log10(yr[0])) / (Math.log10(yr[1]) - Math.log10(yr[0]))) * (H - pad.t - pad.b);
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
 
+const prediction: Prediction = {
+  question: "Decode 16 tokens at once instead of 1 (16 rows of x). Which dots climb the slope?",
+  choices: ["the five projections", "attention", "all of them"],
+  answer: "the five projections",
+  why: `gate/up goes from ${roofline("gate_up", "1", "TFLOP/s").toFixed(2)} to ${roofline("gate_up", "16", "TFLOP/s").toFixed(2)} TFLOP/s, because 16 rows share each weight read. Attention only creeps from ${roofline("attention", "1", "TFLOP/s").toFixed(2)} to ${roofline("attention", "16", "TFLOP/s").toFixed(2)}: its FLOPs per byte stay put, because every row reads its own keys and values.`,
+};
+
 export function RooflinePicker() {
   const [rows, setRows] = useState("1");
   const { reduced } = useLoop(1);
@@ -67,6 +75,7 @@ export function RooflinePicker() {
   const whole = points[6];
   return (
     <div className="flex h-full flex-col gap-2 tabular-nums text-xs">
+      <Predict {...prediction} />
       <Toggle label="rows" choices={["1", "16"]} value={rows} onChange={setRows} />
       <svg viewBox={`0 0 ${W} ${H}`} className="min-h-0 w-full flex-1" role="img" aria-label={`Roofline at ${rows} rows: the five projections, attention and the whole decode step against the measured bandwidth and compute ceilings`}>
         {[0.01, 0.1, 1, 10, 100].map((v) => (
@@ -137,7 +146,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Most of a transformer is matrix multiplication. Each of TinyLlama&apos;s 22 layers multiplies the hidden state by
+          Most of a transformer is matrix multiplication. Each of TinyLlama&apos;s <span className="text-accent">22 layers</span> multiplies the hidden state by
           four weight matrices: QKV (the three attention inputs, stored as one matrix), the attention output, gate/up (the
           MLP&apos;s two widening projections, also one matrix) and down. After the last layer the LM head turns the hidden
           state into 32,000 logits.
@@ -161,7 +170,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           So the wrapper asks for the transposed problem. With the first operand transposed, cuBLAS computes W · Xᵀ, which
-          is Yᵀ, and Yᵀ written column-major is exactly Y in row-major memory. One call, BF16 inputs and output, FP32
+          is Yᵀ, and Yᵀ written column-major is exactly Y in row-major memory. <span className="text-accent">One call</span>, BF16 inputs and output, FP32
           accumulation.
         </p>
       </>
@@ -180,7 +189,7 @@ const steps: StoryStep[] = [
         <p>
           Every token reads all{" "}
           <span className="text-text">{`${(weightBytes / 1e9).toFixed(2)} GB`}</span>, which sets a floor of{" "}
-          <span className="text-text">{`${(weightBytes / (peak.gbs * 1e6)).toFixed(2)} ms`}</span> per token on
+          <span className="text-accent">{`${(weightBytes / (peak.gbs * 1e6)).toFixed(2)} ms`}</span> per token on
           this GPU. cuBLAS sees the single row and runs a dedicated gemv kernel instead of a GEMM.
         </p>
       </>
@@ -232,10 +241,10 @@ const steps: StoryStep[] = [
         <p>
           A roofline puts each op at its FLOPs per byte and its speed, under two measured ceilings: {peak.gbs} GB/s on the
           slope, {peak.tflops} TFLOP/s from square cuBLAS GEMMs on the flat part. Switch between 1 and 16 rows on the right:
-          the projections slide up the slope, attention stays where it is, because every row reads its own keys and values.
+          the projections slide up the slope, attention moves up only a little, because every row reads its own keys and values.
         </p>
         <p>
-          Nothing in a decode step gets near the ridge at {Math.round(ridge)} FLOP/byte, so nothing here is compute bound.
+          Nothing in a decode step gets near the ridge at <span className="text-accent">{Math.round(ridge)} FLOP/byte</span>, so nothing here is compute bound.
           The way past the roof is fewer bytes per token: quantized weights, or more rows sharing each weight read.
         </p>
       </>

@@ -8,6 +8,7 @@ import { StickyStory, type StoryStep } from "../sticky-story";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { FirstFusedFigure, fusedKb64, JobFigure, naiveKb64, RoundingFigure, RoundTripFigure, ShuffleFigure, VectorFigure } from "./figures";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const fused = "fused-add-rmsnorm-branch-30";
 const tuned = "tuning-add-rmsnorm-branch-39";
@@ -37,6 +38,16 @@ const versions = [
   { column: "tuned fused (us)", label: "tuned" },
 ];
 
+const firstPair = measured(tuned, at("1"), "naive pair (us)");
+const firstFused = measured(tuned, at("1"), "first fused (us)");
+const fewer1 = Math.round((1 - measured(fused, at("1"), "fast DRAM (KB)") / measured(fused, at("1"), "naive DRAM (KB)")) * 100);
+const prediction: Prediction = expectAnswer({
+  question: `At 1 token the first fused kernel moves ${fewer1}% fewer DRAM bytes than the naive pair. How does its time compare?`,
+  choices: ["about that much faster", "about the same", "slower"],
+  answer: firstFused / firstPair < 0.85 ? "about that much faster" : firstFused / firstPair <= 1.1 ? "about the same" : "slower",
+  why: `At 1 token it takes ${firstFused.toFixed(1)} µs against the pair's ${firstPair.toFixed(1)} µs. A few KB is nothing to DRAM, so dependent loads and two barriers set the time, not bytes. Compare the tuned kernel below it.`,
+}, "about the same");
+
 export function TokensPicker() {
   const [tokens, setTokens] = useState("1");
   const times = versions.map((v) => ({ ...v, us: measured(tuned, at(tokens), v.column) }));
@@ -49,6 +60,7 @@ export function TokensPicker() {
   const tunedTime = times[2].us;
   return (
     <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...prediction} />
       <Toggle label="tokens" choices={tokenChoices} value={tokens} onChange={setTokens} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">µs per launch, hidden 2048</div>
@@ -141,7 +153,7 @@ const steps: StoryStep[] = [
         <p>
           It moves a third fewer bytes, but takes the same time as the pair:{" "}
           <span className="text-text">{pair1.toFixed(1)}</span> against{" "}
-          <span className="text-text">{first1.toFixed(1)} µs</span> for one token. 64 rows of 4 KB are under 2 µs of
+          <span className="text-accent">{first1.toFixed(1)} µs</span> for one token. 64 rows of 4 KB are under 2 µs of
           memory traffic; the rest is waiting on dependent loads and two barriers.
         </p>
       </>
@@ -170,7 +182,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           A row of 2,048 BF16 values is 256 pieces of 16 bytes, one per thread. The tuned kernel loads each piece with one
-          128-bit instruction instead of 8 separate 2-byte loads, for x and the residual alike.
+          <span className="text-accent">128-bit</span> instruction instead of 8 separate 2-byte loads, for x and the residual alike.
         </p>
         <p>
           It also keeps the 8 rounded sums in registers, so the second pass never goes back to memory for them, and writes
@@ -190,7 +202,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           With xor shuffles, each lane swaps partial sums with the lane whose index differs in one bit. After five swaps
-          all 32 lanes hold the warp&apos;s total; after one barrier and one more round over the 8 warps, every thread holds
+          all 32 lanes hold the warp&apos;s total; after <span className="text-accent">one barrier</span> and one more round over the 8 warps, every thread holds
           the row&apos;s total and computes rstd itself.
         </p>
       </>

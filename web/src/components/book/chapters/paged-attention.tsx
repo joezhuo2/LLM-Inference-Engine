@@ -1,15 +1,18 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { pagedAttentionAbout, pagedAttentionAboutCaption } from "@/components/kernels/attention/about";
+import { attentionBasics, BasicsFigure, basicsCaptions, basicsInstructions } from "@/components/kernels/attention/basics";
 import { prologueCaptions, prologueNumbers, prologueSteps } from "@/components/kernels/attention/prologue-story";
 import { PagedAttentionSandbox } from "@/components/kernels/attention/sandbox";
 import { attentionCaptions, attentionNumbers, attentionSteps } from "@/components/kernels/attention/story";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createPagedAttentionAboutModel } from "./paged-attention-about-model";
 import { createPagedAttentionModel } from "./paged-attention-model";
 
 const beats: Beat[][] = [
+  ...attentionBasics.map((step) => [flat(`Attention basics: ${step.title}`)]),
   [
     overview("Prefill: eight tokens, one wide pass"),
     close("Close up: every position enters the model at once", [0.53, 0.04, -0.4], 1.12, 0.50, -18, 36),
@@ -59,6 +62,7 @@ const beats: Beat[][] = [
 ];
 
 const instructions = [
+  ...basicsInstructions,
   "Watch all eight tokens enter the model together and fill K and V at once.",
   "Watch each step read every cached pair, then add one more.",
   "Watch both bars start together: the decode step is done almost at once.",
@@ -76,7 +80,7 @@ const workbench: WorkbenchPage[] = [
     caption: "Step through it yourself: the block table",
     paragraphs: [
       "Set a context length and a block size. The context is cut into blocks of that many tokens, and each logical block is given a physical block somewhere in a pool of 64, in no particular order. Block 0 is the null block and is never handed out.",
-      "The grid is the pool: a number is the logical block that sits there. The list beside it is the block table, logical to physical, which is all the kernel has to find a key. Click an entry to jump to that block.",
+      "The square of cells is the pool: a number is the logical block that sits there. The list beside it is the block table, logical to physical, which is all the kernel has to find a key. Click an entry to jump to that block.",
       "Press next block or play and watch the pool light up in logical order while the physical blocks are scattered. New random data reshuffles the blocks and the numbers.",
       "The values are illustrative: head dim 4 and seeded random numbers instead of the model's 64. The order of operations is the kernel's, one block per step here where the engine reads 256 tokens at a time.",
     ],
@@ -105,8 +109,20 @@ const workbench: WorkbenchPage[] = [
   },
 ];
 
-function PagedAttentionOverlay({ kind, target }: OverlayProps) {
-  return <PagedAttentionSandbox pages={{ table: kind === "sandbox-table" ? target : null, step: kind === "sandbox-step" ? target : null, check: kind === "sandbox-check" ? target : null }} />;
+function PagedAttentionOverlay({ kind, target, narrow }: OverlayProps) {
+  return (
+    <>
+      {kind?.startsWith("basics-") &&
+        target &&
+        createPortal(
+          <div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>
+            <BasicsFigure index={Number(kind.slice(7))} />
+          </div>,
+          target,
+        )}
+      <PagedAttentionSandbox pages={{ table: kind === "sandbox-table" ? target : null, step: kind === "sandbox-step" ? target : null, check: kind === "sandbox-check" ? target : null }} />
+    </>
+  );
 }
 
 const chapter: ChapterDef = {
@@ -114,14 +130,17 @@ const chapter: ChapterDef = {
   number: 5,
   title: "paged attention",
   formula: "out = softmax(q · Kᵀ / √d) · V",
-  steps: [...prologueSteps, ...attentionSteps],
-  captions: [...prologueCaptions, ...attentionCaptions],
-  exhibits: [0, 1, 2, 3, 4, 5, 6, 7],
-  overlays: [null, null, null, null, null, null, null, null],
+  steps: [...attentionBasics, ...prologueSteps, ...attentionSteps],
+  captions: [...basicsCaptions, ...prologueCaptions, ...attentionCaptions],
+  exhibits: [...attentionBasics.map(() => null), 0, 1, 2, 3, 4, 5, 6, 7],
+  overlays: [...attentionBasics.map((_, k) => `basics-${k}`), null, null, null, null, null, null, null, null],
   instructions,
   beats,
   workbench,
-  buildModel: (kit, fonts) => createPagedAttentionModel(kit, fonts, { ...prologueNumbers, ...attentionNumbers }),
+  buildModel: (kit, fonts) => {
+    const model = createPagedAttentionModel(kit, fonts, { ...prologueNumbers, ...attentionNumbers });
+    return { ...model, enter: (stop) => model.enter?.(stop - attentionBasics.length) };
+  },
   Overlay: PagedAttentionOverlay,
 };
 

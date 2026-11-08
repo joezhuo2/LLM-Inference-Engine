@@ -10,6 +10,7 @@ import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ContrastFigure, FusionFigure, HierarchyFigure, type Lane, MemoryFigure, RooflineFigure, type Tier } from "./figures";
+import { type Prediction, Predict } from "../predict";
 
 const hw = hardware();
 const peak = ceilings();
@@ -75,6 +76,13 @@ const tiers: Tier[] = [
   { name: "registers", size: `${whole(chip.regKb)} KB per SM`, lines: ["private to one thread", `${mb(chip.regTotalKb)} over ${hw.sms} SMs`, `FMA to FMA: ${Math.round(chip.fmaCycles)} cycles`], box: { x: 85, y: 298, w: 130, h: 44 } },
 ];
 
+const prediction: Prediction = {
+  question: "Decode 16 tokens at once instead of 1 (16 rows of x). What happens to the time it takes to read gate/up's weights?",
+  choices: ["16 times longer", "a little longer", "it stays the same"],
+  answer: "it stays the same",
+  why: `All the rows share one read of the same weights, so the bytes, and the memory time, do not move. Only the FLOPs grow with the rows, and they overtake memory only past the ridge, about ${Math.round(ridge)} rows.`,
+};
+
 export function RowsPicker() {
   const [rows, setRows] = useState("1");
   const n = Number(rows);
@@ -86,6 +94,7 @@ export function RowsPicker() {
   const isMeasured = measuredRows.includes(rows);
   return (
     <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...prediction} />
       <Toggle label="rows" choices={rowChoices} value={rows} onChange={setRows} />
       <div className="space-y-1.5 pt-1">
         <div className="text-muted">gate/up of one layer, µs at the ceilings</div>
@@ -145,7 +154,7 @@ const steps: StoryStep[] = [
           streaming multiprocessor (SM) from start to finish. This GPU has {hw.sms} SMs.
         </p>
         <p>
-          Inside a block the hardware groups threads in warps of 32. A warp executes one instruction at a time for all 32
+          Inside a block the hardware groups threads in warps of <span className="text-accent">32</span>. A warp executes one instruction at a time for all 32
           threads, so a thread that wants a different branch than its neighbors makes the warp run both. SwiGLU&apos;s first
           draft launched {blocks} blocks of {threadsPerBlock} threads per row: 8 warps in each block.
         </p>
@@ -174,7 +183,7 @@ const steps: StoryStep[] = [
           <span className="text-text">{nanos(chip.l2Ns)}</span> from L2 and{" "}
           <span className="text-text">{nanos(chip.smemNs)}</span> from shared memory, and an FMA&apos;s result
           feeds the next after {Math.round(chip.fmaCycles)} cycles. L2 streams {whole(chip.l2Gbs)} GB/s, shared memory{" "}
-          <span className="text-accent">{whole(chip.smem128Gbs)} GB/s</span> with 128-bit loads and{" "}
+          <span className="text-text">{whole(chip.smem128Gbs)} GB/s</span> with 128-bit loads and{" "}
           {whole(chip.smem32Gbs)} GB/s with 32-bit ones.
         </p>
       </>
@@ -189,13 +198,13 @@ const steps: StoryStep[] = [
           Every operation has to move some bytes from memory and do some arithmetic, and it takes as long as the slower of
           the two. Take one layer&apos;s gate/up projection: [{out.toLocaleString("en-US")} × {inn.toLocaleString("en-US")}]
           BF16 weights, {(weightBytes / 1e6).toFixed(0)} MB. Reading them at the measured {peak.gbs} GB/s takes{" "}
-          <span className="text-text">{readUs.toFixed(1)} µs</span>, however many tokens use them.
+          <span className="text-accent">{readUs.toFixed(1)} µs</span>, however many tokens use them.
         </p>
         <p>
           Decoding one token is a matrix times a vector: 2 FLOPs for every 2-byte weight. At {peak.tflops} TFLOP/s the
           arithmetic needs <span className="text-text">{mathUs(1).toFixed(1)} µs</span> and the GPU waits on
           memory: memory bound. Prefill with {prefillRows} prompt tokens uses each weight {prefillRows} times, needs{" "}
-          <span className="text-accent">{mathUs(prefillRows).toFixed(0)} µs</span> of arithmetic and waits on
+          <span className="text-text">{mathUs(prefillRows).toFixed(0)} µs</span> of arithmetic and waits on
           nothing but the math: compute bound.
         </p>
       </>
@@ -208,7 +217,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           A roofline plots speed against FLOPs per byte. Its slope is the memory bandwidth and its flat top the compute peak,
-          and they meet at the ridge, {Math.round(ridge)} FLOP/byte on this GPU ({peak.tflops} TFLOP/s ÷ {peak.gbs} GB/s). Left
+          and they meet at the ridge, <span className="text-accent">{Math.round(ridge)}</span> FLOP/byte on this GPU ({peak.tflops} TFLOP/s ÷ {peak.gbs} GB/s). Left
           of the ridge an operation is memory bound, right of it compute bound.
         </p>
         <p>
@@ -225,7 +234,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           At batch 1 the five matrix-vector products of a decode step run at{" "}
-          <span className="text-accent">{`${Math.min(...gemvRoof)} to ${Math.max(...gemvRoof)}%`}</span> of the
+          <span className="text-text">{`${Math.min(...gemvRoof)} to ${Math.max(...gemvRoof)}%`}</span> of the
           bandwidth roof, and the whole step with CUDA Graphs at{" "}
           <span className="text-accent">{wholeStep("1")}%</span>. Nothing in a decode step is near the ridge, so a
           faster multiply would not make a token faster: moving fewer bytes would.

@@ -55,7 +55,7 @@ const beats: Beat[][] = [
 const instructions = [
   "Watch each thread rise to the best logit it holds, level by level.",
   "Watch the pink noise reshuffle the winner and the picks fill the outlines.",
-  "Compare the two grids: the same seed and step give the same heights.",
+  "Compare the two panels: the same seed and step give the same heights.",
   "Drag the pink ball to change k and watch the cut search again.",
   "Drag the pink ball to change p and watch the trough reach the line.",
   "Compare each bar with the pink wall: the sort alone.",

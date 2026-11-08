@@ -208,7 +208,7 @@ export const pagedKvSteps: StoryStep[] = [
         </p>
         <p>
           The cache is laid out [block, KV head, 16, 64] per layer, so one head&apos;s 16 keys in a block are one contiguous 2 KB tile, which is what the attention kernel reads. Padding rows get slot
-          -1 and write nothing. It is a pure copy: <span className="text-text">{`${fmt(writeUs, 1)} µs`}</span> per batch-1 decode step over its 22 launches, {writeShare}% of the kernel
+          -1 and write nothing. It is a pure copy: <span className="text-accent">{`${fmt(writeUs, 1)} µs`}</span> per batch-1 decode step over its 22 launches, {writeShare}% of the kernel
           time.
         </p>
       </>
@@ -229,7 +229,7 @@ export const pagedKvSteps: StoryStep[] = [
           append_slot take a new one.
         </p>
         <p>
-          The new block is the lowest free one. Over its {first.final_length - first.prompt} decode steps request {first.id} asked for a block {reqBlocks - Math.ceil(first.prompt / B)} times, and the
+          The new block is the lowest free one. Over its {first.final_length - first.prompt} decode steps request {first.id} asked for a block <span className="text-accent">{reqBlocks - Math.ceil(first.prompt / B)}</span> times, and the
           most a request ever leaves empty is the rest of its last block, 15 slots.
         </p>
       </>
@@ -243,7 +243,7 @@ export const pagedKvSteps: StoryStep[] = [
         <p>
           When a request finishes, every block in its table goes back to the pool, and because the lowest free id goes out first, the next request that needs a block takes those. In the recorded run
           request {first.id}
-          &apos;s fourth block had already served another request. All {replay.meta.num_requests} requests fit in blocks 1 to {replay.max_block}.
+          &apos;s fourth block had already served another request. All {replay.meta.num_requests} requests fit in blocks 1 to <span className="text-accent">{replay.max_block}</span>.
         </p>
         <p>
           If the pool runs out, the scheduler preempts the newest request: its blocks are freed, it goes back to the front of the queue, and its prompt plus what it has written so far is recomputed
@@ -264,7 +264,7 @@ export const pagedKvSteps: StoryStep[] = [
         <p>
           At its busiest the run held <span className="text-accent">{replay.peak.blocks}</span> of the {fmt(replay.meta.kv_blocks)} blocks. The pool is simply 90% of the memory left after
           the weights, so a run like this leaves almost all of it free, room for many more or much longer requests. Serving them side by side from one pool is what batching needs: batch 16 serves{" "}
-          <span className="text-accent">{`${fmt(tput("16"))} tokens/s`}</span> against {fmt(tput("1"))} at batch 1 (CUDA Graphs on, both).
+          {`${fmt(tput("16"))} tokens/s`} against {fmt(tput("1"))} at batch 1 (CUDA Graphs on, both).
         </p>
       </>
     ),
