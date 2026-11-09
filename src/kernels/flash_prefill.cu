@@ -134,6 +134,21 @@ __global__ void flash_attention_prefill_kernel(
         }
 
         __syncthreads();
+
+        float score_at_pos_j = final_score;
+
+        if (score_at_pos_j > running_max) {
+            float new_max = score_at_pos_j;
+            float scale_rescale_factor = expf(running_max - new_max);
+
+            running_max = new_max;
+            running_sum = (running_sum * scale_rescale_factor) + 1.0f;
+            running_accumulated_val = (running_accumulated_val * scale_rescale_factor) + __bfloat162float(val);
+        } else {
+            float unnormalized_weight = expf(score_at_pos_j - running_max);
+            running_sum += unnormalized_weight;
+            running_accumulated_val += unnormalized_weight * __bfloat162float(val);
+        }
     }
 }
 
