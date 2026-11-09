@@ -18,8 +18,8 @@ __global__ void flash_attention_prefill_kernel(
     const int32_t* __restrict__ block_tables, const int32_t* __restrict__ chunk_starts,
     const int32_t* __restrict__ cached_lens, int num_chunks, int total_step_rows, int query_heads,
     int kv_heads, int head_dim, int block_size, int blocks_per_chunk) {
-    int token_row_idx = blockIdx.y;
-    int head_idx = blockIdx.x;
+    int token_row_idx = blockIdx.x;
+    int head_idx = blockIdx.y;
 
     if (head_idx >= query_heads || token_row_idx >= total_step_rows) {
         return;
@@ -209,6 +209,10 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
             "[flash_attention_prefill] heads must be a positive multiple of kv_heads");
     }
 
+    if (num_query_heads > 65535) {
+        throw std::invalid_argument("[flash_attention_prefill] query heads must be at most 65535");
+    }
+
     if (qkv.dtype != DType::BF16 || qkv.ndim != 2) {
         throw std::invalid_argument("[flash_attention_prefill] qkv must be 2D BF16 tensor");
     }
@@ -245,6 +249,10 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
 
     int64_t total_step_rows = out.shape[0];
 
+    if (total_step_rows > INT32_MAX) {
+        throw std::invalid_argument("[flash_attention_prefill] row count must fit in int");
+    }
+
     if (num_chunks == 0 || total_step_rows == 0) {
         return;
     }
@@ -252,28 +260,23 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
     int64_t block_size = k_cache.shape[2];
     int64_t max_blocks_per_chunk = block_tables.shape[1];
 
-    dim3 grid_dimensions(static_cast<unsigned int>(num_query_heads),
-                         static_cast<unsigned int>(total_step_rows));
+    dim3 grid_dimensions(static_cast<unsigned int>(total_step_rows),
+                         static_cast<unsigned int>(num_query_heads));
     dim3 thread_block_dimensions(128);
 
     cudaStream_t execution_stream = static_cast<cudaStream_t>(stream);
 
-    flash_attention_prefill_kernel<<<grid_dimensions, thread_block_dimensions, 0, execution_stream>>>(
-        static_cast<nv_bfloat16*>(out.data),
-        static_cast<const nv_bfloat16*>(qkv.data),
+    flash_attention_prefill_kernel<<<grid_dimensions, thread_block_dimensions, 0,
+                                     execution_stream>>>(
+        static_cast<nv_bfloat16*>(out.data), static_cast<const nv_bfloat16*>(qkv.data),
         static_cast<const nv_bfloat16*>(k_cache.data),
         static_cast<const nv_bfloat16*>(v_cache.data),
         static_cast<const int32_t*>(block_tables.data),
         static_cast<const int32_t*>(chunk_starts.data),
-        static_cast<const int32_t*>(cached_lens.data),
-        static_cast<int>(num_chunks),
-        static_cast<int>(total_step_rows),
-        static_cast<int>(num_query_heads),
-        static_cast<int>(num_kv_heads),
-        static_cast<int>(head_dim),
-        static_cast<int>(block_size),
-        static_cast<int>(max_blocks_per_chunk)
-    );
+        static_cast<const int32_t*>(cached_lens.data), static_cast<int>(num_chunks),
+        static_cast<int>(total_step_rows), static_cast<int>(num_query_heads),
+        static_cast<int>(num_kv_heads), static_cast<int>(head_dim), static_cast<int>(block_size),
+        static_cast<int>(max_blocks_per_chunk));
 
     KERNEL_CHECK(stream);
 }
