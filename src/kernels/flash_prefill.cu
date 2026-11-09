@@ -37,6 +37,28 @@ __global__ void flash_attention_prefill_kernel(
             low = mid + 1;
         }
     }
+
+    if (chunk_idx < 0) {
+        return;
+    }
+    
+    int lane = threadIdx.x;
+    int query_heads_per_kv_head = query_heads / kv_heads;
+    int kv_head_idx = head_idx / query_heads_per_kv_head;
+
+    int chunk_relative_token_idx = token_row_idx - chunk_starts[chunk_idx];
+    int context_cached_length = cached_lens[chunk_idx];
+    int seq_casual_boundary = context_cached_length + chunk_relative_token_idx;
+
+    float softmax_scale_factor = 1.0f / sqrtf(static_cast<float>(head_dim));
+    int qkv_row_stride = (query_heads + (2 * kv_heads)) * head_dim;
+    int query_buffer_offset = (token_row_idx * qkv_row_stride) + (head_idx * head_dim);
+
+    nv_bfloat16 query_element = __float2bfloat16(0.0f);
+
+    if (lane < head_dim) {
+        query_element = qkv[query_buffer_offset + lane];
+    }
 }
 
 void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
