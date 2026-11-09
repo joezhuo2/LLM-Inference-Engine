@@ -5,6 +5,8 @@
 
 namespace engine {
 
+namespace {
+
 __global__ void flash_attention_prefill_kernel(
     nv_bfloat16* __restrict__ out, const nv_bfloat16* __restrict__ qkv,
     const nv_bfloat16* __restrict__ k_cache, const nv_bfloat16* __restrict__ v_cache,
@@ -157,6 +159,8 @@ __global__ void flash_attention_prefill_kernel(
         out[output_element_os] = __float2bfloat16(running_accumulated_val * inverse_running_sum);
     }
 }
+
+} // namespace  
 
 void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
                              const Tensor& v_cache, const Tensor& block_tables,
