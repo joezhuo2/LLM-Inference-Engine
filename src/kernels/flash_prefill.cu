@@ -59,6 +59,10 @@ __global__ void flash_attention_prefill_kernel(
     if (lane < head_dim) {
         query_element = qkv[query_buffer_offset + lane];
     }
+
+    float running_max = -1e30f;
+    float running_sum = 0.0f;
+    float running_accumulated_val = 0.0f;
 }
 
 void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
