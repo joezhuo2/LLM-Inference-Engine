@@ -1,6 +1,8 @@
 #include <cuda_bf16.h>
 #include <cuda_runtime.h>
+#include <stdexcept>
 
+#include "engine/core/tensor.h"
 #include "engine/kernels/flash_prefill.h"
 
 namespace engine {
@@ -165,7 +167,19 @@ __global__ void flash_attention_prefill_kernel(
 void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
                              const Tensor& v_cache, const Tensor& block_tables,
                              const Tensor& chunk_starts, const Tensor& cached_lens, Stream stream) {
+    if (k_cache.dtype != DType::BF16 || k_cache.ndim != 4) {
+        throw std::invalid_argument("[flash_attention_prefill] k_cache must be 4D BF16 tensor");
+    }
 
+    if (v_cache.dtype != DType::BF16 || v_cache.ndim != 4) {
+        throw std::invalid_argument("[flash_attention_prefill] v_cache must be 4D BF16 tensor");
+    }
+
+    if (k_cache.shape != v_cache.shape) {
+        throw std::invalid_argument("[flash_attention_prefill] k_cache and v_cache shapes must match");
+    }
+
+    
 }
 
 }  // namespace engine
