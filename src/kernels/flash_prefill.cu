@@ -61,7 +61,7 @@ __global__ void flash_attention_prefill_kernel(
         return;
     }
 
-    int seq_casual_boundary = context_cached_length + chunk_relative_token_idx;
+    int seq_causal_boundary = context_cached_length + chunk_relative_token_idx;
 
     float softmax_scale_factor = 1.0f / sqrtf(static_cast<float>(head_dim));
     int qkv_row_stride = (query_heads + (2 * kv_heads)) * head_dim;
@@ -81,7 +81,7 @@ __global__ void flash_attention_prefill_kernel(
     __shared__ float warp_reductions[4];
     __shared__ float final_score;
 
-    for (int context_pos = 0; context_pos <= seq_casual_boundary; ++context_pos) {
+    for (int context_pos = 0; context_pos <= seq_causal_boundary; ++context_pos) {
         nv_bfloat16 key = __float2bfloat16(0.0f);
         nv_bfloat16 val = __float2bfloat16(0.0f);
 
@@ -127,6 +127,7 @@ __global__ void flash_attention_prefill_kernel(
 
         int warp_id = lane / 32;
         int lane_in_warp = lane % 32;
+        int num_warps = (head_dim + 31) / 32;
 
         if (lane_in_warp == 0) {
             warp_reductions[warp_id] = partial_dot_product;
@@ -135,7 +136,8 @@ __global__ void flash_attention_prefill_kernel(
         __syncthreads();
 
         if (warp_id == 0) {
-            float total_dot_product = (lane_in_warp < 4) ? warp_reductions[lane_in_warp] : 0.0f;
+            float total_dot_product =
+                (lane_in_warp < num_warps) ? warp_reductions[lane_in_warp] : 0.0f;
 
             for (int shuffle_os = 2; shuffle_os > 0; shuffle_os /= 2) {
                 total_dot_product += __shfl_down_sync(0xffffffff, total_dot_product, shuffle_os);
@@ -271,7 +273,7 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
 
     dim3 grid_dimensions(static_cast<unsigned int>(total_step_rows),
                          static_cast<unsigned int>(num_query_heads));
-    dim3 thread_block_dimensions(128);
+    dim3 thread_block_dimensions(static_cast<unsigned int>(((head_dim + 31) / 32) * 32));
 
     cudaStream_t execution_stream = static_cast<cudaStream_t>(stream);
 
