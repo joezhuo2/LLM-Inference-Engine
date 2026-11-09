@@ -1,5 +1,6 @@
 #include <cuda_bf16.h>
 #include <cuda_runtime.h>
+
 #include <cstdint>
 #include <stdexcept>
 
@@ -46,7 +47,7 @@ __global__ void flash_attention_prefill_kernel(
     if (chunk_idx < 0) {
         return;
     }
-    
+
     int lane = threadIdx.x;
     int query_heads_per_kv_head = query_heads / kv_heads;
     int kv_head_idx = head_idx / query_heads_per_kv_head;
@@ -109,7 +110,7 @@ __global__ void flash_attention_prefill_kernel(
 
         float partial_dot_product =
             (lane < head_dim) ? __bfloat162float(query_element) * __bfloat162float(key) : 0.0f;
-        
+
         for (int shuffle_os = 16; shuffle_os > 0; shuffle_os /= 2) {
             partial_dot_product += __shfl_down_sync(0xffffffff, partial_dot_product, shuffle_os);
         }
@@ -148,7 +149,8 @@ __global__ void flash_attention_prefill_kernel(
 
             running_max = new_max;
             running_sum = (running_sum * scale_rescale_factor) + 1.0f;
-            running_accumulated_val = (running_accumulated_val * scale_rescale_factor) + __bfloat162float(val);
+            running_accumulated_val =
+                (running_accumulated_val * scale_rescale_factor) + __bfloat162float(val);
         } else {
             float unnormalized_weight = expf(score_at_pos_j - running_max);
             running_sum += unnormalized_weight;
@@ -158,12 +160,13 @@ __global__ void flash_attention_prefill_kernel(
 
     if (lane < head_dim) {
         float inverse_running_sum = 1.0f / running_sum;
-        int output_element_os = token_row_idx * (query_heads * head_dim) + (head_idx * head_dim) + lane;
+        int output_element_os =
+            token_row_idx * (query_heads * head_dim) + (head_idx * head_dim) + lane;
         out[output_element_os] = __float2bfloat16(running_accumulated_val * inverse_running_sum);
     }
 }
 
-} // namespace  
+}  // namespace
 
 void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
                              const Tensor& v_cache, const Tensor& block_tables,
@@ -177,13 +180,15 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
     }
 
     if (k_cache.shape != v_cache.shape) {
-        throw std::invalid_argument("[flash_attention_prefill] k_cache and v_cache shapes must match");
+        throw std::invalid_argument(
+            "[flash_attention_prefill] k_cache and v_cache shapes must match");
     }
 
     int64_t head_dim = k_cache.shape[3];
 
     if (head_dim <= 0 || head_dim % 16 != 0 || head_dim > 128) {
-        throw std::invalid_argument("[flash_attention_prefill] head_dim must be a multiple of 16 and <= 128");
+        throw std::invalid_argument(
+            "[flash_attention_prefill] head_dim must be a multiple of 16 and <= 128");
     }
 
     if (out.dtype != DType::BF16 || out.ndim != 2) {
@@ -191,14 +196,16 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
     }
 
     if (out.shape[1] % head_dim != 0) {
-        throw std::invalid_argument("[flash_attention_prefill] out width must be a multiple of head_dim");
+        throw std::invalid_argument(
+            "[flash_attention_prefill] out width must be a multiple of head_dim");
     }
 
     int64_t num_query_heads = out.shape[1] / head_dim;
     int64_t num_kv_heads = k_cache.shape[1];
 
     if (num_kv_heads <= 0 || num_query_heads <= 0 || num_query_heads % num_kv_heads != 0) {
-        throw std::invalid_argument("[flash_attention_prefill] heads must be a positive multiple of kv_heads");
+        throw std::invalid_argument(
+            "[flash_attention_prefill] heads must be a positive multiple of kv_heads");
     }
 }
 
