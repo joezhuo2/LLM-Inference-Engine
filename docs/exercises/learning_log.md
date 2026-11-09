@@ -1992,7 +1992,13 @@
 - **prediction before observation (the generation effect)** => 
 - **weight reuse per byte (FLOP per byte grows with rows M)** => 
 
-## FlashAttention prefill (Branch 127)
+## Graph bucket grid (Branch 127)
+
+- **geometric (octave) bucket grid: a fixed number of buckets per power of two** => 
+- **padding waste vs. number of captured CUDA graphs** => 
+- **power-of-two test with x & (x - 1)** => 
+
+## FlashAttention prefill (Branch 128)
 - **FlashAttention: tiling Q, K and V so the L x L score matrix never leaves the SM** => 
 - **online softmax across key tiles (rescaling the running sum and output by exp(m_old - m_new))** => 
 - **causal masking inside a tile and skipping tiles that are fully masked** => 
