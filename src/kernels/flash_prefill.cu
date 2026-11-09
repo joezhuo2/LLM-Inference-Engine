@@ -101,6 +101,22 @@ __global__ void flash_attention_prefill_kernel(
                 val = qkv[v_os];
             }
         }
+
+        float partial_dot_product =
+            (lane < head_dim) ? __bfloat162float(query_element) * __bfloat162float(key) : 0.0f;
+        
+        for (int shuffle_os = 16; shuffle_os > 0; shuffle_os /= 2) {
+            partial_dot_product += __shfl_down_sync(0xffffffff, partial_dot_product, shuffle_os);
+        }
+
+        int warp_id = lane / 32;
+        int lane_in_warp = lane % 32;
+
+        if (lane_in_warp == 0) {
+            warp_reductions[warp_id] = partial_dot_product;
+        }
+
+        __syncthreads();
     }
 }
 
