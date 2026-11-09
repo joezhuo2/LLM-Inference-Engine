@@ -1991,3 +1991,9 @@
 - **grouped-query attention vs. multi-head attention** => 
 - **prediction before observation (the generation effect)** => 
 - **weight reuse per byte (FLOP per byte grows with rows M)** => 
+
+## Graph bucket grid (Branch 127)
+
+- **geometric (octave) bucket grid: a fixed number of buckets per power of two** => 
+- **padding waste vs. number of captured CUDA graphs** => 
+- **power-of-two test with x & (x - 1)** => 

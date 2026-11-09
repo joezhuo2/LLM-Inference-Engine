@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## runtime/graph-buckets-impl
+
+- Move `test_graph_buckets.cpp` from `todo_unit_tests` to `unit_tests` (`tests/unit/`) and delete the now empty `todo_unit_tests` target: all 18 tests pass. (Part A)
+- Implement `decode_graph_buckets(max_batch, steps_per_octave)` (`src/sched/graph_buckets.cpp`): reject a max_batch below 1 or a steps_per_octave that is not a power of two, walk the octaves [2^k, 2^(k+1)) below max_batch with a step of max(1, 2^k / steps_per_octave), then append max_batch. Nothing calls it yet; the wiring (replacing both `graph_buckets` copies, `--graph-steps`) is the next branch. (Part C)
+
 ## web/teaching-pass
 
 - Part A: fixes from a Kiro review of this branch, checked by Claude: the GEMM roofline prediction and step say attention moves up only a little (0.05 to 0.17 TFLOP/s), not that it stays put; the add + RMSNorm prediction says 19% fewer bytes at 1 token, computed from the table, instead of a third; the CUDA Graphs prediction answers "mostly the gaps" from the profiles (busy time 6,909 against 6,917 µs, the step 8,069 against 6,973 µs); the foundations and GEMM questions tie rows to tokens; every computed prediction throws at build time if the data changes its answer away from the one its explanation was written for (`expectAnswer`); the paged KV prediction takes its block count and reservation from the data; the glossary cards for attention head, wave, latency, FLOP, CUDA Graph, kernel launch and prefill are corrected, and bare "eager" no longer matches; the review lesson gets glossary cards; the foundations and RoPE reviews no longer overstate (gate/up, not the whole batch-16 step, sits at the roof; RoPE is bit-identical to the naive kernel, which matches Hugging Face).
