@@ -229,6 +229,12 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
     }
 
     int64_t num_chunks = chunk_starts.shape[0] - 1;
+
+    if (cached_lens.dtype != DType::I32 || cached_lens.ndim != 1 ||
+        cached_lens.shape[0] != num_chunks) {
+        throw std::invalid_argument(
+            "flash_attention_prefill: cached_lens must be 1D I32 tensor of length C");
+    }
 }
 
 }  // namespace engine
