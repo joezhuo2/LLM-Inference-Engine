@@ -117,6 +117,23 @@ __global__ void flash_attention_prefill_kernel(
         }
 
         __syncthreads();
+
+        if (warp_id == 0) {
+            float total_dot_product = (lane_in_warp < 4) ? warp_reductions[lane_in_warp] : 0.0f;
+
+            for (int shuffle_os = 2; shuffle_os > 0; shuffle_os /= 2) {
+                total_dot_product += __shfl_down_sync(0xffffffff, total_dot_product, shuffle_os);
+            }
+
+            if (lane_in_warp == 0) {
+                nv_bfloat16 dot_bf16 = __float2bfloat16(total_dot_product);
+                float dot_fp32 = __bfloat162float(dot_bf16);
+                nv_bfloat16 scaled_score_bf16 = __float2bfloat16(dot_fp32 * softmax_scale_factor);
+                final_score = __bfloat162float(scaled_score_bf16);
+            }
+        }
+
+        __syncthreads();
     }
 }
 
