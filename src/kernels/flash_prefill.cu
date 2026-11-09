@@ -6,6 +6,7 @@
 
 #include "engine/core/tensor.h"
 #include "engine/kernels/flash_prefill.h"
+#include "kernels/cuda_check.h"
 
 namespace engine {
 
@@ -273,6 +274,8 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
         static_cast<int>(block_size),
         static_cast<int>(max_blocks_per_chunk)
     );
+
+    KERNEL_CHECK(stream);
 }
 
 }  // namespace engine
