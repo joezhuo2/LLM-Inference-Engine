@@ -207,6 +207,21 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
         throw std::invalid_argument(
             "[flash_attention_prefill] heads must be a positive multiple of kv_heads");
     }
+
+    if (qkv.dtype != DType::BF16 || qkv.ndim != 2) {
+        throw std::invalid_argument("[flash_attention_prefill] qkv must be 2D BF16 tensor");
+    }
+
+    if (qkv.shape[0] != out.shape[0]) {
+        throw std::invalid_argument(
+            "[flash_attention_prefill] qkv row count must match out row count");
+    }
+
+    int64_t expected_qkv_width = (num_query_heads + (2 * num_kv_heads)) * head_dim;
+    if (qkv.shape[1] != expected_qkv_width) {
+        throw std::invalid_argument(
+            "flash_attention_prefill: qkv width must be (heads + (2 * kv_heads)) * head_dim");
+    }
 }
 
 }  // namespace engine
