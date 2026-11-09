@@ -6,6 +6,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Put token rows on `blockIdx.x` and query heads on `blockIdx.y` in `flash_attention_prefill`, because `blockIdx.y` stops at 65,535 blocks and a step can have more rows than that; reject more than 65,535 query heads or more than INT32_MAX rows with `std::invalid_argument`. (Part C, written by Claude at Joe's request)
 - Compute every cache and qkv offset in `flash_attention_prefill_kernel` in 64 bits (cast the first operand before multiplying), so a K or V cache over 2^31 elements (4 GB in bf16) no longer overflows `int`. (Part C, written by Claude at Joe's request)
+- Make `flash_attention_prefill_kernel` return without writing when a chunk's `cached_lens` value is negative or larger than `block_tables` columns times `block_size`, instead of reading past the block table row; those rows keep whatever `out` held. The host cannot check this without a device read. (Part C, written by Claude at Joe's request)
 
 ## kernel/flash-prefill-stub
 
