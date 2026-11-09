@@ -150,6 +150,12 @@ __global__ void flash_attention_prefill_kernel(
             running_accumulated_val += unnormalized_weight * __bfloat162float(val);
         }
     }
+
+    if (lane < head_dim) {
+        float inverse_running_sum = 1.0f / running_sum;
+        int output_element_os = token_row_idx * (query_heads * head_dim) + (head_idx * head_dim) + lane;
+        out[output_element_os] = __float2bfloat16(running_accumulated_val * inverse_running_sum);
+    }
 }
 
 void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
