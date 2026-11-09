@@ -1997,3 +1997,13 @@
 - **geometric (octave) bucket grid: a fixed number of buckets per power of two** => 
 - **padding waste vs. number of captured CUDA graphs** => 
 - **power-of-two test with x & (x - 1)** => 
+
+## FlashAttention prefill (Branch 128)
+- **FlashAttention: tiling Q, K and V so the L x L score matrix never leaves the SM** => 
+- **online softmax across key tiles (rescaling the running sum and output by exp(m_old - m_new))** => 
+- **causal masking inside a tile and skipping tiles that are fully masked** => 
+- **mma.sync m16n8k16 with BF16 inputs and FP32 accumulators** => 
+- **why prefill attention is compute bound and decode attention is memory bound** => 
+- **varlen batching with cumulative row offsets (cu_seqlens)** => 
+- **chunked prefill: the cached prefix from the paged cache, the chunk's own K and V from the qkv buffer** => 
+- **sizing a grid without reading device-side lengths on the host (graph capture)** => 

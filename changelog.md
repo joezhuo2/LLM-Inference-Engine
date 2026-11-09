@@ -2,6 +2,9 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/flash-prefill-stub
+
+- Add the `flash_attention_prefill` Part C stub (`include/engine/kernels/flash_prefill.h`, `src/kernels/flash_prefill.cu`) for #103 with its TODO(JOE) spec: one call covers every prefill chunk of a step, given by `chunk_starts` (I32 `[C + 1]`, row ranges of qkv and out), `cached_lens` (I32 `[C]`, tokens already in the cache) and one block table row per chunk; the cached prefix comes from the paged cache and the chunk's own keys and values straight from qkv. The spec asks for a causal kernel with Q/K tiles through mma and an online softmax, fixes the score rounding of the naive kernels, the bit-identity rules (alone or in a batch, independent of later rows in the chunk, repeatable), the argument errors (head_dim a multiple of 16 up to 128), no host sync so it can be captured in a graph, and takes the "before" numbers from #120 (TTFT 1,152 ms at 2,048 tokens against llama.cpp's 180 ms). 24 todo_joe tests in `tests/todo/gpu/test_flash_prefill.cpp` (new target `todo_gpu_tests`, labels todo_joe and gpu), checked against a throwaway implementation and mutants. The stub throws std::logic_error. (Part C stub)
 ## runtime/graph-buckets-impl
 
 - Move `test_graph_buckets.cpp` from `todo_unit_tests` to `unit_tests` (`tests/unit/`) and delete the now empty `todo_unit_tests` target: all 18 tests pass. (Part A)
