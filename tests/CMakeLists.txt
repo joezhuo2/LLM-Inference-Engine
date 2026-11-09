@@ -16,6 +16,7 @@ add_executable(unit_tests
   unit/test_checksum.cpp
   unit/test_checksum_golden.cpp
   unit/test_config.cpp
+  unit/test_graph_buckets.cpp
   unit/test_cors.cpp
   unit/test_host_check.cpp
   unit/test_http_server.cpp
@@ -93,12 +94,6 @@ if(ENGINE_CUDA)
     GTest::gtest_main)
   gtest_discover_tests(gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS gpu)
 endif()
-
-add_executable(todo_unit_tests
-  todo/unit/test_graph_buckets.cpp
-)
-target_link_libraries(todo_unit_tests PRIVATE engine_core GTest::gtest_main)
-gtest_discover_tests(todo_unit_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
