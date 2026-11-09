@@ -1,5 +1,6 @@
 #include <cuda_bf16.h>
 #include <cuda_runtime.h>
+#include <cstdint>
 #include <stdexcept>
 
 #include "engine/core/tensor.h"
@@ -183,6 +184,21 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
 
     if (head_dim <= 0 || head_dim % 16 != 0 || head_dim > 128) {
         throw std::invalid_argument("[flash_attention_prefill] head_dim must be a multiple of 16 and <= 128");
+    }
+
+    if (out.dtype != DType::BF16 || out.ndim != 2) {
+        throw std::invalid_argument("[flash_attention_prefill] out must be 2D BF16 tensor");
+    }
+
+    if (out.shape[1] % head_dim != 0) {
+        throw std::invalid_argument("[flash_attention_prefill] out width must be a multiple of head_dim");
+    }
+
+    int64_t num_query_heads = out.shape[1] / head_dim;
+    int64_t num_kv_heads = k_cache.shape[1];
+
+    if (num_kv_heads <= 0 || num_query_heads <= 0 || num_query_heads % num_kv_heads != 0) {
+        throw std::invalid_argument("[flash_attention_prefill] heads must be a positive multiple of kv_heads");
     }
 }
 
