@@ -220,12 +220,12 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
     int64_t expected_qkv_width = (num_query_heads + (2 * num_kv_heads)) * head_dim;
     if (qkv.shape[1] != expected_qkv_width) {
         throw std::invalid_argument(
-            "flash_attention_prefill: qkv width must be (heads + (2 * kv_heads)) * head_dim");
+            "[flash_attention_prefill] qkv width must be (heads + (2 * kv_heads)) * head_dim");
     }
 
     if (chunk_starts.dtype != DType::I32 || chunk_starts.ndim != 1 || chunk_starts.numel() == 0) {
         throw std::invalid_argument(
-            "flash_attention_prefill: chunk_starts must be 1D non-empty I32 tensor");
+            "[flash_attention_prefill] chunk_starts must be 1D non-empty I32 tensor");
     }
 
     int64_t num_chunks = chunk_starts.shape[0] - 1;
@@ -233,8 +233,16 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
     if (cached_lens.dtype != DType::I32 || cached_lens.ndim != 1 ||
         cached_lens.shape[0] != num_chunks) {
         throw std::invalid_argument(
-            "flash_attention_prefill: cached_lens must be 1D I32 tensor of length C");
+            "[flash_attention_prefill] cached_lens must be 1D I32 tensor of length C");
     }
+
+    if (block_tables.dtype != DType::I32 || block_tables.ndim != 2 ||
+        block_tables.shape[0] != num_chunks || block_tables.shape[1] <= 0) {
+        throw std::invalid_argument(
+            "[flash_attention_prefill] block_tables must be 2D I32 tensor with C rows and >0 cols");
+    }
+
+    int64_t total_step_rows = out.shape[0];
 }
 
 }  // namespace engine
