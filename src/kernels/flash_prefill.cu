@@ -55,6 +55,12 @@ __global__ void flash_attention_prefill_kernel(
 
     int chunk_relative_token_idx = token_row_idx - chunk_starts[chunk_idx];
     int context_cached_length = cached_lens[chunk_idx];
+
+    if (context_cached_length < 0 || static_cast<int64_t>(context_cached_length) >
+                                         static_cast<int64_t>(blocks_per_chunk) * block_size) {
+        return;
+    }
+
     int seq_casual_boundary = context_cached_length + chunk_relative_token_idx;
 
     float softmax_scale_factor = 1.0f / sqrtf(static_cast<float>(head_dim));
