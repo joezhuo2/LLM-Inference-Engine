@@ -222,6 +222,13 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
         throw std::invalid_argument(
             "flash_attention_prefill: qkv width must be (heads + (2 * kv_heads)) * head_dim");
     }
+
+    if (chunk_starts.dtype != DType::I32 || chunk_starts.ndim != 1 || chunk_starts.numel() == 0) {
+        throw std::invalid_argument(
+            "flash_attention_prefill: chunk_starts must be 1D non-empty I32 tensor");
+    }
+
+    int64_t num_chunks = chunk_starts.shape[0] - 1;
 }
 
 }  // namespace engine
