@@ -243,6 +243,10 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
     }
 
     int64_t total_step_rows = out.shape[0];
+
+    if (num_chunks == 0 || total_step_rows == 0) {
+        return;
+    }
 }
 
 }  // namespace engine
