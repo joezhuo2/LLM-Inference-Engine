@@ -179,7 +179,11 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
         throw std::invalid_argument("[flash_attention_prefill] k_cache and v_cache shapes must match");
     }
 
-    
+    int64_t head_dim = k_cache.shape[3];
+
+    if (head_dim <= 0 || head_dim % 16 != 0 || head_dim > 128) {
+        throw std::invalid_argument("[flash_attention_prefill] head_dim must be a multiple of 16 and <= 128");
+    }
 }
 
 }  // namespace engine
