@@ -63,6 +63,45 @@ __global__ void flash_attention_prefill_kernel(
     float running_max = -1e30f;
     float running_sum = 0.0f;
     float running_accumulated_val = 0.0f;
+
+    __shared__ float warp_reductions[4];
+    __shared__ float final_score;
+
+    for (int context_pos = 0; context_pos <= seq_casual_boundary; ++context_pos) {
+        nv_bfloat16 key = __float2bfloat16(0.0f);
+        nv_bfloat16 val = __float2bfloat16(0.0f);
+
+        if (lane < head_dim) {
+            if (context_pos < context_cached_length) {
+                int logical_block_idx = context_pos / block_size;
+                int physical_block_idx =
+                    block_tables[(chunk_idx * blocks_per_chunk) + logical_block_idx];
+                int block_token_os = context_pos % block_size;
+
+                int block_head_idx = (physical_block_idx * kv_heads) + kv_head_idx;
+                int token_slot_idx = (block_head_idx * block_size) + block_token_os;
+                int cache_os = (token_slot_idx * head_dim) + lane;
+
+                key = k_cache[cache_os];
+                val = v_cache[cache_os];
+            } else {
+                int source_chunk_os = context_pos - context_cached_length;
+                int source_global_row = chunk_starts[chunk_idx] + source_chunk_os;
+                int row_start_os = source_global_row * qkv_row_stride;
+
+                int k_section_os = row_start_os + (query_heads * head_dim);
+                int k_head_os = k_section_os + (kv_head_idx * head_dim);
+                int k_os = k_head_os + lane;
+
+                int v_section_os = k_section_os + (kv_heads * head_dim);
+                int v_head_os = v_section_os + (kv_head_idx * head_dim);
+                int v_os = v_head_os + lane;
+
+                key = qkv[k_os];
+                val = qkv[v_os];
+            }
+        }
+    }
 }
 
 void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor& k_cache,
