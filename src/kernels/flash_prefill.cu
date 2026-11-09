@@ -59,7 +59,8 @@ __global__ void flash_attention_prefill_kernel(
 
     float softmax_scale_factor = 1.0f / sqrtf(static_cast<float>(head_dim));
     int qkv_row_stride = (query_heads + (2 * kv_heads)) * head_dim;
-    int query_buffer_offset = (token_row_idx * qkv_row_stride) + (head_idx * head_dim);
+    int64_t query_buffer_offset = (static_cast<int64_t>(token_row_idx) * qkv_row_stride) +
+                                  (static_cast<int64_t>(head_idx) * head_dim);
 
     nv_bfloat16 query_element = __float2bfloat16(0.0f);
 
@@ -82,27 +83,29 @@ __global__ void flash_attention_prefill_kernel(
             if (context_pos < context_cached_length) {
                 int logical_block_idx = context_pos / block_size;
                 int physical_block_idx =
-                    block_tables[(chunk_idx * blocks_per_chunk) + logical_block_idx];
+                    block_tables[(static_cast<int64_t>(chunk_idx) * blocks_per_chunk) +
+                                 logical_block_idx];
                 int block_token_os = context_pos % block_size;
 
-                int block_head_idx = (physical_block_idx * kv_heads) + kv_head_idx;
-                int token_slot_idx = (block_head_idx * block_size) + block_token_os;
-                int cache_os = (token_slot_idx * head_dim) + lane;
+                int64_t block_head_idx =
+                    (static_cast<int64_t>(physical_block_idx) * kv_heads) + kv_head_idx;
+                int64_t token_slot_idx = (block_head_idx * block_size) + block_token_os;
+                int64_t cache_os = (token_slot_idx * head_dim) + lane;
 
                 key = k_cache[cache_os];
                 val = v_cache[cache_os];
             } else {
                 int source_chunk_os = context_pos - context_cached_length;
                 int source_global_row = chunk_starts[chunk_idx] + source_chunk_os;
-                int row_start_os = source_global_row * qkv_row_stride;
+                int64_t row_start_os = static_cast<int64_t>(source_global_row) * qkv_row_stride;
 
-                int k_section_os = row_start_os + (query_heads * head_dim);
-                int k_head_os = k_section_os + (kv_head_idx * head_dim);
-                int k_os = k_head_os + lane;
+                int64_t k_section_os = row_start_os + (query_heads * head_dim);
+                int64_t k_head_os = k_section_os + (kv_head_idx * head_dim);
+                int64_t k_os = k_head_os + lane;
 
-                int v_section_os = k_section_os + (kv_heads * head_dim);
-                int v_head_os = v_section_os + (kv_head_idx * head_dim);
-                int v_os = v_head_os + lane;
+                int64_t v_section_os = k_section_os + (kv_heads * head_dim);
+                int64_t v_head_os = v_section_os + (kv_head_idx * head_dim);
+                int64_t v_os = v_head_os + lane;
 
                 key = qkv[k_os];
                 val = qkv[v_os];
@@ -161,8 +164,8 @@ __global__ void flash_attention_prefill_kernel(
 
     if (lane < head_dim) {
         float inverse_running_sum = 1.0f / running_sum;
-        int output_element_os =
-            token_row_idx * (query_heads * head_dim) + (head_idx * head_dim) + lane;
+        int64_t output_element_os = static_cast<int64_t>(token_row_idx) * (query_heads * head_dim) +
+                                    (head_idx * head_dim) + lane;
         out[output_element_os] = __float2bfloat16(running_accumulated_val * inverse_running_sum);
     }
 }
