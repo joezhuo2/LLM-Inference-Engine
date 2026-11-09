@@ -247,6 +247,32 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
     if (num_chunks == 0 || total_step_rows == 0) {
         return;
     }
+
+    int64_t block_size = k_cache.shape[2];
+    int64_t max_blocks_per_chunk = block_tables.shape[1];
+
+    dim3 grid_dimensions(static_cast<unsigned int>(num_query_heads),
+                         static_cast<unsigned int>(total_step_rows));
+    dim3 thread_block_dimensions(128);
+
+    cudaStream_t execution_stream = static_cast<cudaStream_t>(stream);
+
+    flash_attention_prefill_kernel<<<grid_dimensions, thread_block_dimensions, 0, execution_stream>>>(
+        static_cast<nv_bfloat16*>(out.data),
+        static_cast<const nv_bfloat16*>(qkv.data),
+        static_cast<const nv_bfloat16*>(k_cache.data),
+        static_cast<const nv_bfloat16*>(v_cache.data),
+        static_cast<const int32_t*>(block_tables.data),
+        static_cast<const int32_t*>(chunk_starts.data),
+        static_cast<const int32_t*>(cached_lens.data),
+        static_cast<int>(num_chunks),
+        static_cast<int>(total_step_rows),
+        static_cast<int>(num_query_heads),
+        static_cast<int>(num_kv_heads),
+        static_cast<int>(head_dim),
+        static_cast<int>(block_size),
+        static_cast<int>(max_blocks_per_chunk)
+    );
 }
 
 }  // namespace engine
