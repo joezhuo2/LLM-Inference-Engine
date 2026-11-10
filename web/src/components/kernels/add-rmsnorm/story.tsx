@@ -120,7 +120,7 @@ export function TokensPicker() {
 const steps: StoryStep[] = [
   {
     id: "job",
-    title: "the job",
+    title: "every add is followed by a norm",
     body: (
       <>
         <p>
@@ -136,7 +136,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "fusion",
-    title: "fusion, the pattern",
+    title: "fusion keeps the value on the chip",
     body: (
       <>
         <p>
@@ -166,7 +166,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "round-trip",
-    title: "two kernels, one round trip",
+    title: "the pair sends the sum out and back",
     body: (
       <>
         <p>
@@ -182,7 +182,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "first",
-    title: "fused, and no faster",
+    title: "fewer bytes did not buy time",
     body: (
       <>
         <p>
@@ -195,12 +195,17 @@ const steps: StoryStep[] = [
           <span className="text-accent">{first1.toFixed(1)} µs</span> for one token. The memory traffic is a small part of
           that; the rest is waiting on dependent loads and barriers.
         </p>
+        <p>
+          So the bytes fusion saves turn into time only once the kernel stops waiting on itself. The time came later, from
+          cutting those waits: 16-byte loads, the sums kept in registers, and one barrier instead of two.
+        </p>
       </>
     ),
   },
   {
     id: "rounding",
-    title: "the same bits as the naive pair",
+    title: "round to BF16 where the pair rounds",
+    group: "how it got built",
     body: (
       <>
         <p>
@@ -216,7 +221,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "vectors",
-    title: "16 bytes at a time",
+    title: "16 bytes per load, not 2",
+    group: "how it got built",
     body: (
       <>
         <p>
@@ -232,7 +238,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "shuffles",
-    title: "every thread gets the total",
+    title: "shuffles give every thread the total",
+    group: "how it got built",
     body: (
       <>
         <p>
@@ -249,7 +256,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "measured",
-    title: "measured",
+    title: `${(tunedPair1 / tuned1).toFixed(1)}x faster than the pair, one token`,
+    group: "measured",
     body: (
       <>
         <p>

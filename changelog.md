@@ -8,6 +8,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: Paged attention opens on the block table and what paging costs; the v1 to v2 to split history moves under how it got built.
 - Part A: Attention v2 opens on the online softmax, then lanes and the profile; v1's three passes and cap move under how it got built, and the decode step and size sweep under measured.
 - Part A: Split attention opens on too few blocks, the cut, partial results and the exact merge; the CUDA Graphs capture bug moves under how it got built, and occupancy, waves and the split rule under measured.
+- Part A: Add + RMSNorm leads with fusion and why the first fused kernel saved bytes but not time; spec rounding, 16-byte loads and shuffles are grouped as how it got built, and the closing step is titled with its measured speedup.
 
 ## kernel/flash-prefill-div32
 

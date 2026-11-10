@@ -2108,3 +2108,5 @@
 - **shared memory per block** => 
 - **wave of thread blocks** => 
 - **partial softmax merge** => 
+- **kernel fusion saves bytes and launches, not arithmetic** => 
+- **xor shuffle all-reduce** => 

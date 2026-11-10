@@ -166,7 +166,7 @@ const steps: StoryStep[] = [
           Hugging Face&apos;s act tensor bit for bit on every traced layer.
         </p>
         <p>
-          This is already a small case of the fusion in chapter {chapterNumber("add-rmsnorm")}, &quot;fusion, the pattern&quot;: silu(gate) stays in a
+          This is already a small case of the fusion in chapter {chapterNumber("add-rmsnorm")}, &quot;fusion keeps the value on the chip&quot;: silu(gate) stays in a
           register, and the BF16 rounding that writing it out as a tensor would have done is still done there. Every
           faster version had to keep that chain. Skipping the first rounding looks harmless and gives a different
           answer: in the example on the right the output moves by <span className="text-accent">one BF16 step</span>.

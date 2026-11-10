@@ -17,7 +17,7 @@ const beats: Beat[][] = [
     close("From the side: the squares grow with the scale, the norm does not", [0.55, 0.08, 0.02], 0.84, 0.4, 30, 26),
     close("The slider: scale x and r together", [0.55, 0.03, 0.27], 0.9, 0.3, 0, 44),
   ],
-  [flat("Fusion, the pattern: a round trip and a launch removed")],
+  [flat("Fusion: a round trip and a launch removed")],
   [
     overview("Two kernels and a round trip, or one kernel"),
     close("Close up: the sum goes out to DRAM and comes back twice", [0.35, 0.05, -0.42], 0.75, 0.42, -20, 42),
