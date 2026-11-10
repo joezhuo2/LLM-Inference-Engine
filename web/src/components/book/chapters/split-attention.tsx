@@ -52,13 +52,13 @@ const beats: Beat[][] = [
 ];
 
 const instructions = [
-  "Watch 32 blocks land in 156 slots and drain together.",
+  "Watch 32 blocks land in the slots and drain together.",
   "Follow the pink line: the SM only works when a warp reaches its math.",
   "Watch the context cut into 8 ranges that are walked side by side.",
-  "Drag the pink ball to 1, 2, 4 or 8 splits and watch the grid and the clock.",
+  "Drag the pink ball through the split counts and watch the grid and the clock.",
   "Watch the records fill in a different order from the splits.",
   "Watch each pillar shrink by exp(m − M), then stack in split order.",
-  "Watch the pink plinth move from the 1-split graph to the 4-split one.",
+  "Watch the pink plinth move from the unsplit graph to the one that matches the context.",
 ];
 
 const captions = splitCaptions.map((c, i) => (i === 1 ? `${c}; the warp loop is a sketch` : i === 6 ? `${c}; graph tiles from the attention_splits rule` : c));
@@ -97,7 +97,7 @@ const chapter: ChapterDef = {
 export const splitAttentionChapter = withLead(chapter, {
   step: splitAbout,
   caption: splitAboutCaption,
-  instruction: "Drag the pink ball to 1, 2, 4 or 8 splits and count the SMs that one head keeps busy.",
+  instruction: "Drag the pink ball through the split counts and count the SMs that one head keeps busy.",
   beats: [
     overview("What an SM and a thread block are, and what splitting does"),
     close("Close up: the context cut into pieces, one block for each", [0.34, 0.03, -0.32], 0.62, 0.38, -20, 40),

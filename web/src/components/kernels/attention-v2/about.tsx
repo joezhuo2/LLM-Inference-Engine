@@ -1,9 +1,13 @@
 "use client";
 
 import { motion } from "motion/react";
+import { modelShape } from "@/lib/data";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 import { StickyStory, type StoryStep } from "../sticky-story";
+
+const shape = modelShape();
+const headDim = shape.hidden / shape.heads;
 
 export type OnlineState = { score: number; max: number; sum: number; before: number; rose: boolean };
 
@@ -27,10 +31,10 @@ export const attentionV2About: StoryStep = {
   body: (
     <>
       <p>
-        Attention decides how much each earlier token matters to the one being generated. Each query head takes the dot product of its query with the key of every token in the context, 64 values each, and divides it by 8, the square root of 64. That gives one score per token, and a score can be any number.
+        Attention decides how much each earlier token matters to the one being generated. Each query head takes the dot product of its query with the key of every token in the context, {headDim} values each, and divides it by the square root of that size. That gives one score per token, and a score can be any number.
       </p>
       <p>
-        Softmax turns the scores into weights that are positive and add up to 1. Each weight is e to the power of its score minus m, divided by l: m is the largest score, and l is the sum of those powers over every score. Subtracting m does not change the weights, but it keeps every power between 0 and 1, so none can overflow. The weights then say how much of each token&apos;s value vector goes into the head&apos;s output.
+        Softmax turns the scores into weights that are positive and add up to 1. Each weight is e to the power of its score minus m, divided by l: m is the largest score, and l is the sum of those powers over every score. Subtracting m does not change the weights, but it keeps every power small, so none can overflow. The weights then say how much of each token&apos;s value vector goes into the head&apos;s output.
       </p>
       <p>
         On a GPU this is awkward: no weight is known until m and l are, and both depend on every score, the last one included. The direct way keeps every score and reads them several times.
@@ -42,7 +46,7 @@ export const attentionV2About: StoryStep = {
   ),
 };
 
-export const attentionV2AboutCaption = "illustrative: 8 example scores; a real query head has one score for every token of the context";
+export const attentionV2AboutCaption = `illustrative: 8 example scores; a real query head has one score for every token of the context, and its ${headDim} values make the divisor √${headDim} = ${Math.sqrt(headDim)}; keeping every power between 0 and 1 is what stops an overflow`;
 
 const states = onlineStates(onlineScores);
 const N = onlineScores.length;

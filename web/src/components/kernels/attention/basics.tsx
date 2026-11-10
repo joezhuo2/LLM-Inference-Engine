@@ -42,7 +42,7 @@ const steps: StoryStep[] = [
           Every token reaches attention as a vector of {int(m.hidden)} values. One matrix multiply turns it into three vectors: a <span className="text-text">query</span>, what this token is looking for; a <span className="text-text">key</span>, what it offers to tokens that look at it; and a <span className="text-text">value</span>, what it passes on when it is picked.
         </p>
         <p>
-          In TinyLlama the query has {int(m.hidden)} values and the key and the value <span className="text-accent">{int(kvDim)}</span> each, {int(qkvRow)} in all. That is the QKV projection of the GEMM chapter, and the key and value are what the KV cache stores.
+          In TinyLlama the query keeps all of those values and the key and the value are only <span className="text-accent">{int(kvDim)}</span> each. That is the QKV projection of the GEMM chapter, and the key and value are what the KV cache stores.
         </p>
       </>
     ),
@@ -53,10 +53,10 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The newest token compares its query with the key of every token so far: one dot product each, divided by √{headDim} = {scale} so the scores do not grow with the vector length. A high score means a good match.
+          The newest token compares its query with the key of every token so far: one dot product each, divided by √{headDim} so the scores do not grow with the vector length. A high score means a good match.
         </p>
         <p>
-          Softmax turns the scores into weights that are all positive and add up to 1, so the best match gets the largest share: here &quot;{words[top]}&quot; gets <span className="text-accent">{Math.round(weights[top] * 100)}%</span>. The output is the values added up with those weights, one vector of {headDim} numbers per head.
+          Softmax turns the scores into weights that are all positive and add up to 1, so the best match gets the largest share: here &quot;{words[top]}&quot; gets <span className="text-accent">{Math.round(weights[top] * 100)}%</span>. The output is the values added up with those weights, one vector per head.
         </p>
         <p>That is the whole formula, out = softmax(q · Kᵀ / √d) · V. Everything later in this chapter is about reading K and V fast.</p>
       </>
@@ -68,7 +68,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          A token may only look at itself and the tokens before it; the future is masked out. In prefill every prompt token does this at once, a triangle of scores: 8 tokens give 36.
+          A token may only look at itself and the tokens before it; the future is masked out. In prefill every prompt token does this at once, a triangle of scores, <span className="text-accent">36</span> of them for the prompt shown.
         </p>
         <p>
           In decode only the newest token is new, so a step adds one row to the triangle: <span className="text-accent">one query</span> against every key so far. Old queries are never used again, but every old key and value is read again at every step. That is why the cache keeps K and V, and not Q.
@@ -82,22 +82,22 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Attention runs as {m.heads} heads side by side. The query is cut into {m.heads} pieces of {headDim} values, each head scores and sums on its own, looking for its own pattern, and the {m.heads} outputs are joined back into {int(m.hidden)} values.
+          Attention runs as <span className="text-accent">{m.heads}</span> heads side by side. The query is cut into one piece per head, each head scores and sums on its own, looking for its own pattern, and the outputs are joined back into one vector.
         </p>
         <p>
-          TinyLlama uses grouped-query attention: it has only {m.kv_heads} key heads and {m.kv_heads} value heads, and each serves {group} query heads. So a token caches {int(kvLayer)} bytes per layer, <span className="text-accent">{int(kvToken)}</span> over {m.layers} layers, where one key head per query head would need {int(mhaToken)}.
+          TinyLlama uses grouped-query attention: it has only a few key heads and value heads, and each serves a whole group of query heads. So a token caches <span className="text-accent">{int(kvToken)}</span> bytes over all its layers, where one key head per query head would need several times as much.
         </p>
-        <p>The same memory then holds {group} times the tokens: the recorded run&apos;s pool fits {int(poolTokens)} tokens, and would fit {int(mhaPoolTokens)} without sharing.</p>
+        <p>The same memory then holds <span className="text-accent">{group} times</span> the tokens. For the recorded run&apos;s pool, the figure shows the two token counts.</p>
       </>
     ),
   },
 ];
 
 export const basicsCaptions = [
-  `sizes from config.json: ${int(m.hidden)} hidden values, ${m.heads} query heads and ${m.kv_heads} key and value heads of ${headDim}; bars drawn to scale`,
-  "illustrative: six tokens and made-up scores; the softmax and the sum are computed from them",
+  `sizes from config.json: the query ${int(m.hidden)} values (${m.heads} heads of ${headDim}), the key and the value ${int(kvDim)} each (${m.kv_heads} heads), ${int(qkvRow)} in all; bars drawn to scale`,
+  `illustrative: six tokens and made-up scores; the softmax and the sum are computed from them; the divisor is √${headDim} = ${scale}, and each head outputs ${headDim} numbers`,
   "illustrative: an 8-token prompt, then one decode step",
-  `${int(kvToken)} bytes = ${m.layers} layers × K and V × ${m.kv_heads} heads × ${headDim} values × 2 bytes; the pool is the ${int(pool.kv_blocks)} blocks of ${pool.block_size} tokens of the recorded chat run`,
+  `${int(kvToken)} bytes = ${m.layers} layers × K and V × ${m.kv_heads} heads × ${headDim} values × 2 bytes (${int(kvLayer)} per layer), against ${int(mhaToken)} with one key head per query head; the query is ${m.heads} heads × ${headDim} values = ${int(m.hidden)}; the pool is the ${int(pool.kv_blocks)} blocks of ${pool.block_size} tokens of the recorded chat run, ${int(poolTokens)} tokens shared against ${int(mhaPoolTokens)} without sharing`,
 ];
 
 export const basicsInstructions = [

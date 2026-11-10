@@ -1,11 +1,17 @@
 import { pagedAttention } from "@/content/kernels/paged-attention";
 import { measured } from "@/content/kernels/types";
+import { kvReplay } from "@/lib/data";
 import type { ChapterReview } from "./types";
 
 const split = "split-context-attention-branch-40";
 const sixteenRows = { rows: "16", context: "2,048" };
 const v2SixteenRows = measured(split, sixteenRows, "v2");
 const splitSixteenRows = measured(split, sixteenRows, "8");
+const blockSize = kvReplay().meta.block_size;
+const requestTokens = 37;
+const keyToken = requestTokens - 1;
+const keyEntry = Math.floor(keyToken / blockSize);
+const keySlot = keyToken % blockSize;
 
 export const review: ChapterReview = {
   lesson: "A block table lets attention read a context scattered anywhere in the pool.",
@@ -25,6 +31,12 @@ export const review: ChapterReview = {
       question: "Splitting the context into 8 ranges speeds up one row at 2,048 tokens. Would 16 rows at the same context gain more, about the same, or less?",
       answer: `Less. In the measurements it gets slower: ${v2SixteenRows.toFixed(1)} µs becomes ${splitSixteenRows.toFixed(1)} µs.`,
       why: "Splitting helps by giving idle parts of the GPU something to do. With 16 rows there are already enough blocks to keep it busy, so the extra splits have nothing left to fill and the merge is added cost.",
+    },
+    {
+      recall: "paged-kv",
+      question: `Blocks hold ${blockSize} tokens, and the paged KV chapter wrote a ${requestTokens}-token request through its block table. When attention scores its last token, token ${keyToken}, which block table entry does the kernel look up, and which slot of that block does it read?`,
+      answer: `Entry ${keyEntry}, slot ${keySlot}.`,
+      why: `Reading uses the same rule as writing: ${keyToken} / ${blockSize} rounded down is entry ${keyEntry}, and ${keyToken} mod ${blockSize} is slot ${keySlot}. The table entry names the physical block, wherever it sits in the pool, so the kernel finds exactly the key that write_kv stored.`,
     },
   ],
 };

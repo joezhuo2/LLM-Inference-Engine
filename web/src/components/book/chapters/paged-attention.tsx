@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { modelShape } from "@/lib/data";
 import { pagedAttentionAbout, pagedAttentionAboutCaption } from "@/components/kernels/attention/about";
 import { attentionBasics, BasicsFigure, basicsCaptions, basicsInstructions } from "@/components/kernels/attention/basics";
 import { prologueCaptions, prologueNumbers, prologueSteps } from "@/components/kernels/attention/prologue-story";
@@ -73,16 +74,19 @@ const instructions = [
   "Watch the context run as one range, then as eight at once.",
 ];
 
+const shape = modelShape();
+const engineHeadDim = shape.hidden / shape.heads;
+
 const workbench: WorkbenchPage[] = [
   {
     title: "the block table",
     overlay: "sandbox-table",
-    caption: "Step through it yourself: the block table",
+    caption: `Step through it yourself: the block table. The engine uses head dim ${engineHeadDim} and reads 256 tokens per step; here the head dim is 4 and a step is one block`,
     paragraphs: [
-      "Set a context length and a block size. The context is cut into blocks of that many tokens, and each logical block is given a physical block somewhere in a pool of 64, in no particular order. Block 0 is the null block and is never handed out.",
+      "Set a context length and a block size. The context is cut into blocks of that many tokens, and each logical block is given a physical block somewhere in a pool of 64, in no particular order. The first block of the pool is the null block and is never handed out.",
       "The square of cells is the pool: a number is the logical block that sits there. The list beside it is the block table, logical to physical, which is all the kernel has to find a key. Click an entry to jump to that block.",
       "Press next block or play and watch the pool light up in logical order while the physical blocks are scattered. New random data reshuffles the blocks and the numbers.",
-      "The values are illustrative: head dim 4 and seeded random numbers instead of the model's 64. The order of operations is the kernel's, one block per step here where the engine reads 256 tokens at a time.",
+      "The values are illustrative: a tiny head dim and seeded random numbers instead of the model's. The order of operations is the kernel's, one block per step here where the engine reads a whole chunk at a time.",
     ],
   },
   {
@@ -93,7 +97,7 @@ const workbench: WorkbenchPage[] = [
       "Each step reads one block: its scores q · k / √d, then the running max m, the running sum l and the accumulator acc are updated before the next block arrives.",
       "Watch the m row. When a block's best score beats every earlier one, m is raised and the rescale factor exp(m old - m new) drops below 1; l and acc are multiplied by it before the new weights are added.",
       "When m is unchanged the factor is exactly 1 and the new weights are simply added. Either way no block is read twice, which is what lets v2 keep only one chunk in shared memory.",
-      "The table below counts the blocks read and the bytes they would cost at head dim 64: K and V, 2 bytes each in BF16, for one head.",
+      "The table below counts the blocks read and the bytes they would cost at head dim 64: K and V in BF16, for one head.",
     ],
   },
   {

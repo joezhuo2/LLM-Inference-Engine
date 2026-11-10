@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { measured } from "@/content/kernels/types";
-import { traces } from "@/lib/data";
+import { modelShape, traces } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { V2LinkFigure } from "../attention-v2/figures";
 import { BlocksFigure, OverviewFigure, SplitFigure } from "./figures";
@@ -16,6 +16,8 @@ const stepV2 = measured(wired, attentionRow, "after (79c1f91)");
 const v2Loop = measured(split, at2048, "v2");
 const split8 = measured(split, at2048, "8");
 const poolBlocks = Number((traces.find((t) => t.meta.prompts && t.meta.prompts !== "random") ?? traces[0])?.meta.kv_blocks);
+const shape = modelShape();
+const headDim = shape.hidden / shape.heads;
 
 const steps: StoryStep[] = [
   {
@@ -27,7 +29,7 @@ const steps: StoryStep[] = [
           Each decode step adds one token to every sequence. Attention compares that token&apos;s query with the key of
           every token before it, turns the scores into weights with a softmax, and sums the values with those weights.
         </p>
-        <p><span className="text-accent">32</span> query heads, 64 dimensions each, against a context that grows by one token every step.</p>
+        <p><span className="text-accent">{shape.heads}</span> query heads against a context that grows by one token every step.</p>
       </>
     ),
   },
@@ -50,13 +52,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The first version kept every score of the context in shared memory and made three passes over it, with a
-          context cap of 2,048 tokens. The second streams keys in chunks with an online softmax, shares each key between
-          eight lanes, and runs 8,192 tokens.
+          The first version kept every score of the context in shared memory and made several passes over it, which capped
+          the context. The second streams keys in chunks with an online softmax, shares each key between a group of lanes,
+          and runs up to <span className="text-accent">8,192</span> tokens.
         </p>
         <p>
-          Attention per decode step: <span className="text-text">{stepV1}</span> to{" "}
-          <span className="text-accent">{stepV2} µs</span>. The whole before and after is its own story:{" "}
+          Attention per decode step: <span className="text-accent">{stepV2} µs</span>, down from v1&apos;s time in the caption. The whole before and after is its own story:{" "}
           <Link href="/kernels/attention-v2" className="link-underline text-accent">
             attention v1 → v2
           </Link>
@@ -71,9 +72,9 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          v2 still launches one block per row and head, 32 blocks at batch 1, a fifth of what the GPU holds at once. Cutting
-          each context into ranges that run side by side, then merging them, took one row at 2,048 tokens from{" "}
-          <span className="text-text">{v2Loop}</span> to <span className="text-accent">{split8} µs</span>.
+          v2 still launches one block per row and head, which at one row is a fifth of what the GPU holds at once. Cutting
+          each context into ranges that run side by side, then merging them, took one row at a long context down to{" "}
+          <span className="text-accent">{split8} µs</span>.
         </p>
         <p>
           That is its own story:{" "}
@@ -88,12 +89,12 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  "decode attention for one sequence and one head; the bars are illustrative",
+  `decode attention for one sequence and one head of ${headDim} dimensions; the bars are illustrative`,
   Number.isFinite(poolBlocks) && poolBlocks > 0
     ? `example block table; the pool held ${poolBlocks.toLocaleString("en-US")} blocks in the recorded run`
     : "example block table",
-  `${stepV1} → ${stepV2} µs per decode step (eager profile, contexts of at most 64 tokens), from docs/profiling.md`,
-  `${v2Loop} µs → ${split8} µs, one row at 2,048 tokens, from docs/profiling.md; the busy SMs are an illustration`,
+  `${stepV1} → ${stepV2} µs per decode step (eager profile, contexts of at most 64 tokens), from docs/profiling.md; v1 made three passes and held at most 2,048 tokens, v2 shares each key between eight lanes`,
+  `${v2Loop} µs → ${split8} µs, one row at 2,048 tokens, from docs/profiling.md; one block per query head is ${shape.heads} blocks at batch 1; the busy SMs are an illustration`,
 ];
 
 export const attentionSteps = steps;

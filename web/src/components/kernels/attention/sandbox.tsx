@@ -221,7 +221,7 @@ export function PagedAttentionSandbox({ pages }: { pages?: SandboxPages } = {}) 
   );
   const note = (
     <p className="text-muted">
-      {`Illustrative: head dim ${problem.headDim}, random seeded values (new random data reshuffles the blocks and the numbers), float32. The engine uses head dim ${engineHeadDim} and reads 256 tokens per step (16 blocks); here one block per step, with the same order of operations.`}
+      {`Illustrative: head dim ${problem.headDim}, random seeded values (new random data reshuffles the blocks and the numbers), float32. The engine uses a much larger head dim and reads many blocks per step; here one block per step, with the same order of operations.`}
     </p>
   );
   const stats = (

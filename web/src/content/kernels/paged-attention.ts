@@ -25,7 +25,7 @@ export const pagedAttention: KernelStory = {
   },
   sandbox: {
     title: "step through it yourself",
-    intro: "One query against one head's cached context, read through a block table the way paged_attention_v2.cu reads it: one block per step, each step updating the running max m, the running sum l and the rescaled accumulator. Set the context length and the block size, press next block, and watch m, l and the accumulator. Before you step, answer the prediction on the right. At the end the online result is compared with ordinary softmax attention computed in one go.",
+    intro: "One query against one head's cached context, read through a block table the way paged_attention_v2.cu reads it: one block per step, each step updating the running max m, the running sum l and the rescaled accumulator. Set the context length and the block size, press next block, and watch m, l and the accumulator. Before you step, answer the prediction on the right. At the end the online result is compared with ordinary softmax attention computed in one go. The engine reads 256 tokens per step, and the sandbox reads one block.",
   },
   sources: [
     { path: "src/kernels/paged_attention.cu", label: "v1" },
