@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## web/flash-prefill-profile
 
 - Part A: `scripts/profile_report.py` no longer stops on a run with no decode steps (`--output-len 1`, so the summary has no TPOT): it leaves the decode bandwidth section out. `scripts/profile.sh nsys` on a lone prefill step now writes its report.
+- Part A: profiled one 2,048-token prompt in one step and under `--token-budget` with Nsight Systems (three captures per budget, RTX 5060 Laptop GPU, 2026-11-10, main at db212b0) and wrote it up in `docs/profiling.md`, "FlashAttention prefill in chunks". In one step attention is 32.0 of 168.9 ms and the GEMMs 128.2. As 8 chunks of 256 the span is 49.0 ms longer: attention 29.7, GEMMs 10.8, gaps 11.4. The kernel uses 115 registers per thread, so 104 thread blocks fit on the GPU at once and a 256-row chunk launches 128; budgets of 208 and 224 (104 and 112 blocks, 10 steps each) take 49.9 and 73.3 ms of attention. Tried and not committed, since the kernel is Part C: 32-bit divisions on the cache path bring it to 96 registers and 130 blocks at once, and attention at a budget of 256 falls from 61.7 to 42.7 ms. Nsight Compute did not run (`ERR_NVGPUCTRPERM`), so tensor core use and bytes read stay open. `docs/results.md` drops its two "was not profiled" sentences for these numbers. The last step of `/kernels/flash-prefill` and the last spread of chapter 13 of Every Byte show the split as two stacked bars with the block count under them, read from the new tables.
 
 ## web/flash-prefill
 

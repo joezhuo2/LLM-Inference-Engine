@@ -2085,3 +2085,9 @@
 - **FlashAttention: tiling the score table instead of materializing it** => 
 - **reading a fragment layout (which lane holds which element)** => 
 - **log-log chart: a flat cost per token is a straight line** => 
+
+## Profiling chunked prefill (Branch 141)
+
+- **registers per thread decide how many thread blocks fit on an SM** => 
+- **a grid a little larger than one wave: the leftover blocks run on a nearly empty GPU** => 
+- **a launch cannot be shorter than its longest block** => 
