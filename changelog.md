@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## runtime/graph-steps-default
+
+- Make `--graph-steps 2` the default in `engine bench` and `engine serve` (`GpuBackendOptions` too), from the #121 sweep: padding 17 rows to the 32 graph cost about 14% against the 24 graph, and more than two buckets per power of two gained nothing. At max batch 16 the graphs are now 1, 2, 3, 4, 6, 8, 12 and 16 instead of 1, 2, 4, 8 and 16, each times its split counts; capture time and memory are not measured. `--graph-steps 1` gives the old buckets. The server test that used 2 explicitly now uses 1, so both stay covered. README, help text and the results Kernels row say so; earlier graph results were measured with power-of-two buckets. (Part B)
+
 ## runtime/graph-buckets-wiring
 
 - Wire `decode_graph_buckets` into `engine bench` and `engine serve` in place of the two `graph_buckets` copies (`src/app/bench_command.cpp`, `src/server/gpu_backend.cpp`), with a new `--graph-steps` option (graph sizes per power of two of batch size, a power of two, default 1, which gives the old 1, 2, 4, 8 and so on plus the max batch); anything else is rejected with std::invalid_argument. The bench summary CSV, the trace meta and the `/v1/steps` meta record `graph_steps` (0 without `--graphs`). Two new GPU tests in `tests/gpu/test_server.cpp`: six streamed clients at max batch 6 with `--graph-steps 2` (buckets 1, 2, 3, 4, 6) all get the greedy answer of `generate`, and steps of 0, 3, 6 and -2 are rejected. (Part B)

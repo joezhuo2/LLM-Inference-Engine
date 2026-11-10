@@ -52,7 +52,7 @@ struct Options {
     double request_rate = 0.0;
     int max_batch = 0;
     bool graphs = false;
-    int graph_steps = 1;
+    int graph_steps = 2;
     int token_budget = 0;
     int warmup = 3;
     uint64_t seed = 0;
@@ -344,8 +344,8 @@ void add_bench_command(CLI::App& app) {
                   "Replay CUDA Graphs of the decode step (one per bucket of batch sizes up to "
                   "--max-batch, see --graph-steps); needs --max-batch");
     cmd->add_option("--graph-steps", opts->graph_steps,
-                    "Graph buckets per power of two of batch size, a power of two; 1 captures "
-                    "1, 2, 4, 8 and so on plus --max-batch, 2 adds 3, 6, 12 and so on")
+                    "Graph buckets per power of two of batch size, a power of two; 2 captures "
+                    "1, 2, 3, 4, 6, 8, 12 and so on plus --max-batch, 1 only the powers of two")
         ->capture_default_str()
         ->check(CLI::PositiveNumber);
     cmd->add_option("--token-budget", opts->token_budget,

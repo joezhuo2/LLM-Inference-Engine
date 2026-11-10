@@ -11,7 +11,7 @@ namespace engine::server {
 struct GpuBackendOptions {
     int max_batch = 16;
     bool graphs = false;
-    int graph_steps = 1;
+    int graph_steps = 2;
     int token_budget = 0;
 };
 

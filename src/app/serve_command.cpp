@@ -32,7 +32,7 @@ struct Options {
     int port = 8000;
     int max_batch = 16;
     bool graphs = false;
-    int graph_steps = 1;
+    int graph_steps = 2;
     int token_budget = 0;
     std::vector<std::string> cors_origins = server::kDefaultCorsOrigins;
     std::vector<std::string> allow_hosts;
@@ -148,8 +148,8 @@ void add_serve_command(CLI::App& app) {
                   "Replay CUDA Graphs of the decode step (one per bucket of batch sizes up to "
                   "--max-batch, see --graph-steps)");
     cmd->add_option("--graph-steps", opts->graph_steps,
-                    "Graph buckets per power of two of batch size, a power of two; 1 captures "
-                    "1, 2, 4, 8 and so on plus --max-batch, 2 adds 3, 6, 12 and so on")
+                    "Graph buckets per power of two of batch size, a power of two; 2 captures "
+                    "1, 2, 3, 4, 6, 8, 12 and so on plus --max-batch, 1 only the powers of two")
         ->capture_default_str()
         ->check(CLI::PositiveNumber);
     cmd->add_option("--token-budget", opts->token_budget,
