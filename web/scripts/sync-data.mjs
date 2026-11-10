@@ -4,7 +4,7 @@ import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { replayKv } from "./kv-replay.mjs";
 import { parseModelShape, parseRooflineContext } from "./model-shape.mjs";
-import { parseLaunchGaps, parseProfiling } from "./profiling.mjs";
+import { parseLaunchGaps, parsePrefillStep, parseProfiling } from "./profiling.mjs";
 
 const web = resolve(fileURLToPath(import.meta.url), "../..");
 const results = resolve(web, "../results");
@@ -171,6 +171,8 @@ for (const [key, name] of [["eager", "decode_step.md"], ["graphs", "decode_step_
   const gaps = parseLaunchGaps(readFileSync(path, "utf8"));
   if (gaps.decode) launchGaps[key] = { file: `results/${name}`, ...gaps.decode };
 }
+const prefillPath = join(results, "decode_step_b16.md");
+const prefillStep = existsSync(prefillPath) ? { file: "results/decode_step_b16.md", ...parsePrefillStep(readFileSync(prefillPath, "utf8")) } : {};
 const kvTrace = join(results, "traces/chat_b16_rate4.json");
 const kvReplay = existsSync(kvTrace) ? replayKv(JSON.parse(readFileSync(kvTrace, "utf8")), "results/traces/chat_b16_rate4.json") : {};
 writeFileSync(join(dataDir, "summaries.json"), JSON.stringify(summaries));
@@ -182,6 +184,7 @@ writeFileSync(join(dataDir, "model_shape.json"), JSON.stringify(modelShape));
 writeFileSync(join(dataDir, "hardware.json"), JSON.stringify(hardware));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
 writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
+writeFileSync(join(dataDir, "prefill_step.json"), JSON.stringify(prefillStep));
 writeFileSync(join(dataDir, "kv_replay.json"), JSON.stringify(kvReplay));
 const onchip = readOnchip();
 writeFileSync(join(dataDir, "onchip.json"), JSON.stringify(onchip));

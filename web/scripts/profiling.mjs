@@ -48,6 +48,13 @@ export function number(cell) {
   return match ? Number(match[0].replace(/,/g, "")) : null;
 }
 
+export function parsePrefillStep(text) {
+  const gaps = parseLaunchGaps(text);
+  const kernels = parseProfiling(text).find((s) => s.id === "top-12-kernels")?.tables[0];
+  const batch = /^- max_batch (\d+),/m.exec(text);
+  return { kernels, prefill: gaps.prefill, decode: gaps.decode, max_batch: batch ? Number(batch[1]) : undefined };
+}
+
 export function parseLaunchGaps(text) {
   const steps = {};
   const pattern =
