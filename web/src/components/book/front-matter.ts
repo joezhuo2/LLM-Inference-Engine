@@ -1,5 +1,5 @@
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
-import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel } from "@/content/exercises";
+import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
 import { kernelStory, layerOps } from "@/content/kernels";
 import { chapterReview } from "@/content/reviews";
 import type { ChapterReview } from "@/content/reviews/types";
@@ -389,6 +389,8 @@ function exerciseSteps(e: Exercise): ExerciseStep[] {
   ];
 }
 
+const NUMPY_Y = H - 260;
+
 function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number) {
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "left");
@@ -402,7 +404,7 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number) {
     ctx.fillText(e.title, x0, 260);
     ctx.fillStyle = palette.faint;
     ctx.font = `28px ${fonts.sans}`;
-    const tags = [e.gpu ? "needs an NVIDIA GPU" : "no GPU needed", e.kind === "stub" && e.model ? "some tests load TinyLlama" : e.kind === "open" ? "no tests, open ended" : ""].filter(Boolean);
+    const tags = [runsLabel[e.runs], e.kind === "stub" && e.model ? "some tests load TinyLlama" : e.kind === "open" ? "no tests, open ended" : ""].filter(Boolean);
     ctx.fillText(tags.join(" · "), x0, 320);
     ctx.fillStyle = palette.ink;
     ctx.font = `36px ${fonts.sans}`;
@@ -413,6 +415,15 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number) {
     ctx.fillStyle = palette.ink;
     ctx.font = `32px ${fonts.sans}`;
     y = paragraph(ctx, e.nudge, x0, y + 48, width, 46);
+    const numpy = numpyOf(e);
+    if (numpy) {
+      ctx.fillStyle = palette.faint;
+      ctx.font = `24px ${fonts.sans}`;
+      ctx.fillText("try it in NumPy first, on any machine", x0, NUMPY_Y);
+      ctx.fillStyle = palette.blue;
+      ctx.font = `25px ${fonts.mono}`;
+      ctx.fillText(numpyCommand(numpy), x0, NUMPY_Y + 48);
+    }
     folio(ctx, String(folioPage()), "left", x0, x1, palette, fonts);
   };
 }
@@ -476,6 +487,9 @@ export function exerciseStops(def: ChapterDef): Stop[] {
   return chapterExercises(def.slug).map((e, j) => {
     const local = first + j;
     const left = exerciseLeft(def, e, () => (chapterPage(def.slug) ?? 0) + local + 1);
+    const numpy = numpyOf(e);
+    const links: PageLink[] = [{ side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: `/exercises#${e.id}`, label: `${e.title}: ${LINK_TEXT}` }];
+    if (numpy) links.push({ side: "left", box: [130 / W, (NUMPY_Y + 48 - 40) / H, (W - 170) / W, (NUMPY_Y + 48 + 16) / H], href: numpyUrl(numpy), label: `${e.title}: the NumPy version on GitHub, ${numpyCommand(numpy)}` });
     return {
       exhibit: null,
       spread: local,
@@ -486,7 +500,7 @@ export function exerciseStops(def: ChapterDef): Stop[] {
       overlay: null,
       beats: [flat(`Build it yourself: ${e.title}`)],
       paint: { left, right: exerciseRight(e) },
-      links: [{ side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: `/exercises#${e.id}`, label: `${e.title}: ${LINK_TEXT}` }],
+      links,
     };
   });
 }

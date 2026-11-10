@@ -1,8 +1,9 @@
+import clsx from "clsx";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { repoUrl } from "@/content/build-log";
 import specs from "@/content/exercise-specs.json";
-import { compareCommand, type Exercise, exerciseCommands, implLabel, prUrl } from "@/content/exercises";
+import { compareCommand, type Exercise, exerciseCommands, implLabel, type Numpy, numpyCommand, numpyFile, numpyInstall, numpyNote, numpyOf, numpyShapes, numpySolution, prUrl, runsLabel } from "@/content/exercises";
 import { Disclosure } from "./disclosure";
 import { gloss } from "./glossed";
 
@@ -22,8 +23,8 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-function Tag({ children }: { children: ReactNode }) {
-  return <span className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted">{children}</span>;
+function Tag({ children, strong = false }: { children: ReactNode; strong?: boolean }) {
+  return <span className={clsx("rounded border px-1.5 py-0.5 text-[11px]", strong ? "border-accent text-accent" : "border-border text-muted")}>{children}</span>;
 }
 
 type SpecParagraph = { label: string; text: string };
@@ -41,7 +42,8 @@ export function ExerciseCard({ exercise: e, chapterLink = false }: { exercise: E
             {e.title}
           </h3>
           <div className="flex flex-wrap gap-1.5">
-            <Tag>{e.gpu ? "needs an NVIDIA GPU" : "no GPU needed"}</Tag>
+            <Tag strong={e.runs === "cpu"}>{runsLabel[e.runs]}</Tag>
+            {numpyOf(e) && <Tag strong>NumPy version runs on a CPU</Tag>}
             {e.kind === "stub" && e.model && <Tag>some tests load TinyLlama</Tag>}
             {e.kind === "open" && <Tag>no tests, open ended</Tag>}
           </div>
@@ -61,11 +63,47 @@ export function ExerciseCard({ exercise: e, chapterLink = false }: { exercise: E
   );
 }
 
+function NumpyTry({ n, title }: { n: Numpy; title: string }) {
+  return (
+    <Disclosure summary="try it in NumPy first, on any machine">
+      <div className="max-w-2xl space-y-3 pt-1 text-muted">
+        <p>
+          The same algorithm in a few lines of Python, with no GPU and no build. It needs Python 3 and numpy (<span className="font-mono text-[0.85em] text-text">{numpyInstall}</span>). Do it on main, before step 1: these files are not in the older commit, so git switch refuses while one holds your edits. Commit it on a branch or run <span className="font-mono text-[0.85em] text-text">git stash</span> first.
+        </p>
+        <Commands lines={[numpyCommand(n)]} />
+        <p>
+          Fill in the function in{" "}
+          <a href={fileLink(numpyFile(n))} className="link-underline font-mono text-[0.85em] text-text">
+            {numpyFile(n)}
+          </a>
+          . Until you do, the command stops with NotImplementedError. When the function is right it prints ok; otherwise it prints the largest error it found.
+        </p>
+        <p>
+          <span className="text-text">What the check compares. </span>
+          {gloss(n.compares)}
+        </p>
+        <p>
+          When it prints ok for {title}, read the reference solution in{" "}
+          <a href={fileLink(numpySolution(n))} className="link-underline font-mono text-[0.85em] text-text">
+            {numpySolution(n)}
+          </a>
+          , then do the CUDA version in the steps below.
+        </p>
+        <p className="text-xs">
+          {numpyShapes()} {numpyNote}
+        </p>
+      </div>
+    </Disclosure>
+  );
+}
+
 function StubSteps({ e }: { e: Extract<Exercise, { kind: "stub" }> }) {
   const [checkout, build, test] = exerciseCommands(e);
   const spec = exerciseSpec(e.id);
+  const numpy = numpyOf(e);
   return (
     <>
+      {numpy && <NumpyTry n={numpy} title={e.title} />}
       <ol className="space-y-4 text-sm">
         <Step n={1} title="Go back to the day the stub landed">
           <p className="text-muted">
