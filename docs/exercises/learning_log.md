@@ -2055,3 +2055,7 @@
 
 - **interruptible animations: compressing a running tween instead of waiting for it** => 
 - **input latency vs. animation length** => 
+
+## Embedding lookup and timeline scenes on the site (Branch 138)
+
+- **a faster kernel that moves no end-to-end number (Amdahl's law)** => 
