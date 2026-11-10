@@ -39,3 +39,16 @@ export function parseGraphRule(benchText, headerText, batchText) {
     min_split_tokens: number(batchText, /kMinSplitTokens = (\d+);/, "kMinSplitTokens in src/sched/paged_batch.cpp"),
   };
 }
+
+export function parseFlashKernel(kernelText, testText) {
+  const number = (pattern, what) => {
+    const match = pattern.exec(kernelText);
+    if (!match) throw new Error(`no ${what} in src/kernels/flash_prefill.cu`);
+    return Number(match[1]);
+  };
+  const plain = testText.match(/^TEST\(/gm)?.length ?? 0;
+  const parameterized = testText.match(/^TEST_P\(/gm)?.length ?? 0;
+  const layouts = /INSTANTIATE_TEST_SUITE_P\([^;]*?::testing::Values\(([^;]*?)\),\s*\[/s.exec(testText)?.[1].match(/Layout\{/g)?.length ?? 0;
+  if (plain === 0 || (parameterized > 0 && layouts === 0)) throw new Error("no tests found in tests/gpu/test_flash_prefill.cpp");
+  return { tile: number(/kTile = (\d+);/, "kTile"), warps_per_block: number(/kWarpsPerBlock = (\d+);/, "kWarpsPerBlock"), max_head_dim: number(/head_dim > (\d+)\)/, "head_dim limit"), tests: plain + parameterized * layouts, layouts };
+}

@@ -14,6 +14,8 @@ import { ChunkedPrefillSandbox } from "./chunked-prefill/sandbox";
 import { ChunkedPrefillStory } from "./chunked-prefill/story";
 import { CudaGraphsAboutStory } from "./cuda-graphs/about";
 import { CudaGraphsStory } from "./cuda-graphs/story";
+import { FlashPrefillAboutStory } from "./flash-prefill/about";
+import { FlashPrefillStory } from "./flash-prefill/story";
 import { GemmAboutStory } from "./gemm/about";
 import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
@@ -62,6 +64,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <SamplingStory />;
     case "chunked-prefill":
       return <ChunkedPrefillStory />;
+    case "flash-prefill":
+      return <FlashPrefillStory />;
     default:
       return null;
   }
@@ -86,6 +90,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <GemmAboutStory />;
     case "chunked-prefill":
       return <ChunkedPrefillAboutStory />;
+    case "flash-prefill":
+      return <FlashPrefillAboutStory />;
     case "swiglu":
       return <SwigluAboutStory />;
     case "attention-v2":
