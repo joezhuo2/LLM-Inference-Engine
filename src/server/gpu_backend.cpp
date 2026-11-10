@@ -16,6 +16,7 @@
 #include "engine/runtime/paged_runner.h"
 #include "engine/runtime/sampler.h"
 #include "engine/runtime/serve.h"
+#include "engine/sched/graph_buckets.h"
 
 namespace engine::server {
 
@@ -36,13 +37,6 @@ struct OwnedStream {
     OwnedStream(const OwnedStream&) = delete;
     OwnedStream& operator=(const OwnedStream&) = delete;
 };
-
-std::vector<int64_t> graph_buckets(int max_batch) {
-    std::vector<int64_t> buckets;
-    for (int64_t b = 1; b < max_batch; b *= 2) buckets.push_back(b);
-    buckets.push_back(max_batch);
-    return buckets;
-}
 
 SchedulerConfig scheduler_config(const ModelConfig& config, int num_blocks, int max_batch) {
     return {.num_blocks = num_blocks,
@@ -66,7 +60,7 @@ public:
           sampler_(o.max_batch),
           next_(size_t(o.max_batch) * sizeof(int32_t)),
           token_budget_(o.token_budget) {
-        if (o.graphs) graphs_.emplace(runner_, graph_buckets(o.max_batch));
+        if (o.graphs) graphs_.emplace(runner_, decode_graph_buckets(o.max_batch, o.graph_steps));
     }
 
     Scheduler& scheduler() override { return scheduler_; }
@@ -100,6 +94,8 @@ std::unique_ptr<Backend> make_gpu_backend(const DeviceWeights& weights,
     if (options.max_batch < 1) throw std::invalid_argument("serve: --max-batch must be at least 1");
     if (options.token_budget > 0 && options.token_budget < options.max_batch)
         throw std::invalid_argument("serve: --token-budget must be at least --max-batch");
+    if (options.graph_steps < 1 || (options.graph_steps & (options.graph_steps - 1)) != 0)
+        throw std::invalid_argument("serve: --graph-steps must be a power of two");
     return std::make_unique<GpuBackend>(weights, options);
 }
 

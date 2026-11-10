@@ -11,7 +11,7 @@ import { gloss } from "@/components/glossed";
 import { BookText } from "@/components/kernels/authorship";
 import { Scramble } from "@/components/scramble";
 import { kindLabel } from "@/content/dead-ends";
-import { chapterExercises } from "@/content/exercises";
+import { chapterExercises, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
 import { chapterReview } from "@/content/reviews";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
@@ -290,6 +290,7 @@ export function EveryByte() {
   const onLinkHref = useCallback(
     (href: string) => {
       if (href === "#errata") return void goKey("errata", true);
+      if (/^https?:\/\//.test(href)) return void window.open(href, "_blank", "noopener,noreferrer");
       const [path, at] = href.split("#");
       const slug = path.startsWith(`${BOOK}/`) ? path.slice(BOOK.length + 1) : "";
       if (at && chapterSlugs.includes(slug)) return turnTo(slug, Number(at));
@@ -464,6 +465,7 @@ export function EveryByte() {
   const reviewAt = def && meta ? meta.local - def.steps.length - def.workbench.length : -1;
   const review = def && reviewAt >= 0 && reviewAt < reviewCount(def.slug) ? chapterReview(def.slug) : undefined;
   const exercise = def && meta ? chapterExercises(def.slug)[reviewAt - reviewCount(def.slug)] : undefined;
+  const exerciseNumpy = exercise ? numpyOf(exercise) : undefined;
   const otherHref = def ? `/kernels/${def.slug}` : "/kernels";
 
   if (failed) {
@@ -638,7 +640,16 @@ export function EveryByte() {
             <>
               <h2 className="text-xs">build it yourself</h2>
               <h1 className="font-serif text-2xl text-text">{exercise.title}</h1>
+              <p className="mt-1 text-xs">{runsLabel[exercise.runs]}</p>
               <p className="mt-2">{gloss(exercise.task)}</p>
+              {exerciseNumpy && (
+                <p className="mt-2">
+                  Try it in NumPy first, on any machine:{" "}
+                  <a href={numpyUrl(exerciseNumpy)} target="_blank" rel="noreferrer" className="link-underline font-mono text-xs text-text">
+                    {numpyCommand(exerciseNumpy)}
+                  </a>
+                </p>
+              )}
               <Link href={`/exercises#${exercise.id}`} className="link-underline mt-2 inline-block text-text">
                 The steps, the spec and the commands to copy →
               </Link>

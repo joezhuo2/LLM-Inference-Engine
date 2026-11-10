@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -85,25 +86,26 @@ protected:
 
 }  // namespace
 
-TEST_F(ServerTest, StreamsTheGreedyAnswerOfGenerate) {
-    const Answer expected = generate_answer(*tok);
+void expect_streams_match_generate(const Tokenizer& tok,
+                                   const engine::server::GpuBackendOptions& options, int clients) {
+    const Answer expected = generate_answer(tok);
     ASSERT_FALSE(expected.text.empty());
 
     const auto& w = engine::test::tinyllama();
-    const auto backend = engine::server::make_gpu_backend(w, {.max_batch = 4, .graphs = true});
+    const auto backend = engine::server::make_gpu_backend(w, options);
     engine::server::ServingLoop loop(
-        *backend, [&](std::span<const int32_t> ids) { return tok->decode(ids); }, w.config.eos_id);
+        *backend, [&](std::span<const int32_t> ids) { return tok.decode(ids); }, w.config.eos_id);
     engine::server::HttpServer http(
-        loop, [&](const std::string& text) { return tok->encode(text, false); },
+        loop, [&](const std::string& text) { return tok.encode(text, false); },
         {.max_context = w.config.max_positions});
     const int port = http.bind("127.0.0.1", 0);
     std::jthread engine([&](std::stop_token stop) { loop.run(stop); });
     std::jthread listener([&] { http.listen(); });
 
-    std::vector<Answer> answers(4);
+    std::vector<Answer> answers(clients);
     {
-        std::vector<std::jthread> clients;
-        for (auto& a : answers) clients.emplace_back([&a, port] { a = streamed_answer(port); });
+        std::vector<std::jthread> threads;
+        for (auto& a : answers) threads.emplace_back([&a, port] { a = streamed_answer(port); });
     }
     http.stop();
     listener.join();
@@ -113,6 +115,23 @@ TEST_F(ServerTest, StreamsTheGreedyAnswerOfGenerate) {
         EXPECT_EQ(a.finish_reason, expected.finish_reason);
     }
     const auto m = loop.metrics();
-    EXPECT_EQ(m.counters.finished_total, 4);
+    EXPECT_EQ(m.counters.finished_total, clients);
     EXPECT_EQ(m.counters.blocks_free, backend->num_blocks() - 1);
+}
+
+TEST_F(ServerTest, StreamsTheGreedyAnswerOfGenerate) {
+    expect_streams_match_generate(*tok, {.max_batch = 4, .graphs = true}, 4);
+}
+
+TEST_F(ServerTest, StreamsTheGreedyAnswerWithTwoGraphBucketsPerOctave) {
+    expect_streams_match_generate(*tok, {.max_batch = 6, .graphs = true, .graph_steps = 2}, 6);
+}
+
+TEST_F(ServerTest, RejectsGraphStepsThatAreNotAPowerOfTwo) {
+    const auto& w = engine::test::tinyllama();
+    for (int steps : {0, 3, 6, -2}) {
+        EXPECT_THROW(engine::server::make_gpu_backend(w, {.graphs = true, .graph_steps = steps}),
+                     std::invalid_argument)
+            << steps;
+    }
 }

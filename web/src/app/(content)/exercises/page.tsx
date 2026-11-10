@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ExerciseCard } from "@/components/exercise-card";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
-import { cloneCommand, exercises } from "@/content/exercises";
+import { cloneCommand, cpuCount, exercises, numpyCount } from "@/content/exercises";
 import { ogImage } from "@/lib/og";
 
 const description = "Rebuild the engine piece by piece: check out the commit where each stub landed, make its tests pass, then compare with the code that shipped.";
@@ -15,8 +15,8 @@ export const metadata: Metadata = {
 };
 
 const groups = [
-  { id: "cpu", title: "start here: no GPU needed", intro: "The block manager and the scheduler are plain C++ and their tests run on any machine with a C++20 compiler, CMake 3.28 and Ninja. They are the best place to start even if you have a GPU: the logic is the hard part, and a failure is easy to debug.", items: exercises.filter((e) => !e.gpu) },
-  { id: "gpu", title: "on the GPU", intro: "These need an NVIDIA GPU and CUDA 12.8 or newer. The commands build for whatever GPU you have; the engine was written for an RTX 5060 Laptop GPU, so your times will differ, but the tests check correctness, not speed. Exercises marked as loading TinyLlama need the model downloaded as the README's Building section describes.", items: exercises.filter((e) => e.gpu) },
+  { id: "cpu", title: "start here: runs on a CPU", intro: "The block manager and the scheduler are plain C++ and their tests run on any machine with a C++20 compiler, CMake 3.28 and Ninja. They are the best place to start even if you have a GPU: the logic is the hard part, and a failure is easy to debug.", items: exercises.filter((e) => e.runs === "cpu") },
+  { id: "gpu", title: "needs an NVIDIA GPU", intro: `These need an NVIDIA GPU and CUDA 12.8 or newer. The commands build for whatever GPU you have; the engine was written for an RTX 5060 Laptop GPU, so your times will differ, but the tests check correctness, not speed. Exercises marked as loading TinyLlama need the model downloaded as the README's Building section describes. ${numpyCount()} of them also have a NumPy version of the algorithm that runs on any machine: open the card and try it first.`, items: exercises.filter((e) => e.runs === "gpu") },
 ];
 
 export default function Exercises() {
@@ -44,6 +44,9 @@ export default function Exercises() {
             <li>Write the function until they pass, using the spec and the tests as your only guide.</li>
             <li>Compare with the code that shipped, and read the chapter&apos;s timeline and what didn&apos;t work for the mistakes made on the way.</li>
           </ol>
+          <p className="max-w-2xl tabular-nums text-text">
+            {cpuCount()} of {exercises.length} run on a CPU. {numpyCount()} more have a NumPy version that does, so {cpuCount() + numpyCount()} of {exercises.length} can be started without an NVIDIA GPU.
+          </p>
           <p className="max-w-2xl text-muted">Clone the repo once:</p>
           <pre className="max-w-2xl overflow-x-auto rounded border border-border bg-surface px-3 py-2 font-mono text-[11px] text-text">{cloneCommand}</pre>
           <p className="max-w-2xl text-sm text-muted">
