@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-flip
+
+- Part A: a page turn in Every Byte starts within about 0.15 s of a click or arrow key. Before, a turn waited for the previous one to settle completely: the leaf turn (1.8 s), the exhibit popping up (0.95 s), the camera (1.9 s) and the old exhibit folding down (0.55 s) all ran in sequence, so a click soon after a turn could wait seconds. Now a new target compresses whatever is animating to 0.12 s and caps any animation that starts meanwhile, skips the pop-up and camera waits of a page that is being left, and folds an exhibit down while the leaf already turns. Measured in headless Chrome on /every-byte/gemm: 44 ms from key to leaf on a plain page, 19 ms while the previous page settles, 149 ms in the middle of a turn. Reduced motion is unchanged.
+
 ## runtime/graph-steps-default
 
 - Make `--graph-steps 2` the default in `engine bench` and `engine serve` (`GpuBackendOptions` too), from the #121 sweep: padding 17 rows to the 32 graph cost about 14% against the 24 graph, and more than two buckets per power of two gained nothing. At max batch 16 the graphs are now 1, 2, 3, 4, 6, 8, 12 and 16 instead of 1, 2, 4, 8 and 16, each times its split counts; capture time and memory are not measured. `--graph-steps 1` gives the old buckets. The server test that used 2 explicitly now uses 1, so both stay covered. README, help text and the results Kernels row say so; earlier graph results were measured with power-of-two buckets. (Part B)
