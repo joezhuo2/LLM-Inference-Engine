@@ -48,24 +48,36 @@ const chunkedCost = (flashTtft(flashSystems.chunked, flashLong) / flashTtft(flas
 
 const chunksSection = "flashattention-prefill-in-chunks-branch-141";
 const budgetOf = (system: string) => /budget ([\d,]+)/.exec(system)?.[1] ?? "";
-const profileRow = (budget: string) => {
-  const cell = (column: string) => measured(chunksSection, { budget }, column);
-  const part = { attention: cell("attention"), gemms: cell("GEMMs"), rest: cell("other kernels") + cell("gaps") };
-  return { ...part, span: cell("span"), steps: cell("steps"), blocks: cell("blocks") };
+const chunkedBudget = budgetOf(flashSystems.chunked);
+const profileRow = (kernel: string, budget: string) => {
+  const cell = (column: string) => measured(chunksSection, { kernel, budget }, column);
+  return { attention: cell("attention"), gemms: cell("GEMMs"), rest: cell("other kernels") + cell("gaps"), span: cell("span"), steps: cell("steps"), blocks: cell("blocks") };
 };
-const launch = profilingTable(chunksSection, 1);
-const launchCell = (column: string) => Number(launch.rows[0][launch.header.indexOf(column)].replace(/,/g, ""));
-const profileWhole = profileRow("none");
-const profileChunked = profileRow(budgetOf(flashSystems.chunked));
+const launchRow = (kernel: string) => ({
+  registers: measured(chunksSection, { kernel }, "registers per thread", 1),
+  blocksAtOnce: measured(chunksSection, { kernel }, "blocks at once", 1),
+});
+const counters = (kernel: string, launch: string) => {
+  const cell = (column: string) => measured(chunksSection, { kernel, launch }, column, 2);
+  return { ms: cell("ms"), occupancy: cell("occupancy"), allowed: cell("allowed"), tensor: cell("tensor pipe"), requestedMb: cell("MB requested"), l1Hit: cell("L1 hit"), dram: cell("DRAM throughput") };
+};
+const plain = (kernel: string) => ({ whole: measured(chunksSection, { kernel }, "one step", 3), chunked: measured(chunksSection, { kernel }, `budget ${chunkedBudget}`, 3), cost: measured(chunksSection, { kernel }, "more", 3) });
+const wide = profileRow("after", "272");
 
 export const flashProfile = {
-  whole: profileWhole,
-  chunked: profileChunked,
-  extra: profileChunked.span - profileWhole.span,
-  extraAttention: profileChunked.attention - profileWhole.attention,
-  attentionShare: (profileWhole.attention / profileWhole.span) * 100,
-  registers: launchCell("registers per thread"),
-  blocksAtOnce: launchCell("blocks at once"),
+  whole: profileRow("after", "none"),
+  before: profileRow("before", chunkedBudget),
+  after: profileRow("after", chunkedBudget),
+  wholeBefore: profileRow("before", "none"),
+  wide: { budget: "272", blocks: wide.blocks, attention: wide.attention },
+  launchBefore: launchRow("before"),
+  launchAfter: launchRow("after"),
+  step: counters("after", "one step"),
+  lastBefore: counters("before", "last chunk"),
+  lastAfter: counters("after", "last chunk"),
+  plainBefore: plain("before"),
+  plainAfter: plain("after"),
+  neededMb: (flashTokens(flashLong) * shape.kv_heads * (shape.hidden / shape.heads) * 2 * 2) / 1e6,
 };
 
 export const flashNumbers = {
@@ -220,7 +232,7 @@ export const flashPrefill: KernelStory = {
       version: "measured",
       author: "claude",
       title: "The default, and ahead of llama.cpp",
-      text: `The tiled kernel becomes the default prefill attention and the prefill table is rerun with llama.cpp in the same session. Cost per prompt token stays between ${flashNumbers.perTokenLow} and ${flashNumbers.perTokenHigh} ms from ${flashShort} to ${flashLong} tokens. Not done: an Nsight Compute profile of the kernel, and a rerun of the load sweeps.`,
+      text: `The tiled kernel becomes the default prefill attention and the prefill table is rerun with llama.cpp in the same session. Cost per prompt token stays between ${flashNumbers.perTokenLow} and ${flashNumbers.perTokenHigh} ms from ${flashShort} to ${flashLong} tokens. Not done: a rerun of the load sweeps. The Nsight Compute profile came afterwards and is in the last step of this page.`,
       metric: {
         kind: "bars",
         label: `TTFT of one ${flashLong}-token prompt, ms`,

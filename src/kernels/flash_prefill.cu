@@ -142,9 +142,11 @@ __global__ void flash_attention_prefill_kernel(
             v_row = nullptr;
             if (key > last_position) return;
             if (key < cached) {
-                const int64_t block = table[key / block_size];
+                const uint32_t key32 = uint32_t(key);
+                const uint32_t size32 = uint32_t(block_size);
+                const int64_t block = table[key32 / size32];
                 const int64_t words =
-                    ((block * kv_heads + kv_head) * block_size + key % block_size) * kRowWords;
+                    ((block * kv_heads + kv_head) * block_size + key32 % size32) * kRowWords;
                 k_row = k_cache + words;
                 v_row = v_cache + words;
             } else {
