@@ -55,6 +55,7 @@ const profileRow = (kernel: string, budget: string) => {
 };
 const launchRow = (kernel: string) => ({
   registers: measured(chunksSection, { kernel }, "registers per thread", 1),
+  blocksPerSm: measured(chunksSection, { kernel }, "blocks per SM", 1),
   blocksAtOnce: measured(chunksSection, { kernel }, "blocks at once", 1),
 });
 const counters = (kernel: string, launch: string) => {
@@ -232,7 +233,7 @@ export const flashPrefill: KernelStory = {
       version: "measured",
       author: "claude",
       title: "The default, and ahead of llama.cpp",
-      text: `The tiled kernel becomes the default prefill attention and the prefill table is rerun with llama.cpp in the same session. Cost per prompt token stays between ${flashNumbers.perTokenLow} and ${flashNumbers.perTokenHigh} ms from ${flashShort} to ${flashLong} tokens. Not done: a rerun of the load sweeps. The Nsight Compute profile came afterwards and is in the last step of this page.`,
+      text: `The tiled kernel becomes the default prefill attention and the prefill table is rerun with llama.cpp in the same session. Cost per prompt token stays between ${flashNumbers.perTokenLow} and ${flashNumbers.perTokenHigh} ms from ${flashShort} to ${flashLong} tokens. Not done: a rerun of the load sweeps. The Nsight Compute profile came afterwards and is in the steps on registers and on what is left.`,
       metric: {
         kind: "bars",
         label: `TTFT of one ${flashLong}-token prompt, ms`,

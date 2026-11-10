@@ -9,7 +9,7 @@ const pagedPath = flashPath(flashPaths.paged, flashLong);
 
 export const review: ChapterReview = {
   lesson: "A shorter path to each byte saves nothing if every row still fetches it alone; sharing the fetch does.",
-  why: "It shows a rewrite that passed every test and was slower, then one that changed which threads share the work, and it says plainly which parts of the result were measured and which were not.",
+  why: "It shows that prefill attention is arithmetic on a small set of bytes, so the gain comes from which threads share a read. It keeps the rewrite that passed every test and was slower, and it says plainly which parts of the result were measured and which were not.",
   takeaways: [
     `With one walk per row, a ${flashLong}-token prompt reads ${flashFmt(flashKeyRows.perRow)} key rows per head; with one pass per ${s.tile} rows it reads ${flashFmt(flashKeyRows.tiled)} (calculated). The score and value products are the same number, and they move to the tensor cores.`,
     `Tests prove a kernel right, not fast. The first kernel passed all ${s.tests} tests and took ${flashFmt(n.first)} ms where the path it replaced took ${flashFmt(pagedPath)} ms (measured), so it stayed behind a switch.`,

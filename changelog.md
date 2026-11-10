@@ -15,6 +15,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: Foundations steps and the latency big idea are titled by their lesson instead of their topic, and the latency idea no longer calls chunked prefill the last chapter.
 - Part A: GEMM puts its idea first (matrix products, one FLOP per weight byte, cuBLAS at the roof, batching, prefill past the ridge) and moves the row-major trick under how it got built; every step is titled by its lesson.
 - Part A: RoPE puts its idea first (the gap from turning by position, which values turn, independent pairs sharing a sine, the last-bit error that position multiplies) and moves the first draft under how it got built and the timing under measured.
+- Part A: FlashAttention prefill teaches the idea first (prefill is a square of rows against keys, 16 rows share each key tile, a tile of scores is one mma, an online softmax per row keeps it in registers), then how it got built, then the measurements; the slower first kernel is in the Errata.
 
 ## kernel/flash-prefill-div32
 

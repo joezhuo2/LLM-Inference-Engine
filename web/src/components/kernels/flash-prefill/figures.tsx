@@ -497,7 +497,7 @@ export function TtftFigure({ lengths, series }: { lengths: number[]; series: Ttf
 
 type OpenParts = { attention: number; gemms: number; rest: number; span: number; blocks: number };
 
-export function OpenFigure({ whole, before, after, atOnce, step, last, budget, chunks, tokens, items }: { whole: OpenParts; before: OpenParts; after: OpenParts; atOnce: [number, number]; step: { tensor: number; occupancy: number; allowed: number; l1Hit: number }; last: [number, number]; budget: string; chunks: number; tokens: string; items: string[] }) {
+export function BlocksFigure({ whole, before, after, registers, atOnce, last, budget, chunks, tokens }: { whole: OpenParts; before: OpenParts; after: OpenParts; registers: [number, number]; atOnce: [number, number]; last: [number, number]; budget: string; chunks: number; tokens: string }) {
   const { on, grow } = useLoop(12);
   const px = 300 / before.span;
   const rows = [
@@ -505,8 +505,15 @@ export function OpenFigure({ whole, before, after, atOnce, step, last, budget, c
     { label: `${chunks} chunks, ${atOnce[0]} at once`, parts: before, tone: "warn" },
     { label: `${chunks} chunks, ${atOnce[1]} at once`, parts: after, tone: "accent" },
   ] as const;
+  const cols = 16;
+  const cell = 13;
+  const waiting = Math.max(0, after.blocks - atOnce[0]);
+  const grids = [
+    { x: 30, head: `${registers[0]} registers: ${atOnce[0]} blocks at once`, note: `${waiting} wait for a place`, fit: atOnce[0], tone: "warn" },
+    { x: 310, head: `${registers[1]} registers: ${atOnce[1]} blocks at once`, note: `all ${after.blocks} run together`, fit: atOnce[1], tone: "accent" },
+  ] as const;
   return (
-    <Frame label={`One ${tokens}-token prompt alone, kernel time from Nsight Systems: in one step ${whole.span} ms, of which attention ${whole.attention}; as ${chunks} chunks of ${budget} it was ${before.span} ms with attention ${before.attention} when ${atOnce[0]} thread blocks fit on the GPU at once, and is ${after.span} ms with attention ${after.attention} now that ${atOnce[1]} fit; a chunk launches ${after.blocks}. Nsight Compute, one step: tensor pipe ${step.tensor}%, occupancy ${step.occupancy}% of ${step.allowed}% allowed, ${step.l1Hit}% of sectors in L1. Still open: ${items.join("; ")}`}>
+    <Frame label={`One ${tokens}-token prompt alone, kernel time from Nsight Systems: in one step ${whole.span} ms, of which attention ${whole.attention}; as ${chunks} chunks of ${budget} it was ${before.span} ms with attention ${before.attention} when ${atOnce[0]} thread blocks fit on the GPU at once, and is ${after.span} ms with attention ${after.attention} now that ${atOnce[1]} fit; a chunk launches ${after.blocks}, so ${waiting} used to wait. Warp places filled in the last chunk: ${last[0]}% before, ${last[1]}% after`}>
       <Label x={20} y={24} className="fill-text">{`one ${tokens}-token prompt alone: where the ms go (measured, Nsight Systems)`}</Label>
       {rows.map((r, i) => (
         <g key={r.label}>
@@ -528,19 +535,72 @@ export function OpenFigure({ whole, before, after, atOnce, step, last, budget, c
         <tspan className="fill-warn">{before.attention.toFixed(1)}</tspan>
         {" and "}
         <tspan className="fill-accent">{after.attention.toFixed(1)}</tspan>
-        {` in chunks; a ${budget}-row chunk launches ${after.blocks} blocks`}
+        {" in chunks; the rest of each bar is GEMMs and gaps"}
       </Label>
-      <Label x={20} y={142}>{`warp places filled in the last chunk: ${last[0]}% → ${last[1]}% (Nsight Compute)`}</Label>
-      <Label x={20} y={160}>{`one step: tensor pipe ${step.tensor}% of peak · ${step.occupancy}% of places filled, ${step.allowed}% allowed · L1 hit ${step.l1Hit}%`}</Label>
-      <line x1={20} y1={176} x2={540} y2={176} className="stroke-border" />
-      <Label x={20} y={198} className="fill-text">
+      <line x1={20} y1={142} x2={540} y2={142} className="stroke-border" />
+      <Label x={20} y={166} className="fill-text">{`one ${budget}-row chunk launches ${after.blocks} thread blocks`}</Label>
+      {grids.map((g, k) => (
+        <g key={g.head}>
+          <Label x={g.x} y={192} className={g.tone === "warn" ? "fill-warn" : "fill-accent"}>
+            {g.head}
+          </Label>
+          {Array.from({ length: after.blocks }, (_, i) => {
+            const fits = i < g.fit;
+            return (
+              <g key={i}>
+                <rect x={g.x + (i % cols) * cell} y={204 + Math.floor(i / cols) * cell} width={cell - 3} height={cell - 3} rx={1.5} className={fits ? "fill-surface stroke-border" : "fill-none stroke-warn"} />
+                <motion.rect x={g.x + (i % cols) * cell} y={204 + Math.floor(i / cols) * cell} width={cell - 3} height={cell - 3} rx={1.5} className={fits ? (g.tone === "warn" ? "fill-baseline" : "fill-accent") : "fill-warn"} {...on(fits ? 0.36 + k * 0.04 : 0.62, 0.96)} />
+              </g>
+            );
+          })}
+          <Label x={g.x} y={204 + Math.ceil(after.blocks / cols) * cell + 16} className={g.tone === "warn" ? "fill-warn" : "fill-accent"}>
+            {g.note}
+          </Label>
+        </g>
+      ))}
+      <Label x={20} y={362}>{`warp places filled in the last chunk: ${last[0]}% → ${last[1]}% (measured, Nsight Compute)`}</Label>
+      <Label x={20} y={380}>which blocks wait is a sketch; the counts are measured</Label>
+    </Frame>
+  );
+}
+
+export function OpenFigure({ step, registers, requestedMb, neededMb, items }: { step: { tensor: number; occupancy: number; allowed: number; l1Hit: number; dram: number }; registers: number; requestedMb: number; neededMb: number; items: string[] }) {
+  const { on, grow } = useLoop(12);
+  const bars = [
+    { label: "tensor cores", value: step.tensor, note: `${step.tensor}% of their peak rate`, tone: "warn" },
+    { label: "warp places filled", value: step.occupancy, note: `${step.occupancy}% of ${step.allowed}% allowed`, tone: "accent", mark: step.allowed },
+    { label: "loads found in L1", value: step.l1Hit, note: `${step.l1Hit}% of sectors`, tone: "accent" },
+    { label: "DRAM", value: step.dram, note: `${step.dram}% of its throughput`, tone: "accent" },
+  ];
+  return (
+    <Frame label={`Nsight Compute on one launch, the whole prompt in one step: tensor pipe ${step.tensor}% of peak, ${step.occupancy}% of warp places filled where ${registers} registers per thread allow ${step.allowed}%, ${step.l1Hit}% of the sectors the loads ask for found in L1, DRAM at ${step.dram}% of its throughput; the loads ask for ${fmt(Math.round(requestedMb))} MB per layer to use ${neededMb.toFixed(1)} MB of keys and values. Not done yet: ${items.join("; ")}`}>
+      <Label x={20} y={24} className="fill-text">
+        one launch, the whole prompt (measured, Nsight Compute)
+      </Label>
+      {bars.map((b, i) => (
+        <g key={b.label}>
+          <Label x={20} y={54 + i * 26} className={b.tone === "warn" ? "fill-warn" : undefined}>
+            {b.label}
+          </Label>
+          <rect x={150} y={44 + i * 26} width={240} height={12} rx={2} className="fill-border" />
+          <motion.rect x={150} y={44 + i * 26} width={Math.max(3, (240 * b.value) / 100)} height={12} rx={2} className={b.tone === "warn" ? "fill-warn" : "fill-accent"} {...grow(0.04 + i * 0.05, 0.3 + i * 0.05)} />
+          {b.mark !== undefined && <line x1={150 + (240 * b.mark) / 100} y1={40 + i * 26} x2={150 + (240 * b.mark) / 100} y2={60 + i * 26} className="stroke-text" />}
+          <Label x={398} y={54 + i * 26} className={b.tone === "warn" ? "fill-warn" : "fill-accent"}>
+            {b.note}
+          </Label>
+        </g>
+      ))}
+      <Label x={20} y={166}>{`the line on the second bar: what ${registers} registers per thread allow`}</Label>
+      <Label x={20} y={184}>{`loads ask the caches for ${fmt(Math.round(requestedMb))} MB per layer to use ${neededMb.toFixed(1)} MB of K and V (calculated)`}</Label>
+      <line x1={20} y1={202} x2={540} y2={202} className="stroke-border" />
+      <Label x={20} y={226} className="fill-text">
         not done yet
       </Label>
       {items.map((item, i) => (
         <motion.g key={item} {...on(0.3 + i * 0.12)}>
-          <rect x={22} y={214 + i * 50} width={12} height={12} rx={2} className="fill-none stroke-warn" />
+          <rect x={22} y={242 + i * 50} width={12} height={12} rx={2} className="fill-none stroke-warn" />
           {item.split("\n").map((line, k) => (
-            <Label key={line} x={46} y={224 + i * 50 + k * 16} className={k === 0 ? "fill-text" : "fill-muted"}>
+            <Label key={line} x={46} y={252 + i * 50 + k * 16} className={k === 0 ? "fill-text" : "fill-muted"}>
               {line}
             </Label>
           ))}

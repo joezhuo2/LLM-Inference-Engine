@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { flashAboutNumbers, flashPrefillAbout, flashPrefillAboutCaption } from "@/components/kernels/flash-prefill/about";
-import { FlashFirst, FlashFragment, FlashOpen, flashPrefillCaptions, flashPrefillSteps, FlashRegisters, FlashSpec, FlashSquare, FlashTiles, FlashTtft, LengthPicker } from "@/components/kernels/flash-prefill/story";
+import { FlashBlocks, FlashFirst, FlashFragment, FlashOpen, flashPrefillCaptions, flashPrefillSteps, FlashRegisters, FlashSpec, FlashSquare, FlashTiles, FlashTtft, LengthPicker } from "@/components/kernels/flash-prefill/story";
 import { chapterNumber } from "@/content/book-order";
 import { flashPrefill, flashShape } from "@/content/kernels/flash-prefill";
 import type { Beat } from "../book-scene";
@@ -13,36 +13,34 @@ import { createFlashPrefillModel } from "./flash-prefill-model";
 
 const s = flashShape;
 
-const beats: Beat[][] = [
-  [flat("One walk per row against one pass per tile of rows")],
-  [flat(`${s.tests} tests, written before any kernel`)],
-  [flat("The first kernel: the bytes moved, the walk did not")],
-  [flat(`One warp, ${s.tile} query rows, the keys ${s.tile} at a time`)],
-  [
-    overview(`One mma call: ${s.tile} × ${s.tile} times ${s.tile} × ${s.half}`),
-    close("Close up: the pieces of A and B one lane holds", [0.33, 0.03, -0.2], 0.66, 0.62, -18, 44),
-    close("From the side: the scores rise with every call", [0.46, 0.05, -0.05], 0.5, 0.42, 28, 30),
-    close("The rail: drag to pick a lane of the warp", [0.5, 0.02, 0.22], 0.9, 0.34, 0, 46),
-  ],
-  [flat("Scores become weights where they are")],
-  [flat("What one lane keeps in registers")],
-  [flat("Time to first token, four paths")],
-  [flat("Pick a prompt length")],
-  [flat("What is still open")],
+const mmaBeats: Beat[] = [
+  overview(`One mma call: ${s.tile} × ${s.tile} times ${s.tile} × ${s.half}`),
+  close("Close up: the pieces of A and B one lane holds", [0.33, 0.03, -0.2], 0.66, 0.62, -18, 44),
+  close("From the side: the scores rise with every call", [0.46, 0.05, -0.05], 0.5, 0.42, 28, 30),
+  close("The rail: drag to pick a lane of the warp", [0.5, 0.02, 0.22], 0.9, 0.34, 0, 46),
 ];
 
-const instructions = [
-  "Compare the two triangles: every bar on the left is its own walk.",
-  "Read the four groups: what must match, what must not change, what must not be read.",
-  "Watch the keys go by one at a time, then compare the two bars.",
-  "Watch the key tiles pass the query tile, one after another.",
-  "Drag the pink ball to pick a lane: its pieces of A and B move, and its scores rise with each call.",
-  "Watch the same cells light up on both sides for each lane.",
-  "Watch which value each call takes from every group.",
-  "Find the two lines that stay low: the tiled kernel and llama.cpp.",
-  "Answer the prediction, then pick a prompt length.",
-  "Compare the two bars, then read what was not done.",
-];
+type Spread = { beats: Beat[]; instruction: string; overlay: string | null; exhibit: number | null };
+
+const spreads: Record<string, Spread> = {
+  square: { beats: [flat("One walk per row against one pass per tile of rows")], instruction: "Compare the two triangles: every bar on the left is its own walk.", overlay: "square", exhibit: null },
+  tiles: { beats: [flat(`One warp, ${s.tile} query rows, the keys ${s.tile} at a time`)], instruction: "Watch the key tiles pass the query tile, one after another.", overlay: "tiles", exhibit: null },
+  mma: { beats: mmaBeats, instruction: "Drag the pink ball to pick a lane: its pieces of A and B move, and its scores rise with each call.", overlay: null, exhibit: 0 },
+  fragment: { beats: [flat("Scores become weights where they are")], instruction: "Watch the same cells light up on both sides for each lane.", overlay: "fragment", exhibit: null },
+  spec: { beats: [flat(`${s.tests} tests, written before any kernel`)], instruction: "Read the four groups: what must match, what must not change, what must not be read.", overlay: "spec", exhibit: null },
+  first: { beats: [flat("The first kernel: the bytes moved, the walk did not")], instruction: "Watch the keys go by one at a time, then compare the two bars.", overlay: "first", exhibit: null },
+  registers: { beats: [flat("What one lane keeps in registers")], instruction: "Watch which value each call takes from every group.", overlay: "registers", exhibit: null },
+  blocks: { beats: [flat("How many thread blocks run at once")], instruction: "Compare the two grids: the pink blocks on the left had to wait.", overlay: "blocks", exhibit: null },
+  result: { beats: [flat("Time to first token, four paths")], instruction: "Find the two lines that stay low: the tiled kernel and llama.cpp.", overlay: "ttft", exhibit: null },
+  lengths: { beats: [flat("Pick a prompt length")], instruction: "Answer the prediction, then pick a prompt length.", overlay: "lengths", exhibit: null },
+  open: { beats: [flat("What the counters say, and what is not done")], instruction: "Read the four bars, then what was not done.", overlay: "open", exhibit: null },
+};
+
+const ordered = flashPrefillSteps.map((step) => {
+  const spread = spreads[step.id];
+  if (!spread) throw new Error(`flash-prefill: no book spread for step "${step.id}"`);
+  return spread;
+});
 
 const figures: Record<string, () => ReactNode> = {
   square: () => <FlashSquare />,
@@ -51,6 +49,7 @@ const figures: Record<string, () => ReactNode> = {
   tiles: () => <FlashTiles />,
   fragment: () => <FlashFragment />,
   registers: () => <FlashRegisters />,
+  blocks: () => <FlashBlocks />,
   ttft: () => <FlashTtft />,
   open: () => <FlashOpen />,
 };
@@ -76,10 +75,10 @@ const chapter: ChapterDef = {
   formula: flashPrefill.formula,
   steps: flashPrefillSteps,
   captions: flashPrefillCaptions,
-  exhibits: [null, null, null, null, 0, null, null, null, null, null],
-  overlays: ["square", "spec", "first", "tiles", null, "fragment", "registers", "ttft", "lengths", "open"],
-  instructions,
-  beats,
+  exhibits: ordered.map((spread) => spread.exhibit),
+  overlays: ordered.map((spread) => spread.overlay),
+  instructions: ordered.map((spread) => spread.instruction),
+  beats: ordered.map((spread) => spread.beats),
   workbench: [],
   buildModel: (kit, fonts) => createFlashPrefillModel(kit, fonts, { tile: s.tile, half: s.half, calls: s.headDim / s.tile, headDim: s.headDim, lanes: s.lanes }),
   Overlay: FlashPrefillOverlay,

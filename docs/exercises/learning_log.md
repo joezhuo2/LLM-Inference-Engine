@@ -2118,3 +2118,5 @@
 - **row-major W read column-major as its transpose** => 
 - **a last-bit frequency error multiplied by the position** => 
 - **launch-bound kernel at small token counts** => 
+- **mma.sync fragment** => 
+- **online softmax per row** => 
