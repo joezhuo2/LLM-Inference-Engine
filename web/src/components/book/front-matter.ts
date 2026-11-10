@@ -708,7 +708,7 @@ const needFirst = [
 ];
 
 const tokenLife = [
-  "A prompt arrives as text. The tokenizer cuts it into tokens, numbers from a vocabulary of 32,000, and each token becomes a vector of 2,048 values.",
+  "A prompt arrives as text. The tokenizer cuts it into tokens, numbers from a vocabulary of 32,000, and each token becomes a vector of 2,048 values, copied from one row of the embedding table.",
   "Prefill runs the whole prompt through the model at once. Decode then writes the answer one token at a time: the newest token goes through all 22 layers, and its last vector becomes 32,000 scores, one for every possible next token. Sampling picks one and the loop starts again.",
   "Every layer does the same ten things, shown in the map of one decode step. Most of the time goes to reading weights and cached keys and values from memory, not to arithmetic. Chapter 1 shows why, and the rest of the book is about moving fewer bytes and wasting less time between kernels.",
   "Read it in order the first time, because the parts follow the token. Each chapter says what its piece is, walks through how it works, and ends with something to try and an exercise to build.",
@@ -747,7 +747,7 @@ function mapRows(): { rows: MapRow[]; layerTop: number; layerBottom: number } {
     rows.push({ y, label, slugs, inLayer });
     y += gap;
   };
-  add("token in, its embedding row read", [], false, 92);
+  add("token in, its embedding row read", ["foundations"], false, 92);
   const layerTop = y - 50;
   for (const op of layerOps) add(op.label, op.slug === "paged-attention" ? ["paged-attention", "attention-v2", "split-attention"] : [op.slug], true);
   const layerBottom = y - 26;
