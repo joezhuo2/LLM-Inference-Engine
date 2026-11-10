@@ -22,6 +22,11 @@ const beats: Beat[][] = [
     close("Value i pairs with value i + 32, not its neighbour", [0.5, 0.08, 0.02], 0.98, 0.4, 0, 28),
   ],
   [
+    overview("Every pair at once: 32 pairs × 8 head groups"),
+    close("Close up: whole rows rise, not one cell at a time", [0.36, 0.02, 0.02], 0.72, 0.5, 24, 38),
+    close("The second jar: 256 instead of 1,152", [0.83, 0.1, -0.03], 0.44, 0.4, -20, 26),
+  ],
+  [
     overview("One last bit, 2,047 times over"),
     close("From the side: the two arms spread with the position", [0.32, 0.18, -0.27], 0.72, 0.5, -8, 16),
     close("Close up: the rounding boundary between two BF16 values", [0.61, 0.13, -0.27], 0.42, 0.34, 18, 24),
@@ -31,15 +36,10 @@ const beats: Beat[][] = [
     close("Close up: every thread walks its 32 pairs in order", [0.36, 0.02, 0.02], 0.72, 0.5, -28, 40),
     close("The jar: 1,152 sines and cosines per token", [0.83, 0.1, -0.03], 0.44, 0.4, 22, 26),
   ],
-  [
-    overview("Every pair at once: 32 pairs × 8 head groups"),
-    close("Close up: whole rows rise, not one cell at a time", [0.36, 0.02, 0.02], 0.72, 0.5, 24, 38),
-    close("The second jar: 256 instead of 1,152", [0.83, 0.1, -0.03], 0.44, 0.4, -20, 26),
-  ],
   [flat("Pick a token count")],
 ];
 
-const instructions = ["Drag the pink ball along the rail to change the position.", "Watch each value find its partner, 32 places along.", "Watch where the two values land on the steps.", "Watch the chain cross the plate and the jar fill.", "Compare the rows, the clock and the second jar."];
+const instructions = ["Drag the pink ball along the rail to change the position.", "Watch each value find its partner, 32 places along.", "Compare the rows, the clock and the second jar.", "Watch where the two values land on the steps.", "Watch the chain cross the plate and the jar fill.", undefined];
 
 const workbench: WorkbenchPage[] = [
   {
@@ -89,7 +89,7 @@ const chapter: ChapterDef = {
   formula: "x′ᵢ = xᵢ cos pθᵢ − xᵢ₊d/₂ sin pθᵢ,   θᵢ = 10000^(−2i/d)",
   steps: ropeSteps,
   captions: ropeCaptions,
-  exhibits: [0, 1, 2, 3, 3, null],
+  exhibits: [0, 1, 3, 2, 3, null],
   overlays: [null, null, null, null, null, "tokens"],
   instructions,
   beats,

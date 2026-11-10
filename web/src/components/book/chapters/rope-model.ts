@@ -6,7 +6,7 @@ import type { Fonts } from "../typeset";
 
 export type RopeNumbers = { naive: number; draft: number; fast: number };
 
-export const ROPE_STOP = { job: 0, layout: 1, bits: 2, serial: 3, parallel: 4 };
+export const ROPE_STOP = { job: 0, layout: 1, parallel: 2, bits: 3, serial: 4 };
 
 const DIALS = [0, 1, 2, 3, 4, 8, 16, 31];
 const placed = <T extends THREE.Object3D>(object: T, x: number, y: number, z: number): T => {

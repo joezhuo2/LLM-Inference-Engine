@@ -107,7 +107,7 @@ export function TokensPicker() {
 const steps: StoryStep[] = [
   {
     id: "job",
-    title: "the job",
+    title: "a turn by position encodes the gap",
     body: (
       <>
         <p>
@@ -124,7 +124,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "layout",
-    title: "which values turn",
+    title: `only Q and K turn, i with i + ${pairs}`,
     body: (
       <>
         <p>
@@ -141,8 +141,28 @@ const steps: StoryStep[] = [
     ),
   },
   {
+    id: "parallel",
+    title: "pairs are independent, heads share a sine",
+    body: (
+      <>
+        <p>
+          No pair needs anything from another pair, and at one position every head turns pair i by the same angle. So the fast kernel gives
+          one thread to each pair of a head group, with a few groups,{" "}
+          <span className="text-accent">{fastThreads} threads</span> per token. Each thread computes the cosine and sine of its pair once and applies them to every head of its group, so no
+          head waits for another.
+        </p>
+        <p>
+          That is far fewer sines and cosines per token than one for every head and pair, and{" "}
+          <span className="text-accent">{fast1.toFixed(1)} µs</span> for one token. Neighbouring threads read
+          neighbouring pairs, so a warp&apos;s narrow loads already coalesce into a few contiguous sectors; the wide vector loads of the
+          spec were never needed.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "bits",
-    title: "the same bits as Hugging Face",
+    title: "position multiplies a last-bit error",
     body: (
       <>
         <p>
@@ -150,7 +170,7 @@ const steps: StoryStep[] = [
           product rounded on its own. The fast kernel has to match the naive one bit for bit.
         </p>
         <p>
-          The frequencies were the trap. A device powf differs from the host&apos;s in the last bit for a couple of the frequencies, the
+          The frequencies are the trap. A device powf differs from the host&apos;s in the last bit for a couple of the frequencies, the
           angle multiplies that error by the position, and near <span className="text-accent">2,047</span> a sine lands on the other side of a BF16 rounding
           boundary. The subtraction then turns one ulp into dozens. Both kernels now take the frequencies from a table the
           host computes.
@@ -160,7 +180,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "serial",
-    title: "one thread per head",
+    group: "how it got built",
+    title: "one thread per head leaves most idle",
     body: (
       <>
         <p>
@@ -176,27 +197,9 @@ const steps: StoryStep[] = [
     ),
   },
   {
-    id: "parallel",
-    title: "every pair at once",
-    body: (
-      <>
-        <p>
-          The fast kernel turns the mapping around: one thread per pair in each head group, and a few groups,{" "}
-          <span className="text-accent">{fastThreads} threads</span> per token. Each thread computes the cosine and sine of its pair once and applies them to every head of its group, so the
-          heads no longer wait for each other.
-        </p>
-        <p>
-          That is far fewer sines and cosines per token, and{" "}
-          <span className="text-accent">{fast1.toFixed(1)} µs</span> for one token. Neighbouring threads read
-          neighbouring pairs, so a warp&apos;s narrow loads already coalesce into a few contiguous sectors; the wide vector loads of the
-          spec were never needed.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "measured",
-    title: "measured",
+    group: "measured",
+    title: "at small counts the launch sets the time",
     body: (
       <>
         <p>
@@ -217,9 +220,9 @@ const steps: StoryStep[] = [
 const captions = [
   `8 of the ${pairs} pairs of one head of ${headDim} values, at their real rates; the vector lengths are illustrative`,
   `TinyLlama's layout: a row of ${qkvWidth.toLocaleString("en-US")} values per token, ${shape.heads} query and ${shape.kv_heads} key/value heads of ${headDim}; RoPE turns the ${qkHeads} Q and K heads`,
+  `µs per launch for one token, Nsight Compute; ${pairs} threads per head group, ${groups} groups, each thread on ${Math.floor(qkHeads / groups)} or ${Math.ceil(qkHeads / groups)} heads; sin and cos counts from the code, ${fastThreads} per token instead of ${draftTrig.toLocaleString("en-US")} with one per head and pair; the loads are 2 bytes, where the spec asked for 128-bit`,
   `the chain of the bug found while writing the naive kernel: the device powf differed in the last bit for 2 of the ${pairs} frequencies; bit patterns illustrative`,
   `µs per launch, Nsight Compute: first draft ${draftFlat} at ${tokenChoices.join(" / ")} tokens, naive ${naive1.toFixed(1)} µs at one token and ${naive512.toFixed(1)} at 512, draft ${draft512.toFixed(1)}; the draft ran ${draftThreads} threads per token, ${qkHeads} with a head, ${pairs} pairs each; the pair segments are an illustration, not measured`,
-  `µs per launch for one token, Nsight Compute; ${pairs} threads per head group, ${groups} groups, each thread on ${Math.floor(qkHeads / groups)} or ${Math.ceil(qkHeads / groups)} heads; sin and cos counts from the code, ${fastThreads} per token instead of ${draftTrig.toLocaleString("en-US")}; the loads are 2 bytes, where the spec asked for 128-bit`,
   `Nsight Compute, RTX 5060 Laptop GPU, one launch after ten warm-ups; the fast kernel takes ${fast1.toFixed(1)} µs at one token and ${fast512.toFixed(1)} at 512, the naive ${naive512.toFixed(1)}`,
 ];
 
@@ -239,11 +242,11 @@ export function RopeStory() {
           case 1:
             return <LayoutFigure />;
           case 2:
-            return <BitsFigure />;
-          case 3:
-            return <SerialFigure naive={naive1} draft={draft1} />;
-          case 4:
             return <ParallelFigure naive={naive1} fast={fast1} />;
+          case 3:
+            return <BitsFigure />;
+          case 4:
+            return <SerialFigure naive={naive1} draft={draft1} />;
           default:
             return <TokensPicker />;
         }

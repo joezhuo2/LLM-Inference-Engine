@@ -2116,3 +2116,5 @@
 - **padding a batch to a graph bucket** => 
 - **the ridge point as the line between memory bound and compute bound** => 
 - **row-major W read column-major as its transpose** => 
+- **a last-bit frequency error multiplied by the position** => 
+- **launch-bound kernel at small token counts** => 
