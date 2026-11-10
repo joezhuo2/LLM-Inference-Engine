@@ -7,9 +7,9 @@ import { Scramble } from "@/components/scramble";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookScene, OverlayRect, Rect, Stop } from "./book-scene";
 import { type ChapterDef, chapterStops, chapterTitles } from "./chapter";
-import { loadFonts, readFonts, readRuns } from "./typeset";
+import { DOT_PITCH, loadFonts, readFonts, readRuns } from "./typeset";
 
-export type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number };
+export type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number; lines: number[][]; color: string };
 
 const LENS_SIZE = 190;
 const beatMs = 6500;
@@ -36,6 +36,10 @@ export function Magnifier({ lens }: { lens: Lens | null }) {
     const sy = lens.v * lens.source.height - zoom / 2;
     ctx.clearRect(0, 0, c.width, c.height);
     ctx.drawImage(lens.source, sx, sy, zoom, zoom, 0, 0, c.width, c.height);
+    const page = lens.source.width;
+    const scale = c.width / zoom;
+    ctx.fillStyle = lens.color;
+    for (const [x0, y, x1, dot] of lens.lines) for (let x = x0; x < x1; x += dot * DOT_PITCH) ctx.fillRect((x * page - sx) * scale, (y * page - sy) * scale, Math.min(dot, x1 - x) * page * scale, dot * page * scale);
   }, [lens]);
   return (
     <canvas
