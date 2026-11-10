@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { parseGraphRule, parseModelShape, parseRooflineContext } from "./model-shape.mjs";
+import { parseFlashKernel, parseGraphRule, parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 
 const cpp = `const std::string kTinyLlama = R"({
   "hidden_size": 2048, "intermediate_size": 5632, "num_hidden_layers": 22, "num_attention_heads": 32,
@@ -35,4 +35,15 @@ test("the graph rule is read from the C++ sources", () => {
   const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
   const repo = parseGraphRule(read("src/app/bench_command.cpp"), read("include/engine/sched/paged_batch.h"), read("src/sched/paged_batch.cpp"));
   assert.ok(repo.steps >= 1 && (repo.steps & (repo.steps - 1)) === 0);
+});
+
+test("the flash prefill constants and test count are read from the C++ sources", () => {
+  const kernel = "constexpr int kTile = 16;\nconstexpr int kWarpsPerBlock = 4;\nif (head_dim <= 0 || head_dim % 16 != 0 || head_dim > 128) {";
+  const tests = "TEST(A, One) {\nTEST(A, Two) {\nTEST_P(L, Three) {\nINSTANTIATE_TEST_SUITE_P(X, L,\n ::testing::Values(Layout{1, 1, 16, 1}, Layout{2, 1, 32, 3}),\n [](const auto& info) {";
+  assert.deepEqual(parseFlashKernel(kernel, tests), { tile: 16, warps_per_block: 4, max_head_dim: 128, tests: 4, layouts: 2 });
+  assert.throws(() => parseFlashKernel("nothing", tests), /kTile/);
+  assert.throws(() => parseFlashKernel(kernel, ""), /no tests/);
+  const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
+  const repo = parseFlashKernel(read("src/kernels/flash_prefill.cu"), read("tests/gpu/test_flash_prefill.cpp"));
+  assert.ok(repo.tile === 16 && repo.tests > repo.layouts);
 });

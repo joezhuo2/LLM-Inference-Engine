@@ -2079,3 +2079,9 @@
 ## Link hover underline in Every Byte (Branch 139)
 
 - **overlay mesh with a shader instead of repainting a canvas texture** => 
+
+## FlashAttention prefill on the site (Branch 140)
+
+- **FlashAttention: tiling the score table instead of materializing it** => 
+- **reading a fragment layout (which lane holds which element)** => 
+- **log-log chart: a flat cost per token is a straight line** => 

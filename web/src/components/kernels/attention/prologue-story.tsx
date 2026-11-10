@@ -32,8 +32,8 @@ const steps: StoryStep[] = [
           through every layer side by side, and each layer writes the keys and values of every position into the KV cache.
         </p>
         <p>
-          Time to first token is this pass. On this engine a long prompt took{" "}
-          <span className="text-accent">{ttft2048.toLocaleString("en-US")} ms</span>, and each prompt token costs more than it does in a short prompt.
+          Time to first token is this pass. On this engine a long prompt takes{" "}
+          <span className="text-accent">{ttft2048.toLocaleString("en-US")} ms</span>, and a prompt token costs about the same in a long prompt as in a short one.
         </p>
       </>
     ),

@@ -1,5 +1,6 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
+import flashKernelJson from "@/data/flash_kernel.json";
 import graphRuleJson from "@/data/graph_rule.json";
 import hardwareJson from "@/data/hardware.json";
 import kvDemoJson from "@/data/kv_demo.json";
@@ -166,6 +167,10 @@ export const modelShape = (): ModelShape => modelShapeJson;
 export type GraphRule = { steps: number; split_blocks: number; max_splits: number; min_split_tokens: number };
 
 export const graphRule = (): GraphRule => graphRuleJson;
+
+export type FlashKernel = { tile: number; warps_per_block: number; max_head_dim: number; tests: number; layouts: number };
+
+export const flashKernel = (): FlashKernel => flashKernelJson;
 
 export function loadRun(): LoadRun {
   if (!resultsDoc.load) throw new Error("docs/results.md has no \"Engine runs measured\" line in its Under load section");

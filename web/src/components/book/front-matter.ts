@@ -804,7 +804,7 @@ const tokenMapPage = (links: PageLink[]) => (canvas: HTMLCanvasElement, palette:
   }
   ctx.fillStyle = palette.faint;
   ctx.font = `28px ${fonts.sans}`;
-  paragraph(ctx, `Around the whole step: CUDA Graphs (ch ${chapterNumber("cuda-graphs")}) replay it with one launch, and the scheduler with chunked prefill (ch ${chapterNumber("chunked-prefill")}) decides which requests share it. Click a row to open its chapter.`, x0, H - 250, x1 - x0, 40);
+  paragraph(ctx, `Around the whole step: CUDA Graphs (ch ${chapterNumber("cuda-graphs")}) replay it with one launch, and the scheduler with chunked prefill (ch ${chapterNumber("chunked-prefill")}) decides which requests share it. Prefill has its own attention kernel (ch ${chapterNumber("flash-prefill")}). Click a row to open its chapter.`, x0, H - 250, x1 - x0, 40);
 };
 
 function mapLinks(): PageLink[] {

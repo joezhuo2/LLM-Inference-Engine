@@ -487,8 +487,8 @@ const steps: StoryStep[] = [
         <p>
           vLLM&apos;s tail stays at <Num>{n(loadValue(ttftTailSeries, "vllm", gapAt))} ms</Num>. Past its peak the
           engine&apos;s queue grows whatever the budget: chunks move prefill work between steps but do not shrink it, and
-          the engine&apos;s prefill runs every prompt row through the decode attention kernel, so the rest of the gap is
-          kernel speed, not scheduling.
+          in these runs the engine&apos;s prefill ran every prompt row through the decode attention kernel, so the rest of the gap was
+          kernel speed, not scheduling. The <Story to="/kernels/flash-prefill">FlashAttention prefill</Story> kernel has since replaced that path, and the sweep has not been rerun with it.
         </p>
       </>
     ),

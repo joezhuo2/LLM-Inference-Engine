@@ -8,6 +8,7 @@ export const bookChapters: Record<string, () => Promise<ChapterDef>> = {
   swiglu: () => import("./swiglu").then((m) => m.swigluChapter),
   "attention-v2": () => import("./attention-v2").then((m) => m.attentionV2Chapter),
   "chunked-prefill": () => import("./chunked-prefill").then((m) => m.chunkedPrefillChapter),
+  "flash-prefill": () => import("./flash-prefill").then((m) => m.flashPrefillChapter),
   "paged-attention": () => import("./paged-attention").then((m) => m.pagedAttentionChapter),
   "cuda-graphs": () => import("./cuda-graphs").then((m) => m.cudaGraphsChapter),
   "split-attention": () => import("./split-attention").then((m) => m.splitAttentionChapter),

@@ -42,6 +42,7 @@ export function prefillCurve() {
     flatFrom,
     engineShort: prefillPerToken("engine", short),
     engineLong: prefillPerToken("engine", long),
+    perRowLong: prefillPerToken("engine, paged prefill", long),
     llamaLow: Math.min(...llamaPerToken),
     llamaHigh: Math.max(...llamaPerToken),
     llamaMs,

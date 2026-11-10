@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { SmoothRange } from "@/components/smooth-range";
 import { glide, hold, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
-import { chunkBudget, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
+import { chunkBudget, perRowPrefill, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
 import { type Cell, decoders, type Lane, maxPrompt, type Mode, Playground, type PoolSize, predict, type Run } from "./scheduler-model";
@@ -20,8 +20,9 @@ const quick = [128, 512, 2048];
 const tickMs = 260;
 const guessSteps = ["1", "4", "9", "16"];
 const guessStall = ["0 steps", "1 step", "9 steps"];
-const aloneSmall = prefillMs("engine", "128");
-const aloneLarge = prefillMs("engine", "2,048");
+const aloneSmall = prefillMs(perRowPrefill, "128");
+const aloneLarge = prefillMs(perRowPrefill, "2,048");
+const aloneLargeNow = prefillMs("engine", "2,048");
 const stallWhole = stallMs("none", "largest gap ms");
 const stallChunked = stallMs(chunkBudget, "largest gap ms");
 
@@ -369,7 +370,7 @@ export function ChunkedPrefillSandbox({ pages }: { pages?: { predict: HTMLElemen
 
   const scale = (
     <p className="max-w-2xl text-muted">
-      {`For scale, measured on this engine (docs/results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms. A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}.`}
+      {`For scale, measured on this engine (docs/results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms with the per-row prefill attention the load runs used (${fmt(aloneLargeNow)} ms with the FlashAttention prefill kernel that replaced it). A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}, both measured before that kernel.`}
     </p>
   );
 
