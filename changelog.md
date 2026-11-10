@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## runtime/graph-buckets-wiring
 
 - Wire `decode_graph_buckets` into `engine bench` and `engine serve` in place of the two `graph_buckets` copies (`src/app/bench_command.cpp`, `src/server/gpu_backend.cpp`), with a new `--graph-steps` option (graph sizes per power of two of batch size, a power of two, default 1, which gives the old 1, 2, 4, 8 and so on plus the max batch); anything else is rejected with std::invalid_argument. The bench summary CSV, the trace meta and the `/v1/steps` meta record `graph_steps` (0 without `--graphs`). Two new GPU tests in `tests/gpu/test_server.cpp`: six streamed clients at max batch 6 with `--graph-steps 2` (buckets 1, 2, 3, 4, 6) all get the greedy answer of `generate`, and steps of 0, 3, 6 and -2 are rejected. (Part B)
+- Add `scripts/batch_sweep.sh` and `scripts/batch_report.py` for #121: `engine bench` at max batch 16, 32, 64, 128 and 256, eager and with graphs, twice as many requests as the max batch (64 prompt and 64 output tokens, as in `reproduce.sh`), then the padding runs (17 requests at max batch 32 with `--graph-steps` 1, 2, 4 and 8, 256 output tokens, 5 runs), all written to `results/batch/` so they stay out of the batch curves `plot.py` reads from `results/`; the report prints median tables. `tests/python/test_batch_report.py` covers medians, ordering and the padding grouping. (Part A)
 
 ## kernel/flash-prefill-fixes
 
