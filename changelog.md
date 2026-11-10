@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-link-hover
+
+- Part A: Every Byte draws a dotted underline under the hovered or keyboard-focused link on a page (contents entries, chapter intro rows, start-here map rows, Errata and exercise links), left to right in 300 ms and erased in 220 ms, reversing from where it is when interrupted, with no animation under reduced motion. It is a shader mesh over the page (`web/src/components/book/underline.ts`) that shares the page geometry, so no page texture is repainted; the magnifier lens draws the same underline for left pages; glossary marks keep their permanent dots and now share one dotted rule with it. By a Claude subagent, checked by Claude.
+
 ## web/embedding-timeline
 
 - Part A: the layer map's embedding card on /kernels shows `fast::embedding` beside the naive kernel: what one thread copies in each, the measured median and largest launch times read from the results Kernels table (`embeddingLaunch()` in `web/src/lib/data.ts`), links to both sources and both test files, and the reading that a 3x faster launch moved no end-to-end number. Foundations (the /kernels page and chapter 1 of Every Byte) gains a last step, "a faster kernel, the same step", with the same figure, and start here says the vector is copied from one row of the embedding table. By a Claude subagent, checked by Claude.

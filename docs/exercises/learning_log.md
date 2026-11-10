@@ -2064,3 +2064,7 @@
 ## Embedding lookup and timeline scenes on the site (Branch 138)
 
 - **a faster kernel that moves no end-to-end number (Amdahl's law)** => 
+
+## Link hover underline in Every Byte (Branch 139)
+
+- **overlay mesh with a shader instead of repainting a canvas texture** => 

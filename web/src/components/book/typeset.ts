@@ -79,12 +79,15 @@ function drawParagraph(ctx: CanvasRenderingContext2D, runs: Run[], x: number, y:
   return cy + lineHeight;
 }
 
+export const DOT_PITCH = 2.4;
+export const dotRule = (lineHeight: number) => ({ dot: Math.max(1.5, lineHeight * 0.05), drop: lineHeight * 0.16 });
+
 function markWord(ctx: CanvasRenderingContext2D, marks: Marks, word: Word, x: number, y: number, lineHeight: number): void {
-  const dot = Math.max(1.5, lineHeight * 0.05);
-  const under = y + lineHeight * 0.16;
+  const { dot, drop } = dotRule(lineHeight);
+  const under = y + drop;
   ctx.save();
   ctx.fillStyle = marks.color;
-  for (let dx = 0; dx < word.width; dx += dot * 2.4) ctx.fillRect(x + dx, under, dot, dot);
+  for (let dx = 0; dx < word.width; dx += dot * DOT_PITCH) ctx.fillRect(x + dx, under, dot, dot);
   ctx.restore();
   const top = y - lineHeight * 0.62;
   marks.boxes.push({ key: word.term!, box: [x / marks.w, top / marks.h, (x + word.width) / marks.w, (under + dot * 3) / marks.h] });

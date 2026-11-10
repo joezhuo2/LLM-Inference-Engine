@@ -288,6 +288,11 @@ export function EveryByte() {
 
   const turnTo = useCallback((slug: string, k: number) => go(firstOf(slug) + 1 + k, k > 0), [go]);
 
+  const focusLink = useCallback((target: Element) => {
+    const el = target.closest<HTMLElement>("[data-book-link]");
+    scene.current?.focusLink(el?.matches(":focus-visible") ? (el.dataset.bookLink ?? null) : null, el?.dataset.bookLabel);
+  }, []);
+
   const onLinkHref = useCallback(
     (href: string) => {
       if (href === "#errata" || href === "#estimates") return void goKey(href.slice(1), true);
@@ -563,7 +568,7 @@ export function EveryByte() {
       </div>
       <div className="relative border-border bg-surface max-[720px]:border-t">
         <GlossProvider key={stop} off={!narrow}>
-        <article aria-live="polite" className="max-h-[32dvh] overflow-y-auto px-4 py-3 text-sm leading-relaxed text-muted min-[721px]:sr-only">
+        <article aria-live="polite" onFocus={(e) => focusLink(e.target)} onBlur={() => scene.current?.focusLink(null)} className="max-h-[32dvh] overflow-y-auto px-4 py-3 text-sm leading-relaxed text-muted min-[721px]:sr-only">
           {!open ? (
             <p>
               Every Byte, an inference engine kernel by kernel.{" "}
@@ -581,7 +586,7 @@ export function EveryByte() {
                 {bookTitles(def).map((t, k) => (
                   <li key={`${k}-${t}`} className="flex gap-2">
                     <span className="w-5 tabular-nums">{stepNumber(def, k)}</span>
-                    <button type="button" onClick={() => turnTo(def.slug, k)} className="link-underline text-left text-text">
+                    <button type="button" data-book-link={`${bookHref(def.slug)}#${k}`} onClick={() => turnTo(def.slug, k)} className="link-underline text-left text-text">
                       {t}
                     </button>
                     <span className="ml-auto tabular-nums">{(chapterPage(def.slug) ?? 0) + k + 1}</span>
@@ -651,12 +656,12 @@ export function EveryByte() {
               {exerciseNumpy && (
                 <p className="mt-2">
                   Try it in NumPy first, on any machine:{" "}
-                  <a href={numpyUrl(exerciseNumpy)} target="_blank" rel="noreferrer" className="link-underline font-mono text-xs text-text">
+                  <a href={numpyUrl(exerciseNumpy)} data-book-link={numpyUrl(exerciseNumpy)} target="_blank" rel="noreferrer" className="link-underline font-mono text-xs text-text">
                     {numpyCommand(exerciseNumpy)}
                   </a>
                 </p>
               )}
-              <Link href={`/exercises#${exercise.id}`} className="link-underline mt-2 inline-block text-text">
+              <Link href={`/exercises#${exercise.id}`} data-book-link={`/exercises#${exercise.id}`} className="link-underline mt-2 inline-block text-text">
                 The steps, the spec and the commands to copy →
               </Link>
             </>
@@ -689,7 +694,7 @@ export function EveryByte() {
                   {startText.map().map((r) => (
                     <li key={r.y} className={clsx("flex gap-2", r.inLayer && "pl-3")}>
                       {r.slugs.length ? (
-                        <Link href={bookHref(r.slugs[0])} onClick={(e) => inBook(e, r.slugs[0])} className="link-underline text-text">
+                        <Link href={bookHref(r.slugs[0])} data-book-link={bookHref(r.slugs[0])} data-book-label={r.label} onClick={(e) => inBook(e, r.slugs[0])} className="link-underline text-text">
                           {r.label}
                         </Link>
                       ) : (
@@ -776,7 +781,7 @@ export function EveryByte() {
                     <section key={d.title} className="mt-3 space-y-1">
                       <div className="text-xs">
                         {`${d.date} · ${kindLabel[d.kind]} · `}
-                        <Link href={chapterSlugs.includes(d.slug) ? bookHref(d.slug) : `/kernels/${d.slug}`} onClick={chapterSlugs.includes(d.slug) ? (e) => inBook(e, d.slug) : undefined} className="link-underline text-accent">
+                        <Link href={chapterSlugs.includes(d.slug) ? bookHref(d.slug) : `/kernels/${d.slug}`} data-book-link={bookOrder.includes(d.slug) ? bookHref(d.slug) : `/kernels/${d.slug}`} onClick={chapterSlugs.includes(d.slug) ? (e) => inBook(e, d.slug) : undefined} className="link-underline text-accent">
                           {d.kernel}
                         </Link>
                       </div>
@@ -798,7 +803,7 @@ export function EveryByte() {
                     {part.slugs.map((slug) => (
                       <li key={slug} className="flex gap-2">
                         <span className="w-5 tabular-nums">{bookOrder.indexOf(slug) + 1}</span>
-                        <Link href={bookHref(slug)} onClick={chapterSlugs.includes(slug) ? (e) => inBook(e, slug) : undefined} className="link-underline text-text">
+                        <Link href={bookHref(slug)} data-book-link={bookHref(slug)} onClick={chapterSlugs.includes(slug) ? (e) => inBook(e, slug) : undefined} className="link-underline text-text">
                           {chapterTitle(slug)}
                         </Link>
                         <span className="ml-auto tabular-nums">{chapterPage(slug)}</span>
@@ -807,11 +812,11 @@ export function EveryByte() {
                   </ol>
                 </div>
               ))}
-              <button type="button" onClick={() => void goKey("estimates", true)} className="link-underline mt-2 flex w-full text-text">
+              <button type="button" data-book-link="#estimates" onClick={() => void goKey("estimates", true)} className="link-underline mt-2 flex w-full text-text">
                 Estimate it yourself
                 <span className="ml-auto tabular-nums text-muted">{chapterPage("estimates")}</span>
               </button>
-              <button type="button" onClick={() => void goKey("errata", true)} className="link-underline mt-2 flex w-full text-text">
+              <button type="button" data-book-link="#errata" onClick={() => void goKey("errata", true)} className="link-underline mt-2 flex w-full text-text">
                 {`Errata: ${errataTitle}`}
                 <span className="ml-auto tabular-nums text-muted">{chapterPage("errata")}</span>
               </button>
