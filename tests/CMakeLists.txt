@@ -63,6 +63,7 @@ if(ENGINE_CUDA)
     gpu/test_decode_graphs.cpp
     gpu/test_device_buffer.cpp
     gpu/test_embedding.cpp
+    gpu/test_embedding_fast.cpp
     gpu/test_forward_golden.cpp
     gpu/test_gemm.cpp
     gpu/test_generate.cpp

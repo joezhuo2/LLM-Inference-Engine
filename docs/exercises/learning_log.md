@@ -2007,3 +2007,9 @@
 - **varlen batching with cumulative row offsets (cu_seqlens)** => 
 - **chunked prefill: the cached prefix from the paged cache, the chunk's own K and V from the qkv buffer** => 
 - **sizing a grid without reading device-side lengths on the host (graph capture)** => 
+
+## Embedding lookup (Branch 130)
+
+- **gather: copying rows of a table chosen by an index array** => 
+- **one thread per 16-byte vector (uint4) and the alignment it needs** => 
+- **flattening (row, column) work into one grid instead of one block per row** => 
