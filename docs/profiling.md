@@ -332,46 +332,78 @@ Reading it. v1's context limit is not shared memory running out: at its cap of 2
 
 Layout. One warp owns a tile of 16 query rows for one query head; a thread block is 4 warps, so 4 heads, and the grid is ceil(rows / 16) by ceil(heads / 4). The warp loads its Q tile once into the A fragments of `mma.sync.aligned.m16n8k16` (head_dim / 16 steps of 16 dimensions, 4 registers each). Keys go past in tiles of 16 positions aligned to the sequence, two halves of 8 keys: for each half and each step every lane loads two 4-byte words of one key row as the B fragment, and head_dim / 16 mma calls accumulate the 16 x 8 scores in FP32. A lane then holds the scores of its two query rows against four keys, which is exactly the A fragment of the next product, so nothing moves between lanes: each score is rounded to BF16, scaled and rounded again as in the other attention kernels, masked where the key is after the query, and the row maximum and sum are reduced over the 4 lanes that share a row with two shuffles. The weights exp(s - m) are rounded to BF16 and multiplied with V through the same mma into FP32 accumulators (head_dim / 8 columns of 4 registers) that are rescaled by exp(m_old - m_new) when a row's maximum rises. The value columns are interleaved (column g of step n is dimension g * head_dim / 8 + n), so the 8 values a lane needs from one key are contiguous and load as words. Keys below `cached_lens` come from the paged cache through the chunk's block table row, keys of the chunk from qkv, and keys past the last row of the tile's segment are zeros, which keeps a row independent of what follows it. No shared memory and no barriers; warps share nothing.
 
-What was tried. One design, the one above: 16 x 16 tiles are what a single warp can hold in registers at head_dim 64 (16 words of Q, 32 accumulators) and what one mma shape gives without moving data between lanes. Not tried: larger query tiles per warp, staging K and V tiles in shared memory with 16-byte loads so the 8 query heads of a kv head share one read, a shift instead of a division for power-of-two block sizes, more or fewer warps per block. Not measured: Nsight Compute on the kernel (tensor pipe utilization, bytes read against the bytes of K and V the chunk needs, achieved occupancy), compute-sanitizer memcheck on the 24 tests. The attention share of a prefill step and the cost of chunking were measured afterwards with Nsight Systems, in "FlashAttention prefill in chunks" below.
+What was tried. One design, the one above: 16 x 16 tiles are what a single warp can hold in registers at head_dim 64 (16 words of Q, 32 accumulators) and what one mma shape gives without moving data between lanes. Not tried: larger query tiles per warp, staging K and V tiles in shared memory with 16-byte loads so the 8 query heads of a kv head share one read, a shift instead of a division for power-of-two block sizes, more or fewer warps per block. Not measured: compute-sanitizer memcheck on the 24 tests. Nsight Compute on the kernel (tensor pipe, bytes requested, occupancy), the attention share of a prefill step and the cost of chunking were measured afterwards, in "FlashAttention prefill in chunks" below, where the division of the cache path also became 32-bit.
 
 Reading it. The first kernel (#185) kept the decode kernels' shape, one thread block per row and head with the keys one at a time, and was 9% slower than they are at 2,048 tokens: reading the chunk from qkv instead of the cache saves nothing when every row still walks every key alone and waits at two barriers per key. The tiled kernel does the same number of score and value products (they grow with the square of the prompt) but 16 rows share each key tile and the products run on the tensor cores, and TTFT at 2,048 tokens falls from 1,507.9 to 203.1 ms. Reproduce: `python scripts/prefill_ttft.py --llama-batched-bench <path> --token-budget 256`, and `engine bench --prefill-attention paged` for the old path.
 
 ## FlashAttention prefill in chunks (Branch 141)
 
-Where the time of one 2,048-token prompt goes, alone, in one step and under `--token-budget`, from Nsight Systems on 2026-11-10 (release build of main at db212b0, RTX 5060 Laptop GPU, `engine bench --max-batch 1 --num-requests 1 --prompt-len 2048 --output-len 1 --warmup 1 --graphs --profile`, three captures per budget, each cell the median of its three captures, so a row's parts can miss its span by 0.1 ms). All times in ms. Span is from the start of the first kernel to the end of the last; gaps is the part of the span in which no kernel ran; blocks is the grid of one `flash_attention_prefill` launch for a full chunk; TTFT is what the bench printed during the capture. No capture differed from the median of its three by more than 1.3 ms in any kernel column.
+Where the time of one 2,048-token prompt goes, alone, in one step and under `--token-budget`, and what one change to the kernel did about it (Branch 142). Everything here was measured on 2026-11-10 on the RTX 5060 Laptop GPU with two release builds in one session: "before" is main at ebf5917, and "after" is the same tree with the two divisions of the cache path (`key / block_size`, `key % block_size`) done in 32 bits instead of 64. The session followed a reboot and its clocks are slower than those of the morning's tables in `docs/results.md` (one step takes 197.6 ms here against 202.7 and 203.1 there, and 170.3 in a session between the two), so compare rows of this section with each other only. An earlier version of this section, measured in that faster session with the kernel before the change, had 32.0 ms of attention in one step and 61.7 ms as 8 chunks; the numbers below replace it.
 
-| budget | steps | blocks | TTFT | span | attention | GEMMs | other kernels | gaps |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| none | 1 | 1,024 | 172.5 | 168.9 | 32.0 | 128.2 | 7.5 | 1.1 |
-| 1,024 | 2 | 512 | 181.1 | 177.4 | 39.0 | 129.4 | 5.7 | 3.2 |
-| 512 | 4 | 256 | 194.0 | 191.5 | 47.1 | 133.2 | 4.7 | 6.9 |
-| 256 | 8 | 128 | 221.0 | 217.9 | 61.7 | 139.0 | 5.2 | 12.5 |
-| 224 | 10 | 112 | 250.1 | 248.2 | 73.3 | 155.3 | 5.3 | 14.4 |
-| 208 | 10 | 104 | 234.4 | 232.7 | 49.9 | 159.3 | 5.4 | 17.4 |
+**Timeline (Nsight Systems).**
 
-The kernel's launch as the capture records it (threads and registers, no shared memory), and what follows from it (calculated): a block needs 14,720 of the 65,536 registers of an SM, so 4 blocks fit on an SM and 104 on the 26 SMs at once, 16 of the 48 warps an SM can hold.
+`engine bench --max-batch 1 --num-requests 1 --prompt-len 2048 --output-len 1 --warmup 1 --graphs --profile`, three captures per row, each cell the median of its three captures, so a row's parts can miss its span by 0.1 ms. All times in ms. Span is from the start of the first kernel to the end of the last; gaps is the part of the span in which no kernel ran; blocks is the grid of one `flash_attention_prefill` launch for a full chunk; TTFT is what the bench printed during the capture. All captures of "before" were taken first, then all of "after". No capture differed from the median of its three by more than 1.7 ms in a kernel column.
 
-| threads per block | registers per thread | blocks per SM | blocks at once |
+| kernel | budget | steps | blocks | TTFT | span | attention | GEMMs | other kernels | gaps |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| before | none | 1 | 1,024 | 197.7 | 193.8 | 37.8 | 147.0 | 7.8 | 1.2 |
+| before | 1,024 | 2 | 512 | 207.0 | 203.8 | 46.2 | 148.5 | 6.1 | 3.0 |
+| before | 512 | 4 | 256 | 218.3 | 216.0 | 55.3 | 148.9 | 5.3 | 6.4 |
+| before | 272 | 8 | 136 | 256.2 | 253.9 | 66.8 | 171.1 | 5.6 | 10.4 |
+| before | 256 | 8 | 128 | 248.0 | 246.0 | 73.0 | 156.8 | 5.9 | 10.6 |
+| before | 224 | 10 | 112 | 277.5 | 275.2 | 85.3 | 170.8 | 6.1 | 14.4 |
+| before | 208 | 10 | 104 | 259.0 | 257.0 | 57.6 | 179.6 | 6.2 | 13.3 |
+| after | none | 1 | 1,024 | 197.1 | 193.6 | 36.1 | 148.6 | 7.8 | 1.1 |
+| after | 1,024 | 2 | 512 | 203.0 | 199.6 | 42.5 | 148.1 | 6.1 | 3.1 |
+| after | 512 | 4 | 256 | 212.2 | 209.4 | 47.9 | 150.3 | 5.3 | 5.9 |
+| after | 272 | 8 | 136 | 260.9 | 258.0 | 70.5 | 170.7 | 5.8 | 10.9 |
+| after | 256 | 8 | 128 | 230.6 | 227.9 | 50.5 | 159.6 | 6.0 | 11.2 |
+| after | 224 | 10 | 112 | 259.4 | 257.5 | 64.8 | 172.5 | 6.2 | 13.6 |
+| after | 208 | 10 | 104 | 262.3 | 260.6 | 61.7 | 179.6 | 6.2 | 13.1 |
+
+**Launch and occupancy.**
+
+From Nsight Compute's launch statistics (128 threads per block, no shared memory, 26 SMs); blocks at once is blocks per SM times 26, calculated:
+
+| kernel | threads per block | registers per thread | blocks per SM | blocks at once |
+| --- | --- | --- | --- | --- |
+| before | 128 | 115 | 4 | 104 |
+| after | 128 | 96 | 5 | 130 |
+
+**One launch in Nsight Compute.**
+
+One launch each (layer 0): the whole prompt in one step, and the first and the last chunk at a budget of 256 (`--launch-skip 0` and `154`). Clocks are locked and counters replayed under `ncu`, so its times are not those of the timeline. Occupancy is warps active as a share of the 48 an SM can hold, with what the registers allow beside it; tensor pipe is `sm__inst_executed_pipe_tensor` as a share of its peak rate; MB requested is `l1tex__t_bytes_pipe_lsu_mem_global_op_ld`, the 32-byte sectors the kernel's global loads ask the L1 cache for; L2 MB is `lts__t_bytes`.
+
+| kernel | launch | blocks | ms | waves per SM | occupancy | allowed | tensor pipe | MB requested | L1 hit | L2 MB | L2 hit | DRAM throughput | instructions (M) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| before | one step | 1,024 | 2.146 | 9.85 | 31.6% | 33.3% | 18.9% | 3,263.7 | 93.6% | 325.3 | 95.6% | 1.3% | 168.9 |
+| before | first chunk | 128 | 0.078 | 1.23 | 24.5% | 33.3% | 10.6% | 55.6 | 91.6% | 20.2 | 87.1% | 4.5% | 2.9 |
+| before | last chunk | 128 | 0.924 | 1.23 | 24.7% | 33.3% | 11.2% | 771.3 | 93.0% | 69.8 | 93.9% | 0.9% | 48.1 |
+| after | one step | 1,024 | 2.041 | 7.88 | 39.0% | 41.7% | 19.9% | 3,263.7 | 93.9% | 322.0 | 93.8% | 1.3% | 169.8 |
+| after | first chunk | 128 | 0.071 | 0.98 | 26.0% | 41.7% | 10.2% | 55.6 | 91.4% | 20.8 | 88.4% | 4.9% | 3.0 |
+| after | last chunk | 128 | 0.578 | 0.98 | 39.4% | 41.7% | 15.9% | 771.3 | 93.2% | 68.5 | 94.0% | 1.4% | 45.3 |
+
+**Without a profiler.**
+
+TTFT in ms of the same prompt with no profiler attached, median of 5 runs (seeds 1 to 5), all runs of "before" first; the spread of the five was 195.4 to 201.1 ms in one step and 243.9 to 251.5 (before) and 226.8 to 229.6 ms (after) at a budget of 256:
+
+| kernel | one step | budget 256 | more |
 | --- | --- | --- | --- |
-| 128 | 115 | 4 | 104 |
+| before | 197.6 | 244.9 | 24% |
+| after | 199.3 | 228.1 | 14% |
 
-Attention time per launch (one layer) of each step at a budget of 256, from the capture whose attention total is the median, with the same time divided by the launch's work in tile pairs (16 query rows of all heads against 16 keys):
+**Reading it.**
 
-| chunk | cached tokens | ms per layer | us per tile pair |
-| --- | --- | --- | --- |
-| 1 | 0 | 0.049 | 0.360 |
-| 2 | 256 | 0.134 | 0.342 |
-| 4 | 768 | 0.312 | 0.345 |
-| 8 | 1,792 | 0.643 | 0.333 |
+In one step the attention kernel is 37.8 of 193.8 ms before the change, 20%; the 88 GEMMs are 76%, so what is left of prefill is mostly cuBLAS. Splitting the prompt into 8 chunks added 52.2 ms to the span: attention 35.2, GEMMs 9.8, gaps 9.4, and the small kernels 1.9 less. The GEMMs and the gaps are what 8 steps cost (704 launches of a smaller product instead of 88, host work between steps). The attention is not: the kernel does the same products either way and took almost twice as long.
 
-The whole prompt in one launch is 1.456 ms per layer and 0.176 us per tile pair.
+The reason is the grid. With 115 registers per thread 4 blocks fit on an SM, 104 on the GPU. A launch for a 256-row chunk is 16 row tiles by 8 groups of heads, 128 blocks: 1.23 waves, so 24 blocks wait and then run on a nearly empty GPU. Every block of a late chunk walks the whole prefix, so they all take about as long and the launch lasts close to two walks. Nsight Compute shows it in the last chunk: 24.7% of the warp places filled where 33.3% were allowed, against 31.6% for the one-step launch, whose 1,024 blocks are of every length and are replaced as they finish. The budgets of 208 and 224 show it in the timeline: both take 10 steps, 208 launches 104 blocks and 224 launches 112, and those 8 blocks more took the attention from 57.6 to 85.3 ms.
 
-Reading it. In one step the attention kernel is 32.0 of 168.9 ms, 19%; the 88 GEMMs are 76%, so what is left of prefill is mostly cuBLAS. Splitting the prompt into 8 chunks adds 49.0 ms to the span, and the parts are attention 29.7, GEMMs 10.8, gaps 11.4 and the small kernels 2.3 less. The gaps and the GEMMs are the cost one expects from 8 steps (host work between steps, 704 launches of a smaller product instead of 88). The attention is not: the kernel does the same products either way, and takes almost twice as long.
+The change. The compiler needs 96 registers per thread once the two divisions are 32-bit, 5 blocks fit on an SM and 130 on the GPU, and the 128 blocks of a 256-row chunk run together (0.98 waves). The last chunk fills 39.4% of the warp places and its launch goes from 0.924 to 0.578 ms under Nsight Compute. In the timeline, attention at a budget of 256 goes from 73.0 to 50.5 ms and the span from 246.0 to 227.9; with no profiler the split costs 14% instead of 24% (228.1 against 199.3 ms). One step gains little, 37.8 to 36.1 ms of attention, and its TTFT does not move outside the spread of the runs. The step in the table has moved, not gone: 136 blocks (a budget of 272) are now just over one wave and take 70.5 ms where 128 take 50.5. And two budgets are slower than before, 208 (57.6 to 61.7 ms) and 272 (66.8 to 70.5): at 208 the 104 blocks used to fill every SM evenly with 4, and why 5 places per SM serve them worse was not looked into.
 
-The reason is the grid. A launch for a 256-row chunk is 16 row tiles by 8 groups of heads, 128 blocks, and only 104 fit at once, so 24 blocks wait and then run on a nearly empty GPU. Every block of a late chunk walks the whole prefix, so they all take about as long and the launch lasts close to two walks. The budgets of 208 and 224 show it directly: both take 10 steps, but 208 launches 104 blocks and 224 launches 112, and those 8 blocks more take the attention from 49.9 to 73.3 ms. In one step the 1,024 blocks are of every length and a finished one is replaced at once, so the 104 places stay full. A second effect is under it: a launch cannot be shorter than its longest block, whatever its grid. The last step at a budget of 224 has 32 rows, 16 blocks on a GPU with room for 104, and still takes 0.370 ms per layer, 1.451 us per tile pair against 0.369 for the full chunks before it. That may be why even 104 blocks (0.26 us per tile pair in the later chunks) do not reach the 0.176 of one step; whether reading keys from the cache also costs more than reading them from qkv could not be separated from it here.
+What the counters say about the kernel itself, after the change, for one step. The tensor pipe runs at 19.9% of its peak rate and the launch fills 39.0% of the warp places, close to the 41.7% that 96 registers allow, so the occupancy is limited by registers and the tensor cores are idle four fifths of the time. The loads ask the L1 cache for 3,263.7 MB in 32-byte sectors per layer; the keys and values of the prompt are 2.1 MB (2,048 keys, 4 KV heads, 128 bytes each for K and for V, calculated), and Nsight Compute estimates that a thread uses 10.7 of the 32 bytes of a sector it fetches. 93.9% of those sectors are in L1, 322.0 MB go on to L2, 93.8% of them are there, and DRAM runs at 1.3% of its throughput. So the kernel is not bound by memory bandwidth: every byte it needs is read hundreds of times from the caches, which is the cost the untried shared-memory staging of K and V tiles would go after.
 
-Tried and not kept: with the two 64-bit divisions of the cache path (`key / block_size`, `key % block_size`) done in 32 bits, the compiler needs 96 registers per thread instead of 115, 5 blocks fit on an SM and 130 on the GPU, and the 128 blocks of a 256-row chunk run together. Attention at a budget of 256 went from 61.7 to 42.7 ms (42.6 to 43.5 in three captures) and the TTFT of that capture from 221.0 to 202.5 ms; in one step it went from 32.0 to 30.3 ms (one capture). The change is two lines and was not committed, because the kernel is Part C. It moves the step in the table from 104 to 130 blocks and does not remove it.
+Keys from the cache cost more than keys from qkv, a little. At the same occupancy (39.4% and 39.0%, after the change) the last chunk, which reads 93% of its keys through the block table, takes 0.300 us per tile pair (16 query rows of all heads against 16 keys) and 23,500 instructions, and the one-step launch, which reads all of them from qkv, 0.247 us and 20,600: 14% more instructions and 21% more time under Nsight Compute. With the 64-bit divisions it was 25,000 instructions.
 
-Still not measured: anything that needs Nsight Compute (tensor pipe utilization, bytes read, achieved occupancy, whether keys from the cache cost more than keys from qkv). On 2026-11-10 `ncu` stopped with `ERR_NVGPUCTRPERM`, which means the Windows driver setting that allows GPU performance counters for all users is off.
+Still not measured: the stall reasons per source line, K and V staged in shared memory for the 8 query heads of a KV head, more or fewer warps per block, and the load sweeps of `docs/results.md`, which predate the kernel.
 
-To reproduce: `scripts/profile.sh nsys flash_b256 --max-batch 1 --num-requests 1 --prompt-len 2048 --output-len 1 --warmup 1 --seed 1 --graphs --token-budget 256` (leave the budget out for one step), then read `CUPTI_ACTIVITY_KIND_KERNEL` in `results/profile/flash_b256.sqlite`: `registersPerThread`, `gridX` and `gridY` of the attention launches, and `end - start` summed by kernel name (every kernel outside `engine::` is cuBLAS).
+To reproduce the timeline: `scripts/profile.sh nsys flash_b256 --max-batch 1 --num-requests 1 --prompt-len 2048 --output-len 1 --warmup 1 --seed 1 --graphs --token-budget 256` (leave the budget out for one step), then read `CUPTI_ACTIVITY_KIND_KERNEL` in `results/profile/flash_b256.sqlite`: `gridX` and `gridY` of the attention launches and `end - start` summed by kernel name (every kernel outside `engine::` is cuBLAS). Nsight Compute: `ncu --profile-from-start off --kernel-name regex:flash_attention_prefill --launch-skip 154 --launch-count 1 --metrics gpu__time_duration.sum,launch__registers_per_thread,launch__occupancy_limit_registers,launch__waves_per_multiprocessor,sm__maximum_warps_per_active_cycle_pct,sm__warps_active.avg.pct_of_peak_sustained_active,sm__inst_executed_pipe_tensor.avg.pct_of_peak_sustained_active,sm__inst_executed.sum,l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum,l1tex__t_sector_hit_rate.pct,lts__t_bytes.sum,lts__t_sector_hit_rate.pct,dram__throughput.avg.pct_of_peak_sustained_elapsed build/release/bin/engine bench` with the same bench options and `--profile --token-budget 256`. `ncu` needs the Windows driver setting that allows GPU performance counters for all users; with it off it stops with `ERR_NVGPUCTRPERM`, as it did earlier the same day.

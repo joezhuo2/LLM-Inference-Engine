@@ -38,8 +38,8 @@ const series: TtftSeries[] = [
 ];
 
 const openItems = [
-  "no Nsight Compute profile of the kernel\ntensor core use and bytes read are not known",
-  `${s.group} query heads share each KV head\neach one reads the same keys and values again`,
+  `K and V are not shared between the ${s.group} query heads of a KV head\neach one reads the same keys and values again`,
+  `a chunk just over ${pf.launchAfter.blocksAtOnce} blocks still waits\nbudget ${pf.wide.budget}: ${pf.wide.blocks} blocks, ${pf.wide.attention} ms of attention`,
   "the load sweeps were not rerun\nmeasured before this kernel, with per-row prefill",
 ];
 
@@ -229,10 +229,10 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Nsight Compute has still not run on the kernel, so how busy the tensor cores are and how many bytes it reads are not known. The <span className="text-accent">{s.group}</span> query heads that share a KV head each read the same keys and values again; loading them once into shared memory for all of them was not tried.
+          Nsight Compute says the tensor cores run at <span className="text-accent">{pf.step.tensor}%</span> of their peak rate and {pf.step.occupancy}% of the warp places are filled, nearly all that {pf.launchAfter.registers} registers per thread allow. The loads ask the caches for {flashFmt(Math.round(pf.step.requestedMb))} MB per layer to use {pf.neededMb.toFixed(1)} MB of keys and values; {pf.step.l1Hit}% of it is in L1 and DRAM is nearly idle. Staging the keys once in shared memory for the <span className="text-accent">{s.group}</span> query heads that share a KV head was not tried.
         </p>
         <p>
-          Chunking a lone prompt used to be nearly free. With a budget of {budget} it now costs <span className="text-warn">{n.chunkedCost.toFixed(0)}%</span> at {flashLong} tokens. A timeline from Nsight Systems shows where: of {pf.extra.toFixed(1)} ms more, <span className="text-warn">{pf.extraAttention.toFixed(1)}</span> are the attention kernel itself. Only {pf.blocksAtOnce} of its thread blocks fit on the GPU at once and a {budget}-row chunk launches {pf.chunked.blocks}, so the last {pf.chunked.blocks - pf.blocksAtOnce} run on a nearly empty GPU. The load sweeps of the chunked prefill chapter were measured before this kernel and have not been rerun.
+          Chunking a lone prompt with a budget of {budget} cost <span className="text-warn">{pf.plainBefore.cost}%</span>, most of it in the attention kernel: with {pf.launchBefore.registers} registers only {pf.launchBefore.blocksAtOnce} thread blocks fit on the GPU at once, and a {budget}-row chunk launches {pf.after.blocks}. Two divisions done in 32 bits brought it to {pf.launchAfter.registers} registers and {pf.launchAfter.blocksAtOnce} blocks, and the cost to <span className="text-accent">{pf.plainAfter.cost}%</span>. The load sweeps of the chunked prefill chapter have not been rerun.
         </p>
       </>
     ),
@@ -249,7 +249,7 @@ const captions = [
   `calculated from the kernel's fragment sizes at head_dim ${s.headDim}: ${qWords} words of Q and ${accs} accumulators per lane; a head of up to ${s.maxHeadDim} dimensions in steps of ${s.tile} is accepted`,
   `docs/results.md, Prefill against prompt length: one request per run, median of 5 runs, RTX 5060 Laptop GPU; per prompt token the tiled kernel stays between ${n.perTokenLow} and ${n.perTokenHigh} ms while the per-row path climbs from ${n.pagedPerTokenShort} to ${n.pagedPerTokenLong} ms; llama.cpp with -ub 512`,
   `the same medians; ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms at ${flashLong} tokens is ${n.ratio.toFixed(1)} times less, and ${n.ahead.toFixed(0)}% less than llama.cpp's ${flashFmt(n.llama)} ms (calculated); the first kernel was measured at its own commit in the same session`,
-  `docs/profiling.md, FlashAttention prefill in chunks: Nsight Systems, median of 3 captures, kernel time summed by name, ${pf.whole.span} ms from the first kernel to the last in one step and ${pf.chunked.span} ms as ${chunks} chunks under a budget of ${budget}; ${pf.blocksAtOnce} blocks at once is calculated from ${pf.registers} registers per thread; the ${n.chunkedCost.toFixed(0)}% is from docs/results.md, measured earlier the same day`,
+  `docs/profiling.md, FlashAttention prefill in chunks: kernel time from Nsight Systems, median of 3 captures, with the kernel before and after the 32-bit divisions in one session; counters from Nsight Compute on one launch; ${pf.plainBefore.cost}% and ${pf.plainAfter.cost}% are ${pf.plainBefore.chunked} against ${pf.plainBefore.whole} ms and ${pf.plainAfter.chunked} against ${pf.plainAfter.whole} ms with no profiler, median of 5; ${pf.neededMb.toFixed(1)} MB and blocks at once are calculated`,
 ];
 
 export const flashPrefillSteps = steps;
@@ -288,7 +288,7 @@ export function FlashTtft() {
 }
 
 export function FlashOpen() {
-  return <OpenFigure whole={pf.whole} chunked={pf.chunked} atOnce={pf.blocksAtOnce} registers={pf.registers} budget={budget} chunks={chunks} tokens={flashLong} items={openItems} />;
+  return <OpenFigure whole={pf.whole} before={pf.before} after={pf.after} atOnce={[pf.launchBefore.blocksAtOnce, pf.launchAfter.blocksAtOnce]} step={pf.step} last={[pf.lastBefore.occupancy, pf.lastAfter.occupancy]} budget={budget} chunks={chunks} tokens={flashLong} items={openItems} />;
 }
 
 const figures = [FlashSquare, FlashSpec, FlashFirst, FlashTiles, FlashMma, FlashFragment, FlashRegisters, FlashTtft, LengthPicker, FlashOpen];

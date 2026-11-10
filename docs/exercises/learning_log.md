@@ -2091,3 +2091,11 @@
 - **registers per thread decide how many thread blocks fit on an SM** => 
 - **a grid a little larger than one wave: the leftover blocks run on a nearly empty GPU** => 
 - **a launch cannot be shorter than its longest block** => 
+
+## Flash prefill registers and Nsight Compute (Branch 142)
+
+- **64-bit integer division on a GPU and the registers it costs** => 
+- **theoretical against achieved occupancy** => 
+- **tensor pipe utilization** => 
+- **bytes requested from L1 in 32-byte sectors against the bytes a thread uses** => 
+
