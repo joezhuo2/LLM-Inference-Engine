@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { flashAboutNumbers, flashPrefillAbout, flashPrefillAboutCaption } from "@/components/kernels/flash-prefill/about";
-import { FlashBlocks, FlashFirst, FlashFragment, FlashOpen, flashPrefillCaptions, flashPrefillSteps, FlashRegisters, FlashSpec, FlashSquare, FlashTiles, FlashTtft, LengthPicker } from "@/components/kernels/flash-prefill/story";
+import { FlashBlocks, FlashFirst, FlashFragment, flashPrefillCaptions, flashPrefillSteps, FlashRegisters, FlashSpec, FlashSquare, FlashTiles, FlashTtft, FlashTurn, LengthPicker } from "@/components/kernels/flash-prefill/story";
 import { chapterNumber } from "@/content/book-order";
 import { flashPrefill, flashShape } from "@/content/kernels/flash-prefill";
 import type { Beat } from "../book-scene";
@@ -33,7 +33,7 @@ const spreads: Record<string, Spread> = {
   blocks: { beats: [flat("How many thread blocks run at once")], instruction: "Compare the two grids: the pink blocks on the left had to wait.", overlay: "blocks", exhibit: null },
   result: { beats: [flat("Time to first token, four paths")], instruction: "Find the two lines that stay low: the tiled kernel and llama.cpp.", overlay: "ttft", exhibit: null },
   lengths: { beats: [flat("Pick a prompt length")], instruction: "Answer the prediction, then pick a prompt length.", overlay: "lengths", exhibit: null },
-  open: { beats: [flat("What the counters say, and what is not done")], instruction: "Read the four bars, then what was not done.", overlay: "open", exhibit: null },
+  open: { beats: [flat(`Your turn: ${s.group} heads, one read of the keys`)], instruction: "Answer the prediction first, then read where the kernel starts from.", overlay: "turn", exhibit: null },
 };
 
 const ordered = flashPrefillSteps.map((step) => {
@@ -51,7 +51,6 @@ const figures: Record<string, () => ReactNode> = {
   registers: () => <FlashRegisters />,
   blocks: () => <FlashBlocks />,
   ttft: () => <FlashTtft />,
-  open: () => <FlashOpen />,
 };
 
 function FlashPrefillOverlay({ kind, target, narrow }: OverlayProps) {
@@ -60,6 +59,13 @@ function FlashPrefillOverlay({ kind, target, narrow }: OverlayProps) {
     return createPortal(
       <div className={narrow ? undefined : "h-[34rem]"}>
         <LengthPicker />
+      </div>,
+      target,
+    );
+  if (kind === "turn")
+    return createPortal(
+      <div className={narrow ? undefined : "h-[34rem]"}>
+        <FlashTurn />
       </div>,
       target,
     );

@@ -564,48 +564,35 @@ export function BlocksFigure({ whole, before, after, registers, atOnce, last, bu
   );
 }
 
-export function OpenFigure({ step, registers, requestedMb, neededMb, items }: { step: { tensor: number; occupancy: number; allowed: number; l1Hit: number; dram: number }; registers: number; requestedMb: number; neededMb: number; items: string[] }) {
-  const { on, grow } = useLoop(12);
-  const bars = [
-    { label: "tensor cores", value: step.tensor, note: `${step.tensor}% of their peak rate`, tone: "warn" },
-    { label: "warp places filled", value: step.occupancy, note: `${step.occupancy}% of ${step.allowed}% allowed`, tone: "accent", mark: step.allowed },
-    { label: "loads found in L1", value: step.l1Hit, note: `${step.l1Hit}% of sectors`, tone: "accent" },
-    { label: "DRAM", value: step.dram, note: `${step.dram}% of its throughput`, tone: "accent" },
-  ];
+export function RidgeAxis({ ridge, points, ask }: { ridge: number; points: { value: number; label: string; accent?: boolean }[]; ask: string }) {
+  const x = (v: number) => 24 + (Math.log10(v) / 3) * 480;
+  const ticks = [1, 10, 100, 1000];
   return (
-    <Frame label={`Nsight Compute on one launch, the whole prompt in one step: tensor pipe ${step.tensor}% of peak, ${step.occupancy}% of warp places filled where ${registers} registers per thread allow ${step.allowed}%, ${step.l1Hit}% of the sectors the loads ask for found in L1, DRAM at ${step.dram}% of its throughput; the loads ask for ${fmt(Math.round(requestedMb))} MB per layer to use ${neededMb.toFixed(1)} MB of keys and values. Not done yet: ${items.join("; ")}`}>
-      <Label x={20} y={24} className="fill-text">
-        one launch, the whole prompt (measured, Nsight Compute)
-      </Label>
-      {bars.map((b, i) => (
-        <g key={b.label}>
-          <Label x={20} y={54 + i * 26} className={b.tone === "warn" ? "fill-warn" : undefined}>
-            {b.label}
-          </Label>
-          <rect x={150} y={44 + i * 26} width={240} height={12} rx={2} className="fill-border" />
-          <motion.rect x={150} y={44 + i * 26} width={Math.max(3, (240 * b.value) / 100)} height={12} rx={2} className={b.tone === "warn" ? "fill-warn" : "fill-accent"} {...grow(0.04 + i * 0.05, 0.3 + i * 0.05)} />
-          {b.mark !== undefined && <line x1={150 + (240 * b.mark) / 100} y1={40 + i * 26} x2={150 + (240 * b.mark) / 100} y2={60 + i * 26} className="stroke-text" />}
-          <Label x={398} y={54 + i * 26} className={b.tone === "warn" ? "fill-warn" : "fill-accent"}>
-            {b.note}
+    <svg viewBox="0 0 528 118" className="w-full shrink-0 tabular-nums" role="img" aria-label={`A roofline on a log axis of FLOP per byte of K and V loaded, from 1 to 1,000, with the ridge at ${ridge.toFixed(0)}: ${points.map((p) => `${p.label} at ${p.value}`).join(", ")}; where ${ask.replace(": ?", "")} lands is the question`}>
+      <polyline points={`${x(1)},58 ${x(ridge)},18 ${x(1000)},18`} className="fill-none stroke-muted" strokeWidth={1.5} />
+      <Label x={x(3)} y={30}>bandwidth side</Label>
+      <Label x={x(1000)} y={11} anchor="end">compute side</Label>
+      <line x1={x(ridge)} y1={18} x2={x(ridge)} y2={84} className="stroke-text" strokeDasharray="3 3" />
+      <Label x={x(ridge) + 6} y={42} className="fill-text">{`ridge ${ridge.toFixed(0)}`}</Label>
+      <line x1={x(1)} y1={84} x2={x(1000)} y2={84} className="stroke-border" />
+      {ticks.map((t) => (
+        <g key={t}>
+          <line x1={x(t)} y1={84} x2={x(t)} y2={88} className="stroke-border" />
+          <Label x={x(t)} y={100} anchor="middle">
+            {fmt(t)}
           </Label>
         </g>
       ))}
-      <Label x={20} y={166}>{`the line on the second bar: what ${registers} registers per thread allow`}</Label>
-      <Label x={20} y={184}>{`loads ask the caches for ${fmt(Math.round(requestedMb))} MB per layer to use ${neededMb.toFixed(1)} MB of K and V (calculated)`}</Label>
-      <line x1={20} y1={202} x2={540} y2={202} className="stroke-border" />
-      <Label x={20} y={226} className="fill-text">
-        not done yet
-      </Label>
-      {items.map((item, i) => (
-        <motion.g key={item} {...on(0.3 + i * 0.12)}>
-          <rect x={22} y={242 + i * 50} width={12} height={12} rx={2} className="fill-none stroke-warn" />
-          {item.split("\n").map((line, k) => (
-            <Label key={line} x={46} y={252 + i * 50 + k * 16} className={k === 0 ? "fill-text" : "fill-muted"}>
-              {line}
-            </Label>
-          ))}
-        </motion.g>
+      {points.map((p) => (
+        <g key={p.label}>
+          <circle cx={x(p.value)} cy={84} r={4.5} className={p.accent ? "fill-accent" : "fill-baseline"} />
+          <Label x={x(p.value) + 8} y={76} className={p.accent ? "fill-accent" : undefined}>{`${p.label}: ${p.value}`}</Label>
+        </g>
       ))}
-    </Frame>
+      <Label x={x(1000)} y={76} anchor="end" className="fill-warn">
+        {ask}
+      </Label>
+      <Label x={x(1)} y={114}>FLOP per byte of K and V loaded (calculated), log scale</Label>
+    </svg>
   );
 }

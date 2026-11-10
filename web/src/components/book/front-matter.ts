@@ -1,6 +1,6 @@
 import { bookOrder, bookParts, chapterNumber } from "@/content/book-order";
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
-import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
+import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, openTag, runsLabel } from "@/content/exercises";
 import { type Estimate, estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { kernelStory, layerOps } from "@/content/kernels";
 import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
@@ -386,7 +386,7 @@ type ExerciseStep = { title: string; text?: string; commands?: string[] };
 function exerciseSteps(e: Exercise): ExerciseStep[] {
   if (e.kind === "open") {
     return [
-      { title: "Write it from scratch", text: "A single .cu file built with nvcc is enough; nothing in the engine changes.", commands: ["nvcc -O3 -arch=native copy.cu -o copy && ./copy"] },
+      e.write ?? { title: "Write it from scratch", text: "A single .cu file built with nvcc is enough; nothing in the engine changes.", commands: ["nvcc -O3 -arch=native copy.cu -o copy && ./copy"] },
       { title: "Check it", text: e.check },
       { title: "Compare", text: e.compare.map((c) => `${c.path}: ${c.label}.`).join(" ") },
     ];
@@ -415,7 +415,7 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number, lin
     ctx.fillText(e.title, x0, 260);
     ctx.fillStyle = palette.faint;
     ctx.font = `28px ${fonts.sans}`;
-    const tags = [runsLabel[e.runs], e.kind === "stub" && e.model ? "some tests load TinyLlama" : e.kind === "open" ? "no tests, open ended" : ""].filter(Boolean);
+    const tags = [runsLabel[e.runs], e.kind === "stub" && e.model ? "some tests load TinyLlama" : e.kind === "open" ? openTag(e) : ""].filter(Boolean);
     ctx.fillText(tags.join(" · "), x0, 320);
     ctx.fillStyle = palette.ink;
     ctx.font = `36px ${fonts.sans}`;

@@ -2120,3 +2120,5 @@
 - **launch-bound kernel at small token counts** => 
 - **mma.sync fragment** => 
 - **online softmax per row** => 
+- **arithmetic intensity per byte loaded** => 
+- **register-limited occupancy** => 

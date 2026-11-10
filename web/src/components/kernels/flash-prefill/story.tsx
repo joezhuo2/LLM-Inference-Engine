@@ -2,13 +2,13 @@
 
 import NumberFlow from "@number-flow/react";
 import { type ReactNode, useState } from "react";
-import { flashFmt, flashKeyRows, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashShape, flashShort, flashSystems, flashTokens, flashTtft } from "@/content/kernels/flash-prefill";
+import { flashFmt, flashKeyRows, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashRoofline, flashShape, flashShort, flashSweepsNote, flashSystems, flashTokens, flashTtft } from "@/content/kernels/flash-prefill";
 import { modelShape } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { expectAnswer, type Prediction, Predict } from "../predict";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
-import { BlocksFigure, FirstKernelFigure, FragmentFigure, MmaFigure, OpenFigure, RegistersFigure, type SpecGroup, SpecFigure, SquareFigure, TileSweepFigure, TtftFigure, type TtftSeries } from "./figures";
+import { BlocksFigure, FirstKernelFigure, FragmentFigure, MmaFigure, RegistersFigure, RidgeAxis, type SpecGroup, SpecFigure, SquareFigure, TileSweepFigure, TtftFigure, type TtftSeries } from "./figures";
 
 const n = flashNumbers;
 const pf = flashProfile;
@@ -38,10 +38,47 @@ const series: TtftSeries[] = [
   { label: "tiled kernel", values: flashLengths.map((p) => flashTtft(flashSystems.flash, p)), tone: "accent" },
 ];
 
-const openItems = [
-  `K and V are not shared between the ${s.group} query heads of a KV head\neach one reads the same keys and values again`,
-  "the load sweeps were not rerun\nmeasured before this kernel, with per-row prefill",
+const rf = flashRoofline;
+const ridge = rf.ridge.toFixed(0);
+const turnPrediction: Prediction = expectAnswer({
+  question: `A warp does ${rf.now} FLOP per byte of K and V it loads. Let one thread block serve the ${s.group} query heads of a KV head and load each tile once. Where does that land against the ridge at ${ridge} FLOP per byte?`,
+  choices: ["still left of it", "on it, within 10%", "right of the ridge"],
+  answer: rf.shared > rf.ridge * 1.1 ? "right of the ridge" : rf.shared < rf.ridge / 1.1 ? "still left of it" : "on it, within 10%",
+  why: `${s.tile} rows × ${s.group} heads share each load at 1 FLOP per byte each: ${rf.shared} FLOP per byte, past the ridge (calculated). But that counts bytes loaded, and ${pf.step.l1Hit}% of today's loads are already in L1 (measured). At ${rf.now} FLOP per byte DRAM could feed ${rf.dramRoofNow.toFixed(1)} TFLOP/s, and the kernel already runs at ${rf.achieved.toFixed(1)} (calculated from the measured ${rf.kernelMs} ms), so DRAM was not the limit. Whether the traffic from the caches is, only the stall reasons would say, and they are not measured; neither is the time it saves.`,
+}, "right of the ridge");
+
+const startRows = [
+  { label: "tensor cores", value: `${pf.step.tensor}% of their peak rate`, tone: "text-warn" },
+  { label: "warp places filled", value: `${pf.step.occupancy}% of the ${pf.step.allowed}% that ${pf.launchAfter.registers} registers allow`, tone: "text-text" },
+  { label: "loads found in L1", value: `${pf.step.l1Hit}%, and DRAM at ${pf.step.dram}% of its throughput`, tone: "text-text" },
+  { label: "asked of the caches", value: `${flashFmt(Math.round(pf.step.requestedMb))} MB per layer, for ${pf.neededMb.toFixed(1)} MB of K and V`, tone: "text-text" },
 ];
+
+const alsoOpen = ["Not measured: the stall reasons per source line.", "Not measured: more or fewer warps per block.", flashSweepsNote];
+
+export function FlashTurn() {
+  return (
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...turnPrediction} />
+      <RidgeAxis ridge={rf.ridge} points={[{ value: rf.now / s.tile, label: "one walk per row" }, { value: rf.now, label: "tiled kernel today", accent: true }]} ask={`${s.group} heads, one read: ?`} />
+      <div className="space-y-1 border-t border-border pt-2 leading-relaxed">
+        <div className="text-muted">where it starts: one launch, the whole prompt (measured, Nsight Compute)</div>
+        {startRows.map((r) => (
+          <div key={r.label} className="grid grid-cols-[8.5rem_1fr] gap-2">
+            <span className="text-muted">{r.label}</span>
+            <span className={r.tone}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+      <ul className="space-y-1 border-t border-border pt-2 leading-relaxed text-muted">
+        <li className="text-text">also open</li>
+        {alsoOpen.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const shortTiled = flashTtft(flashSystems.flash, flashShort);
 const shortPaged = flashTtft(flashSystems.paged, flashShort);
@@ -252,15 +289,19 @@ const steps: StoryStep[] = [
   {
     id: "open",
     group: results,
-    title: "what holds it back now is warps, not bytes",
+    title: `your turn: ${s.group} heads read the same keys`,
     body: (
       <>
         <p>
-          Nsight Compute says the tensor cores run at <span className="text-accent">{pf.step.tensor}%</span> of their peak rate and {pf.step.occupancy}% of the warp places are filled, nearly all that {pf.launchAfter.registers} registers per thread allow. The loads ask the caches for {flashFmt(Math.round(pf.step.requestedMb))} MB per layer to use {pf.neededMb.toFixed(1)} MB of keys and values; {pf.step.l1Hit}% of it is in L1 and DRAM is nearly idle.
+          TinyLlama has {s.heads} query heads and {s.kvHeads} KV heads, so <span className="text-accent">{s.group}</span> query heads use the same keys and values. The kernel gives every query head its own warp, {s.warps} to a thread block, and each warp loads every key and value tile for itself. Nsight Compute counts the loads asking the caches for {flashFmt(Math.round(pf.step.requestedMb))} MB per layer, to use {pf.neededMb.toFixed(1)} MB of keys and values.
         </p>
         <p>
-          Still open: staging the keys once in shared memory for the <span className="text-accent">{s.group}</span> query heads that share a KV head was not tried. The load sweeps of the chunked prefill chapter were measured before this kernel and have not been rerun.
+          Count it the way the roofline does. A value is 2 bytes, and every query row that uses it does one multiply and one add, so a load is worth 1 FLOP per byte for each row that shares it: <span className="text-accent">{rf.now} FLOP per byte</span> with {s.tile} rows to a warp. Now let one thread block serve all {s.group} query heads of a KV head and load each tile once. Where does the kernel land against the ridge, {ridge} FLOP per byte on this GPU? Commit to an answer on the right, then work it out.
         </p>
+        <p>
+          Know what the answer can say. It counts bytes loaded, not bytes from DRAM: {pf.step.l1Hit}% of today&apos;s loads are already in L1, and DRAM runs at {pf.step.dram}% of its throughput. The tensor cores run at <span className="text-warn">{pf.step.tensor}%</span> of their peak rate, and what holds them is registers: {pf.launchAfter.registers} per thread fill {pf.step.occupancy}% of the warp places, and at that count a block of {s.group} warps would fit {rf.sharedBlocksPerSm} to an SM, {rf.warpsShared} warps where {rf.warpsNow} run today (calculated). The loads that sharing removes are cache traffic, and whether that traffic holds the kernel back is not measured. Nobody has built it, so the time it saves is not measured either. That is the exercise.
+        </p>
+        <p>Also not measured: the stall reasons per source line, and more or fewer warps per block. {flashSweepsNote}</p>
       </>
     ),
   },
@@ -279,7 +320,7 @@ const captionOf: Record<string, string> = {
   blocks: `docs/profiling.md, FlashAttention prefill in chunks: kernel time from Nsight Systems, median of 3 captures, with the kernel before and after the 32-bit divisions in one session; registers and blocks per SM from Nsight Compute's launch statistics, blocks at once calculated for ${pf.launchAfter.blocksAtOnce / pf.launchAfter.blocksPerSm} SMs; ${pf.plainBefore.cost}% and ${pf.plainAfter.cost}% are ${pf.plainBefore.chunked} against ${pf.plainBefore.whole} ms and ${pf.plainAfter.chunked} against ${pf.plainAfter.whole} ms with no profiler, median of 5`,
   result: `docs/results.md, Prefill against prompt length: one request per run, median of 5 runs, RTX 5060 Laptop GPU; per prompt token the tiled kernel stays between ${n.perTokenLow} and ${n.perTokenHigh} ms while the per-row path climbs from ${n.pagedPerTokenShort} to ${n.pagedPerTokenLong} ms; llama.cpp with -ub 512`,
   lengths: `the same medians; ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms at ${flashLong} tokens is ${n.ratio.toFixed(1)} times less, and ${n.ahead.toFixed(0)}% less than llama.cpp's ${flashFmt(n.llama)} ms (calculated); the first kernel was measured at its own commit in the same session`,
-  open: `${profileSource}; ${pf.neededMb.toFixed(1)} MB is calculated`,
+  open: `${profileSource}; calculated from src/kernels/flash_prefill.cu and config.json: one tile pair is ${flashFmt(rf.pairFlop)} FLOP (2 products × 2 FLOP × ${s.tile} rows × ${s.tile} keys × ${s.headDim} dimensions) against ${flashFmt(rf.pairBytes)} bytes of K and V in BF16, counted as each warp loads them, not as DRAM delivers them as in the decode roofline; the ridge is the measured ceilings of docs/results.md, ${rf.tflops} TFLOP/s over ${rf.gbs} GB/s; ${flashFmt(rf.smRegisters)} registers per SM from results/onchip; no speedup here is measured`,
 };
 
 const captions = steps.map((step) => captionOf[step.id]);
@@ -323,11 +364,7 @@ export function FlashBlocks() {
   return <BlocksFigure whole={pf.whole} before={pf.before} after={pf.after} registers={[pf.launchBefore.registers, pf.launchAfter.registers]} atOnce={[pf.launchBefore.blocksAtOnce, pf.launchAfter.blocksAtOnce]} last={[pf.lastBefore.occupancy, pf.lastAfter.occupancy]} budget={budget} chunks={chunks} tokens={flashLong} />;
 }
 
-export function FlashOpen() {
-  return <OpenFigure step={pf.step} registers={pf.launchAfter.registers} requestedMb={pf.step.requestedMb} neededMb={pf.neededMb} items={openItems} />;
-}
-
-const figureOf: Record<string, () => ReactNode> = { square: FlashSquare, tiles: FlashTiles, mma: FlashMma, fragment: FlashFragment, spec: FlashSpec, first: FlashFirst, registers: FlashRegisters, blocks: FlashBlocks, result: FlashTtft, lengths: LengthPicker, open: FlashOpen };
+const figureOf: Record<string, () => ReactNode> = { square: FlashSquare, tiles: FlashTiles, mma: FlashMma, fragment: FlashFragment, spec: FlashSpec, first: FlashFirst, registers: FlashRegisters, blocks: FlashBlocks, result: FlashTtft, lengths: LengthPicker, open: FlashTurn };
 
 export function FlashPrefillStory() {
   return (
@@ -335,7 +372,7 @@ export function FlashPrefillStory() {
       steps={steps}
       caption={(i) => captions[i]}
       figure={(i) => {
-        const Figure = figureOf[steps[i]?.id] ?? FlashOpen;
+        const Figure = figureOf[steps[i]?.id] ?? FlashTurn;
         return <Figure />;
       }}
     />
