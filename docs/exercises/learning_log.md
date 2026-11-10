@@ -2012,3 +2012,5 @@
 
 - **choosing the graph for a batch: the smallest captured bucket that holds it** => 
 - **padded rows in a replayed graph: compute spent on rows nobody reads** => 
+- **why a GEMM with M rows does about M FLOPs per weight byte, and where that meets the ridge** => 
+- **cuBLAS picking a different kernel (tile shape) per problem size** => 
