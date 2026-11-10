@@ -86,8 +86,77 @@ function Packet({ x, y, text, accent, motionProps }: { x: number; y: number; tex
   );
 }
 
-export const naiveKb64 = measured("fused-add-rmsnorm-branch-30", { tokens: "64" }, "naive DRAM (KB)");
-export const fusedKb64 = measured("fused-add-rmsnorm-branch-30", { tokens: "64" }, "fast DRAM (KB)");
+const patternKernels = 2;
+const patternSeparate = 2 * patternKernels;
+const patternFused = 2;
+
+export function PatternFigure() {
+  const { move, grow, on } = useLoop(8);
+  const memX = 20;
+  const memW = 90;
+  const kx = 240;
+  const kw = 130;
+  const barX = 400;
+  const barW = 140;
+  const into = kx - memX - memW - 50;
+  return (
+    <Frame label="Two elementwise kernels in a row write the value between them to DRAM and read it back, and each pays a launch; fused into one kernel the value stays in registers, so those two transfers and one launch are gone">
+      <Label x={20} y={24} className="fill-text">
+        two kernels
+      </Label>
+      <rect x={memX} y={36} width={memW} height={130} rx={3} className="fill-surface stroke-border" />
+      <Label x={memX + memW / 2} y={106} anchor="middle">
+        DRAM
+      </Label>
+      <rect x={kx} y={44} width={kw} height={34} rx={3} className="fill-surface stroke-border" />
+      <Label x={kx + kw / 2} y={65} anchor="middle" className="fill-text">
+        kernel A
+      </Label>
+      <rect x={kx} y={120} width={kw} height={34} rx={3} className="fill-surface stroke-border" />
+      <Label x={kx + kw / 2} y={141} anchor="middle" className="fill-text">
+        kernel B
+      </Label>
+      <Packet x={memX + memW + 6} y={44} text="in" motionProps={move(0.02, 0.14, into, 0)} />
+      <Packet x={kx - 50} y={60} text="t" accent motionProps={move(0.16, 0.28, -into, 0)} />
+      <Packet x={memX + memW + 6} y={120} text="t" accent motionProps={move(0.3, 0.42, into, 0)} />
+      <Packet x={kx - 50} y={138} text="out" motionProps={move(0.44, 0.56, -into, 0)} />
+      <motion.g {...on(0.28, 0.44)}>
+        <Label x={kx} y={108} className="fill-warn">
+          t goes out and comes back
+        </Label>
+      </motion.g>
+
+      <Label x={20} y={214} className="fill-text">
+        one fused kernel
+      </Label>
+      <rect x={memX} y={226} width={memW} height={100} rx={3} className="fill-surface stroke-border" />
+      <Label x={memX + memW / 2} y={281} anchor="middle">
+        DRAM
+      </Label>
+      <rect x={kx} y={250} width={kw} height={52} rx={3} className="fill-accent/10 stroke-accent" />
+      <Label x={kx + kw / 2} y={270} anchor="middle" className="fill-text">
+        A + B
+      </Label>
+      <rect x={kx + kw / 2 - 14} y={278} width={28} height={14} rx={2} className="fill-accent" />
+      <Packet x={memX + memW + 6} y={256} text="in" motionProps={move(0.02, 0.14, into, 0)} />
+      <Packet x={kx - 50} y={278} text="out" motionProps={move(0.3, 0.42, -into, 0)} />
+      <Label x={kx} y={322}>t stays in registers</Label>
+
+      <Label x={barX} y={24}>DRAM transfers, launches</Label>
+      <rect x={barX} y={36} width={barW} height={12} rx={2} className="fill-border" />
+      <motion.rect x={barX} y={36} width={barW} height={12} rx={2} className="fill-baseline" {...grow(0.02, 0.56)} />
+      <Label x={barX + barW} y={66} anchor="end">{`${patternSeparate} transfers, ${patternKernels} launches`}</Label>
+      <rect x={barX} y={226} width={barW} height={12} rx={2} className="fill-border" />
+      <motion.rect x={barX} y={226} width={(barW * patternFused) / patternSeparate} height={12} rx={2} className="fill-accent" {...grow(0.02, 0.42)} />
+      <Label x={barX + barW} y={256} anchor="end" className="fill-accent">{`${patternFused} transfers, 1 launch`}</Label>
+      <Label x={20} y={372}>an illustration of any two elementwise kernels in a row, one read and one write each</Label>
+    </Frame>
+  );
+}
+
+export const fusionTokens = 64;
+export const naiveKb64 = measured("fused-add-rmsnorm-branch-30", { tokens: String(fusionTokens) }, "naive DRAM (KB)");
+export const fusedKb64 = measured("fused-add-rmsnorm-branch-30", { tokens: String(fusionTokens) }, "fast DRAM (KB)");
 
 export function RoundTripFigure({ naiveKb, fusedKb }: { naiveKb: number; fusedKb: number }) {
   const { move, grow, on } = useLoop(8);

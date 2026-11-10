@@ -122,7 +122,7 @@ export function samplingLogits(): SamplingLogits {
 
 export type LoadRun = { date: string; commit: string; gpu: string };
 
-export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null };
+export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null; slo: { ttft_ms: number; tpot_ms: number } | null };
 
 export type Doc = "profiling" | "results";
 
@@ -153,6 +153,11 @@ export const modelShape = (): ModelShape => modelShapeJson;
 export function loadRun(): LoadRun {
   if (!resultsDoc.load) throw new Error("docs/results.md has no \"Engine runs measured\" line in its Under load section");
   return resultsDoc.load;
+}
+
+export function loadSlo(): { ttft_ms: number; tpot_ms: number } {
+  if (!resultsDoc.slo) throw new Error("docs/results.md has no \"SLO: TTFT at most ... and TPOT at most ...\" line in its Under load section");
+  return resultsDoc.slo;
 }
 
 export function ceilings(): { gbs: number; tflops: number } {

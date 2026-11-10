@@ -2035,3 +2035,11 @@
 - **compute-bound prefill vs. memory-bound decode** => 
 - **effective TFLOP/s from a measured latency** => 
 - **per-token prefill cost and why it grows with prompt length** => 
+
+## Fusion and serving (Branch 133)
+
+- **kernel fusion as removing a DRAM round trip and a launch** => 
+- **why fusion saves bytes and launches, not arithmetic, at decode** => 
+- **GEMM epilogue fusion** => 
+- **TTFT as queue plus prefill, TPOT as one decode step** => 
+- **goodput against a TTFT and TPOT target** => 
