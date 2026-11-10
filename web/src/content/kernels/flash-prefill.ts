@@ -41,6 +41,9 @@ const tiled = flashTtft(flashSystems.flash, flashLong);
 const first = flashPath(flashPaths.first, flashLong);
 const llama = flashTtft(flashSystems.llama, flashLong);
 const perToken = flashLengths.map((p) => flashPerToken(flashSystems.flash, p));
+const longTokens = flashTokens(flashLong);
+const longTiles = longTokens / kernel.tile;
+export const flashKeyRows = { perRow: (longTokens * (longTokens + 1)) / 2, tiled: (kernel.tile * longTiles * (longTiles + 1)) / 2 };
 const chunkedCost = (flashTtft(flashSystems.chunked, flashLong) / flashTtft(flashSystems.graphs, flashLong) - 1) * 100;
 
 export const flashNumbers = {

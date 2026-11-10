@@ -2,7 +2,7 @@
 
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
-import { flashFmt, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashShape, flashShort, flashSystems, flashTokens, flashTtft } from "@/content/kernels/flash-prefill";
+import { flashFmt, flashKeyRows, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashShape, flashShort, flashSystems, flashTokens, flashTtft } from "@/content/kernels/flash-prefill";
 import { modelShape } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { expectAnswer, type Prediction, Predict } from "../predict";
@@ -14,8 +14,7 @@ const n = flashNumbers;
 const s = flashShape;
 const layers = modelShape().layers;
 const longTokens = flashTokens(flashLong);
-const longTiles = longTokens / s.tile;
-const keyRows = { perRow: (longTokens * (longTokens + 1)) / 2, tiled: (s.tile * longTiles * (longTiles + 1)) / 2 };
+const keyRows = flashKeyRows;
 const calls = s.headDim / s.tile;
 const qWords = calls * 4;
 const accs = (s.headDim / 8) * 4;
