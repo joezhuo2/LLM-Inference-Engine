@@ -3,7 +3,7 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync, exis
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { replayKv } from "./kv-replay.mjs";
-import { parseModelShape, parseRooflineContext } from "./model-shape.mjs";
+import { parseGraphRule, parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 import { parseLaunchGaps, parsePrefillStep, parseProfiling } from "./profiling.mjs";
 
 const web = resolve(fileURLToPath(import.meta.url), "../..");
@@ -157,6 +157,8 @@ const resultsDoc = {
   slo: slo ? { ttft_ms: Number(slo[1]), tpot_ms: Number(slo[2]) } : null,
 };
 const modelShape = { ...parseModelShape(readFileSync(resolve(web, "../tests/unit/test_config.cpp"), "utf8")), roofline_context: parseRooflineContext(resultsText) };
+const repoText = (path) => readFileSync(resolve(web, "..", path), "utf8");
+const graphRule = parseGraphRule(repoText("src/app/bench_command.cpp"), repoText("include/engine/sched/paged_batch.h"), repoText("src/sched/paged_batch.cpp"));
 const hardwarePath = resolve(web, "../docs/hardware.md");
 const hardware = existsSync(hardwarePath) ? parseHardware(readFileSync(hardwarePath, "utf8")) : {};
 const decodeSteps = {};
@@ -184,6 +186,7 @@ writeFileSync(join(dataDir, "profiling.json"), JSON.stringify(profiling));
 writeFileSync(join(dataDir, "decode_steps.json"), JSON.stringify(decodeSteps));
 writeFileSync(join(dataDir, "model_shape.json"), JSON.stringify(modelShape));
 writeFileSync(join(dataDir, "hardware.json"), JSON.stringify(hardware));
+writeFileSync(join(dataDir, "graph_rule.json"), JSON.stringify(graphRule));
 writeFileSync(join(dataDir, "results_doc.json"), JSON.stringify(resultsDoc));
 writeFileSync(join(dataDir, "launch_gaps.json"), JSON.stringify(launchGaps));
 writeFileSync(join(dataDir, "prefill_step.json"), JSON.stringify(prefillStep));

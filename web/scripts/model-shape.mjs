@@ -25,3 +25,17 @@ export function parseRooflineContext(resultsText) {
   if (!match) throw new Error("docs/results.md has no mean attended context in its Roofline section");
   return Number(match[1]);
 }
+
+export function parseGraphRule(benchText, headerText, batchText) {
+  const number = (text, pattern, what) => {
+    const match = pattern.exec(text);
+    if (!match) throw new Error(`no ${what}`);
+    return Number(match[1]);
+  };
+  return {
+    steps: number(benchText, /int graph_steps = (\d+);/, "graph_steps default in src/app/bench_command.cpp"),
+    split_blocks: number(headerText, /kSplitAttentionBlocks = (\d+);/, "kSplitAttentionBlocks in include/engine/sched/paged_batch.h"),
+    max_splits: number(batchText, /kMaxSplits = (\d+);/, "kMaxSplits in src/sched/paged_batch.cpp"),
+    min_split_tokens: number(batchText, /kMinSplitTokens = (\d+);/, "kMinSplitTokens in src/sched/paged_batch.cpp"),
+  };
+}
