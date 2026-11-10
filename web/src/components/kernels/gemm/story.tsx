@@ -3,14 +3,14 @@
 import NumberFlow from "@number-flow/react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { gemmOps, roofline } from "@/content/kernels/gemm";
+import { gemmOps, prefillCurve, prefillRoof, roofline } from "@/content/kernels/gemm";
 import { measured } from "@/content/kernels/types";
 import { ceilings, cellNumber, decodeSteps } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { useLoop } from "../loop";
 import { bytesOf, GemvFigure, type Projection, ProjectionsFigure, ReuseFigure, RoofBarsFigure, TransposeFigure } from "./figures";
-import { type Prediction, Predict } from "../predict";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const peak = ceilings();
 
@@ -48,11 +48,17 @@ const roofRows = [...gemmOps, "attention"].map((op) => ({
 const W = 560;
 const H = 300;
 const pad = { l: 46, r: 16, t: 14, b: 34 };
-const xr = [0.5, 500];
+const xr = [0.5, 1000];
 const yr = [0.01, 100];
 const lx = (v: number) => pad.l + ((Math.log10(v) - Math.log10(xr[0])) / (Math.log10(xr[1]) - Math.log10(xr[0]))) * (W - pad.l - pad.r);
 const ly = (v: number) => H - pad.b - ((Math.log10(v) - Math.log10(yr[0])) / (Math.log10(yr[1]) - Math.log10(yr[0]))) * (H - pad.t - pad.b);
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
+
+const fmt = (v: number) => v.toLocaleString("en-US");
+const prefillRows = fmt(prefillRoof.rows);
+const prefillTimes = prefillRoof.intensity / ridge;
+const curve = prefillCurve();
+const choices = ["1", "16", "prefill"];
 
 const prediction: Prediction = {
   question: "Decode 16 tokens at once instead of 1 (16 rows of x). Which dots climb the slope?",
@@ -61,23 +67,57 @@ const prediction: Prediction = {
   why: `gate/up goes from ${roofline("gate_up", "1", "TFLOP/s").toFixed(2)} to ${roofline("gate_up", "16", "TFLOP/s").toFixed(2)} TFLOP/s, because 16 rows share each weight read. Attention only creeps from ${roofline("attention", "1", "TFLOP/s").toFixed(2)} to ${roofline("attention", "16", "TFLOP/s").toFixed(2)}: its FLOPs per byte stay put, because every row reads its own keys and values.`,
 };
 
-export function RooflinePicker() {
-  const [rows, setRows] = useState("1");
+const prefillPrediction: Prediction = expectAnswer(
+  {
+    question: `A ${prefillRows}-row prefill runs the same four projections. Where does it land?`,
+    choices: ["still on the bandwidth slope", "at the ridge", "well past the ridge, on the compute roof"],
+    answer: prefillTimes < 0.5 ? "still on the bandwidth slope" : prefillTimes < 2 ? "at the ridge" : "well past the ridge, on the compute roof",
+    why: `Each weight read feeds ${prefillRows} rows: ${Math.round(prefillRoof.intensity)} FLOP per byte (calculated), ${prefillTimes.toFixed(1)} times the ridge at ${Math.round(ridge)}. The measured time of the ${prefillRoof.count} prefill GEMMs, ${prefillRoof.ms} ms, gives ${prefillRoof.tflops.toFixed(1)} TFLOP/s, ${Math.round(prefillRoof.pct)}% of the ${peak.tflops} TFLOP/s compute roof.`,
+  },
+  "well past the ridge, on the compute roof",
+);
+
+export function RooflinePicker({ initial = "1" }: { initial?: string }) {
+  const [rows, setRows] = useState(initial);
   const { reduced } = useLoop(1);
   const ease = { duration: reduced ? 0 : 0.7, ease: "easeInOut" as const };
+  const isPrefill = rows === "prefill";
+  const at = isPrefill ? "16" : rows;
   const points = [
-    ...gemmOps.map((op) => ({ id: op, x: roofline(op, rows, "FLOP/byte"), y: roofline(op, rows, "TFLOP/s"), cls: "fill-accent" })),
-    { id: "attention", x: roofline("attention", rows, "FLOP/byte"), y: roofline("attention", rows, "TFLOP/s"), cls: "fill-warn" },
-    { id: "step", x: step("engine + graphs", rows, "FLOP/byte"), y: step("engine + graphs", rows, "TFLOP/s"), cls: "fill-text" },
+    ...gemmOps.map((op) => ({ id: op, x: roofline(op, at, "FLOP/byte"), y: roofline(op, at, "TFLOP/s"), cls: "fill-accent", show: !isPrefill })),
+    { id: "attention", x: roofline("attention", at, "FLOP/byte"), y: roofline("attention", at, "TFLOP/s"), cls: "fill-warn", show: !isPrefill },
+    { id: "step", x: step("engine + graphs", at, "FLOP/byte"), y: step("engine + graphs", at, "TFLOP/s"), cls: "fill-text", show: !isPrefill },
+    { id: "prefill", x: prefillRoof.intensity, y: prefillRoof.tflops, cls: "fill-accent", show: isPrefill },
   ];
   const gu = points[2];
   const att = points[5];
   const whole = points[6];
+  const pre = points[7];
+  const readouts = isPrefill
+    ? [
+        { label: "prefill projections, TFLOP/s", value: prefillRoof.tflops, digits: 1, cls: "text-accent", suffix: undefined },
+        { label: "of the compute roof", value: prefillRoof.pct, digits: 0, cls: "text-text", suffix: "%" },
+        { label: "FLOP per byte, calculated", value: prefillRoof.intensity, digits: 0, cls: "text-muted", suffix: undefined },
+      ]
+    : [
+        { label: "gate/up, TFLOP/s", value: roofline("gate_up", rows, "TFLOP/s"), digits: 2, cls: "text-accent", suffix: undefined },
+        { label: "attention, TFLOP/s", value: roofline("attention", rows, "TFLOP/s"), digits: 2, cls: "text-warn", suffix: undefined },
+        { label: "whole step, % of roof", value: step("engine + graphs", rows, "% of roof"), digits: 0, cls: "text-text", suffix: "%" },
+      ];
   return (
     <div className="flex h-full flex-col gap-2 tabular-nums text-xs">
-      <Predict {...prediction} />
-      <Toggle label="rows" choices={["1", "16"]} value={rows} onChange={setRows} />
-      <svg viewBox={`0 0 ${W} ${H}`} className="min-h-0 w-full flex-1" role="img" aria-label={`Roofline at ${rows} rows: the five projections, attention and the whole decode step against the measured bandwidth and compute ceilings`}>
+      <Predict key={isPrefill ? "prefill" : "decode"} {...(isPrefill ? prefillPrediction : prediction)} />
+      <Toggle label="rows" choices={choices} value={rows} onChange={setRows} />
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="min-h-0 w-full flex-1"
+        role="img"
+        aria-label={
+          isPrefill
+            ? `Roofline for a prefill of ${prefillRows} rows: the four prefill projections together as one measured point, past the ridge and near the compute ceiling`
+            : `Roofline at ${rows} rows: the five projections, attention and the whole decode step against the measured bandwidth and compute ceilings`
+        }
+      >
         {[0.01, 0.1, 1, 10, 100].map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={ly(v)} y2={ly(v)} className="stroke-border" strokeWidth={0.5} />
@@ -86,7 +126,7 @@ export function RooflinePicker() {
             </text>
           </g>
         ))}
-        {[1, 10, 100].map((v) => (
+        {[1, 10, 100, 1000].map((v) => (
           <text key={v} x={lx(v)} y={H - pad.b + 14} textAnchor="middle" className="fill-muted text-[10px]">
             {v}
           </text>
@@ -105,28 +145,27 @@ export function RooflinePicker() {
           {`${peak.tflops} TFLOP/s, ridge at ${Math.round(ridge)}`}
         </text>
         {points.map((p) => (
-          <motion.g key={p.id} initial={false} animate={{ x: lx(p.x), y: ly(p.y) }} transition={ease}>
-            <circle r={p.id === "step" ? 5 : 4} className={p.cls} opacity={p.id === "step" ? 0.9 : 0.8} />
+          <motion.g key={p.id} initial={false} animate={{ x: lx(p.x), y: ly(p.y), opacity: p.show ? 1 : 0 }} transition={ease}>
+            <circle r={p.id === "step" || p.id === "prefill" ? 5 : 4} className={p.cls} opacity={p.id === "step" ? 0.9 : 0.8} />
           </motion.g>
         ))}
-        <motion.g initial={false} animate={{ x: Math.max(lx(gu.x) - 10, pad.l + 100), y: ly(gu.y) - (lx(gu.x) - 10 < pad.l + 100 ? 24 : 12) }} transition={ease}>
+        <motion.g initial={false} animate={{ x: Math.max(lx(gu.x) - 10, pad.l + 100), y: ly(gu.y) - (lx(gu.x) - 10 < pad.l + 100 ? 24 : 12), opacity: isPrefill ? 0 : 1 }} transition={ease}>
           <text textAnchor="end" className="fill-accent text-[10px]">
             five projections
           </text>
         </motion.g>
-        <motion.g initial={false} animate={{ x: lx(att.x) + 8, y: ly(att.y) + 4 }} transition={ease}>
+        <motion.g initial={false} animate={{ x: lx(att.x) + 8, y: ly(att.y) + 4, opacity: isPrefill ? 0 : 1 }} transition={ease}>
           <text className="fill-warn text-[10px]">attention</text>
         </motion.g>
-        <motion.g initial={false} animate={{ x: lx(whole.x) + 8, y: ly(whole.y) + 16 }} transition={ease}>
+        <motion.g initial={false} animate={{ x: lx(whole.x) + 8, y: ly(whole.y) + 16, opacity: isPrefill ? 0 : 1 }} transition={ease}>
           <text className="fill-text text-[10px]">whole step, graphs</text>
+        </motion.g>
+        <motion.g initial={false} animate={{ x: lx(pre.x) - 10, y: ly(pre.y) + 18, opacity: isPrefill ? 1 : 0 }} transition={ease}>
+          <text textAnchor="end" className="fill-accent text-[10px]">{`prefill, ${prefillRows} rows`}</text>
         </motion.g>
       </svg>
       <div className="mt-auto grid grid-cols-3 gap-x-4 border-t border-border pt-2 tabular-nums">
-        {[
-          { label: "gate/up, TFLOP/s", value: roofline("gate_up", rows, "TFLOP/s"), digits: 2, cls: "text-accent" },
-          { label: "attention, TFLOP/s", value: roofline("attention", rows, "TFLOP/s"), digits: 2, cls: "text-warn" },
-          { label: "whole step, % of roof", value: step("engine + graphs", rows, "% of roof"), digits: 0, cls: "text-text", suffix: "%" },
-        ].map((r) => (
+        {readouts.map((r) => (
           <div key={r.label}>
             <div className="text-muted">{r.label}</div>
             <div className={r.cls}>
@@ -234,18 +273,45 @@ const steps: StoryStep[] = [
     ),
   },
   {
+    id: "prefill",
+    title: "prefill is the other side",
+    body: (
+      <>
+        <p>
+          A prompt&apos;s tokens go through the projections together, so a weight byte meets every row of the prompt. At{" "}
+          <span className="text-text">{prefillRows} rows</span>, {prefillRoof.maxBatch} prompts of {prefillRoof.promptTokens} tokens in the batch-16 profile, that is about{" "}
+          <span className="text-accent">{`${Math.round(prefillRoof.intensity)} FLOP/byte`}</span>, {prefillTimes.toFixed(1)} times the ridge. The{" "}
+          {prefillRoof.count} projection GEMMs of that prefill step took <span className="text-text">{`${prefillRoof.ms} ms`}</span>: <span className="text-accent">{`${prefillRoof.tflops.toFixed(1)} TFLOP/s`}</span>,{" "}
+          <span className="text-accent">{`${Math.round(prefillRoof.pct)}%`}</span> of the {peak.tflops} TFLOP/s compute roof. FLOPs and bytes are calculated from config.json, the time is measured.
+        </p>
+        <p>
+          The GPU now waits on arithmetic, not on bytes. That is why prefill needs the tensor cores, and why prefill and decode want different things from a scheduler: a
+          decode step takes more rows for almost no extra time, a prefill step does not. The chunked prefill chapter is about that.
+        </p>
+        <p>
+          Time to first token shows the same split. At {curve.short} tokens the engine&apos;s prefill costs{" "}
+          <span className="text-accent">{`${curve.engineShort} ms`}</span> per prompt token; a batch-1 decode step costs{" "}
+          <span className="text-text">{`${(tpotGraphs / 1000).toFixed(2)} ms`}</span> per token, {Math.round(tpotGraphs / 1000 / curve.engineShort)} times more. llama.cpp stays between {curve.llamaLow} and {curve.llamaHigh} ms per
+          token from {curve.flatFrom} to {curve.long} tokens, which is <span className="text-accent">{`${curve.llamaTflops.toFixed(1)} TFLOP/s`}</span> at {curve.long} (calculated from its TTFT of {curve.llamaMs} ms). The engine
+          climbs to <span className="text-warn">{`${curve.engineLong} ms`}</span> per token there, most likely because its prefill runs paged decode attention once per row, so the KV reads grow with the square of the length.
+          A FlashAttention prefill kernel (issue #103) is in progress.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "roofline",
     title: "the roofline",
     body: (
       <>
         <p>
           A roofline puts each op at its FLOPs per byte and its speed, under two measured ceilings: {peak.gbs} GB/s on the
-          slope, {peak.tflops} TFLOP/s from square cuBLAS GEMMs on the flat part. Switch between 1 and 16 rows on the right:
-          the projections slide up the slope, attention moves up only a little, because every row reads its own keys and values.
+          slope, {peak.tflops} TFLOP/s from square cuBLAS GEMMs on the flat part. Switch between 1 row, 16 rows and prefill on the right:
+          the projections slide up the slope, attention moves up only a little, because every row reads its own keys and values, and the prefill projections sit on the flat part.
         </p>
         <p>
-          Nothing in a decode step gets near the ridge at <span className="text-accent">{Math.round(ridge)} FLOP/byte</span>, so nothing here is compute bound.
-          The way past the roof is fewer bytes per token: quantized weights, or more rows sharing each weight read.
+          Nothing in a decode step gets near the ridge at <span className="text-accent">{Math.round(ridge)} FLOP/byte</span>, so no decode op is compute bound. A prefill of {prefillRows} rows is compute bound, at{" "}
+          <span className="text-accent">{`${Math.round(prefillRoof.intensity)} FLOP/byte`}</span>. The way past the roof in decode is fewer bytes per token: quantized weights, or more rows sharing each weight read.
         </p>
       </>
     ),
@@ -258,7 +324,8 @@ const captions = [
   "12 of 2,560 QKV rows drawn; the floor is 2.07 GB ÷ the measured bandwidth; time per token from docs/results.md",
   "GB/s from scripts/roofline.py over the batch-1 profile; the peak from the bandwidth test in docs/results.md",
   "µs per step from the batch-1 and batch-16 profiles; TFLOP/s from scripts/roofline.py",
-  "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
+  "prefill point: FLOPs and bytes calculated from config.json, time measured in results/decode_step_b16.md; the ceilings are measured on the same GPU",
+  "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU; the prefill point is the calculated and measured one from results/decode_step_b16.md",
 ];
 
 const roofPoint = (rows: string) => ({
@@ -302,6 +369,8 @@ export function GemmStory() {
             return <RoofBarsFigure rows={roofRows} peakGbs={peak.gbs} />;
           case 4:
             return <ReuseFigure us1={sum("1")} us16={sum("16")} tf1={roofline("gate_up", "1", "TFLOP/s")} tf16={roofline("gate_up", "16", "TFLOP/s")} />;
+          case 5:
+            return <RooflinePicker initial="prefill" />;
           default:
             return <RooflinePicker />;
         }

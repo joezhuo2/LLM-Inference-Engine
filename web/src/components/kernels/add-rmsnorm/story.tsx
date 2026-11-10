@@ -1,17 +1,20 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
+import Link from "next/link";
 import { useState } from "react";
+import { chapterNumber } from "@/content/book-order";
 import { measured } from "@/content/kernels/types";
 import { cellNumber, decodeSteps } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
-import { FirstFusedFigure, fusedKb64, JobFigure, naiveKb64, RoundingFigure, RoundTripFigure, ShuffleFigure, VectorFigure } from "./figures";
+import { FirstFusedFigure, fusedKb64, fusionTokens, JobFigure, naiveKb64, PatternFigure, RoundingFigure, RoundTripFigure, ShuffleFigure, VectorFigure } from "./figures";
 import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const fused = "fused-add-rmsnorm-branch-30";
 const tuned = "tuning-add-rmsnorm-branch-39";
+const wired = "fast-kernels-in-the-forward-pass-branch-36";
 
 const tokenChoices = ["1", "16", "64"];
 const at = (tokens: string) => ({ tokens });
@@ -21,6 +24,11 @@ const first1 = measured(fused, at("1"), "fast (us)");
 const firstFlat = `${tokenChoices.map((t) => measured(fused, at(t), "fast (us)").toFixed(1)).join(" / ")} µs`;
 const tunedPair1 = measured(tuned, at("1"), "naive pair (us)");
 const tuned1 = measured(tuned, at("1"), "tuned fused (us)");
+
+const kbPerToken = (kb: number) => (kb / fusionTokens).toFixed(1);
+const stepKernels = (column: string) => measured(wired, { "decode step at batch 1": "kernels per step" }, column);
+const kernelsNaive = stepKernels("naive kernels, eager");
+const kernelsFast = stepKernels("fast kernels, eager");
 
 const stepOps = (() => {
   const t = decodeSteps.b1;
@@ -119,6 +127,38 @@ const steps: StoryStep[] = [
         <p>
           The next block first normalizes it with RMSNorm: divide the row by the root of its mean square, then scale by a
           learned weight per dimension. So every add is followed by a norm of the same row.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "fusion",
+    title: "fusion, the pattern",
+    body: (
+      <>
+        <p>
+          Every separate elementwise kernel reads its inputs from DRAM, does a little arithmetic, writes its output back
+          and pays a launch. Two in a row send the value between them out to DRAM and read it straight back.
+        </p>
+        <p>
+          Fusing the two keeps that value in registers. The bytes of the round trip and one launch disappear, and the
+          arithmetic is the same. At decode the math was never the cost, so what fusion saves is bytes and the gap before a
+          launch, not arithmetic.
+        </p>
+        <p>
+          Here the pair moves <span className="text-text">{kbPerToken(naiveKb64)} KB</span> per token at {fusionTokens} tokens and the
+          fused kernel <span className="text-accent">{kbPerToken(fusedKb64)} KB</span> (calculated from the bytes per launch), and a decode step
+          runs <span className="text-accent">{kernelsFast} kernels</span> instead of {kernelsNaive} (measured). Fewer bytes still did not make
+          the first fused kernel faster: <span className="text-text">{first1.toFixed(1)} µs</span> against the pair&apos;s {pair1.toFixed(1)} µs
+          at one token. The errata entry &quot;
+          <Link href="/kernels/dead-ends" className="link-underline text-accent">
+            Fusing two kernels saved bytes, not time
+          </Link>
+          &quot; tells that story.
+        </p>
+        <p>
+          The same pattern returns in SwiGLU, chapter {chapterNumber("swiglu")}. CUDA Graphs, chapter {chapterNumber("cuda-graphs")}, remove the
+          launch part of the cost for every kernel at once.
         </p>
       </>
     ),
@@ -229,6 +269,7 @@ const steps: StoryStep[] = [
 
 const captions = [
   "one row; the values and the square bars are illustrative",
+  `an illustration of any two elementwise kernels in a row; per-token bytes are calculated from the Nsight Compute bytes per launch at ${fusionTokens} tokens, kernels per step from the nsys profile`,
   `DRAM bytes per launch at 64 tokens from Nsight Compute: ${naiveKb64} KB → ${fusedKb64} KB`,
   `µs per launch for one token (Nsight Compute); phase widths are illustrative, not measured`,
   "the order of operations required by the spec and checked by the tests",
@@ -251,14 +292,16 @@ export function AddRmsnormStory() {
           case 0:
             return <JobFigure />;
           case 1:
-            return <RoundTripFigure naiveKb={naiveKb64} fusedKb={fusedKb64} />;
+            return <PatternFigure />;
           case 2:
-            return <FirstFusedFigure pair={pair1} first={first1} flat={firstFlat} />;
+            return <RoundTripFigure naiveKb={naiveKb64} fusedKb={fusedKb64} />;
           case 3:
-            return <RoundingFigure />;
+            return <FirstFusedFigure pair={pair1} first={first1} flat={firstFlat} />;
           case 4:
-            return <VectorFigure />;
+            return <RoundingFigure />;
           case 5:
+            return <VectorFigure />;
+          case 6:
             return <ShuffleFigure />;
           default:
             return <TokensPicker />;
