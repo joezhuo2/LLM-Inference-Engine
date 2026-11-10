@@ -186,6 +186,44 @@ Measured 2026-11-05T07:05:42Z at commit 1693c46: a 1917-token prompt arrives amo
 
 With whole-prompt steps the 15 decoding requests wait 1,043 ms for the long prompt, one step as long as the prompt's own TTFT. A budget of 256 cuts the longest wait to 223 ms and 512 to 388 ms, while the long prompt's first token comes only 25 to 51 ms later (1,081 and 1,055 against 1,030 ms). A budget of 2,048 changes nothing here: the prompt fits in one step, so it is one mixed step instead of one prefill step. The waits do not shrink in proportion to the budget. A chunk of 241 rows (256 minus the 15 decode rows) late in the prompt still takes over 200 ms, because each of its rows runs the decode attention kernel over up to 1,917 tokens of context, so the cost of a chunk grows with its position as well as its size. The gap p99 rises with the small budgets (207 and 344 ms against 76 ms with no budget) for the same reason the gaps above do: the long prompt now spreads over 8 or 4 slow steps instead of one, so more tokens of the short requests wait behind a chunk, each for less time.
 
+## Batch size past 16
+
+From `scripts/batch_sweep.sh` and `scripts/batch_report.py` (#121): `engine bench` with twice as many requests as the max batch, all submitted at once, 64 prompt and 64 output tokens, greedy, seed 0, median of 3 runs, eager and with `--graphs`. Measured on 2026-11-09 on the RTX 5060 Laptop GPU, release build, at commit 434e99d, driver 591.84. An unrelated headless Chrome used about 6 CPU cores during the runs (1-minute load average 5 to 11); the GPU was otherwise idle. Most cells agree with their repeats within 3%, except one graph run at max batch 128 (40.9 against 32.4 and 32.9 ms), which the median leaves out. `results/batch/` holds the CSVs and `summary.md`.
+
+| max batch | eager TPOT p50 (ms) | graphs TPOT p50 (ms) | eager tokens/s | graphs tokens/s | peak KV blocks |
+|---:|---:|---:|---:|---:|---:|
+| 16 | 10.43 | 9.53 | 1323 | 1424 | 129 |
+| 32 | 13.62 | 12.86 | 1866 | 1949 | 257 |
+| 64 | 19.54 | 16.93 | 2545 | 2773 | 513 |
+| 128 | 37.40 | 32.90 | 2705 | 2990 | 1025 |
+| 256 | 69.56 | 64.18 | 2959 | 3146 | 2049 |
+
+Throughput keeps rising up to 64 (1,424 to 2,773 tokens/s with graphs, 1.95x for 4x the rows) and then nearly stops: 128 adds 8% and 256 another 5%, because from 64 on the step time doubles with the rows. The KV cache is not the limit: 256 sequences peak at 2,049 of 12,915 blocks. Graphs still save 0.8 to 5.4 ms per step at every size. With every request submitted at once the TTFT grows with the batch (3.9 s at 256), which is the offline workload, not a serving result.
+
+Where the step goes, from `scripts/profile.sh nsys batch_b<N> --max-batch N --num-requests N --prompt-len 64 --output-len 64 --warmup 1` (eager, so the NVTX ranges show; GPU µs per decode step, median over the run; the GEMM column adds qkv, o_proj, gate_up, down and lm_head):
+
+| max batch | attention µs | GEMMs µs | attention share | gate_up µs | busy µs |
+|---:|---:|---:|---:|---:|---:|
+| 32 | 2,750 | 8,076 | 25% | 4,117 | 11,065 |
+| 64 | 5,941 | 7,398 | 44% | 3,458 | 13,434 |
+| 128 | 11,201 | 10,884 | 50% | 5,124 | 21,904 |
+| 256 | 23,626 | 22,901 | 50% | 10,883 | 47,873 |
+
+Reading it. Attention grows in proportion to the rows (2.2x, 1.9x, 2.1x per doubling), as #126 expected from a kernel at 7% of its bandwidth roof: each row reads its own K and V and the 8 query heads of a group read them again (#94). The GEMMs stay near the weight-read floor (2.07 GB at 323.6 GB/s, 6.4 ms) up to 64 rows and pass it at 128, which matches a ridge of about 107 FLOP per byte, since a BF16 GEMM with M rows does about M FLOPs per weight byte. So the curve bends at 64 for two reasons at once: the GEMMs turn compute bound and attention, already half the step, keeps doubling. One oddity: gate_up takes longer at 32 rows (4.1 ms, cuBLAS picks an `nvjet` 192x80 tile) than at 64 (3.5 ms, a CUTLASS 64x64 tile), so cuBLAS's choice at M = 32 costs about 0.7 ms per step; not investigated further.
+
+Padding. 17 requests at max batch 32 decode 17 rows; with `--graph-steps 1` they replay the 32 graph, with 2 the 24 graph, with 4 the 20 graph and with 8 the 18 graph (256 output tokens, median of 5 runs):
+
+| graph steps | bucket for 17 rows | TPOT p50 (ms) | tokens/s |
+|---:|---:|---:|---:|
+| 1 | 32 | 14.13 | 1165 |
+| 2 | 24 | 12.38 | 1319 |
+| 4 | 20 | 12.41 | 1313 |
+| 8 | 18 | 13.27 | 1235 |
+
+Padding 17 rows to 32 costs about 1.7 ms per step (14%) against 24 or 20. These runs are short and were the noisiest of the sweep (`--graph-steps 1` ranged from 12.9 to 18.0 ms over its 5 runs), so the difference is real but its size is rough. Finer than two buckets per power of two gained nothing, and 8 was slower than 4 in 4 of 5 runs; why (a different cuBLAS kernel at M = 18 is the first suspect) was not profiled. Decision: two buckets per power of two are worth it and more are not. The default stays 1 in this branch so earlier results keep their meaning; switching it to 2 is Joe's call. The extra graphs (10 instead of 6 buckets at max batch 32, each times its split counts) cost capture time and device memory, neither measured.
+
+Limits. One workload shape (64 and 64 tokens, offline), one GPU, outside CPU load during the runs, and no profile with graphs at these sizes (the nsys spans above are eager and include launch gaps of 14% to 37%).
+
 ## Batch-1 decode bandwidth
 
 ![Weights read per decode token against the measured peak](../results/plots/batch1_bandwidth.png)

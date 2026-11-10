@@ -36,6 +36,7 @@
 #include "engine/runtime/paged_runner.h"
 #include "engine/runtime/sampler.h"
 #include "engine/runtime/weights.h"
+#include "engine/sched/graph_buckets.h"
 #include "engine/sched/scheduler.h"
 #endif
 
@@ -51,6 +52,7 @@ struct Options {
     double request_rate = 0.0;
     int max_batch = 0;
     bool graphs = false;
+    int graph_steps = 1;
     int token_budget = 0;
     int warmup = 3;
     uint64_t seed = 0;
@@ -82,13 +84,6 @@ struct OwnedStream {
     OwnedStream(const OwnedStream&) = delete;
     OwnedStream& operator=(const OwnedStream&) = delete;
 };
-
-std::vector<int64_t> graph_buckets(int max_batch) {
-    std::vector<int64_t> buckets;
-    for (int64_t b = 1; b < max_batch; b *= 2) buckets.push_back(b);
-    buckets.push_back(max_batch);
-    return buckets;
-}
 
 std::string utc_now() {
     const std::time_t now = std::time(nullptr);
@@ -162,6 +157,8 @@ void run(const Options& o) {
         throw std::invalid_argument("--token-budget needs --max-batch of at least 1");
     if (o.token_budget > 0 && o.token_budget < o.max_batch)
         throw std::invalid_argument("--token-budget must be at least --max-batch");
+    if (o.graph_steps < 1 || (o.graph_steps & (o.graph_steps - 1)) != 0)
+        throw std::invalid_argument("--graph-steps must be a power of two");
 
     int num_blocks = 0;
     ServeStats stats;
@@ -187,7 +184,8 @@ void run(const Options& o) {
                              std::max<int64_t>(max_prefill, o.token_budget), o.max_batch, context,
                              o.graphs ? owned_stream->stream : nullptr);
         sampler.emplace(o.max_batch);
-        if (o.graphs) graphs.emplace(*paged_runner, graph_buckets(o.max_batch));
+        if (o.graphs)
+            graphs.emplace(*paged_runner, decode_graph_buckets(o.max_batch, o.graph_steps));
     } else {
         one_runner.emplace(w.config, w.weights, wc.prompt_len.max, context, nullptr);
     }
@@ -262,6 +260,7 @@ void run(const Options& o) {
         fields.emplace_back("prefill_steps", std::to_string(stats.prefill_steps));
         fields.emplace_back("preemptions", std::to_string(preemptions));
         fields.emplace_back("token_budget", std::to_string(o.token_budget));
+        fields.emplace_back("graph_steps", std::to_string(o.graphs ? o.graph_steps : 0));
     } else {
         fields.emplace_back("decode_weight_bytes", std::to_string(weight_bytes));
         fields.emplace_back("bandwidth_gb_s", csv_number(bandwidth));
@@ -278,6 +277,7 @@ void run(const Options& o) {
         }
         meta["max_batch"] = o.max_batch;
         meta["graphs"] = o.graphs;
+        meta["graph_steps"] = o.graphs ? o.graph_steps : 0;
         meta["token_budget"] = o.token_budget;
         meta["kv_blocks"] = num_blocks;
         meta["block_size"] = kKvBlockSize;
@@ -341,8 +341,13 @@ void add_bench_command(CLI::App& app) {
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
     cmd->add_flag("--graphs", opts->graphs,
-                  "Replay CUDA Graphs of the decode step (one per power-of-two batch size up to "
-                  "--max-batch); needs --max-batch");
+                  "Replay CUDA Graphs of the decode step (one per bucket of batch sizes up to "
+                  "--max-batch, see --graph-steps); needs --max-batch");
+    cmd->add_option("--graph-steps", opts->graph_steps,
+                    "Graph buckets per power of two of batch size, a power of two; 1 captures "
+                    "1, 2, 4, 8 and so on plus --max-batch, 2 adds 3, 6, 12 and so on")
+        ->capture_default_str()
+        ->check(CLI::PositiveNumber);
     cmd->add_option("--token-budget", opts->token_budget,
                     "Chunked prefill: at most this many tokens per step, decode rows first and "
                     "prompts split across steps; at least --max-batch; 0 keeps whole-prompt "

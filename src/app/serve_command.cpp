@@ -32,6 +32,7 @@ struct Options {
     int port = 8000;
     int max_batch = 16;
     bool graphs = false;
+    int graph_steps = 1;
     int token_budget = 0;
     std::vector<std::string> cors_origins = server::kDefaultCorsOrigins;
     std::vector<std::string> allow_hosts;
@@ -67,6 +68,7 @@ server::HttpOptions http_options(const Options& o, const ModelConfig& config) {
                                    {"model", model_name(o.model)},
                                    {"max_batch", o.max_batch},
                                    {"graphs", o.graphs},
+                                   {"graph_steps", o.graphs ? o.graph_steps : 0},
                                    {"token_budget", o.token_budget}};
     return {.cors_origins = o.cors_origins,
             .allowed_hosts = allowed_hosts(o),
@@ -87,8 +89,10 @@ void run(const Options& o) {
 
     const Tokenizer tokenizer(o.model / "tokenizer.model");
     const DeviceWeights w = load_weights(o.model, nullptr);
-    const auto backend = server::make_gpu_backend(
-        w, {.max_batch = o.max_batch, .graphs = o.graphs, .token_budget = o.token_budget});
+    const auto backend = server::make_gpu_backend(w, {.max_batch = o.max_batch,
+                                                      .graphs = o.graphs,
+                                                      .graph_steps = o.graph_steps,
+                                                      .token_budget = o.token_budget});
     server::ServingLoop loop(
         *backend, [&](std::span<const int32_t> ids) { return tokenizer.decode(ids); },
         w.config.eos_id);
@@ -141,8 +145,13 @@ void add_serve_command(CLI::App& app) {
         ->capture_default_str()
         ->check(CLI::PositiveNumber);
     cmd->add_flag("--graphs", opts->graphs,
-                  "Replay CUDA Graphs of the decode step (one per power-of-two batch size up to "
-                  "--max-batch)");
+                  "Replay CUDA Graphs of the decode step (one per bucket of batch sizes up to "
+                  "--max-batch, see --graph-steps)");
+    cmd->add_option("--graph-steps", opts->graph_steps,
+                    "Graph buckets per power of two of batch size, a power of two; 1 captures "
+                    "1, 2, 4, 8 and so on plus --max-batch, 2 adds 3, 6, 12 and so on")
+        ->capture_default_str()
+        ->check(CLI::PositiveNumber);
     cmd->add_option("--token-budget", opts->token_budget,
                     "Chunked prefill: at most this many tokens per step, decode rows first and "
                     "prompts split across steps; at least --max-batch; 0 keeps whole-prompt "

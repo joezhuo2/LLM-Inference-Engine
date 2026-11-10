@@ -2015,3 +2015,10 @@
 - **merging split partials with (max, sum, output)** => 
 - **testing with NaN in unused cache slots** => 
 - **float32 tolerance vs. BF16 rounding** => 
+
+## Graph bucket wiring (Branch 130)
+
+- **choosing the graph for a batch: the smallest captured bucket that holds it** => 
+- **padded rows in a replayed graph: compute spent on rows nobody reads** => 
+- **why a GEMM with M rows does about M FLOPs per weight byte, and where that meets the ridge** => 
+- **cuBLAS picking a different kernel (tile shape) per problem size** => 
