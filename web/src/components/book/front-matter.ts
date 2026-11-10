@@ -276,6 +276,9 @@ function introRows(def: ChapterDef) {
   const reviewed = steps + def.workbench.length;
   const built = reviewed + reviewCount(def.slug);
   const starts: Record<number, string> = {};
+  def.steps.forEach((s, k) => {
+    if (s.group && s.group !== def.steps[k - 1]?.group) starts[k] = s.group;
+  });
   if (def.workbench.length > 0) starts[steps] = "try it yourself";
   if (built > reviewed) starts[reviewed] = "review";
   if (titles.length > built) starts[built] = "build it yourself";

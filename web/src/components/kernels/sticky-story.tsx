@@ -7,7 +7,7 @@ import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { gloss } from "../glossed";
 import { useActiveStep } from "./use-active-step";
 
-export type StoryStep = { id: string; title: string; body: ReactNode };
+export type StoryStep = { id: string; title: string; body: ReactNode; group?: string };
 
 const ease = [0.23, 1, 0.32, 1] as const;
 
@@ -82,7 +82,7 @@ export function StickyStory({
               }}
             >
               <div className="tabular-nums text-xs text-muted">
-                {kicker ?? `${String(i + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`}
+                {kicker ?? `${s.group ? `${s.group} · ` : ""}${String(i + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`}
               </div>
               <h2
                 className={clsx(

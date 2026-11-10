@@ -2099,3 +2099,6 @@
 - **tensor pipe utilization** => 
 - **bytes requested from L1 in 32-byte sectors against the bytes a thread uses** => 
 
+## Idea first, history after (Branch 143)
+
+- **the idea of a chapter against the history of how it was built** => 

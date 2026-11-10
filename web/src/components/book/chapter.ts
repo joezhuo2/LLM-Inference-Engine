@@ -96,7 +96,8 @@ export function withLead(chapter: ChapterDef, lead: LeadDef): ChapterDef {
 export function chapterStops(chapter: ChapterDef, text: ChapterText[]): Stop[] {
   const kicker = `chapter ${chapter.number} · ${chapter.title}`;
   const steps = text.map((t, i): Stop => {
-    const page: PageText = { kicker, title: t.title, note: i === 0 ? chapter.formula : undefined, paragraphs: t.paragraphs, folio: "" };
+    const group = chapter.steps[i]?.group;
+    const page: PageText = { kicker: group ? `${kicker} · ${group}` : kicker, title: t.title, note: i === 0 ? chapter.formula : undefined, paragraphs: t.paragraphs, folio: "" };
     return {
       exhibit: chapter.exhibits[i] ?? null,
       spread: i,
