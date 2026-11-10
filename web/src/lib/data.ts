@@ -1,5 +1,6 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
+import graphRuleJson from "@/data/graph_rule.json";
 import hardwareJson from "@/data/hardware.json";
 import kvDemoJson from "@/data/kv_demo.json";
 import kvReplayJson from "@/data/kv_replay.json";
@@ -138,6 +139,18 @@ export function profilingTable(sectionId: string, index = 0, doc: Doc = "profili
   return table;
 }
 
+export type EmbeddingLaunch = { date: string; maxBatch: number; promptTokens: number; bytesPerThread: number; valuesPerLoad: number; decodeUs: { naive: number; fast: number }; prefillTokens: number; prefillUs: { naive: [number, number]; fast: [number, number] }; underPct: number };
+
+export function embeddingLaunch(): EmbeddingLaunch {
+  const { header, rows } = profilingTable("kernels", 0, "results");
+  const row = rows.find((r) => r[header.indexOf("Kernel")] === "Embedding lookup");
+  const kernel = /one thread per (\d+) bytes.*not a multiple of (\d+)/.exec(row?.[header.indexOf("Optimized version")] ?? "");
+  const m = /max batch (\d+) with ([\d,]+)-token prompts, ([\d-]+): a decode step ([\d.]+) to ([\d.]+) us, a ([\d,]+)-token prefill step ([\d.]+) to ([\d.]+) us to ([\d.]+) to ([\d.]+) us; under ([\d.]+)% of a step/.exec(row?.[header.indexOf("Nsight Compute before and after")] ?? "");
+  if (!kernel || !m) throw new Error("docs/results.md Kernels: the Embedding lookup row has no \"one thread per N bytes\" or no \"a decode step A to B us, a T-token prefill step ... under P% of a step\" text");
+  const n = (text: string) => cellNumber(text) as number;
+  return { date: m[3], maxBatch: n(m[1]), promptTokens: n(m[2]), bytesPerThread: n(kernel[1]), valuesPerLoad: n(kernel[2]), decodeUs: { naive: n(m[4]), fast: n(m[5]) }, prefillTokens: n(m[6]), prefillUs: { naive: [n(m[7]), n(m[8])], fast: [n(m[9]), n(m[10])] }, underPct: n(m[11]) };
+}
+
 export type Hardware = { gpu: string; compute_capability: number; sms: number; vram_gb: number; l2_kb: number; shared_kb_per_sm: number };
 
 export function hardware(): Hardware {
@@ -149,6 +162,10 @@ export function hardware(): Hardware {
 export type ModelShape = { hidden: number; intermediate: number; layers: number; heads: number; kv_heads: number; vocab: number; max_positions: number; roofline_context: number };
 
 export const modelShape = (): ModelShape => modelShapeJson;
+
+export type GraphRule = { steps: number; split_blocks: number; max_splits: number; min_split_tokens: number };
+
+export const graphRule = (): GraphRule => graphRuleJson;
 
 export function loadRun(): LoadRun {
   if (!resultsDoc.load) throw new Error("docs/results.md has no \"Engine runs measured\" line in its Under load section");

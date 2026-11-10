@@ -6,63 +6,17 @@ import Link from "next/link";
 import { useId, useState } from "react";
 import { repoUrl } from "@/content/build-log";
 import { cellNumber, decodeSteps } from "@/lib/data";
+import { CopyLanes, embeddingNumbers, GatherFigure, LaunchBars } from "./embedding-lookup";
 import { Label } from "./frame";
 import { useLoop } from "./loop";
 
-const vocab = 32000;
-const hidden = 2048;
+const { vocab, hidden } = embeddingNumbers;
+const n = embeddingNumbers;
 
 function stepCell(batch: "b1" | "b16", op: string, column: string) {
   const table = decodeSteps[batch];
   if (!table) return undefined;
   return cellNumber(table.rows.find((r) => r[0] === op)?.[table.header.indexOf(column)]);
-}
-
-const ids = [
-  { id: 1, row: 0 },
-  { id: 15043, row: 4 },
-  { id: 3186, row: 2 },
-];
-
-function GatherFigure() {
-  const { on, move } = useLoop(6);
-  const rows = 6;
-  const rowH = 16;
-  const tx = 150;
-  const ox = 400;
-  return (
-    <svg viewBox="0 0 560 180" className="w-full tabular-nums" role="img" aria-label="Each token id picks one row of the embedding table, copied into the hidden state">
-      <Label x={20} y={18}>token ids</Label>
-      {ids.map((t, i) => (
-        <motion.g key={t.id} {...on(0.04 + i * 0.28, 0.94)}>
-          <rect x={20} y={30 + i * 26} width={70} height={18} rx={3} className="fill-accent/15 stroke-accent" />
-          <Label x={55} y={43 + i * 26} anchor="middle" className="fill-text">
-            {t.id.toLocaleString("en-US")}
-          </Label>
-        </motion.g>
-      ))}
-      <Label x={tx} y={18}>{`table E: ${vocab.toLocaleString("en-US")} × ${hidden.toLocaleString("en-US")}`}</Label>
-      {Array.from({ length: rows }, (_, r) => (
-        <rect key={r} x={tx} y={30 + r * (rowH + 2)} width={200} height={rowH} rx={2} className="fill-baseline/40" />
-      ))}
-      <Label x={tx + 100} y={30 + rows * (rowH + 2) + 12} anchor="middle">
-        ⋮
-      </Label>
-      <Label x={ox} y={18}>{`x: tokens × ${hidden.toLocaleString("en-US")}`}</Label>
-      {ids.map((t, i) => {
-        const y = 30 + t.row * (rowH + 2);
-        const yo = 30 + i * 26;
-        const t0 = 0.08 + i * 0.28;
-        return (
-          <g key={t.id}>
-            <motion.rect x={tx} y={y} width={200} height={rowH} rx={2} className="fill-accent/50" {...on(t0, t0 + 0.2, false)} />
-            <motion.rect x={tx} y={y} width={140} height={rowH} rx={2} className="fill-accent" {...move(t0 + 0.04, t0 + 0.2, ox - tx, yo - y + 1, true, 0.94)} />
-          </g>
-        );
-      })}
-      <Label x={20} y={172}>one block per token; 256 threads copy its 2,048 BF16 values</Label>
-    </svg>
-  );
 }
 
 function HeadFigure() {
@@ -97,14 +51,22 @@ function HeadFigure() {
 
 type End = "in" | "out";
 
-const ends: Record<End, { title: string; note: string; ops: string[]; formula: string; sources: { path: string; label: string }[]; text: string; link?: { href: string; label: string } }> = {
+const ends: Record<End, { title: string; note: string; ops: string[]; formula: string; sources: { path: string; label: string }[]; tests?: { path: string; label: string }[]; text: string; after?: string; link?: { href: string; label: string } }> = {
   in: {
     title: "embedding lookup",
     note: "before the first layer",
     ops: ["embedding"],
     formula: "x[t] = E[id[t]]",
-    sources: [{ path: "src/kernels/embedding.cu", label: "embedding.cu" }],
-    text: "The smallest kernel in the engine and the only one that does no arithmetic: each token id selects one row of the embedding table, and one thread block copies that row into the hidden state. It is still the naive version, because at about 3 µs a step there is nothing to gain.",
+    sources: [
+      { path: "src/kernels/embedding.cu", label: "embedding.cu (naive)" },
+      { path: "src/kernels/embedding_fast.cu", label: "embedding_fast.cu" },
+    ],
+    tests: [
+      { path: "tests/gpu/test_embedding.cpp", label: "test_embedding.cpp" },
+      { path: "tests/gpu/test_embedding_fast.cpp", label: "test_embedding_fast.cpp" },
+    ],
+    text: `The smallest kernel in the engine and the only one that does no arithmetic: each token id selects one row of the embedding table, and the row is copied into the hidden state. The naive kernel gives every token its own block, and each of its ${n.naiveThreads} threads copies ${n.naiveLoads} BF16 values one at a time. fast::embedding treats all the rows as one array and gives each thread ${n.bytesPerThread} bytes, ${n.valuesPerLoad} values in a single load, so one row takes ${n.threadsPerRow} threads and one load each. A table or output that is not ${n.bytesPerThread}-byte aligned, or a width that is not a multiple of ${n.valuesPerLoad}, falls back to one thread per value. Claude wrote it at Joe's request, and the tests hold its output bit-identical to the naive kernel's.`,
+    after: `The reading: a faster kernel changed nothing a user can see, because the lookup was never where the time went. The share in the header is from the earlier profile of a whole decode step, taken with the naive kernel.`,
   },
   out: {
     title: "final norm + LM head",
@@ -157,8 +119,15 @@ export function LayerEnd({ end, batch }: { end: End; batch: "b1" | "b16" }) {
             <div className="text-text">{e.formula}</div>
             {seen && (end === "in" ? <GatherFigure /> : <HeadFigure />)}
             <p className="font-sans text-sm leading-relaxed text-muted">{e.text}</p>
+            {seen && end === "in" && (
+              <>
+                <CopyLanes />
+                <LaunchBars />
+              </>
+            )}
+            {e.after && <p className="font-sans text-sm leading-relaxed text-muted">{e.after}</p>}
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {e.sources.map((s) => (
+              {[...e.sources, ...(e.tests ?? [])].map((s) => (
                 <a key={s.path} href={`${repoUrl}/blob/main/${s.path}`} className="link-underline text-accent" target="_blank" rel="noreferrer">
                   {s.label}
                 </a>
