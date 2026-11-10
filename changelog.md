@@ -5,6 +5,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## kernel/embedding-lookup
 
 - Add `fast::embedding` (`src/kernels/embedding_fast.cu`) for #98 and use it in `PagedRunner::forward`: one thread per 16 bytes (8 BF16 values, `uint4`) over all rows at once, 256 threads per block, instead of one block per token copying 2 bytes per thread; widths that are not a multiple of 8, or a table or output not 16-byte aligned, fall back to one thread per value. Same arguments and errors as `naive::embedding`, which `ModelRunner` keeps as the oracle. `tests/gpu/test_embedding_fast.cpp` (18 tests): bit-identical to the naive kernel and to the table rows for 1 to 70,000 tokens, widths 1 to 2,048 including 2,047, shifted (unaligned) tables and outputs, repeated ids, no writes outside `out`, table unchanged, zero tokens, bad arguments. (Part C, written by Claude at Joe's request)
+- Measure it (`scripts/profile.sh nsys`, max batch 16, 16 requests of 512 prompt and 32 output tokens, release, RTX 5060 Laptop GPU, 2026-11-09): the median launch goes from 4.5 to 1.5 us (decode steps) and the largest from 72 to 79 us to 35 to 37 us (2,048-token prefill steps). Either way the lookup is under 0.1% of a step, so no end-to-end number moves; the results Kernels table gains an embedding row. (Part A)
 
 ## kernel/flash-prefill-fixes
 
