@@ -2028,3 +2028,11 @@
 - **gather: copying rows of a table chosen by an index array** => 
 - **one thread per 16-byte vector (uint4) and the alignment it needs** => 
 - **flattening (row, column) work into one grid instead of one block per row** => 
+
+## Fusion and serving (Branch 133)
+
+- **kernel fusion as removing a DRAM round trip and a launch** => 
+- **why fusion saves bytes and launches, not arithmetic, at decode** => 
+- **GEMM epilogue fusion** => 
+- **TTFT as queue plus prefill, TPOT as one decode step** => 
+- **goodput against a TTFT and TPOT target** => 

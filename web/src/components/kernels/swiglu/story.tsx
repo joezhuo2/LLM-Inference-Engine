@@ -2,8 +2,9 @@
 
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
+import { chapterNumber } from "@/content/book-order";
 import { measured } from "@/content/kernels/types";
-import { cellNumber, decodeSteps } from "@/lib/data";
+import { cellNumber, decodeSteps, modelShape } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -16,6 +17,15 @@ const small = "small-batches-branch-33";
 
 const tokenChoices = ["1", "16", "64", "512", "4096"];
 const at = (tokens: string) => ({ tokens });
+
+const shape = modelShape();
+const bf16 = 2;
+const gateUpRowBytes = 2 * shape.intermediate * bf16;
+const gateToUpBytes = (shape.intermediate * bf16).toLocaleString("en-US");
+const gateUpWeightBytes = 2 * shape.hidden * shape.intermediate * bf16;
+const roundTripKb = ((2 * gateUpRowBytes) / 1024).toFixed(1);
+const roundTripShare = (((2 * gateUpRowBytes) / gateUpWeightBytes) * 100).toFixed(1);
+const weightsMb = (gateUpWeightBytes / 1024 ** 2).toFixed(1);
 
 const gbs = (tokens: string, column: string) => (measured(fast, at(tokens), "DRAM, fast (KB)") * 1024) / (measured(fast, at(tokens), column) * 1000);
 
@@ -132,7 +142,9 @@ const steps: StoryStep[] = [
           Hugging Face&apos;s act tensor bit for bit on all 22 layers.
         </p>
         <p>
-          Every faster version had to keep that chain. Skipping the first rounding looks harmless and gives a different
+          This is already a small case of the fusion in chapter {chapterNumber("add-rmsnorm")}, &quot;fusion, the pattern&quot;: silu(gate) stays in a
+          register, and the BF16 rounding that writing it out as a tensor would have done is still done there. Every
+          faster version had to keep that chain. Skipping the first rounding looks harmless and gives a different
           answer: in the example on the right the output moves by <span className="text-accent">one BF16 step</span>.
         </p>
       </>
@@ -167,6 +179,8 @@ const steps: StoryStep[] = [
           Each value is 2 bytes, and a thread that loads one at a time issues 24 memory instructions for 8 outputs. The
           vector kernel reads 8 gate values and 8 up values with two 16-byte loads and writes 8 outputs with one 16-byte
           store: 3 instructions for the same bytes, so the threads spend their time waiting on memory and not issuing loads.
+          The two loads are {gateToUpBytes} bytes apart. The one GEMM writes each row as the gate half and then the up half, so up
+          value j sits {shape.intermediate.toLocaleString("en-US")} values after gate value j, and because that is a multiple of 8 both loads stay 16-byte aligned.
         </p>
         <p>
           With enough tokens that is what the kernel is limited by. At 4,096 tokens it takes{" "}
@@ -207,8 +221,10 @@ const steps: StoryStep[] = [
           counts on the right.
         </p>
         <p>
-          In a decode step SwiGLU is about <span className="text-accent">0.4%</span> of the time, so none of this moves the token rate. The real fix would be to
-          fold it into the gate/up GEMM&apos;s epilogue, where it would disappear as a kernel altogether; that is not done.
+          In a decode step SwiGLU is about <span className="text-accent">0.4%</span> of the time, so none of this moves the token rate. Folding it
+          into the gate/up GEMM&apos;s epilogue would be the fusion of chapter {chapterNumber("add-rmsnorm")} again. Writing that row and reading it back
+          comes to {roundTripKb} KB per layer at one token, {roundTripShare}% of the {weightsMb} MB of gate and up weights the GEMM reads
+          (calculated from config.json), so at decode it would save a launch more than bytes; that is not done.
         </p>
       </>
     ),

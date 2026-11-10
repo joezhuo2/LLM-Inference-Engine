@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { addRmsnormAbout, addRmsnormAboutCaption } from "@/components/kernels/add-rmsnorm/about";
 import { addRmsnormCaptions, addRmsnormNumbers, addRmsnormSteps, TokensPicker } from "@/components/kernels/add-rmsnorm/story";
+import { PatternFigure } from "@/components/kernels/add-rmsnorm/figures";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
 import { modelShape } from "@/lib/data";
@@ -16,6 +17,7 @@ const beats: Beat[][] = [
     close("From the side: the squares grow with the scale, the norm does not", [0.55, 0.08, 0.02], 0.84, 0.4, 30, 26),
     close("The slider: scale x and r together", [0.55, 0.03, 0.27], 0.9, 0.3, 0, 44),
   ],
+  [flat("Fusion, the pattern: a round trip and a launch removed")],
   [
     overview("Two kernels and a round trip, or one kernel"),
     close("Close up: the sum goes out to DRAM and comes back twice", [0.35, 0.05, -0.42], 0.75, 0.42, -20, 42),
@@ -48,6 +50,7 @@ const beats: Beat[][] = [
 
 const instructions = [
   "Drag the pink ball to scale x and r; the norm stays the same.",
+  "Watch t go out to DRAM and come back between two kernels, and stay put in the fused one.",
   "Watch the sum leave and come back in the top kernels, and stay put in the fused one.",
   "Watch the phases fill one after another and wait at each barrier.",
   "Watch the value become a cube each time it is rounded to BF16.",
@@ -56,7 +59,16 @@ const instructions = [
 ];
 
 function AddRmsnormOverlay({ kind, target, narrow }: OverlayProps) {
-  if (kind !== "tokens" || !target) return null;
+  if (!target) return null;
+  if (kind === "fusion") {
+    return createPortal(
+      <div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>
+        <PatternFigure />
+      </div>,
+      target,
+    );
+  }
+  if (kind !== "tokens") return null;
   return createPortal(
     <div className={narrow ? undefined : "h-[34rem]"}>
       <TokensPicker />
@@ -72,8 +84,8 @@ const chapter: ChapterDef = {
   formula: "sum = x + r,  norm = w · sum / √(mean(sum²) + ε)",
   steps: addRmsnormSteps,
   captions: addRmsnormCaptions,
-  exhibits: [0, 1, 2, 3, 4, 5, null],
-  overlays: [null, null, null, null, null, null, "tokens"],
+  exhibits: [0, null, 1, 2, 3, 4, 5, null],
+  overlays: [null, "fusion", null, null, null, null, null, "tokens"],
   instructions,
   beats,
   workbench: [],
