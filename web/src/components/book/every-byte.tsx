@@ -10,6 +10,7 @@ import { GlossProvider, type PointTerm, PointGloss } from "@/components/gloss";
 import { gloss } from "@/components/glossed";
 import { BookText } from "@/components/kernels/authorship";
 import { Scramble } from "@/components/scramble";
+import { beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
 import { kindLabel } from "@/content/dead-ends";
 import { estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { chapterExercises, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
@@ -19,13 +20,14 @@ import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
+import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
 
 const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
-const sectionKeys = ["start", "contents", ...chapterSlugs, "estimates", "errata"];
+const backKeys = ["beyond", "estimates", "errata"];
+const sectionKeys = ["start", "contents", ...chapterSlugs, ...backKeys];
 const beatMs = 6500;
 let numbered: Promise<number> | undefined;
 const numberBook = () =>
@@ -42,7 +44,8 @@ function parsePlace(): Place {
   const slug = path.split("/")[2];
   if (slug && chapterSlugs.includes(slug)) return { closed: false, key: slug, local: 0 };
   if (slug === "start") return { closed: false, key: "start", local: 0 };
-  return { closed: false, key: window.location.hash === "#errata" ? "errata" : window.location.hash === "#estimates" ? "estimates" : "contents", local: 0 };
+  const back = window.location.hash.slice(1);
+  return { closed: false, key: backKeys.includes(back) ? back : "contents", local: 0 };
 }
 
 function deferred<T>() {
@@ -60,11 +63,11 @@ function Icon({ d }: { d: string }) {
 }
 
 function compose(raw: Record<string, Stop[]>) {
-  const keys = ["start", "contents", ...chapterSlugs.filter((s) => raw[s]), "estimates", "errata"];
+  const keys = ["start", "contents", ...chapterSlugs.filter((s) => raw[s]), ...backKeys];
   const stops: Stop[] = [];
   const meta: Meta[] = [];
   for (const key of keys) {
-    const slug = key === "start" || key === "contents" || key === "estimates" || key === "errata" ? undefined : key;
+    const slug = chapterSlugs.includes(key) ? key : undefined;
     raw[key].forEach((s, i) => {
       const folios = slug && i > 0 && s.page ? { page: { ...s.page, folio: String((chapterPage(key) ?? 0) + i) } } : {};
       meta.push({ key, local: slug ? i - 1 : i, slug, exhibit: slug ? s.exhibit : null });
@@ -74,7 +77,7 @@ function compose(raw: Record<string, Stop[]>) {
   return { stops, meta };
 }
 
-const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], estimates: estimateStops(0), errata: errataStops(0) };
+const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], beyond: beyondStops(0), estimates: estimateStops(0), errata: errataStops(0) };
 const initial = compose(base);
 
 export function EveryByte() {
@@ -196,7 +199,7 @@ export function EveryByte() {
   const preload = useCallback(
     (index: number) => {
       const slug = book.current.meta[index]?.slug;
-      const at = slug ? chapterSlugs.indexOf(slug) : (book.current.meta[index]?.key === "estimates" || book.current.meta[index]?.key === "errata") ? chapterSlugs.length : -1;
+      const at = slug ? chapterSlugs.indexOf(slug) : backKeys.includes(book.current.meta[index]?.key ?? "") ? chapterSlugs.length : -1;
       for (const n of [chapterSlugs[at - 1], chapterSlugs[at + 1]]) if (n) void ensure(n);
     },
     [ensure],
@@ -295,7 +298,8 @@ export function EveryByte() {
 
   const onLinkHref = useCallback(
     (href: string) => {
-      if (href === "#errata" || href === "#estimates") return void goKey(href.slice(1), true);
+      const [back, n] = href.startsWith("#") ? href.slice(1).split(":") : [];
+      if (back && backKeys.includes(back)) return n ? go(firstOf(back) + (back === "beyond" ? beyondSpreadOf(Number(n)) : Number(n)), true) : void goKey(back, true);
       if (/^https?:\/\//.test(href)) return void window.open(href, "_blank", "noopener,noreferrer");
       const [path, at] = href.split("#");
       const slug = path.startsWith(`${BOOK}/`) ? path.slice(BOOK.length + 1) : "";
@@ -303,7 +307,7 @@ export function EveryByte() {
       if (chapterSlugs.includes(slug)) return void goKey(slug, true);
       router.push(href);
     },
-    [goKey, router, turnTo],
+    [go, goKey, router, turnTo],
   );
 
   useEffect(() => {
@@ -466,6 +470,7 @@ export function EveryByte() {
   const title = stops[stop]?.page?.title ?? "";
   const caption = open ? (beats[beat]?.caption ?? title) : "Every Byte: click the cover to open the book";
   const spread = segment === "errata" && meta ? errataSpreads[meta.local] : null;
+  const beyond = segment === "beyond" && meta ? beyondSpreads[meta.local] : null;
   const problem = segment === "estimates" && meta ? estimates[meta.local - 1] : undefined;
   const chapterStep = def && meta ? def.steps[meta.local] : undefined;
   const bench = def && meta ? def.workbench[meta.local - def.steps.length] : undefined;
@@ -750,6 +755,11 @@ export function EveryByte() {
                   <p className="mt-2 font-serif text-lg text-accent">{gloss(problem.answer)}</p>
                   <p className="mt-1 text-text">{gloss(problem.teaches)}</p>
                 </details>
+                {problem.beyond && (
+                  <button type="button" data-book-link={`#beyond:${beyondTopics.findIndex((t) => t.id === problem.beyond)}`} onClick={() => onLinkHref(`#beyond:${beyondTopics.findIndex((t) => t.id === problem.beyond)}`)} className="link-underline mt-2 block text-left text-text">
+                    {`Beyond this engine: ${problem.beyond} →`}
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -767,6 +777,50 @@ export function EveryByte() {
                 </ol>
               </>
             )
+          ) : beyond ? (
+            <>
+              {[beyond.left, beyond.right].map((p) =>
+                p.kind === "intro" ? (
+                  <section key="intro">
+                    <h1 className="font-serif text-2xl text-text">{beyondTitle}</h1>
+                    <div className="mt-2 space-y-2">
+                      {beyondIntro.map((text) => (
+                        <p key={text}>{gloss(text)}</p>
+                      ))}
+                    </div>
+                  </section>
+                ) : p.kind === "units" ? (
+                  <section key="units" className="mt-3">
+                    <h2 className="font-serif text-xl text-text">{beyondUnitsTitle}</h2>
+                    <ul className="mt-1">
+                      {beyondTopics.map((t) => (
+                        <li key={t.id}>
+                          <span className="text-text">{t.title}</span>
+                          {`: ${t.unit}`}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1 text-xs">{beyondUnitsNote}</p>
+                  </section>
+                ) : (
+                  <section key={p.topic.id} className="mt-3 space-y-2 first:mt-0">
+                    <h2 className="text-xs">{`${beyondTitle} · ${p.topic.unit}`}</h2>
+                    <h1 className="font-serif text-2xl text-text">{p.topic.title}</h1>
+                    {p.topic.paragraphs.map((text) => (
+                      <p key={text}>{gloss(text)}</p>
+                    ))}
+                    {estimateOf(p.topic) && (
+                      <button type="button" data-book-link={estimateOf(p.topic)?.href} onClick={() => onLinkHref(estimateOf(p.topic)?.href ?? "")} className="link-underline block text-left text-text">
+                        {estimateOf(p.topic)?.text}
+                      </button>
+                    )}
+                    <a href={p.topic.source.href} data-book-link={p.topic.source.href} target="_blank" rel="noreferrer" className="link-underline block text-xs text-text">
+                      {p.topic.source.label}
+                    </a>
+                  </section>
+                ),
+              )}
+            </>
           ) : spread ? (
             <>
               {!spread.left && (
@@ -812,6 +866,10 @@ export function EveryByte() {
                   </ol>
                 </div>
               ))}
+              <button type="button" data-book-link="#beyond" onClick={() => void goKey("beyond", true)} className="link-underline mt-2 flex w-full text-text">
+                Beyond this engine
+                <span className="ml-auto tabular-nums text-muted">{chapterPage("beyond")}</span>
+              </button>
               <button type="button" data-book-link="#estimates" onClick={() => void goKey("estimates", true)} className="link-underline mt-2 flex w-full text-text">
                 Estimate it yourself
                 <span className="ml-auto tabular-nums text-muted">{chapterPage("estimates")}</span>

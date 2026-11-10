@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { chapterNumber } from "@/content/book-order";
+import { beyondTitle, chapterNumber } from "@/content/book-order";
 import type { Estimate } from "@/content/estimates";
 import { kernelStory } from "@/content/kernels";
 import { Disclosure } from "./disclosure";
@@ -36,6 +36,11 @@ export function EstimateCard({ estimate: e, n }: { estimate: Estimate; n: number
             <p className="font-serif text-xl text-accent">{gloss(e.answer)}</p>
           </div>
           <p className="text-text">{gloss(e.teaches)}</p>
+          {e.beyond && (
+            <Link href={`/kernels/beyond#${e.beyond}`} className="link-underline inline-block text-xs text-accent">
+              {`read ${beyondTitle}: ${e.beyond}`}
+            </Link>
+          )}
           {e.chapters.map((slug) => (
             <Link key={slug} href={`/kernels/${slug}`} className="link-underline inline-block text-xs text-accent">
               {`read chapter ${chapterNumber(slug)}, ${kernelStory(slug)?.title ?? slug}`}

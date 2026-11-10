@@ -2125,3 +2125,5 @@
 - **a profile per commit read from git history** => 
 - **span and busy time of a step** => 
 - **weight-read floor of a token** => 
+- **quantization as fewer weight bytes per token** => 
+- **prefix caching by sharing KV blocks** => 

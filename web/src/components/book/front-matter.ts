@@ -1,6 +1,7 @@
 import { bookOrder, bookParts, chapterNumber } from "@/content/book-order";
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, openTag, runsLabel } from "@/content/exercises";
+import { type BeyondTopic, beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
 import { type Estimate, estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { kernelStory, layerOps } from "@/content/kernels";
 import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
@@ -22,9 +23,9 @@ export const chapterPage = (key: string): number | undefined => firstPage[key];
 
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
-  for (const key of ["start", "contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "estimates", "errata"]) {
+  for (const key of ["start", "contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "beyond", "estimates", "errata"]) {
     firstPage[key] = page;
-    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
+    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
   }
   return page - 1;
 }
@@ -98,8 +99,9 @@ function contentsRows(parts: typeof bookParts, withErrata: boolean) {
     y += 40;
   }
   if (withErrata) {
-    rows.push({ kind: "entry", y: y + 20, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
-    rows.push({ kind: "entry", y: y + 20 + ROW, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+    rows.push({ kind: "entry", y: y + 20, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
+    rows.push({ kind: "entry", y: y + 20 + ROW, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
+    rows.push({ kind: "entry", y: y + 20 + 2 * ROW, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
   }
   return rows;
 }
@@ -1105,7 +1107,9 @@ function estimateQuestion(e: Estimate, k: number) {
   };
 }
 
-function estimateWorking(e: Estimate, k: number) {
+const beyondLinkText = (e: Estimate) => `Beyond this engine: ${beyondTopics.find((t) => t.id === e.beyond)?.title ?? beyondTitle} →`;
+
+function estimateWorking(e: Estimate, k: number, link?: PageLink) {
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "right");
     const width = x1 - x0;
@@ -1135,7 +1139,13 @@ function estimateWorking(e: Estimate, k: number) {
       ctx.fillStyle = palette.ink;
       ctx.font = `${30 * scale}px ${fonts.sans}`;
       return paragraph(ctx, e.teaches, x0, y + 20 * scale, width, 44 * scale, draw);
-    }, H - 170);
+    }, link ? H - 270 : H - 170);
+    if (link) {
+      ctx.fillStyle = palette.blue;
+      ctx.font = `38px ${fonts.serif}`;
+      ctx.fillText(beyondLinkText(e), x0, H - 200);
+      link.lines = [under(ctx, beyondLinkText(e), x0, H - 200, 38)];
+    }
   };
 }
 
@@ -1146,9 +1156,118 @@ export function estimateStops(firstSpread: number): Stop[] {
   };
   return [
     intro,
-    ...estimates.map((e, k): Stop => ({
-      ...flatStop(firstSpread + 1 + k, `Estimate ${k + 1}: ${e.title}`, e.title, [e.question, e.first, ...e.steps, e.answer, e.teaches]),
-      paint: { left: estimateQuestion(e, k), right: estimateWorking(e, k) },
-    })),
+    ...estimates.map((e, k): Stop => {
+      const link: PageLink | undefined = e.beyond ? { side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: `#beyond:${beyondTopics.findIndex((t) => t.id === e.beyond)}`, label: beyondLinkText(e) } : undefined;
+      return {
+        ...flatStop(firstSpread + 1 + k, `Estimate ${k + 1}: ${e.title}`, e.title, [e.question, e.first, ...e.steps, e.answer, e.teaches]),
+        paint: { left: estimateQuestion(e, k), right: estimateWorking(e, k, link) },
+        links: link ? [link] : undefined,
+      };
+    }),
   ];
+}
+
+export type BeyondPage = { kind: "intro" } | { kind: "topic"; topic: BeyondTopic } | { kind: "units" };
+export type BeyondSpread = { left: BeyondPage; right: BeyondPage };
+
+const beyondPages: BeyondPage[] = [{ kind: "intro" }, ...beyondTopics.map((topic): BeyondPage => ({ kind: "topic", topic })), { kind: "units" }];
+
+export const beyondSpreads: BeyondSpread[] = Array.from({ length: Math.ceil(beyondPages.length / 2) }, (_, k) => ({ left: beyondPages[2 * k], right: beyondPages[2 * k + 1] ?? { kind: "units" } }));
+
+export const beyondSpreadOf = (topic: number) => Math.floor((topic + 1) / 2);
+
+export const beyondUnitsTitle = "in bytes per token";
+export const beyondUnitsNote = "None of the four is implemented or measured in this engine.";
+
+const beyondPageNumber = (k: number) => (chapterPage("beyond") ?? 0) + k;
+
+export const estimateOf = (topic: BeyondTopic) => {
+  const index = estimates.findIndex((e) => e.id === topic.estimate);
+  return index < 0 ? undefined : { index, href: `#estimates:${index + 1}`, text: `Estimate ${index + 1}: ${estimates[index].title} →` };
+};
+
+function beyondTopicPage(topic: BeyondTopic, side: Side, k: number) {
+  const left = side === "left" ? 130 : 170;
+  const right = side === "left" ? W - 170 : W - 130;
+  const estimate = estimateOf(topic);
+  const source: PageLink = { side, box: [left / W, (H - 300) / H, right / W, (H - 130) / H], href: topic.source.href, label: topic.source.label };
+  const inside: PageLink | undefined = estimate ? { side, box: [left / W, (H - 420) / H, right / W, (H - 350) / H], href: estimate.href, label: estimate.text } : undefined;
+  const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    const width = x1 - x0;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`${beyondTitle} · ${topic.unit}`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText(topic.title, x0, 260);
+    let px = 34;
+    const fit = (draw: boolean) => {
+      ctx.font = `${px}px ${fonts.sans}`;
+      let y = 360;
+      for (const text of topic.paragraphs) y = paragraph(ctx, text, x0, y, width, px * 1.5, draw) + px * 0.8;
+      return y - px * 2.3;
+    };
+    while (px > 24 && fit(false) > (inside ? H - 450 : H - 350)) px -= 1;
+    fit(true);
+    if (inside && estimate) {
+      ctx.fillStyle = palette.blue;
+      ctx.font = `38px ${fonts.serif}`;
+      ctx.fillText(estimate.text, x0, H - 370);
+      inside.lines = [under(ctx, estimate.text, x0, H - 370, 38)];
+    }
+    ctx.fillStyle = palette.faint;
+    ctx.font = `24px ${fonts.sans}`;
+    ctx.fillText("the source to read", x0, H - 290);
+    ctx.fillStyle = palette.blue;
+    ctx.font = `28px ${fonts.sans}`;
+    const sourceLines = lines(ctx, topic.source.label, width);
+    sourceLines.forEach((line, i) => ctx.fillText(line, x0, H - 244 + i * 40));
+    source.lines = sourceLines.map((line, i) => under(ctx, line, x0, H - 244 + i * 40, 28));
+    if (side === "left") folio(ctx, String(beyondPageNumber(k)), side, x0, x1, palette, fonts);
+  };
+  return { paint, links: inside ? [inside, source] : [source] };
+}
+
+function beyondUnitsPage(side: Side, k: number) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(beyondTitle, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText(beyondUnitsTitle, x0, 260);
+    let y = 420;
+    for (const topic of beyondTopics) {
+      ctx.fillStyle = palette.ink;
+      ctx.font = `52px ${fonts.serif}`;
+      ctx.fillText(topic.title, x0, y);
+      ctx.fillStyle = palette.blue;
+      ctx.font = `34px ${fonts.sans}`;
+      y = paragraph(ctx, topic.unit, x0, y + 58, x1 - x0, 48) + 80;
+    }
+    ctx.fillStyle = palette.faint;
+    ctx.font = `30px ${fonts.sans}`;
+    paragraph(ctx, beyondUnitsNote, x0, y + 10, x1 - x0, 44);
+    if (side === "left") folio(ctx, String(beyondPageNumber(k)), side, x0, x1, palette, fonts);
+  };
+}
+
+export function beyondStops(firstSpread: number): Stop[] {
+  return beyondSpreads.map((spread, k) => {
+    const sides = (["left", "right"] as const).map((side) => {
+      const page = spread[side];
+      if (page.kind === "topic") return beyondTopicPage(page.topic, side, k);
+      if (page.kind === "units") return { paint: beyondUnitsPage(side, k), links: [] as PageLink[] };
+      return { paint: textPage(side, "Every Byte", beyondTitle, beyondIntro, () => beyondPageNumber(k), 36), links: [] as PageLink[] };
+    });
+    const topics = [spread.left, spread.right].flatMap((p) => (p.kind === "topic" ? [p.topic] : []));
+    const title = spread.left.kind === "topic" ? spread.left.topic.title : beyondTitle;
+    return {
+      ...flatStop(firstSpread + k, `Beyond this engine: ${topics.map((t) => t.title).join(" and ")}`, title, topics.flatMap((t) => t.paragraphs)),
+      paint: { left: sides[0].paint, right: sides[1].paint },
+      links: [...sides[0].links, ...sides[1].links],
+    };
+  });
 }

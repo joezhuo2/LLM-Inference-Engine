@@ -1,10 +1,10 @@
 import { measured } from "@/content/kernels/types";
 import { ceilings, hardware, modelShape } from "@/lib/data";
-import { chapterNumber } from "./book-order";
+import { beyondTitle, chapterNumber } from "./book-order";
 import { kernelStory } from "./kernels";
 import { flashLong, flashProfile, flashRoofline, flashShape } from "./kernels/flash-prefill";
 
-export type Estimate = { id: string; title: string; question: string; first: string; sources: string[]; steps: string[]; answer: string; teaches: string; chapters: string[] };
+export type Estimate = { id: string; title: string; question: string; first: string; sources: string[]; steps: string[]; answer: string; teaches: string; chapters: string[]; beyond?: string };
 
 const billions = (params: number) => `${Number((params / 1e9).toPrecision(3))} billion`;
 
@@ -102,6 +102,20 @@ const fromBook = {
 };
 
 export const estimatesTitle = "estimate it yourself";
+
+export const fitEstimate = {
+  id: "fit-this-gpu",
+  model: b.model,
+  bf16BytesPerWeight: setup.bytesPerWeight,
+  lowBits: setup.lowBits,
+  fewerBytes: n2((setup.bytesPerWeight * 8) / setup.lowBits),
+  bf16: gb(weights8),
+  vram: `${sig(hw.vram_gb)} GB`,
+  low: gb(lowBytes),
+  floorLow: ms(floorLow),
+  rateLow: sig(1 / floorLow),
+  bandwidth: `${peak.gbs} GB/s`,
+};
 
 export const estimatesIntro = [
   "Back-of-envelope problems that use this book's formulas on models and GPUs the book did not run, and on one change to its own kernel that nobody has built. Each needs a pencil and a calculator.",
@@ -204,11 +218,12 @@ export const estimates: Estimate[] = [
       `Room for weights = ${sig(hw.vram_gb)} GB − ${spareGB} GB for the cache = ${gb(room)}.`,
       `Bytes per weight = ${gb(room)} ÷ ${billions(b.params)} = ${sig(bytesFit)} bytes, or ${sig(bytesFit * 8)} bits (calculated). ${weightsAt(setup.highBits)} ${weightsAt(setup.lowBits)}`,
       `Decode floor = weight bytes ÷ measured bandwidth. At the largest size that fits: ${gb(room)} ÷ ${peak.gbs} GB/s = ${ms(floorRoom)}. At ${setup.lowBits} bits: ${gb(lowBytes)} ÷ ${peak.gbs} GB/s = ${ms(floorLow)}, or ${sig(1 / floorLow)} tokens per second (calculated from the measured bandwidth).`,
-      `This book does not cover quantization yet. The estimate only counts bytes, and real ${setup.lowBits}-bit files also store scale factors, so they are a little larger.`,
+      `This engine does not implement quantization, so none of this was run. "${beyondTitle}", after the last chapter, says what it changes and what it costs. The estimate only counts bytes, and real ${setup.lowBits}-bit files also store scale factors, so they are a little larger.`,
     ],
     answer: `No: ${gb(weights8)} of BF16 weights against ${sig(hw.vram_gb)} GB. They must average under ${sig(bytesFit)} bytes (${sig(bytesFit * 8)} bits) per weight to leave ${spareGB} GB, so ${setup.highBits}-bit is too big and about ${setup.lowBits}-bit fits. At ${setup.lowBits} bits the floor is ${ms(floorLow)} per token, ${sig(1 / floorLow)} tokens per second (calculated).`,
     teaches: "Bytes against VRAM decide whether a model runs at all, and fewer bytes per weight lower the decode floor in the same proportion.",
     chapters: [],
+    beyond: "quantization",
   },
   {
     id: "shared-kv",

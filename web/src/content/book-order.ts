@@ -8,4 +8,6 @@ export const bookParts = [
 
 export const bookOrder = bookParts.flatMap((p) => p.slugs);
 
+export const beyondTitle = "beyond this engine";
+
 export const chapterNumber = (slug: string) => bookOrder.indexOf(slug) + 1;

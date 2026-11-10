@@ -13,6 +13,7 @@ import { splitAttention } from "./split-attention";
 import { swiglu } from "./swiglu";
 import { whereTheTimeWent } from "./where-the-time-went";
 import { deadEnds } from "../dead-ends";
+import { beyondTitle } from "../book-order";
 import type { KernelStory } from "./types";
 
 export const kernelStories: KernelStory[] = [foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, whereTheTimeWent];
@@ -27,9 +28,9 @@ export const kernelCards: KernelCard[] = kernelStories.map((k) => {
   const first = k.timeline[0]?.date;
   const last = k.timeline[k.timeline.length - 1]?.date;
   return { slug: k.slug, index: k.index, title: k.title, short: k.short, dates: first === last ? (first ?? "") : `${first} – ${last}`, ready: true };
-}).concat({
+}).concat({ slug: "beyond", index: kernelStories.length, title: beyondTitle, short: "What the engine leaves out, in bytes per token: quantization, speculative decoding, prefix caching and multiple GPUs.", dates: "", ready: true }, {
   slug: "dead-ends",
-  index: kernelStories.length,
+  index: kernelStories.length + 1,
   title: "what didn't work",
   short: "Slower drafts, a broken bit, rules with a cliff and a profile read wrong, each with what was kept.",
   dates: `${deadEnds[0].date} – ${deadEnds[deadEnds.length - 1].date}`,
