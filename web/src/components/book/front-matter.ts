@@ -747,7 +747,7 @@ function mapRows(): { rows: MapRow[]; layerTop: number; layerBottom: number } {
     rows.push({ y, label, slugs, inLayer });
     y += gap;
   };
-  add("token in, its embedding row read", ["foundations"], false, 92);
+  add("token in, its embedding row read", [], false, 92);
   const layerTop = y - 50;
   for (const op of layerOps) add(op.label, op.slug === "paged-attention" ? ["paged-attention", "attention-v2", "split-attention"] : [op.slug], true);
   const layerBottom = y - 26;
