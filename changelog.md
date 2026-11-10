@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/embedding-lookup
+
+- Add `fast::embedding` (`src/kernels/embedding_fast.cu`) for #98 and use it in `PagedRunner::forward`: one thread per 16 bytes (8 BF16 values, `uint4`) over all rows at once, 256 threads per block, instead of one block per token copying 2 bytes per thread; widths that are not a multiple of 8, or a table or output not 16-byte aligned, fall back to one thread per value. Same arguments and errors as `naive::embedding`, which `ModelRunner` keeps as the oracle. `tests/gpu/test_embedding_fast.cpp` (18 tests): bit-identical to the naive kernel and to the table rows for 1 to 70,000 tokens, widths 1 to 2,048 including 2,047, shifted (unaligned) tables and outputs, repeated ids, no writes outside `out`, table unchanged, zero tokens, bad arguments. (Part C, written by Claude at Joe's request)
+- Measure it (`scripts/profile.sh nsys`, max batch 16, 16 requests of 512 prompt and 32 output tokens, release, RTX 5060 Laptop GPU, 2026-11-09): the median launch goes from 4.5 to 1.5 us (decode steps) and the largest from 72 to 79 us to 35 to 37 us (2,048-token prefill steps). Either way the lookup is under 0.1% of a step, so no end-to-end number moves; the results Kernels table gains an embedding row. (Part A)
+
 ## runtime/graph-buckets-wiring
 
 - Wire `decode_graph_buckets` into `engine bench` and `engine serve` in place of the two `graph_buckets` copies (`src/app/bench_command.cpp`, `src/server/gpu_backend.cpp`), with a new `--graph-steps` option (graph sizes per power of two of batch size, a power of two, default 1, which gives the old 1, 2, 4, 8 and so on plus the max batch); anything else is rejected with std::invalid_argument. The bench summary CSV, the trace meta and the `/v1/steps` meta record `graph_steps` (0 without `--graphs`). Two new GPU tests in `tests/gpu/test_server.cpp`: six streamed clients at max batch 6 with `--graph-steps 2` (buckets 1, 2, 3, 4, 6) all get the greedy answer of `generate`, and steps of 0, 3, 6 and -2 are rejected. (Part B)

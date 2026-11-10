@@ -2022,3 +2022,9 @@
 - **padded rows in a replayed graph: compute spent on rows nobody reads** => 
 - **why a GEMM with M rows does about M FLOPs per weight byte, and where that meets the ridge** => 
 - **cuBLAS picking a different kernel (tile shape) per problem size** => 
+
+## Embedding lookup (Branch 131)
+
+- **gather: copying rows of a table chosen by an index array** => 
+- **one thread per 16-byte vector (uint4) and the alignment it needs** => 
+- **flattening (row, column) work into one grid instead of one block per row** => 

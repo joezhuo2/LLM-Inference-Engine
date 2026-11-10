@@ -8,3 +8,9 @@ namespace engine::naive {
 void embedding(const Tensor& out, const Tensor& ids, const Tensor& table, Stream stream);
 
 }  // namespace engine::naive
+
+namespace engine::fast {
+
+void embedding(const Tensor& out, const Tensor& ids, const Tensor& table, Stream stream);
+
+}  // namespace engine::fast

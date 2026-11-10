@@ -145,7 +145,7 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
     const int64_t splits = attention_splits(t, c.heads, longest_context_);
     const Tensor scratch(scratch_.data(), DType::F32, {t, c.heads, splits, c.head_dim + 2});
 
-    ranged("embedding", [&] { naive::embedding(x, input_ids, weights_.embed, stream_); });
+    ranged("embedding", [&] { fast::embedding(x, input_ids, weights_.embed, stream_); });
     for (int i = 0; i < c.layers; ++i) {
         char name[24];
         std::snprintf(name, sizeof name, "layer %d", i);
