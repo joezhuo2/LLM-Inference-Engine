@@ -10,6 +10,7 @@
 #include "engine/kernels/add.h"
 #include "engine/kernels/add_rmsnorm.h"
 #include "engine/kernels/embedding.h"
+#include "engine/kernels/flash_prefill.h"
 #include "engine/kernels/paged_attention_split.h"
 #include "engine/kernels/paged_attention_v2.h"
 #include "engine/kernels/rmsnorm.h"
@@ -58,7 +59,8 @@ PagedRunner::PagedRunner(const ModelConfig& config, const ModelWeights& weights,
             "max_context must be positive and at most max_positions");
     max_blocks_ = (max_context + cache.block_size() - 1) / cache.block_size();
     const int64_t h = config.hidden;
-    ints_ = buffer(1, 4 * max_tokens + max_tokens * max_blocks_, DType::I32);
+    ints_ =
+        buffer(1, (4 + max_blocks_) * max_tokens + (2 + max_blocks_) * max_seqs + 1, DType::I32);
     staging_ = PinnedBuffer(ints_.size());
     x_ = buffer(max_tokens, h, DType::BF16);
     norm_ = buffer(max_tokens, h, DType::BF16);
@@ -100,9 +102,26 @@ void PagedRunner::stage(const PagedBatch& batch) {
             "block_tables must have max_blocks entries per token");
     for (const int32_t row : batch.logit_rows)
         require(row >= 0 && row < t, "a logit row is outside the batch");
+    const int64_t chunks = flash_prefill_ ? batch.num_chunks() : 0;
+    if (chunks > 0) {
+        require(chunks <= max_seqs_, "the number of prefill chunks must be at most max_seqs");
+        require(int64_t(batch.chunk_starts.size()) == chunks + 1,
+                "chunk_starts must have one more entry than cached_lens");
+        require(batch.chunk_starts.front() >= 0 && batch.chunk_starts.back() == t,
+                "the prefill chunks must end at the last row");
+        for (int64_t i = 0; i < chunks; ++i) {
+            require(batch.chunk_starts[size_t(i)] < batch.chunk_starts[size_t(i) + 1],
+                    "every prefill chunk must have at least one row");
+            const int64_t cached = batch.cached_lens[size_t(i)];
+            require(cached >= 0 && cached == batch.positions[size_t(batch.chunk_starts[size_t(i)])],
+                    "cached_lens must equal the position of the chunk's first row");
+        }
+    }
 
     CUDA_CHECK(cudaEventSynchronize(staged_));
-    longest_context_ = batch.longest_context();
+    chunks_ = chunks;
+    decode_rows_ = chunks > 0 ? batch.decode_rows() : t;
+    longest_context_ = chunks > 0 ? batch.longest_decode_context() : batch.longest_context();
     auto* host = static_cast<int32_t*>(staging_.data());
     size_t at = 0;
     for (const std::vector<int32_t>* part :
@@ -110,6 +129,15 @@ void PagedRunner::stage(const PagedBatch& batch) {
           &batch.block_tables}) {
         std::copy(part->begin(), part->end(), host + at);
         at += part->size();
+    }
+    if (chunks > 0) {
+        at = std::copy(batch.chunk_starts.begin(), batch.chunk_starts.end(), host + at) - host;
+        at = std::copy(batch.cached_lens.begin(), batch.cached_lens.end(), host + at) - host;
+        for (int64_t i = 0; i < chunks; ++i) {
+            const auto row =
+                batch.block_tables.begin() + batch.chunk_starts[size_t(i)] * max_blocks_;
+            at = std::copy(row, row + max_blocks_, host + at) - host;
+        }
     }
     CUDA_CHECK(
         cudaMemcpyAsync(ints_.data(), host, at * sizeof(int32_t), cudaMemcpyHostToDevice, stream_));
@@ -130,8 +158,6 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
     const Tensor input_ids(ints, DType::I32, {t});
     const Tensor positions(ints + t, DType::I32, {t});
     const Tensor slots(ints + 2 * t, DType::I32, {t});
-    const Tensor context_lens(ints + 3 * t, DType::I32, {t});
-    const Tensor block_tables(ints + 4 * t, DType::I32, {t, max_blocks_});
 
     const ModelConfig& c = config_;
     const auto eps = float(c.rms_eps);
@@ -142,8 +168,19 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
     const Tensor proj = view(proj_, t, c.hidden);
     const Tensor gate_up = view(gate_up_, t, 2 * int64_t(c.intermediate));
     const Tensor act = view(act_, t, c.intermediate);
-    const int64_t splits = attention_splits(t, c.heads, longest_context_);
-    const Tensor scratch(scratch_.data(), DType::F32, {t, c.heads, splits, c.head_dim + 2});
+    const int64_t chunks = chunks_;
+    const int64_t d = chunks > 0 ? decode_rows_ : t;
+    require(d <= t, "the staged batch has more decode rows than tokens");
+    int32_t* extra = ints + (4 + max_blocks_) * t;
+    const Tensor chunk_starts(extra, DType::I32, {chunks + 1});
+    const Tensor cached_lens(extra + chunks + 1, DType::I32, {chunks});
+    const Tensor chunk_tables(extra + 2 * chunks + 1, DType::I32, {chunks, max_blocks_});
+    const Tensor decode_attn = view(attn_, d, c.hidden);
+    const Tensor decode_qkv = view(qkv_, d, c.qkv_dim());
+    const Tensor decode_lens(ints + 3 * t, DType::I32, {d});
+    const Tensor decode_tables(ints + 4 * t, DType::I32, {d, max_blocks_});
+    const int64_t splits = d > 0 ? attention_splits(d, c.heads, longest_context_) : 1;
+    const Tensor scratch(scratch_.data(), DType::F32, {d, c.heads, splits, c.head_dim + 2});
 
     ranged("embedding", [&] { fast::embedding(x, input_ids, weights_.embed, stream_); });
     for (int i = 0; i < c.layers; ++i) {
@@ -158,12 +195,15 @@ Tensor PagedRunner::run_staged(int64_t t, int64_t s, std::span<const int32_t> lo
         });
         ranged("write_kv", [&] { write_kv(cache_->k(i), cache_->v(i), qkv, slots, stream_); });
         ranged("attention", [&] {
-            if (splits == 1)
-                paged_attention_decode_v2(attn, qkv, cache_->k(i), cache_->v(i), block_tables,
-                                          context_lens, stream_);
-            else
-                paged_attention_decode_split(attn, qkv, cache_->k(i), cache_->v(i), block_tables,
-                                             context_lens, scratch, stream_);
+            if (d > 0 && splits == 1)
+                paged_attention_decode_v2(decode_attn, decode_qkv, cache_->k(i), cache_->v(i),
+                                          decode_tables, decode_lens, stream_);
+            else if (d > 0)
+                paged_attention_decode_split(decode_attn, decode_qkv, cache_->k(i), cache_->v(i),
+                                             decode_tables, decode_lens, scratch, stream_);
+            if (chunks > 0)
+                flash_attention_prefill(attn, qkv, cache_->k(i), cache_->v(i), chunk_tables,
+                                        chunk_starts, cached_lens, stream_);
         });
         ranged("o_proj", [&] { gemm(blas_, proj, attn, w.wo); });
         ranged("add1_norm2", [&] { fast::add_rmsnorm(x, norm, x, proj, w.ln2, eps, stream_); });

@@ -53,8 +53,13 @@ PagedBatch build_paged_batch(const Step& step, const Scheduler& scheduler, int m
     for (const SeqId id : step.seqs) {
         const int length = scheduler.blocks().length(id);
         const int first = step.prefill ? 0 : length - 1;
+        if (step.prefill) {
+            batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
+            batch.cached_lens.push_back(0);
+        }
         append_rows(batch, scheduler, id, first, length - first);
     }
+    if (step.prefill) batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
     return batch;
 }
 
@@ -71,9 +76,13 @@ PagedBatch build_chunked_batch(const ChunkedStep& step, const Scheduler& schedul
     for (const SeqId id : step.decode)
         if (append_rows(batch, scheduler, id, scheduler.blocks().length(id) - 1, 1))
             ends.push_back(id);
-    for (const PrefillChunk& chunk : step.prefill)
+    for (const PrefillChunk& chunk : step.prefill) {
+        batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
+        batch.cached_lens.push_back(chunk.first);
         if (append_rows(batch, scheduler, chunk.id, chunk.first, chunk.count))
             ends.push_back(chunk.id);
+    }
+    if (batch.prefill) batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
     require(ends == step.sampled,
             "sampled must list the sequences whose rows reach their last token, in row order");
     return batch;
@@ -104,6 +113,11 @@ PagedBatch pad_decode_batch(const PagedBatch& batch, int64_t rows) {
 
 int64_t PagedBatch::longest_context() const {
     return context_lens.empty() ? 0 : *std::max_element(context_lens.begin(), context_lens.end());
+}
+
+int64_t PagedBatch::longest_decode_context() const {
+    const auto end = context_lens.begin() + decode_rows();
+    return end == context_lens.begin() ? 0 : *std::max_element(context_lens.begin(), end);
 }
 
 int64_t attention_splits(int64_t rows, int64_t heads, int64_t longest_context) {

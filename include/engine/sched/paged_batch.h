@@ -21,9 +21,16 @@ struct PagedBatch {
     std::vector<int32_t> context_lens{};
     std::vector<int32_t> logit_rows{};
     std::vector<int32_t> block_tables{};
+    std::vector<int32_t> chunk_starts{};
+    std::vector<int32_t> cached_lens{};
 
     int64_t num_tokens() const { return int64_t(token_ids.size()); }
+    int64_t num_chunks() const { return int64_t(cached_lens.size()); }
+    int64_t decode_rows() const {
+        return chunk_starts.empty() ? num_tokens() : chunk_starts.front();
+    }
     int64_t longest_context() const;
+    int64_t longest_decode_context() const;
 };
 
 PagedBatch build_paged_batch(const Step& step, const Scheduler& scheduler, int max_blocks);

@@ -2055,3 +2055,9 @@
 
 - **interruptible animations: compressing a running tween instead of waiting for it** => 
 - **input latency vs. animation length** => 
+
+## FlashAttention prefill wiring (Branch 136)
+
+- **prefill chunk (rows of one sequence in a step) vs. decode row** => 
+- **one block table row per chunk instead of one per token** => 
+- **measuring a kernel behind a switch before making it the default** => 

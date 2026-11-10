@@ -59,6 +59,10 @@ TEST(PagedBatch, PrefillHasOneRowPerPromptTokenWithCausalContextLengths) {
     EXPECT_EQ(b.positions, (std::vector<int32_t>{0, 1, 2, 3, 4, 5, 0, 1, 2}));
     EXPECT_EQ(b.context_lens, (std::vector<int32_t>{1, 2, 3, 4, 5, 6, 1, 2, 3}));
     EXPECT_EQ(b.logit_rows, (std::vector<int32_t>{5, 8}));
+    EXPECT_EQ(b.chunk_starts, (std::vector<int32_t>{0, 6, 9}));
+    EXPECT_EQ(b.cached_lens, (std::vector<int32_t>{0, 0}));
+    EXPECT_EQ(b.num_chunks(), 2);
+    EXPECT_EQ(b.decode_rows(), 0);
     for (int64_t t = 0; t < b.num_tokens(); ++t) {
         const SeqId id = t < 6 ? 1 : 2;
         EXPECT_EQ(b.slot_mapping[size_t(t)], s.blocks().slot(id, b.positions[size_t(t)]));
@@ -183,6 +187,8 @@ TEST(ChunkedBatch, APromptLongerThanTheBudgetHasALogitRowOnlyInItsLastChunk) {
             EXPECT_EQ(b.slot_mapping[t], s.blocks().slot(1, pos));
         }
         EXPECT_EQ(b.logit_rows, last ? std::vector<int32_t>{1} : std::vector<int32_t>{});
+        EXPECT_EQ(b.chunk_starts, (std::vector<int32_t>{0, int32_t(positions[i].size())}));
+        EXPECT_EQ(b.cached_lens, (std::vector<int32_t>{positions[i][0]}));
         EXPECT_EQ(b.block_tables.size(), positions[i].size() * kMaxBlocks);
         s.update(std::vector<int32_t>(step.sampled.size(), 900));
     }
@@ -200,6 +206,8 @@ TEST(ChunkedBatch, AMixedStepPutsDecodeRowsFirstAndLogitRowsOnlyOnSampledSequenc
     EXPECT_EQ(b.token_ids, (std::vector<int32_t>{100, 101, 102, 200}));
     EXPECT_EQ(b.positions, (std::vector<int32_t>{0, 1, 2, 0}));
     EXPECT_EQ(b.logit_rows, (std::vector<int32_t>{2}));
+    EXPECT_EQ(b.chunk_starts, (std::vector<int32_t>{0, 3, 4}));
+    EXPECT_EQ(b.cached_lens, (std::vector<int32_t>{0, 0}));
     s.update(std::vector<int32_t>{901});
 
     step = s.schedule_chunked(4);
@@ -211,6 +219,10 @@ TEST(ChunkedBatch, AMixedStepPutsDecodeRowsFirstAndLogitRowsOnlyOnSampledSequenc
     EXPECT_EQ(b.token_ids, (std::vector<int32_t>{901, 201, 202, 203}));
     EXPECT_EQ(b.positions, (std::vector<int32_t>{3, 1, 2, 3}));
     EXPECT_EQ(b.context_lens, (std::vector<int32_t>{4, 2, 3, 4}));
+    EXPECT_EQ(b.chunk_starts, (std::vector<int32_t>{1, 4}));
+    EXPECT_EQ(b.cached_lens, (std::vector<int32_t>{1}));
+    EXPECT_EQ(b.decode_rows(), 1);
+    EXPECT_EQ(b.longest_decode_context(), 4);
     EXPECT_EQ(b.slot_mapping[0], s.blocks().slot(1, 3));
     EXPECT_EQ(b.slot_mapping[3], s.blocks().slot(2, 3));
     EXPECT_EQ(b.logit_rows, (std::vector<int32_t>{0}));
@@ -245,6 +257,11 @@ TEST(ChunkedBatch, APureDecodeStepBuildsTheSameBatchAsTheUnchunkedBuilder) {
     const PagedBatch want = build_paged_batch(Step{false, step.decode}, s, kMaxBlocks);
 
     EXPECT_FALSE(b.prefill);
+    EXPECT_TRUE(b.chunk_starts.empty());
+    EXPECT_TRUE(b.cached_lens.empty());
+    EXPECT_TRUE(want.chunk_starts.empty());
+    EXPECT_EQ(b.decode_rows(), b.num_tokens());
+    EXPECT_EQ(b.longest_decode_context(), b.longest_context());
     EXPECT_EQ(b.num_seqs, want.num_seqs);
     EXPECT_EQ(b.token_ids, want.token_ids);
     EXPECT_EQ(b.positions, want.positions);

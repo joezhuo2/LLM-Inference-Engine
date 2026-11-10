@@ -299,6 +299,114 @@ TEST_F(PagedRunnerTest, RejectsBadArguments) {
     EXPECT_THROW(runner.forward(batch), std::invalid_argument);
 }
 
+TEST_F(PagedRunnerTest, FlashPrefillMatchesPagedPrefillOnWholeAndChunkedPrompts) {
+    const std::vector<int> lengths = {33, 6, 20, 1};
+    constexpr int kNewTokens = 4;
+    for (const int budget : {0, 8}) {
+        SCOPED_TRACE("budget " + std::to_string(budget));
+        std::vector<std::vector<uint16_t>> logits[2];
+        int prefill_steps = 0;
+        for (const bool flash : {false, true}) {
+            KvCache cache(w().config, 64, kBlockSize);
+            PagedRunner runner(w().config, w().weights, cache, 64, 4, kMaxContext, stream);
+            runner.set_flash_prefill(flash);
+            ASSERT_EQ(runner.flash_prefill(), flash);
+            Scheduler scheduler(SchedulerConfig{.num_blocks = 64,
+                                                .block_size = kBlockSize,
+                                                .max_batch = 4,
+                                                .max_prefill_tokens = kMaxContext,
+                                                .max_context = kMaxContext});
+            for (size_t i = 0; i < lengths.size(); ++i) {
+                Request r{.id = int64_t(i), .max_new_tokens = kNewTokens};
+                r.prompt = prompt_of(int64_t(i), lengths[i], int(vocab()));
+                scheduler.submit(r);
+            }
+            while (scheduler.num_waiting() + scheduler.num_running() > 0) {
+                engine::PagedBatch batch;
+                size_t sampled = 0;
+                if (budget > 0) {
+                    const auto step = scheduler.schedule_chunked(budget);
+                    batch = engine::build_chunked_batch(step, scheduler, int(runner.max_blocks()));
+                    sampled = step.sampled.size();
+                } else {
+                    const auto step = scheduler.schedule();
+                    batch = engine::build_paged_batch(step, scheduler, int(runner.max_blocks()));
+                    sampled = step.seqs.size();
+                }
+                prefill_steps += flash && batch.prefill;
+                ASSERT_EQ(batch.prefill, batch.num_chunks() > 0);
+                const auto rows = to_host(runner.forward(batch));
+                logits[flash].push_back(rows);
+                std::vector<int32_t> tokens;
+                for (size_t i = 0; i < sampled; ++i)
+                    tokens.push_back(int32_t(1 + (logits[flash].size() * 31 + i * 17) % 1000));
+                scheduler.update(tokens);
+                scheduler.take_finished();
+            }
+        }
+        EXPECT_GT(prefill_steps, budget > 0 ? 3 : 0);
+        ASSERT_EQ(logits[0].size(), logits[1].size());
+        double worst = 0.0;
+        size_t identical = 0;
+        for (size_t i = 0; i < logits[0].size(); ++i) {
+            ASSERT_EQ(logits[0][i].size(), logits[1][i].size());
+            if (logits[0][i].empty()) continue;
+            identical += logits[0][i] == logits[1][i];
+            const double rel = relative_l2(logits[1][i], logits[0][i]);
+            worst = std::max(worst, rel);
+            EXPECT_LE(rel, kLogitRelativeL2) << "step " << i;
+            EXPECT_EQ(argmax_rows(logits[1][i], vocab()), argmax_rows(logits[0][i], vocab()))
+                << "step " << i;
+        }
+        std::printf(
+            "budget %d: worst relative L2 of flash against paged prefill %g, %zu of %zu "
+            "steps bit-identical\n",
+            budget, worst, identical, logits[0].size());
+    }
+}
+
+TEST_F(PagedRunnerTest, RejectsBadPrefillChunks) {
+    KvCache cache(w().config, 32, kBlockSize);
+    PagedRunner runner(w().config, w().weights, cache, 16, 2, kMaxContext, stream);
+    engine::PagedBatch good;
+    good.prefill = true;
+    good.num_seqs = 1;
+    good.max_blocks = runner.max_blocks();
+    good.token_ids = {1, 2, 3};
+    good.positions = {0, 1, 2};
+    good.slot_mapping = {16, 17, 18};
+    good.context_lens = {1, 2, 3};
+    good.logit_rows = {2};
+    good.block_tables.assign(size_t(3 * runner.max_blocks()), 0);
+    for (size_t row = 0; row < 3; ++row) good.block_tables[row * size_t(runner.max_blocks())] = 1;
+    good.chunk_starts = {0, 3};
+    good.cached_lens = {0};
+    EXPECT_FALSE(runner.flash_prefill());
+    runner.set_flash_prefill(true);
+    EXPECT_NO_THROW(runner.forward(good));
+
+    const auto rejected = [&](const auto& edit) {
+        engine::PagedBatch bad = good;
+        edit(bad);
+        EXPECT_THROW(runner.forward(bad), std::invalid_argument);
+        runner.set_flash_prefill(false);
+        EXPECT_NO_THROW(runner.forward(bad));
+        runner.set_flash_prefill(true);
+    };
+    rejected([](engine::PagedBatch& b) { b.chunk_starts = {0, 2}; });
+    rejected([](engine::PagedBatch& b) { b.chunk_starts = {0}; });
+    rejected([](engine::PagedBatch& b) { b.chunk_starts = {-1, 3}; });
+    rejected([](engine::PagedBatch& b) { b.cached_lens = {1}; });
+    rejected([](engine::PagedBatch& b) {
+        b.chunk_starts = {0, 0, 3};
+        b.cached_lens = {0, 0};
+    });
+    rejected([](engine::PagedBatch& b) {
+        b.chunk_starts = {0, 1, 2, 3};
+        b.cached_lens = {0, 1, 2};
+    });
+}
+
 TEST_F(PagedRunnerTest, ConcurrentSequencesMatchHuggingFaceTeacherForced) {
     if (const auto why = engine::test::reference_skip_reason(); !why.empty()) GTEST_SKIP() << why;
     struct Item {
