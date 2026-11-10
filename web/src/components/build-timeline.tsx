@@ -4,10 +4,11 @@ import { AnimatePresence, motion, type MotionValue, useMotionValueEvent, useScro
 import { createElement, useRef, useState } from "react";
 import { ChunkedFigure } from "@/components/chunked-scene";
 import { GemmTilesFigure, GpuFloorplan, ReductionRaceFigure } from "@/components/gpu-floorplan";
-import { GenerateFigure, RooflineFigure, SampleFigure, TokenizeFigure } from "@/components/scene-figures";
+import { BucketsFigure, GenerateFigure, RooflineFigure, SampleFigure, SweepFigure, TokenizeFigure } from "@/components/scene-figures";
+import { LookupScene } from "@/components/kernels/embedding-lookup";
 import { useActiveStep } from "@/components/kernels/use-active-step";
 import { Scramble } from "@/components/scramble";
-import { type Entry, type Metric, type Milestone, milestones, repoUrl } from "@/content/build-log";
+import { bucketScene, type Entry, lookup, type Metric, type Milestone, milestones, repoUrl, sweepScene } from "@/content/build-log";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { gloss } from "./glossed";
 
@@ -33,10 +34,13 @@ const captions: Record<Scene | "idle", string> = {
   sample: "Temperature reshapes the logits, Gumbel noise is added to each, and the largest sum wins; the same seed makes the same pick.",
   roofline: "On a log-log roofline the batch-1 matrix-vector products sit right under the bandwidth roof, which is why the whole step reaches most of it.",
   chunked: "One prompt and the running decoders, before and after a per-step token budget: the prompt is cut into chunks that share each step with the decode rows, so the decoders never stop.",
+  buckets: `A step replays the smallest captured graph that fits its rows and computes the padded rows for nothing. With ${bucketScene.ladders[1].steps} graphs per power of two, ${bucketScene.rows} sequences replay the graph for ${bucketScene.ladders[1].size} where they used to replay the one for ${bucketScene.ladders[0].size}.`,
+  sweep: `Tokens per second as the max batch doubles from ${sweepScene.points[0].batch} to ${sweepScene.points[sweepScene.points.length - 1].batch}: the curve flattens after ${sweepScene.knee}, while attention's share of a step's GPU time keeps growing.`,
+  lookup: `Each token id picks one row of the embedding table and the row is copied into the hidden state. The fast kernel copies it in ${lookup.bytesPerThread}-byte loads; the launch got shorter and the step, which spends under ${lookup.underPct}% of its time here, did not.`,
   warps: "Warps read the KV blocks a chunk at a time with a running max and sum in registers, so shared memory never holds the whole context.",
 };
 
-const figures = { reduce: ReductionRaceFigure, gemm: GemmTilesFigure, tokenize: TokenizeFigure, generate: GenerateFigure, sample: SampleFigure, roofline: RooflineFigure, chunked: ChunkedFigure };
+const figures = { reduce: ReductionRaceFigure, gemm: GemmTilesFigure, tokenize: TokenizeFigure, generate: GenerateFigure, sample: SampleFigure, roofline: RooflineFigure, chunked: ChunkedFigure, buckets: BucketsFigure, sweep: SweepFigure, lookup: LookupScene };
 
 const isStandalone = (s: Scene | "idle"): s is keyof typeof figures => s in figures;
 
@@ -251,7 +255,7 @@ export function BuildTimeline() {
   const reduced = usePrefersReducedMotion();
   const panel = useRef<HTMLDivElement>(null);
   const { active, progress, refs, scrollTo } = useActiveStep(panel);
-  const prs = entries.flatMap((e) => e.prs).length;
+  const prs = new Set(entries.flatMap((e) => e.prs)).size;
   return (
     <div className="md:grid md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-10">
       <div ref={panel} className="sticky top-12 z-10 -mx-4 mb-8 border-b border-border bg-bg px-4 pb-3 pt-2 sm:mx-0 sm:px-0 md:top-20 md:mb-0 md:self-start md:border-0 md:bg-transparent md:p-0">

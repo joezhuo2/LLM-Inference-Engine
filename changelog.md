@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/embedding-timeline
+
+- Part A: the layer map's embedding card on /kernels shows `fast::embedding` beside the naive kernel: what one thread copies in each, the measured median and largest launch times read from the results Kernels table (`embeddingLaunch()` in `web/src/lib/data.ts`), links to both sources and both test files, and the reading that a 3x faster launch moved no end-to-end number. Foundations (the /kernels page and chapter 1 of Every Byte) gains a last step, "a faster kernel, the same step", with the same figure, and start here says the vector is copied from one row of the embedding table. By a Claude subagent, checked by Claude.
+- Part A: the overview timeline's M6 runs to Nov 10 with three entries read from `docs/results.md`: finer graph buckets (padding table), batch size past 16 (throughput curve) and the vectorized embedding lookup (median launch); the count of pull requests shown no longer counts #187 twice. Two animated scenes join the panel: the bucket ladder at max batch 32 with one and two graphs per power of two (17 rows padded to 32 against 24, with the measured ms per token), and the batch sweep (tok/s from max batch 16 to 256 flattening after 64, with attention's share of the step); while the embedding entry is active the panel shows the row gather and the launch bars. By a Claude subagent, checked by Claude.
+
 ## web/graph-buckets-sweep
 
 - Part A: `sync-data` reads the `--graph-steps` default from `src/app/bench_command.cpp` and the split rule constants (`kSplitAttentionBlocks`, `kMaxSplits`, `kMinSplitTokens`) into `graph_rule.json` (`graphRule()` in `web/src/lib/data.ts`), and `web/src/lib/graph-buckets.ts` ports `decode_graph_buckets`, `bucket_for` and `attention_splits`, so the site computes bucket lists and graph counts instead of typing them. By a Claude subagent, checked by Claude.

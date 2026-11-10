@@ -2060,3 +2060,7 @@
 
 - **graph bucket (batch sizes that have a captured graph) and padding cost** => 
 - **why throughput stops rising with batch size once a step turns compute bound** => 
+
+## Embedding lookup and timeline scenes on the site (Branch 138)
+
+- **a faster kernel that moves no end-to-end number (Amdahl's law)** => 
