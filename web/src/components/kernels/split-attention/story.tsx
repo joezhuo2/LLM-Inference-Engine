@@ -144,11 +144,11 @@ export function SplitPicker() {
 const steps: StoryStep[] = [
   {
     id: "few",
-    title: "one block per head",
+    title: "one block per head leaves most of the GPU idle",
     body: (
       <>
         <p>
-          v2 launches one thread block per row and query head. At batch 1 that is {v2.blocks} blocks. Each SM of this GPU
+          The kernel of the chapter attention v2 launches one thread block per row and query head. At batch 1 that is {v2.blocks} blocks. Each SM of this GPU
           holds only a few of them at once (registers and warps both stop it there), so the SMs together have a fixed
           number of slots.
         </p>
@@ -160,25 +160,8 @@ const steps: StoryStep[] = [
     ),
   },
   {
-    id: "waiting",
-    title: "waiting, not reading",
-    body: (
-      <>
-        <p>
-          A long context sounds like a lot of memory to read, but Nsight Compute shows DRAM at{" "}
-          <span className="text-text">{dram}%</span> of its peak. The kernel is not short of bandwidth.
-        </p>
-        <p>
-          It is short of warps. A load that has to go to DRAM waits several hundred cycles on this GPU, much longer than one
-          that hits L2, and a GPU hides that wait by running other warps in the meantime. With <span className="text-accent">{v2.warps}%</span> of warp slots filled, there are
-          too few to switch to.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "cut",
-    title: "cut the context",
+    title: "cut each context into ranges, one block each",
     body: (
       <>
         <p>
@@ -190,24 +173,8 @@ const steps: StoryStep[] = [
     ),
   },
   {
-    id: "wave",
-    title: "fill one wave",
-    body: (
-      <>
-        <p>
-          Each doubling of the split count doubles the grid. While the whole grid fits in one wave, the time halves each
-          time.
-        </p>
-        <p>
-          At the last doubling the grid is <span className="text-accent">{waves[3].waves}</span> waves. The first wave&apos;s worth of blocks run together and the rest wait for a second, mostly empty wave, so each block has half the work and the
-          time barely moves.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "scratch",
-    title: "partial results",
+    title: "each split writes a partial m, l and sum",
     body: (
       <>
         <p>
@@ -223,7 +190,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "merge",
-    title: "merge in a fixed order",
+    title: "rescaled to one maximum, the merge is exact",
     body: (
       <>
         <p>
@@ -234,12 +201,17 @@ const steps: StoryStep[] = [
           Splits finish in whatever order the GPU runs them, but the merge always adds them the same way, so the same
           input gives the same bits on every run. One row at a long context now takes <span className="text-accent">{loop8} µs</span> per call, merge included.
         </p>
+        <p>
+          Rescaling to the largest maximum is the step an online softmax takes when a chunk raises its maximum, so the merged
+          result is the same softmax as one pass over the whole context. Only the order of the float additions differs.
+        </p>
       </>
     ),
   },
   {
     id: "graphs",
-    title: "the graphs still ran v2",
+    title: "a CUDA graph replays the split count it captured",
+    group: "how it got built",
     body: (
       <>
         <p>
@@ -254,8 +226,44 @@ const steps: StoryStep[] = [
     ),
   },
   {
+    id: "waiting",
+    title: "short of warps to switch to, not of bandwidth",
+    group: "measured",
+    body: (
+      <>
+        <p>
+          For v2 at one row, a long context sounds like a lot of memory to read, but Nsight Compute shows DRAM at{" "}
+          <span className="text-text">{dram}%</span> of its peak. The kernel is not short of bandwidth.
+        </p>
+        <p>
+          It is short of warps. A load that has to go to DRAM waits several hundred cycles on this GPU, much longer than one
+          that hits L2, and a GPU hides that wait by running other warps in the meantime. With <span className="text-accent">{v2.warps}%</span> of warp slots filled, there are
+          too few to switch to.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "wave",
+    title: "splits pay until the grid passes one wave",
+    group: "measured",
+    body: (
+      <>
+        <p>
+          Each doubling of the split count doubles the grid. While the whole grid fits in one wave, the time halves each
+          time.
+        </p>
+        <p>
+          At the last doubling the grid is <span className="text-accent">{waves[3].waves}</span> waves. The first wave&apos;s worth of blocks run together and the rest wait for a second, mostly empty wave, so each block has half the work and the
+          time barely moves.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "choose",
-    title: "when splitting loses",
+    title: "many rows or a short context: splitting loses",
+    group: "measured",
     body: (
       <>
         <p>
@@ -273,12 +281,12 @@ const steps: StoryStep[] = [
 
 const captions = [
   `${perSm} blocks per SM and ${v2.warps}% warps active are measured (Nsight Compute, 1 row × 2,048 tokens); ${sms} SMs hold ${slots} blocks at once, calculated`,
-  `from the v2 Nsight Compute table in docs/profiling.md; ${smThroughput}% SM throughput; a DRAM load waits about ${dramCycles} cycles and an L2 hit ${l2Cycles}, both measured with a pointer chase (scripts/onchip_bench.cu)`,
   `one row, one head: ${cutContext.toLocaleString("en-US")} tokens become ${cutSplits} ranges of ${cutContext / cutSplits}; the other ${modelShape().heads - 1} heads are cut the same way`,
-  `measured with Nsight Compute: ${waves.map((w) => w.us.toFixed(1)).join(", ")} µs for ${waves.map((w) => w.splits).join(", ")} splits; up to ${waves[2].splits} splits (${waves[2].blocks} blocks) the grid fits one wave; at ${waves[3].splits} splits ${slots} blocks run first and ${waves[3].blocks - slots} wait; slot placement is a sketch`,
   "the layout of the scratch buffer; the record contents are illustrative",
   `${loopV2} µs → ${loop8} µs per call, one row at 2,048 tokens, v2 against 8 splits, merge included; example values; the same arithmetic as one pass over the whole context`,
   `TPOT p50 of the first of two runs, RTX 5060 Laptop GPU, 64 output tokens; eager at a 1,984-token prompt: v2 ${graphBars[0].ms} → split ${graphBars[1].ms} ms per token; ${graphKeys.reduce((a, k) => a + k.splits.length, 0)} graphs instead of ${graphKeys.length} for the batch sizes ${graphKeys.map((k) => k.bucket).join(", ")}, measured with those sizes; the CUDA Graphs chapter adds batch sizes in between`,
+  `from the v2 Nsight Compute table in docs/profiling.md; ${smThroughput}% SM throughput; a DRAM load waits about ${dramCycles} cycles and an L2 hit ${l2Cycles}, both measured with a pointer chase (scripts/onchip_bench.cu)`,
+  `measured with Nsight Compute: ${waves.map((w) => w.us.toFixed(1)).join(", ")} µs for ${waves.map((w) => w.splits).join(", ")} splits; up to ${waves[2].splits} splits (${waves[2].blocks} blocks) the grid fits one wave; at ${waves[3].splits} splits ${slots} blocks run first and ${waves[3].blocks - slots} wait; slot placement is a sketch`,
   `µs per call from the bench loop; the engine never picks 16; ${fullRows} rows × ${modelShape().heads} heads = ${fullBlocks} blocks against ${slots} slots; the short context is 128 tokens; the rule needs at least ${minTokens} tokens per split, at most ${maxBlocks} blocks and ${maxSplits} splits`,
 ];
 
@@ -293,20 +301,20 @@ export function SplitAttentionStory() {
       steps={steps}
       caption={(i) => captions[i]}
       figure={(i) => {
-        switch (i) {
-          case 0:
+        switch (steps[i].id) {
+          case "few":
             return <OccupancyFigure perSm={perSm} v2={v2} />;
-          case 1:
+          case "waiting":
             return <WaitingFigure warps={v2.warps} sm={smThroughput} dram={dram} />;
-          case 2:
+          case "cut":
             return <CutFigure splits={8} contextBlocks={128} />;
-          case 3:
+          case "wave":
             return <WaveFigure perSm={perSm} rows={waves} />;
-          case 4:
+          case "scratch":
             return <ScratchFigure splits={8} bytes={scratchBytes} />;
-          case 5:
+          case "merge":
             return <MergeFigure />;
-          case 6:
+          case "graphs":
             return <GraphsFigure bars={graphBars} keys={graphKeys} />;
           default:
             return <SplitPicker />;

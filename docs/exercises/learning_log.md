@@ -2106,3 +2106,5 @@
 - **contiguous reads within a block** => 
 - **online softmax as one pass** => 
 - **shared memory per block** => 
+- **wave of thread blocks** => 
+- **partial softmax merge** => 
