@@ -5,7 +5,7 @@ import { TilingSandbox } from "@/components/kernels/gemm/sandbox";
 import { gemmCaptions, gemmNumbers, gemmSteps, RooflinePicker } from "@/components/kernels/gemm/story";
 import { GemmStream } from "@/components/kernels/gemm/stream";
 import { gemmAbout, gemmAboutCaption } from "@/components/kernels/gemm/about";
-import { gemm } from "@/content/kernels/gemm";
+import { gemm, prefillRoof } from "@/content/kernels/gemm";
 import { hardware } from "@/lib/data";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
@@ -42,7 +42,8 @@ const beats: Beat[][] = [
     close("Close up: sixteen rows share one read", [0.42, 0.03, -0.38], 0.7, 0.42, -22, 34),
     close("The rail: drag the batch from 1 to 16", [0.5, 0.02, 0.06], 0.9, 0.36, 0, 44),
   ],
-  [flat("Switch between 1 and 16 rows")],
+  [flat(`Prefill at ${prefillRoof.rows.toLocaleString("en-US")} rows: past the ridge`)],
+  [flat("Switch between 1 row, 16 rows and prefill")],
 ];
 
 const instructions = [
@@ -103,6 +104,14 @@ const workbench: WorkbenchPage[] = [
 function GemmOverlay({ kind, target, narrow }: OverlayProps) {
   return (
     <>
+      {kind === "prefill-roofline" &&
+        target &&
+        createPortal(
+          <div className={narrow ? undefined : "h-[34rem]"}>
+            <RooflinePicker initial="prefill" />
+          </div>,
+          target,
+        )}
       {kind === "roofline" &&
         target &&
         createPortal(
@@ -124,8 +133,8 @@ const chapter: ChapterDef = {
   formula: gemm.formula,
   steps: gemmSteps,
   captions: gemmCaptions,
-  exhibits: [0, 1, 2, 3, 4, null],
-  overlays: [null, null, null, null, null, "roofline"],
+  exhibits: [0, 1, 2, 3, 4, null, null],
+  overlays: [null, null, null, null, null, "prefill-roofline", "roofline"],
   instructions,
   beats,
   workbench,

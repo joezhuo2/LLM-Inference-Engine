@@ -1,10 +1,53 @@
+import { opCost } from "@/components/kernels/foundations/roofline";
+import { ceilings, modelShape, prefillGemms } from "@/lib/data";
 import { type KernelStory, measured } from "./types";
 
 const roof = "roofline";
+const prefillSection = "prefill-against-prompt-length";
 
 export const gemmOps = ["qkv", "o_proj", "gate_up", "down", "lm_head"] as const;
 
 export const roofline = (op: string, rows: string, column: string) => measured(roof, { op, rows }, column, 0, "results");
+
+const prefillMs = (system: string, prompt: string) => measured(prefillSection, { system }, prompt, 0, "results");
+const prefillPerToken = (system: string, prompt: string) => measured(prefillSection, { system }, prompt, 1, "results");
+
+const projectionCost = (rows: number) => {
+  const shape = modelShape();
+  return (["qkv", "o_proj", "gate_up", "down"] as const)
+    .map((op) => opCost(shape, op, rows, shape.roofline_context))
+    .reduce((sum, c) => ({ flops: sum.flops + c.flops, bytes: sum.bytes + c.bytes }), { flops: 0, bytes: 0 });
+};
+
+function prefillRoofline() {
+  const found = prefillGemms();
+  const peak = ceilings();
+  const cost = projectionCost(found.rows);
+  const tflops = cost.flops / (found.ms * 1e-3) / 1e12;
+  return { ...found, flops: cost.flops, bytes: cost.bytes, intensity: cost.flops / cost.bytes, tflops, pct: (100 * tflops) / peak.tflops };
+}
+
+export const prefillRoof = prefillRoofline();
+
+export function prefillCurve() {
+  const short = "128";
+  const long = "2,048";
+  const flatFrom = "512";
+  const llama = "llama.cpp -ub 512";
+  const llamaMs = prefillMs(llama, long);
+  const llamaPerToken = [flatFrom, "1,024", long].map((p) => prefillPerToken(llama, p));
+  return {
+    short,
+    long,
+    flatFrom,
+    engineShort: prefillPerToken("engine", short),
+    engineLong: prefillPerToken("engine", long),
+    llamaLow: Math.min(...llamaPerToken),
+    llamaHigh: Math.max(...llamaPerToken),
+    llamaMs,
+    llamaTflops: projectionCost(Number(long.replace(/,/g, ""))).flops / (llamaMs * 1e-3) / 1e12,
+  };
+}
 
 const b1Roof = gemmOps.map((op) => roofline(op, "1", "% of roof"));
 const mlp = (rows: string) => roofline("gate_up", rows, "us/step") + roofline("down", rows, "us/step");

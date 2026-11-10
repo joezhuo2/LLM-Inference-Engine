@@ -6,6 +6,7 @@ import kvReplayJson from "@/data/kv_replay.json";
 import launchGapsJson from "@/data/launch_gaps.json";
 import modelShapeJson from "@/data/model_shape.json";
 import onchipJson from "@/data/onchip.json";
+import prefillStepJson from "@/data/prefill_step.json";
 import profilingJson from "@/data/profiling.json";
 import resultsDocJson from "@/data/results_doc.json";
 import samplingLogitsJson from "@/data/sampling_logits.json";
@@ -57,6 +58,27 @@ export function launchGaps(mode: GapProfile): LaunchGaps {
   const gaps = (launchGapsJson as Partial<Record<GapProfile, LaunchGaps>>)[mode];
   if (!gaps) throw new Error(`results/${gapFiles[mode]} has no decode launch gap line`);
   return gaps;
+}
+
+export type PrefillGemms = { file: string; kernel: string; count: number; ms: number; maxBatch: number; promptTokens: number; rows: number; spanUs: number };
+
+type PrefillStepData = Partial<{ file: string; kernels: ProfilingTable; prefill: { steps: number; span_us: number }; max_batch: number }>;
+
+export function prefillGemms(): PrefillGemms {
+  const data = prefillStepJson as unknown as PrefillStepData;
+  const { kernels, prefill, max_batch: maxBatch } = data;
+  if (!data.file || !kernels || !prefill || !maxBatch) throw new Error("results/decode_step_b16.md is missing its Top 12 kernels table, its prefill launch gap line or its max_batch line");
+  if (prefill.steps !== 1) throw new Error(`${data.file} profiled ${prefill.steps} prefill steps, so the rows of one prefill step cannot be read from it`);
+  const prompt = /(\d+) prompt tokens/.exec(String(environment.workload ?? ""));
+  if (!prompt) throw new Error("results/environment.txt has no workload line with a prompt length");
+  const [kernelCol, countCol, msCol] = ["kernel", "count", "total ms"].map((name) => kernels.header.indexOf(name));
+  if (kernelCol < 0 || countCol < 0 || msCol < 0) throw new Error(`${data.file} Top 12 kernels table has no kernel, count and total ms columns`);
+  const layers = modelShape().layers;
+  const found = kernels.rows.filter((r) => cellNumber(r[countCol]) === 4 * layers && r[kernelCol].includes("s16816gemm"));
+  const ms = cellNumber(found[0]?.[msCol]);
+  if (found.length !== 1 || ms === undefined) throw new Error(`${data.file} has ${found.length} tensor-op GEMM rows launched 4 x ${layers} times, expected one (qkv, o_proj, gate_up and down in every layer)`);
+  const promptTokens = Number(prompt[1]);
+  return { file: data.file, kernel: found[0][kernelCol], count: 4 * layers, ms, maxBatch, promptTokens, rows: maxBatch * promptTokens, spanUs: prefill.span_us };
 }
 
 export type KvRequest = { id: number; prompt: number; output: number; arrival_s: number; admitted: number; decodes: number; finished: number; final_length: number; blocks: { id: number; step: number }[] };
