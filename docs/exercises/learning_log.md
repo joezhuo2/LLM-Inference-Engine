@@ -2050,3 +2050,8 @@
 - **KV cache bytes per token and concurrent requests per GB** => 
 - **bytes per weight against VRAM (why quantization matters)** => 
 - **recall questions across chapters (retrieval practice)** => 
+
+## Responsive page turns (Branch 135)
+
+- **interruptible animations: compressing a running tween instead of waiting for it** => 
+- **input latency vs. animation length** => 
