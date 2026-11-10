@@ -50,6 +50,7 @@ if(ENGINE_CUDA)
     kernels/add_rmsnorm.cu
     kernels/attention.cu
     kernels/embedding.cu
+    kernels/embedding_fast.cu
     kernels/flash_prefill.cu
     kernels/gemm.cpp
     kernels/paged_attention.cu
