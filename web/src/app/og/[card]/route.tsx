@@ -1,5 +1,5 @@
 import { deadEnds } from "@/content/dead-ends";
-import { exercises } from "@/content/exercises";
+import { cpuCount, exercises, numpyCount } from "@/content/exercises";
 import { kernelStories, kernelStory } from "@/content/kernels";
 import { headlineStats } from "@/lib/data";
 import { ogCard } from "@/lib/og";
@@ -29,7 +29,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ car
       text: "Check out the commit where each stub landed, make its tests pass, then compare with the code that shipped.",
       stats: [
         { label: "exercises", value: String(exercises.length) },
-        { label: "with no GPU needed", value: String(exercises.filter((e) => !e.gpu).length) },
+        { label: "run on a CPU", value: String(cpuCount()) },
+        { label: "with a NumPy version", value: String(numpyCount()) },
       ],
     });
   }

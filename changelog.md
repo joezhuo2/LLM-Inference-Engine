@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/exercise-paths
+
+- Part A: NumPy versions of seven GPU exercises in `docs/exercises/numpy/` (RoPE, write_kv, paged attention v1 and v2, split attention, fused add + RMSNorm, SwiGLU): a stub that raises NotImplementedError, a reference in `solutions/`, and a seeded `check()` that prints ok or the max error against a direct formula, with TinyLlama's shapes read from the config in `tests/unit/test_config.cpp`, the engine's cache layout [block, kv head, slot, dim], 16-token blocks, the half-split RoPE pairing and the config's eps. Float32 with tolerances, not the engine's BF16 rounding. Drafted by Kiro, checked by Claude: every solution prints ok and every stub raises.
+- Part A: every exercise says what it needs: a `runs` tag (BlockManager, Scheduler and chunked prefill run on a CPU, 3 of 12; the rest need an NVIDIA GPU) shown as a badge on each card on /exercises and the kernel pages and on the Every Byte spread, with "3 of 12 run on a CPU" on /exercises and the OG card. The seven exercises with a NumPy version get a "try it in NumPy first" step in the card disclosure (install, the command, the file to edit, what the check compares, GitHub links) and one command line on the book spread. Drafted by Kiro, checked by Claude.
+
 ## kernel/flash-prefill-fixes
 
 - Put token rows on `blockIdx.x` and query heads on `blockIdx.y` in `flash_attention_prefill`, because `blockIdx.y` stops at 65,535 blocks and a step can have more rows than that; reject more than 65,535 query heads or more than INT32_MAX rows with `std::invalid_argument`. (Part C, written by Claude at Joe's request)
