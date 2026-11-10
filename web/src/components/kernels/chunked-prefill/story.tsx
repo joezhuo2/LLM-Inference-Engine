@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { chunkBudget, chunked, chunkedSteps, fmt, largestGap, medianGap, peakGoodput, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
+import { chunkBudget, chunked, chunkedSteps, fmt, largestGap, medianGap, peakGoodput, perRowPrefill, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { AllPrefillFigure, BudgetBarFigure, PreemptFigure, SampledFigure, SpreadFigure } from "./figures";
 import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const aloneTokens = "2,048";
-const alone = prefillMs("engine", aloneTokens);
+const alone = prefillMs(perRowPrefill, aloneTokens);
+const aloneNow = prefillMs("engine", aloneTokens);
 const decoders = 3;
 const prompt = 96;
 const budgets = ["16", "32", "64"];
@@ -44,13 +45,16 @@ const steps: StoryStep[] = [
       <>
         <p>
           schedule() makes every step all prefill or all decode, and prefill goes first. A long prompt is one step, and
-          every running sequence waits for it: alone, the long prompt takes{" "}
-          <span className="text-warn">{alone} ms</span>.
+          every running sequence waits for it: alone, with the per-row prefill attention these runs used, the long prompt takes{" "}
+          <span className="text-warn">{fmt(alone)} ms</span>.
         </p>
         <p>
           Measured under Poisson arrivals, the longest wait between two tokens of one request is{" "}
           <span className="text-warn">{largestGap("engine + graphs", "4")} ms</span> with whole-prompt steps, many times the
           median gap.
+        </p>
+        <p>
+          Every load number in this chapter was measured before the FlashAttention prefill kernel of the next chapter, which shortens the long step itself. They have not been rerun with it.
         </p>
       </>
     ),
@@ -129,7 +133,7 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `TTFT of one ${aloneTokens}-token prompt alone and the largest gap in the QPS sweep at 4 requests per second, docs/results.md, against a median gap of ${medianGap("engine + graphs", "4")} ms; step widths are drawn, not measured`,
+  `TTFT of one ${aloneTokens}-token prompt alone with per-row prefill attention and the largest gap in the QPS sweep at 4 requests per second, docs/results.md, against a median gap of ${medianGap("engine + graphs", "4")} ms; with the FlashAttention prefill kernel the same prompt alone takes ${fmt(aloneNow)} ms, and the sweep has not been rerun with it; step widths are drawn, not measured`,
   "an illustrative step of 16 token slots; the engine's budget is a parameter",
   `an example of ${decoders} decoders and a ${prompt}-token prompt, computed by the same rule as the scheduler; measured, docs/results.md: a ${fmt(stallPrompt)}-token prompt arriving among ${stallDecoding} decoding requests has a longest gap of ${fmt(stallMs("none", "largest gap ms"))} ms and a first token after ${fmt(stallMs("none", "TTFT of the long prompt ms"))} ms with no budget, and ${fmt(stallMs(chunkBudget, "largest gap ms"))} ms and ${fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms with a budget of ${chunkBudget}; peak goodput in requests per second is ${peakGoodput("engine + graphs").value.toFixed(2)} for the engine, ${peakGoodput(chunked).value.toFixed(2)} with that budget and ${peakGoodput("vLLM").value.toFixed(2)} for vLLM`,
   "the running list and waiting queue of Scheduler; the sizes are a sketch",
@@ -163,7 +167,7 @@ export function ChunkedPrefillStory() {
       figure={(i) => {
         switch (i) {
           case 0:
-            return <AllPrefillFigure ms={`${alone} ms`} />;
+            return <AllPrefillFigure ms={`${fmt(alone)} ms with per-row prefill attention`} />;
           case 1:
             return <BudgetBarFigure budget={16} decoders={decoders} />;
           case 2:

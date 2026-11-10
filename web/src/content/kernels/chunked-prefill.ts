@@ -8,6 +8,7 @@ export const chunkBudget = "256";
 export const chunked = `engine + graphs, budget ${chunkBudget}`;
 
 export const prefillMs = (system: string, prompt: string) => measured(prefill, { system }, prompt, 0, "results");
+export const perRowPrefill = "engine, paged prefill";
 export const goodput = (system: string, qps: string) => measured(load, { system, QPS: qps }, "goodput req/s", 0, "results");
 export const ttftTail = (system: string, qps: string) => measured(load, { system, QPS: qps }, "TTFT p99 ms", 0, "results");
 export const largestGap = (system: string, qps: string) => measured(load, { system, QPS: qps }, "largest gap ms", 1, "results");
@@ -114,7 +115,7 @@ export const chunkedPrefill: KernelStory = {
       version: "measured",
       author: "claude",
       title: "A long prompt is slow, and so is everyone waiting",
-      text: `One request per run: TTFT grows from ${prefillMs("engine", "128")} ms at 128 tokens to ${prefillMs("engine", "2,048")} ms at 2,048. Under schedule() the prompt is one step, and no running sequence decodes until it ends.`,
+      text: `One request per run, with the per-row prefill attention of the time: TTFT grows from ${prefillMs(perRowPrefill, "128")} ms at 128 tokens to ${fmt(prefillMs(perRowPrefill, "2,048"))} ms at 2,048 (as rerun on Nov 10). Under schedule() the prompt is one step, and no running sequence decodes until it ends.`,
     },
     {
       date: "Nov 3",

@@ -131,8 +131,8 @@ function stallExhibit(kit: Kit, fonts: Fonts, n: ChunkedPrefillNumbers) {
   waitCard.group.position.set(0.54, 0, -0.06);
   const aloneCard = createCard(kit, 0.38, 0.1, (ctx, w, h) => {
     ctx.fillStyle = kit.palette.faint;
-    ctx.font = `${h * 0.2}px ${fonts.sans}`;
-    ctx.fillText(`a ${fmt(n.aloneTokens)}-token prompt, alone`, w * 0.04, h * 0.3);
+    ctx.font = `${h * 0.18}px ${fonts.sans}`;
+    ctx.fillText(`${fmt(n.aloneTokens)} tokens alone, per-row prefill`, w * 0.04, h * 0.3);
     ctx.fillStyle = kit.palette.pink;
     ctx.font = `${h * 0.48}px ${fonts.serif}`;
     ctx.fillText(`${fmt(n.alone)} ms`, w * 0.04, h * 0.82);
