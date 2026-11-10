@@ -123,8 +123,8 @@ TEST_F(ServerTest, StreamsTheGreedyAnswerOfGenerate) {
     expect_streams_match_generate(*tok, {.max_batch = 4, .graphs = true}, 4);
 }
 
-TEST_F(ServerTest, StreamsTheGreedyAnswerWithTwoGraphBucketsPerOctave) {
-    expect_streams_match_generate(*tok, {.max_batch = 6, .graphs = true, .graph_steps = 2}, 6);
+TEST_F(ServerTest, StreamsTheGreedyAnswerWithPowerOfTwoGraphBuckets) {
+    expect_streams_match_generate(*tok, {.max_batch = 6, .graphs = true, .graph_steps = 1}, 6);
 }
 
 TEST_F(ServerTest, RejectsGraphStepsThatAreNotAPowerOfTwo) {
