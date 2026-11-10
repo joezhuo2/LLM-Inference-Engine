@@ -6,7 +6,9 @@ import { useState } from "react";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { measured } from "@/content/kernels/types";
 import { ceilings, hardware, onchip, onchipRun } from "@/lib/data";
+import { Author } from "../authorship";
 import { EasedBar } from "../eased-bar";
+import { embeddingNumbers, EmbeddingPanel } from "../embedding-lookup";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ContrastFigure, FusionFigure, HierarchyFigure, type Lane, MemoryFigure, RooflineFigure, type Tier } from "./figures";
@@ -47,6 +49,8 @@ const fusion = {
   unfusedKb: measured(fusedSection, { tokens: String(fusionTokens) }, "naive DRAM (KB)"),
   fusedKb: measured(fusedSection, { tokens: String(fusionTokens) }, "fast DRAM (KB)"),
 };
+
+const lookup = embeddingNumbers;
 
 const mb = (kb: number) => `${(kb / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 })} MB`;
 
@@ -268,6 +272,27 @@ const steps: StoryStep[] = [
       </>
     ),
   },
+  {
+    id: "lookup",
+    title: "a faster kernel, the same step",
+    body: (
+      <>
+        <p>
+          The same reading explains a result that looks odd at first. Before the first layer, the embedding lookup copies one
+          row of the embedding table for every token, <span className="text-accent">{lookup.hidden.toLocaleString("en-US")}</span> BF16 values, with no arithmetic at all. The first version gave
+          every token its own block, and each thread copied its values one at a time.{" "}
+          <Author story="The fast one, written by Claude at Joe's request," book="The fast one" /> runs over all the rows at once and gives each thread {lookup.valuesPerLoad} values in a single{" "}
+          {lookup.bytesPerThread}-byte load. Its output is bit-identical.
+        </p>
+        <p>
+          Its median launch in a decode step fell from {lookup.decodeUs.naive} µs to{" "}
+          <span className="text-accent">{lookup.decodeUs.fast} µs</span> (measured), and no end-to-end number moved. The lookup is under {lookup.underPct}% of a step
+          either way, so the tokens per second stayed where they were. A faster kernel only helps if the step was waiting on
+          it. That is why every chapter measures where the time goes before it changes anything.
+        </p>
+      </>
+    ),
+  },
 ];
 
 const captions = [
@@ -277,6 +302,7 @@ const captions = [
   `docs/results.md, Roofline: gate/up at 1 and 16 rows measured; the ring follows the two ceilings, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s`,
   "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
   `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, docs/profiling.md: ${fusion.unfusedKb} KB unfused, ${fusion.fusedKb} KB fused; SwiGLU's vector loads are 16 bytes; each packet stands for a whole tensor, not to scale`,
+  `docs/results.md, Kernels; a decode step copies one row per sequence, a ${lookup.prefillTokens.toLocaleString("en-US")}-token prefill step one row per prompt token; ${lookup.naiveLoads} loads per naive thread computed from the ${lookup.hidden.toLocaleString("en-US")}-value row and its ${lookup.naiveThreads} threads`,
 ];
 
 export const foundationsSteps = steps;
@@ -325,8 +351,10 @@ export function FoundationsStory() {
             );
           case 4:
             return <RowsPicker />;
-          default:
+          case 5:
             return <FusionFigure numbers={fusion} />;
+          default:
+            return <EmbeddingPanel compact />;
         }
       }}
     />

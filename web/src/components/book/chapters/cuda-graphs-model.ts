@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { buckets, captured, eagerLayer, fields, gemm, type Kernel, nodes, short, splitCounts, stageRows, thresholds } from "@/components/kernels/cuda-graphs/figures";
+import { buckets, captured, eagerLayer, fields, gemm, type Kernel, nodes, short, splitCounts, stageRequests, stageRows, thresholds } from "@/components/kernels/cuda-graphs/figures";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
 import { createCard, inkEdges, type Kit, washPlane } from "../ink";
 import type { BookModel } from "../book-scene";
@@ -435,19 +435,20 @@ function stageExhibit(kit: Kit, fonts: Fonts) {
   const root = new THREE.Group();
   root.add(placed(washPlane(kit.palette.blue, 1, 0.8, 0.12), 0.5, 0.002, -0.1));
   const cols = [0.16, 0.3, 0.44, 0.58, 0.75];
-  const hostCard = textCard(kit, fonts, 0.84, 0.17, () => [
-    { text: "the step's batch on the host: 3 requests padded to the 4-row bucket", color: kit.palette.faint, size: 0.11, y: 0.14 },
-    ...fields.map((f, j) => ({ text: f, color: kit.palette.faint, size: 0.11, y: 0.32, x: (cols[j] - 0.08) / 0.84 + 0.06 })),
+  const hostCard = textCard(kit, fonts, 0.84, 0.21, () => [
+    { text: `the step's batch on the host: ${stageRequests} requests padded to the ${stageRows.length}-row bucket`, color: kit.palette.faint, size: 0.09, y: 0.12 },
+    ...fields.map((f, j) => ({ text: f, color: kit.palette.faint, size: 0.09, y: 0.27, x: (cols[j] - 0.08) / 0.84 + 0.06 })),
     ...stageRows.flatMap((r, i) => [
-      { text: r.name, color: r.pad ? kit.palette.pink : kit.palette.ink, size: 0.11, y: 0.5 + i * 0.15 },
-      ...r.v.map((v, j) => ({ text: v, color: r.pad ? kit.palette.pink : kit.palette.ink, size: 0.11, y: 0.5 + i * 0.15, x: (cols[j] - 0.08) / 0.84 + 0.06 })),
+      { text: r.name, color: r.pad ? kit.palette.pink : kit.palette.ink, size: 0.09, y: 0.41 + i * 0.112 },
+      ...r.v.map((v, j) => ({ text: v, color: r.pad ? kit.palette.pink : kit.palette.ink, size: 0.09, y: 0.41 + i * 0.112, x: (cols[j] - 0.08) / 0.84 + 0.06 })),
     ]),
   ]);
-  hostCard.group.position.set(0.5, 0, -0.56);
+  hostCard.group.position.set(0.5, 0, -0.54);
   root.add(hostCard.group);
 
   const bufZ = -0.18;
-  const cellW = 0.024;
+  const cellW = 0.096 / stageRows.length;
+  const tableW = 0.192 / stageRows.length;
   const segW = [0.11, 0.11, 0.11, 0.11, 0.2];
   const segX = [0.12, 0.25, 0.38, 0.51, 0.64];
   const plate = kit.solid(new THREE.BoxGeometry(0.8, 0.012, 0.09));
@@ -472,7 +473,7 @@ function stageExhibit(kit: Kit, fonts: Fonts) {
 
   const cubes: { mesh: THREE.Mesh; field: number; row: number }[] = [];
   const cubeGeometry = new THREE.BoxGeometry(cellW - 0.004, 0.018, 0.03);
-  for (let row = 0; row < 4; row++) {
+  for (let row = 0; row < stageRows.length; row++) {
     for (let field = 0; field < 5; field++) {
       const mesh = new THREE.Mesh(cubeGeometry, stageRows[row].pad ? kit.pink : kit.blue);
       mesh.castShadow = true;
@@ -480,7 +481,7 @@ function stageExhibit(kit: Kit, fonts: Fonts) {
       root.add(mesh);
     }
   }
-  const cellX = (field: number, row: number) => segX[field] + 0.008 + row * (field === 4 ? 0.048 : cellW) + (cellW - 0.004) / 2;
+  const cellX = (field: number, row: number) => segX[field] + 0.008 + row * (field === 4 ? tableW : cellW) + (cellW - 0.004) / 2;
 
   const kz = 0.12;
   const reads = [
@@ -528,7 +529,7 @@ function stageExhibit(kit: Kit, fonts: Fonts) {
   );
   kernelCard.group.position.set(0.5, 0, kz + 0.05);
   const noteCard = textCard(kit, fonts, 0.84, 0.09, () => [
-    { text: "one device buffer of int32, t = 4 rows, at the same address on every step", color: kit.palette.faint, size: 0.2, y: 0.28 },
+    { text: `one device buffer of int32, t = ${stageRows.length} rows, at the same address on every step`, color: kit.palette.faint, size: 0.2, y: 0.28 },
     { text: "a padded row writes nowhere (slot -1) and reads nothing (context 0)", color: kit.palette.pink, size: 0.2, y: 0.6 },
     { text: "a replay gets new values at the same addresses, never new addresses", color: kit.palette.ink, size: 0.2, y: 0.9 },
   ]);
@@ -542,11 +543,11 @@ function stageExhibit(kit: Kit, fonts: Fonts) {
     update: (dt: number, reduced: boolean) => {
       time = reduced ? 6 : (time + dt) % loop;
       cubes.forEach((c) => {
-        const s = 0.4 + c.row * 0.5 + c.field * 0.08;
+        const s = 0.4 + (c.row * 2) / stageRows.length + c.field * 0.08;
         const drop = reduced ? 1 : smooth(s, s + 1, time);
         const leave = reduced ? 0 : smooth(8.2, 8.9, time);
         const startX = cols[c.field] + 0.02;
-        const startZ = -0.47 + c.row * 0.03;
+        const startZ = -0.5 + c.row * 0.024;
         const x = startX + (cellX(c.field, c.row) - startX) * drop;
         const z = startZ + (bufZ - startZ) * drop;
         c.mesh.position.set(x, 0.031 + Math.sin(Math.PI * drop) * 0.08 - leave * 0.03, z);
@@ -566,8 +567,7 @@ function splitsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
   const root = new THREE.Group();
   root.add(placed(washPlane(kit.palette.blue, 1, 0.8, 0.12), 0.5, 0.002, -0.15));
   const gx = (j: number) => 0.34 + j * 0.16;
-  const gz = (i: number) => -0.46 + i * 0.066;
-  const count = Object.values(captured).reduce((s, v) => s + v.length, 0);
+  const gz = (i: number) => -0.46 + i * 0.05;
   const head = textCard(
     kit,
     fonts,
@@ -581,7 +581,7 @@ function splitsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
   );
   head.group.position.set(0.5, 0, gz(0) - 0.09);
   root.add(head.group);
-  const cellGeometry = new THREE.BoxGeometry(0.12, 0.03, 0.044);
+  const cellGeometry = new THREE.BoxGeometry(0.12, 0.03, 0.036);
   const cells: Record<string, THREE.Group> = {};
   buckets.forEach((b, i) => {
     const label = textCard(kit, fonts, 0.16, 0.03, () => [{ text: `${b} row${b > 1 ? "s" : ""}`, color: kit.palette.ink, size: 0.66, y: 0.76 }], -1.1);
@@ -600,7 +600,7 @@ function splitsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
       }
     });
   });
-  const live = new THREE.Mesh(new THREE.BoxGeometry(0.114, 0.026, 0.038), kit.blue);
+  const live = new THREE.Mesh(new THREE.BoxGeometry(0.114, 0.026, 0.03), kit.blue);
   live.castShadow = true;
   root.add(live);
 
@@ -634,9 +634,9 @@ function splitsExhibit(kit: Kit, fonts: Fonts, numbers: CudaGraphsBookNumbers) {
 
   const max = Math.max(numbers.longRun.before, numbers.longRun.after, numbers.longRun.eager);
   const bars = [
-    { label: "5 graphs, 1 split", v: numbers.longRun.before, color: kit.palette.faint },
+    { label: "one graph per bucket", v: numbers.longRun.before, color: kit.palette.faint },
     { label: "eager, split", v: numbers.longRun.eager, color: kit.palette.ink },
-    { label: `${count} graphs`, v: numbers.longRun.after, color: kit.palette.blue },
+    { label: "one per split count", v: numbers.longRun.after, color: kit.palette.blue },
   ];
   const barCard = createCard(kit, 0.84, 0.14, (ctx, w, h) => {
     ctx.fillStyle = kit.palette.ink;

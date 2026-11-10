@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { embeddingNumbers, EmbeddingPanel } from "@/components/kernels/embedding-lookup";
 import { foundationsAbout, foundationsAboutCaption } from "@/components/kernels/foundations/about";
 import { foundationsIdeas, IdeaFigure, ideaCaptions, ideaInstructions } from "@/components/kernels/foundations/ideas";
 import { FoundationsSandbox } from "@/components/kernels/foundations/sandbox";
@@ -46,6 +47,7 @@ const beats: Beat[][] = [
     close("Close up: the unfused pair writes the sum and reads it twice", [0.5, 0.03, -0.42], 1.0, 0.44, -14, 48),
     close("From the side: fused, the sum stays in registers", [0.5, 0.03, -0.06], 1.0, 0.44, 18, 46),
   ],
+  [flat(`The embedding lookup: ${embeddingNumbers.speedup.toFixed(1)}x faster per launch, the step unchanged`)],
 ];
 
 const instructions = [
@@ -56,6 +58,7 @@ const instructions = [
   "Drag the pink ball along the rail to change the rows.",
   undefined,
   "Count the trips to global memory in each row.",
+  "Compare the two lanes, then the two pairs of bars.",
 ];
 
 const workbench: WorkbenchPage[] = [
@@ -102,6 +105,14 @@ function FoundationsOverlay({ kind, target, narrow }: OverlayProps) {
           </div>,
           target,
         )}
+      {kind === "lookup" &&
+        target &&
+        createPortal(
+          <div className={narrow ? "pb-16" : "h-[34rem]"}>
+            <EmbeddingPanel />
+          </div>,
+          target,
+        )}
       <FoundationsSandbox pages={{ one: kind === "sandbox-one" ? target : null, two: kind === "sandbox-two" ? target : null }} />
     </>
   );
@@ -114,8 +125,8 @@ const chapter: ChapterDef = {
   formula: foundations.formula,
   steps: [...foundationsIdeas, ...foundationsSteps],
   captions: [...ideaCaptions, ...foundationsCaptions],
-  exhibits: [...foundationsIdeas.map(() => null), 0, 1, 2, 3, null, 4],
-  overlays: [...foundationsIdeas.map((_, k) => `idea-${k}`), null, null, null, null, "rows", null],
+  exhibits: [...foundationsIdeas.map(() => null), 0, 1, 2, 3, null, 4, null],
+  overlays: [...foundationsIdeas.map((_, k) => `idea-${k}`), null, null, null, null, "rows", null, "lookup"],
   instructions,
   beats,
   workbench,

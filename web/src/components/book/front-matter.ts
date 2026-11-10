@@ -8,7 +8,7 @@ import { measured } from "@/content/kernels/types";
 import { chapterReview, recallOf } from "@/content/reviews";
 import type { ChapterReview, ReviewQuestion } from "@/content/reviews/types";
 import { loadSlo } from "@/lib/data";
-import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
+import { type LinkLine, PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
 import { bookHref } from "./paths";
@@ -80,6 +80,8 @@ function paragraph(ctx: Ctx, text: string, x: number, y: number, width: number, 
   return y;
 }
 
+const under = (ctx: Ctx, text: string, x: number, y: number, size: number): LinkLine => ({ x, y, width: ctx.measureText(text).width, size });
+
 const ROW = 92;
 const toBox = (x0: number, x1: number, y: number): [number, number, number, number] => [x0 / W, (y - 56) / H, x1 / W, (y + 36) / H];
 
@@ -103,6 +105,11 @@ function contentsRows(parts: typeof bookParts, withErrata: boolean) {
 }
 
 function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) {
+  const x0 = side === "left" ? 130 : 170;
+  const x1 = side === "left" ? W - 170 : W - 130;
+  const links: PageLink[] = contentsRows(parts, withErrata)
+    .filter((r) => r.href)
+    .map((r) => ({ side, box: toBox(x0, x1, r.y), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
     if (side === "left") {
@@ -127,6 +134,8 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       ctx.font = `46px ${fonts.serif}`;
       const tx = x0 + 70;
       ctx.fillText(row.text, tx, row.y);
+      const link = links.find((l) => l.href === row.href);
+      if (link) link.lines = [under(ctx, row.text, tx, row.y, 46)];
       const end = tx + ctx.measureText(row.text).width + 18;
       if (row.page === undefined) continue;
       ctx.font = `30px ${fonts.sans}`;
@@ -143,11 +152,6 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
     }
     if (side === "left") folio(ctx, String(chapterPage("contents")), side, x0, x1, palette, fonts);
   };
-  const x0 = side === "left" ? 130 : 170;
-  const x1 = side === "left" ? W - 170 : W - 130;
-  const links: PageLink[] = contentsRows(parts, withErrata)
-    .filter((r) => r.href)
-    .map((r) => ({ side, box: toBox(x0, x1, r.y), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
   return { paint, links };
 }
 
@@ -187,6 +191,7 @@ function deadEndPage(d: DeadEnd, side: Side, offset: number) {
     ctx.fillStyle = palette.blue;
     ctx.fillText(d.kernel, kx, y);
     link.box = [(kx - 8) / W, (y - 40) / H, (kx + ctx.measureText(d.kernel).width + 8) / W, (y + 14) / H];
+    link.lines = [under(ctx, d.kernel, kx, y, 28)];
     y += 40;
     const parts: [string, string][] = [
       ["tried", d.tried],
@@ -316,6 +321,7 @@ export function introStop(def: ChapterDef): Stop {
     ctx.fillStyle = palette.ink;
     ctx.font = `92px ${fonts.serif}`;
     ctx.fillText("in this chapter", x0, 260);
+    let entry = 0;
     for (const row of rows) {
       if (row.k === undefined) {
         ctx.fillStyle = palette.faint;
@@ -336,6 +342,7 @@ export function introStop(def: ChapterDef): Stop {
       while (size > 26 && ctx.measureText(row.text).width > x1 - pw - 40 - tx) ctx.font = `${--size}px ${fonts.serif}`;
       ctx.fillStyle = palette.ink;
       ctx.fillText(row.text, tx, row.y);
+      links[entry++].lines = [under(ctx, row.text, tx, row.y, size)];
       ctx.fillStyle = palette.faint;
       for (let x = tx + ctx.measureText(row.text).width + 18; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
     }
@@ -392,7 +399,7 @@ function exerciseSteps(e: Exercise): ExerciseStep[] {
 
 const NUMPY_Y = H - 260;
 
-function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number) {
+function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number, link?: PageLink) {
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "left");
     const width = x1 - x0;
@@ -424,6 +431,7 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number) {
       ctx.fillStyle = palette.blue;
       ctx.font = `25px ${fonts.mono}`;
       ctx.fillText(numpyCommand(numpy), x0, NUMPY_Y + 48);
+      if (link) link.lines = [under(ctx, numpyCommand(numpy), x0, NUMPY_Y + 48, 25)];
     }
     folio(ctx, String(folioPage()), "left", x0, x1, palette, fonts);
   };
@@ -431,7 +439,7 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number) {
 
 const LINK_TEXT = "The full spec, with commands to copy →";
 
-function exerciseRight(e: Exercise) {
+function exerciseRight(e: Exercise, link: PageLink) {
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "right");
     const width = x1 - x0;
@@ -480,6 +488,7 @@ function exerciseRight(e: Exercise) {
     ctx.fillStyle = palette.blue;
     ctx.font = `38px ${fonts.serif}`;
     ctx.fillText(LINK_TEXT, x0, H - 200);
+    link.lines = [under(ctx, LINK_TEXT, x0, H - 200, 38)];
   };
 }
 
@@ -487,10 +496,10 @@ export function exerciseStops(def: ChapterDef): Stop[] {
   const first = def.steps.length + def.workbench.length + reviewCount(def.slug);
   return chapterExercises(def.slug).map((e, j) => {
     const local = first + j;
-    const left = exerciseLeft(def, e, () => (chapterPage(def.slug) ?? 0) + local + 1);
     const numpy = numpyOf(e);
     const links: PageLink[] = [{ side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: `/exercises#${e.id}`, label: `${e.title}: ${LINK_TEXT}` }];
     if (numpy) links.push({ side: "left", box: [130 / W, (NUMPY_Y + 48 - 40) / H, (W - 170) / W, (NUMPY_Y + 48 + 16) / H], href: numpyUrl(numpy), label: `${e.title}: the NumPy version on GitHub, ${numpyCommand(numpy)}` });
+    const left = exerciseLeft(def, e, () => (chapterPage(def.slug) ?? 0) + local + 1, links[1]);
     return {
       exhibit: null,
       spread: local,
@@ -500,7 +509,7 @@ export function exerciseStops(def: ChapterDef): Stop[] {
       folio: "",
       overlay: null,
       beats: [flat(`Build it yourself: ${e.title}`)],
-      paint: { left, right: exerciseRight(e) },
+      paint: { left, right: exerciseRight(e, links[0]) },
       links,
     };
   });
@@ -708,7 +717,7 @@ const needFirst = [
 ];
 
 const tokenLife = [
-  "A prompt arrives as text. The tokenizer cuts it into tokens, numbers from a vocabulary of 32,000, and each token becomes a vector of 2,048 values.",
+  "A prompt arrives as text. The tokenizer cuts it into tokens, numbers from a vocabulary of 32,000, and each token becomes a vector of 2,048 values, copied from one row of the embedding table.",
   "Prefill runs the whole prompt through the model at once. Decode then writes the answer one token at a time: the newest token goes through all 22 layers, and its last vector becomes 32,000 scores, one for every possible next token. Sampling picks one and the loop starts again.",
   "Every layer does the same ten things, shown in the map of one decode step. Most of the time goes to reading weights and cached keys and values from memory, not to arithmetic. Chapter 1 shows why, and the rest of the book is about moving fewer bytes and wasting less time between kernels.",
   "Read it in order the first time, because the parts follow the token. Each chapter says what its piece is, walks through how it works, and ends with something to try and an exercise to build.",
@@ -758,7 +767,7 @@ function mapRows(): { rows: MapRow[]; layerTop: number; layerBottom: number } {
   return { rows, layerTop, layerBottom };
 }
 
-function tokenMapPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) {
+const tokenMapPage = (links: PageLink[]) => (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
   const { ctx, x0, x1 } = begin(canvas, "right");
   ctx.fillStyle = palette.faint;
   ctx.font = `26px ${fonts.sans}`;
@@ -777,12 +786,14 @@ function tokenMapPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fo
   ctx.textAlign = "right";
   ctx.fillText("× 22 layers", x1 - 20, layerTop - 14);
   ctx.textAlign = "left";
+  let entry = 0;
   for (const row of rows) {
     const x = row.inLayer ? x0 + 30 : x0;
     ctx.fillStyle = palette.ink;
     ctx.font = `36px ${fonts.serif}`;
     ctx.fillText(row.label, x, row.y);
     if (row.slugs.length) {
+      links[entry++].lines = [under(ctx, row.label, x, row.y, 36)];
       ctx.fillStyle = palette.blue;
       ctx.font = `28px ${fonts.sans}`;
       const text = `ch ${row.slugs.map(chapterNumber).join(", ")}`;
@@ -794,7 +805,7 @@ function tokenMapPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fo
   ctx.fillStyle = palette.faint;
   ctx.font = `28px ${fonts.sans}`;
   paragraph(ctx, `Around the whole step: CUDA Graphs (ch ${chapterNumber("cuda-graphs")}) replay it with one launch, and the scheduler with chunked prefill (ch ${chapterNumber("chunked-prefill")}) decides which requests share it. Click a row to open its chapter.`, x0, H - 250, x1 - x0, 40);
-}
+};
 
 function mapLinks(): PageLink[] {
   const { rows } = mapRows();
@@ -809,6 +820,7 @@ export function startStops(): Stop[] {
   const page = () => chapterPage("start");
   const next = () => (chapterPage("start") ?? 0) + 1;
   const last = () => (chapterPage("start") ?? 0) + 2;
+  const links = mapLinks();
   return [
     {
       ...flatStop(0, "Start here: who this book is for", "start here", [...forWho, ...needFirst]),
@@ -816,8 +828,8 @@ export function startStops(): Stop[] {
     },
     {
       ...flatStop(1, "Start here: the life of a token", "the life of a token", tokenLife),
-      paint: { left: textPage("left", "Every Byte · start here", "the life of a token", tokenLife, next, 32), right: tokenMapPage },
-      links: mapLinks(),
+      paint: { left: textPage("left", "Every Byte · start here", "the life of a token", tokenLife, next, 32), right: tokenMapPage(links) },
+      links,
     },
     {
       ...flatStop(2, "Start here: serving in one spread", "serving in one spread", serving),

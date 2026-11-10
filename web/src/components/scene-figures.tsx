@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { metric } from "@/components/gpu-floorplan";
 import { Frame, Label } from "@/components/kernels/frame";
 import { useLoop } from "@/components/kernels/loop";
+import { bucketScene, sweepScene } from "@/content/build-log";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { ceilings } from "@/lib/data";
 
@@ -280,6 +281,144 @@ export function RooflineFigure() {
         <Label x={136} y={86} className="fill-text">whole batch-1 step</Label>
       </motion.g>
       <Label x={20} y={384}>dots are measured per-op points from the profiled decode step</Label>
+    </Frame>
+  );
+}
+
+function Key({ x, y, children, anchor, className = "fill-text", size = 14 }: { x: number; y: number; children: React.ReactNode; anchor?: "end" | "middle"; className?: string; size?: 12 | 14 }) {
+  return (
+    <text x={x} y={y} textAnchor={anchor} className={`${className} ${size === 14 ? "text-[14px]" : "text-[12px]"}`}>
+      {children}
+    </text>
+  );
+}
+
+const laneLeft = 24;
+const cellPitch = 16;
+const cellX = (row: number) => laneLeft + row * cellPitch;
+const barLeft = 150;
+const barWidth = 300;
+
+export function BucketsFigure() {
+  const { on, grow } = useLoop(14);
+  const { rows, maxBatch, ladders, costPct } = bucketScene;
+  const slowest = Math.max(...ladders.map((l) => l.ms));
+  return (
+    <Frame label={`${rows} rows at max batch ${maxBatch}. ${ladders.map((l) => `With ${l.steps} ${l.steps === 1 ? "graph" : "graphs"} per power of two the graphs are ${l.sizes.join(", ")}, the step replays the graph for ${l.size} with ${l.size - rows} padded rows and takes ${l.ms} ms per token`).join(". ")}. Padding to ${ladders[0].size} costs about ${costPct.toFixed(0)}% per token`}>
+      {ladders.map((l, k) => {
+        const y = 36 + k * 124;
+        const t = 0.03 + k * 0.27;
+        return (
+          <g key={l.steps}>
+            <Key x={laneLeft} y={y - 10}>{`${l.steps} ${l.steps === 1 ? "graph" : "graphs"} per power of two: ${l.sizes.length} graphs`}</Key>
+            {Array.from({ length: maxBatch }, (_, i) => (
+              <rect key={i} x={cellX(i) + 1} y={y} width={cellPitch - 2} height={22} rx={2} className="fill-baseline/25" />
+            ))}
+            {l.sizes.map((b, i) => (
+              <motion.g key={b} {...on(t + i * 0.006)}>
+                <line x1={cellX(b)} y1={y + 24} x2={cellX(b)} y2={y + 30} className={b === l.size ? "stroke-accent" : "stroke-muted"} />
+                <Key size={12} x={cellX(b) - (b === 1 ? 6 : 0)} y={y + 44} anchor={b === 1 ? undefined : "end"} className={b === l.size ? "fill-accent" : "fill-muted"}>{b}</Key>
+              </motion.g>
+            ))}
+            {Array.from({ length: rows }, (_, i) => (
+              <motion.rect key={i} x={cellX(i) + 1} y={y} width={cellPitch - 2} height={22} rx={2} className="fill-accent" {...on(t + 0.05 + i * 0.006)} />
+            ))}
+            <motion.rect x={cellX(0) - 2} y={y - 3} width={l.size * cellPitch + 4} height={28} rx={4} className="fill-none stroke-accent" strokeDasharray="4 3" {...on(t + 0.15)} />
+            {Array.from({ length: l.size - rows }, (_, i) => (
+              <motion.rect key={i} x={cellX(rows + i) + 1} y={y} width={cellPitch - 2} height={22} rx={2} className="fill-series-2" {...on(t + 0.17 + i * 0.006)} />
+            ))}
+            <motion.g {...on(t + 0.22)}>
+              <Key x={laneLeft} y={y + 68}>{`${rows} rows replay the graph for ${l.size}: ${l.size - rows} padded rows thrown away`}</Key>
+            </motion.g>
+          </g>
+        );
+      })}
+      <Label x={laneLeft} y={292}>measured ms per token</Label>
+      {ladders.map((l, k) => {
+        const y = 300 + k * 22;
+        const t = 0.58 + k * 0.05;
+        return (
+          <g key={l.steps}>
+            <Key x={laneLeft} y={y + 11} className={k ? "fill-accent" : "fill-text"}>{`graph for ${l.size}`}</Key>
+            <motion.rect x={barLeft} y={y + 1} width={(barWidth * l.ms) / slowest} height={10} rx={3} className={k ? "fill-accent" : "fill-baseline"} {...grow(t, t + 0.08)} />
+            <motion.g {...on(t + 0.06)}>
+              <Key x={barLeft + (barWidth * l.ms) / slowest + 8} y={y + 11} className={k ? "fill-accent" : "fill-text"}>{`${l.ms.toFixed(2)} ms`}</Key>
+            </motion.g>
+          </g>
+        );
+      })}
+      <motion.g {...on(0.72)}>
+        <Key x={laneLeft} y={362}>{`padding to ${ladders[0].size} costs about ${costPct.toFixed(0)}% per token against ${ladders[1].size} (calculated)`}</Key>
+      </motion.g>
+      <rect x={laneLeft} y={376} width={10} height={10} rx={2} className="fill-accent" />
+      <Label x={laneLeft + 16} y={385}>{`${rows} decode rows`}</Label>
+      <rect x={laneLeft + 120} y={376} width={10} height={10} rx={2} className="fill-series-2" />
+      <Label x={laneLeft + 136} y={385}>padded rows</Label>
+      <Label x={536} y={385} anchor="end">{`max batch ${maxBatch}`}</Label>
+    </Frame>
+  );
+}
+
+const sweepTop = Math.ceil(Math.max(...sweepScene.points.map((p) => p.tokens)) / 500) * 500;
+const sweepX = (i: number) => 96 + i * 104;
+const sweepY = (tokens: number) => 232 - (tokens / sweepTop) * 180;
+const shareBase = 348;
+const shareHeight = (share: number) => (share / 100) * 84;
+const count = (n: number) => n.toLocaleString("en-US");
+
+export function SweepFigure() {
+  const { on, grow, reduced } = useLoop(14);
+  const clock = useClock(14);
+  const drawn = useTransform(clock, [0, 0.06, 0.4, 1], [0, 0, 1, 1]);
+  const ink = useTransform(clock, [0, 0.04, 0.06, 0.94, 0.97, 1], [0, 0, 1, 1, 0, 0]);
+  const { points, knee, gains, toKnee } = sweepScene;
+  const kneeAt = points.findIndex((p) => p.batch === knee);
+  const after = gains.slice(kneeAt + 1).map((g) => `+${((g - 1) * 100).toFixed(0)}%`);
+  const path = points.map((p, i) => `${i ? "L" : "M"}${sweepX(i)},${sweepY(p.tokens)}`).join(" ");
+  const profiled = points.filter((p) => p.share !== undefined);
+  return (
+    <Frame label={`Output tokens per second with graphs against max batch: ${points.map((p) => `${count(p.tokens)} at ${p.batch}`).join(", ")}. The curve flattens after ${knee}. Attention's share of a step's GPU time: ${profiled.map((p) => `${p.share}% at ${p.batch}`).join(", ")}`}>
+      <Label x={12} y={28}>tok/s, with graphs, measured</Label>
+      <line x1={60} y1={232} x2={536} y2={232} className="stroke-border" />
+      <line x1={60} y1={44} x2={60} y2={232} className="stroke-border" />
+      {Array.from({ length: Math.floor(sweepTop / 1000) + 1 }, (_, i) => i * 1000).map((v) => (
+        <g key={v}>
+          <line x1={55} y1={sweepY(v)} x2={60} y2={sweepY(v)} className="stroke-border" />
+          <Label x={52} y={sweepY(v) + 4} anchor="end">{count(v)}</Label>
+        </g>
+      ))}
+      <motion.g {...on(0.36)}>
+        <line x1={sweepX(kneeAt)} y1={sweepY(points[kneeAt].tokens) + 8} x2={sweepX(kneeAt)} y2={shareBase - shareHeight(points[kneeAt].share ?? 0) - 22} strokeDasharray="3 4" className="stroke-accent" />
+      </motion.g>
+      <motion.path d={path} fill="none" strokeWidth={2} strokeLinejoin="round" className="stroke-accent" style={{ pathLength: drawn, opacity: reduced ? 1 : ink }} />
+      {points.map((p, i) => (
+        <motion.g key={p.batch} {...on(0.06 + i * 0.085)}>
+          <circle cx={sweepX(i)} cy={sweepY(p.tokens)} r={4} className="fill-accent" />
+          <Key x={sweepX(i)} y={sweepY(p.tokens) + (i < kneeAt ? 22 : -10)} anchor={i < kneeAt ? undefined : "middle"}>{count(p.tokens)}</Key>
+        </motion.g>
+      ))}
+      <motion.g {...on(0.46)}>
+        <rect x={72} y={46} width={196} height={46} rx={4} className="fill-accent/10 stroke-accent" />
+        <Key size={12} x={82} y={65}>{`${toKnee.toFixed(2)}x from ${points[0].batch} to ${knee},`}</Key>
+        <Key size={12} x={82} y={82}>{`then ${after.join(" and ")} per doubling`}</Key>
+      </motion.g>
+      <Label x={12} y={262}>{"attention, share of a step's GPU time"}</Label>
+      <line x1={60} y1={shareBase} x2={536} y2={shareBase} className="stroke-border" />
+      {points.map((p, i) => (
+        <g key={p.batch}>
+          <Key size={12} x={sweepX(i)} y={shareBase + 16} anchor="middle" className={p.batch === knee ? "fill-accent" : "fill-muted"}>{p.batch}</Key>
+          {p.share !== undefined && (
+            <>
+              <motion.rect x={sweepX(i) - 20} y={shareBase - shareHeight(p.share)} width={40} height={shareHeight(p.share)} rx={2} className="fill-series-2" {...grow(0.5 + i * 0.04, 0.6 + i * 0.04, "y")} />
+              <motion.g {...on(0.58 + i * 0.04)}>
+                <Key x={sweepX(i)} y={shareBase - shareHeight(p.share) - 6} anchor="middle">{`${p.share}%`}</Key>
+              </motion.g>
+            </>
+          )}
+        </g>
+      ))}
+      <Label x={12} y={shareBase + 16}>max batch</Label>
+      <Label x={12} y={388}>{`share measured in eager profiles, max batch ${profiled[0].batch} and up`}</Label>
     </Frame>
   );
 }

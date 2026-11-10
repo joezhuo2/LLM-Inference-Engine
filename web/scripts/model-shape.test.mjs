@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { parseModelShape, parseRooflineContext } from "./model-shape.mjs";
+import { parseGraphRule, parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 
 const cpp = `const std::string kTinyLlama = R"({
   "hidden_size": 2048, "intermediate_size": 5632, "num_hidden_layers": 22, "num_attention_heads": 32,
@@ -26,4 +26,13 @@ test("the repository files parse", () => {
   const shape = parseModelShape(readFileSync(new URL("../../tests/unit/test_config.cpp", import.meta.url), "utf8"));
   assert.equal(shape.hidden % shape.heads, 0);
   assert.ok(parseRooflineContext(readFileSync(new URL("../../docs/results.md", import.meta.url), "utf8")) > 0);
+});
+
+test("the graph rule is read from the C++ sources", () => {
+  const rule = parseGraphRule("    int graph_steps = 2;", "inline constexpr int64_t kSplitAttentionBlocks = 256;", "constexpr int64_t kMaxSplits = 8;\nconstexpr int64_t kMinSplitTokens = 256;");
+  assert.deepEqual(rule, { steps: 2, split_blocks: 256, max_splits: 8, min_split_tokens: 256 });
+  assert.throws(() => parseGraphRule("nothing", "", ""), /graph_steps/);
+  const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
+  const repo = parseGraphRule(read("src/app/bench_command.cpp"), read("include/engine/sched/paged_batch.h"), read("src/sched/paged_batch.cpp"));
+  assert.ok(repo.steps >= 1 && (repo.steps & (repo.steps - 1)) === 0);
 });
