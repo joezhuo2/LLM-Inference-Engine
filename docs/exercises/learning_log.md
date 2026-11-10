@@ -2007,3 +2007,8 @@
 - **varlen batching with cumulative row offsets (cu_seqlens)** => 
 - **chunked prefill: the cached prefix from the paged cache, the chunk's own K and V from the qkv buffer** => 
 - **sizing a grid without reading device-side lengths on the host (graph capture)** => 
+
+## Graph bucket wiring (Branch 129)
+
+- **choosing the graph for a batch: the smallest captured bucket that holds it** => 
+- **padded rows in a replayed graph: compute spent on rows nobody reads** => 

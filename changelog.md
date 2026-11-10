@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## runtime/graph-buckets-wiring
+
+- Wire `decode_graph_buckets` into `engine bench` and `engine serve` in place of the two `graph_buckets` copies (`src/app/bench_command.cpp`, `src/server/gpu_backend.cpp`), with a new `--graph-steps` option (graph sizes per power of two of batch size, a power of two, default 1, which gives the old 1, 2, 4, 8 and so on plus the max batch); anything else is rejected with std::invalid_argument. The bench summary CSV, the trace meta and the `/v1/steps` meta record `graph_steps` (0 without `--graphs`). Two new GPU tests in `tests/gpu/test_server.cpp`: six streamed clients at max batch 6 with `--graph-steps 2` (buckets 1, 2, 3, 4, 6) all get the greedy answer of `generate`, and steps of 0, 3, 6 and -2 are rejected. (Part B)
+
 ## kernel/flash-prefill-fixes
 
 - Put token rows on `blockIdx.x` and query heads on `blockIdx.y` in `flash_attention_prefill`, because `blockIdx.y` stops at 65,535 blocks and a step can have more rows than that; reject more than 65,535 query heads or more than INT32_MAX rows with `std::invalid_argument`. (Part C, written by Claude at Joe's request)
