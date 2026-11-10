@@ -5,7 +5,7 @@ import { createCard, type Kit, inkSegments, washPlane } from "../ink";
 import type { BookModel } from "../book-scene";
 import type { Fonts } from "../typeset";
 
-export const GEMM_STOP = { job: 0, trick: 1, gemv: 2, roof: 3, batch: 4 };
+export const GEMM_STOP = { job: 0, gemv: 1, roof: 2, batch: 3, trick: 6 };
 
 const placed = <T extends THREE.Object3D>(object: T, x: number, y: number, z: number): T => {
   object.position.set(x, y, z);

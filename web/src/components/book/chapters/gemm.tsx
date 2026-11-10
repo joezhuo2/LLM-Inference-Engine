@@ -22,12 +22,6 @@ const beats: Beat[][] = [
     close("The LM head: one matrix, read once per token", [0.84, 0.05, -0.34], 0.4, 0.38, 24, 36),
   ],
   [
-    overview("One row of W in three places"),
-    close("Close up: the twelve addresses, one row after the other", [0.53, 0.02, -0.5], 0.92, 0.3, 0, 42),
-    close("From the side: row r of W is column r of what cuBLAS sees", [0.5, 0.03, -0.2], 0.9, 0.45, -24, 50),
-    close("The call: one cublasGemmEx, nothing copied", [0.5, 0.02, 0.24], 0.92, 0.36, 0, 72),
-  ],
-  [
     overview("Batch 1: every weight row streams past x once"),
     close("Close up: a weight row read and one value of y", [0.6, 0.02, -0.22], 0.6, 0.4, -24, 34),
     close("From the side: x stays put, the weights stream", [0.42, 0.03, -0.32], 0.7, 0.42, 30, 24),
@@ -44,14 +38,22 @@ const beats: Beat[][] = [
   ],
   [flat(`Prefill at ${prefillRoof.rows.toLocaleString("en-US")} rows: past the ridge`)],
   [flat("Switch between 1 row, 16 rows and prefill")],
+  [
+    overview("One row of W in three places"),
+    close("Close up: the twelve addresses, one row after the other", [0.53, 0.02, -0.5], 0.92, 0.3, 0, 42),
+    close("From the side: row r of W is column r of what cuBLAS sees", [0.5, 0.03, -0.2], 0.9, 0.45, -24, 50),
+    close("The call: one cublasGemmEx, nothing copied", [0.5, 0.02, 0.24], 0.92, 0.36, 0, 72),
+  ],
 ];
 
 const instructions = [
   "Watch the ink and blue towers of each projection rise to the same shape.",
-  "Watch one row of W lift in all three places: the same four addresses.",
   "Watch each weight row stream past x and leave one value of y.",
   "Watch the five blue towers reach the glass roof while attention stays low.",
   "Drag the pink ball along the rail to change the rows from one to 16.",
+  undefined,
+  undefined,
+  "Watch one row of W lift in all three places: the same four addresses.",
 ];
 
 const workbench: WorkbenchPage[] = [
@@ -133,8 +135,8 @@ const chapter: ChapterDef = {
   formula: gemm.formula,
   steps: gemmSteps,
   captions: gemmCaptions,
-  exhibits: [0, 1, 2, 3, 4, null, null],
-  overlays: [null, null, null, null, null, "prefill-roofline", "roofline"],
+  exhibits: [0, 2, 3, 4, null, null, 1],
+  overlays: [null, null, null, null, "prefill-roofline", "roofline", null],
   instructions,
   beats,
   workbench,

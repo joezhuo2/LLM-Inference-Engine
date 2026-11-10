@@ -2115,3 +2115,4 @@
 - **threshold search instead of a sort for top-k** => 
 - **padding a batch to a graph bucket** => 
 - **the ridge point as the line between memory bound and compute bound** => 
+- **row-major W read column-major as its transpose** => 
