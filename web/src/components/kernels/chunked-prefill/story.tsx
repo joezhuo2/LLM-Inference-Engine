@@ -78,7 +78,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "spread",
-    title: "a long prompt spreads over steps",
+    title: "the budget trades the prompt's wait for everyone's",
     body: (
       <>
         <p>
@@ -116,6 +116,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "sampled",
+    group: "how it got built",
     title: "only finished chunks get logits",
     body: (
       <>
@@ -126,6 +127,9 @@ const steps: StoryStep[] = [
         <p>
           update() takes exactly one token per sampled entry, in that order. It can be empty, and the call is still
           required. first_token is stamped when the token arrives, not at the first chunk.
+        </p>
+        <p>
+          This list is what the runner was wired to. The spec came first, with 25 tests that 14 deliberately broken schedulers fail. Joe implemented it, and one fix drafted with Claude followed: a preempted decoder now replays its prompt and its output. The batch builder then put the decode rows first and the chunk rows after them, with logit rows only for the sampled sequences. Pure decode steps kept their CUDA Graph, and a step that holds a chunk runs without one.
         </p>
       </>
     ),
