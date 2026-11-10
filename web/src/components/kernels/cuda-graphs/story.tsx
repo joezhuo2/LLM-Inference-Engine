@@ -5,12 +5,12 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { longPrompt, twoRuns } from "@/content/kernels/cuda-graphs";
 import { measured } from "@/content/kernels/types";
-import { launchGaps } from "@/lib/data";
+import { launchGaps, modelShape } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { useLoop } from "../loop";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
-import { CaptureFigure, EagerTimelineFigure, eagerLayer, GapFigure, graphLayer, GraphGridFigure, layerIndex, StageFigure } from "./figures";
+import { buckets, CaptureFigure, EagerTimelineFigure, eagerLayer, GapFigure, graphLayer, GraphGridFigure, layerIndex, splitCounts, StageFigure, thresholds } from "./figures";
 import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const eager = launchGaps("eager");
@@ -42,7 +42,7 @@ const prediction: Prediction = expectAnswer({
   question: "Switch the step from eager to graph. What gets shorter?",
   choices: ["mostly the kernels", "mostly the gaps between them", "both about equally"],
   answer: gapSaved > 2 * kernelSaved ? "mostly the gaps between them" : kernelSaved > 2 * gapSaved ? "mostly the kernels" : "both about equally",
-  why: `The step shrinks from ${fmtUs(eager.span_us)} to ${fmtUs(replay.span_us)} µs in the profiles. The kernels are busy for ${fmtUs(eager.busy_us)} and ${fmtUs(replay.busy_us)} µs, ${Math.abs(kernelSaved) < 0.02 * eager.busy_us ? "about the same" : `${Math.round(Math.abs(kernelSaved / eager.busy_us) * 100)}% ${kernelSaved > 0 ? "less" : "more"}`}; the rest is the wait before each kernel, as the GPU's idle share drops from ${eager.idle_pct}% to ${replay.idle_pct}%.`,
+  why: `The profiled step is ${fmtUs(eager.span_us - replay.span_us)} µs shorter with the graph (calculated from the two profiles). The kernels are busy for ${Math.abs(kernelSaved) < 0.02 * eager.busy_us ? "about the same time" : kernelSaved > 0 ? "a little less time" : "a little more time"}; the rest is the wait before each kernel, as the idle share in the readout shows.`,
 }, "mostly the gaps between them");
 
 export function ReplayPicker() {
@@ -149,6 +149,12 @@ const saved = ["1", "4", "16"].map((b) => tpot("engine", b) - tpot("engine + gra
 const savedShare = Math.round((100 * saved[0]) / tpot("engine", "1"));
 const layersAhead = Math.round(trace.eager.cpu_ahead_us / layerUs(eagerLayer));
 const shortKernels = eagerLayer.filter((k) => k.end - k.start < 3).length;
+const gateUp = eagerLayer.find((k) => k.op === "gate_up");
+if (!gateUp) throw new Error("cuda-graphs: no gate_up kernel in the profiled layer");
+const gateUpUs = gateUp.end - gateUp.start;
+const shape = modelShape();
+const paddedBucket = buckets.find((b) => b >= 3);
+const walkedTo = thresholds[thresholds.length - 1].context;
 
 const steps: StoryStep[] = [
   {
@@ -157,15 +163,13 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          A decode step of TinyLlama is {eager.kernels} kernels: ten per layer for 22 layers, plus the embedding, the last
-          norm and the LM head. Run eagerly, the CPU hands each one to the GPU with its own cudaLaunchKernel, which takes{" "}
-          <span className="text-text">{`${fmt(trace.eager.launches.cudaLaunchKernel.median_us)} µs`}</span> on the
-          CPU under the profiler. The launches queue up on a stream and the GPU runs them in order.
+          A decode step of TinyLlama is {eager.kernels} kernels: the same kernels in every layer, plus the embedding, the last
+          norm and the LM head. Run eagerly, the CPU hands each one to the GPU with its own cudaLaunchKernel, which costs
+          the CPU a dozen or so microseconds under the profiler. The launches queue up on a stream and the GPU runs them in order.
         </p>
         <p>
-          The CPU keeps up easily: in the middle of a step it is{" "}
-          <span className="text-text">{`${fmt(trace.eager.cpu_ahead_us / 1000, 1)} ms`}</span> ahead, launching
-          kernels {layersAhead} layers further on. And still the GPU is idle for{" "}
+          The CPU keeps up easily: in the middle of a step it is well ahead, launching
+          kernels several layers further on. And still the GPU is idle for{" "}
           <span className="text-warn">{`${eager.idle_pct}%`}</span> of the step.
         </p>
       </>
@@ -183,8 +187,8 @@ const steps: StoryStep[] = [
           <span className="text-warn">{`${trace.eager.gap_us.p50} µs`}</span>, whatever the CPU is doing.
         </p>
         <p>
-          A few microseconds is nothing next to a 140 µs gate/up GEMV, but a step has {eager.kernels - 1} of these
-          boundaries, and {shortKernels} of every ten kernels run for under 3 µs. Together they come to{" "}
+          A few microseconds is nothing next to a long gate/up GEMV, but a step has hundreds of these
+          boundaries, and several of the kernels in a layer run for only a few microseconds. Together they come to{" "}
           <span className="text-warn">{`${fmt(eager.span_us - eager.busy_us)} µs`}</span> per step. Faster kernels
           would not touch it; fewer launches would.
         </p>
@@ -222,9 +226,9 @@ const steps: StoryStep[] = [
           runner, outside the graph, and the captured kernels read them there.
         </p>
         <p>
-          The five arrays sit at offsets that depend on the number of rows, and so does every GEMM&apos;s shape. A batch of
-          3 is padded to the 4-row bucket with rows that write nowhere and attend to nothing, so it replays the 4-row graph.
-          Five buckets, 1 to 16 rows, cover every decode batch.
+          The arrays sit at offsets that depend on the number of rows, and so does every GEMM&apos;s shape. A batch is padded
+          up to the next bucket with rows that write nowhere and attend to nothing, so it replays that bucket&apos;s graph.
+          Together {buckets.length} buckets cover every decode batch.
         </p>
       </>
     ),
@@ -235,16 +239,14 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The frozen grid caught up with the engine once. Split attention cuts a long context across 2, 4 or 8 thread blocks
+          The frozen grid caught up with the engine once. Split attention cuts a long context across several thread blocks
           per head, and the split count is part of the attention kernel&apos;s grid. The graphs were captured on an empty
           dummy batch, so every replay ran the one-split kernel: at a long prompt eager became faster than the graphs.
         </p>
         <p>
-          Now the constructor walks the contexts up to 2,048 tokens and captures again whenever a bucket&apos;s split count
-          changes: 11 graphs instead of 5. A replay picks its graph from the batch&apos;s longest context, and at a
-          1,984-token prompt the time per token goes from{" "}
-          <span className="text-text">{`${longRun.before.toFixed(1)}`}</span> to{" "}
-          <span className="text-accent">{`${longRun.after.toFixed(1)} ms`}</span>.
+          Now the constructor walks the contexts up to the longest it serves and captures again whenever a bucket&apos;s split count
+          changes, so there are more graphs. A replay picks its graph from the batch&apos;s longest context, and at a long
+          prompt the time per token falls to <span className="text-accent">{`${longRun.after.toFixed(1)} ms`}</span>.
         </p>
       </>
     ),
@@ -255,16 +257,16 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Switch the step on the right: the same ten kernels, from the two profiles, close up. The median gap drops from{" "}
-          {trace.eager.gap_us.p50} to <span className="text-accent">{`${trace.graphs.gap_us.p50} µs`}</span>,
-          and the GPU is idle for {replay.idle_pct}% of the step instead of {eager.idle_pct}%. The kernels themselves take
+          Switch the step on the right: the same kernels, from the two profiles, close up. The median gap drops to{" "}
+          <span className="text-accent">{`${trace.graphs.gap_us.p50} µs`}</span>,
+          and the GPU is idle for far less of the step. The kernels themselves take
           the same time.
         </p>
         <p>
           Without the profiler the saving is{" "}
-          <span className="text-accent">{`${saved.map((s) => s.toFixed(2)).join(", ")} ms`}</span> per token at
-          batch 1, 4 and 16: roughly a fixed amount per step, since every step has the same {eager.kernels} boundaries. It
-          is {savedShare}% of a batch-1 token and less of a longer batch-16 step. Prefill steps are not graphed.
+          <span className="text-accent">{`${saved.map((s) => s.toFixed(2)).join(", ")} ms`}</span> per token at the
+          three batch sizes in the readout: roughly a fixed amount per step, since every step has the same boundaries. It
+          is a bigger share of a token from a lone request than of a token in a full batch. Prefill steps are not graphed.
         </p>
       </>
     ),
@@ -272,12 +274,12 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `one decode step from the batch-1 Nsight Systems profile behind results/decode_step.md (commit ${trace.commit}): real start and end times, layer ${layerIndex} drawn`,
-  "gap = start of a kernel minus the end of the one before it, over every decode step of both profiles (web/scripts/step-timeline.py)",
+  `one decode step from the batch-1 Nsight Systems profile behind results/decode_step.md (commit ${trace.commit}): real start and end times, layer ${layerIndex} drawn; ${eagerLayer.length} kernels in a layer, ${shape.layers} layers; cudaLaunchKernel median ${fmt(trace.eager.launches.cudaLaunchKernel.median_us)} µs on the CPU; mid-step the CPU is ${fmt(trace.eager.cpu_ahead_us / 1000, 1)} ms ahead, about ${layersAhead} layers`,
+  `gap = start of a kernel minus the end of the one before it, over every decode step of both profiles (web/scripts/step-timeline.py); the gate/up GEMV runs ${fmt(gateUpUs)} µs, a step has ${eager.kernels - 1} boundaries, and ${shortKernels} of the ${eagerLayer.length} kernels in a layer run under 3 µs`,
   "one layer of the 224 nodes drawn; the code is capture() in src/runtime/decode_graphs.cpp",
-  "the token ids, positions and slots are made up; the layout is PagedRunner::stage's",
-  "graph count and split rule from docs/profiling.md, Split attention in CUDA Graphs; ms per token from engine bench, mean of two runs",
-  "layer from the two profiles; idle share from results/decode_step*.md; ms per token from engine bench in docs/results.md (TPOT p50, 3 runs)",
+  `the token ids, positions and slots are made up; a batch of 3 would pad to the ${paddedBucket}-row bucket, and the buckets run from ${buckets[0]} to ${buckets[buckets.length - 1]} rows; the layout is PagedRunner::stage's`,
+  `graph count and split rule from docs/profiling.md, Split attention in CUDA Graphs; split counts ${splitCounts.join(", ")}, contexts walked up to ${fmt(walkedTo)} tokens, ${longRun.before.toFixed(1)} ms per token before and ${longRun.after.toFixed(1)} after at the ${longPrompt.prompt}-token prompt; ms per token from engine bench, mean of two runs`,
+  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in docs/results.md (TPOT p50, 3 runs); the saving is ${savedShare}% of a batch-1 token (calculated)`,
 ];
 
 export const cudaGraphsSteps = steps;

@@ -1,5 +1,13 @@
 import { chapterNumber } from "../book-order";
+import { modelShape } from "@/lib/data";
 import type { ChapterReview } from "./types";
+
+const shape = modelShape();
+const rowBytes = 2 * shape.intermediate * 2;
+const weightBytes = shape.hidden * rowBytes;
+const roundTripKb = ((2 * rowBytes) / 1024).toFixed(1);
+const roundTripShare = (((2 * rowBytes) / weightBytes) * 100).toFixed(1);
+const weightsMb = (weightBytes / 1024 ** 2).toFixed(1);
 
 export const review: ChapterReview = {
   lesson: "SwiGLU keeps PyTorch's two roundings, then wins with wide loads on big inputs and scalar threads on small ones.",
@@ -19,6 +27,12 @@ export const review: ChapterReview = {
       question: "If the kernel keeps the same formula but skips rounding the activation before the product, should the output still match the reference bit for bit?",
       answer: "No, the output can change.",
       why: "The reference rounds the activation before multiplying by up, then rounds the product. Keeping extra precision until the end changes that chain.",
+    },
+    {
+      question: `Chapter ${chapterNumber("add-rmsnorm")} fused two kernels so the value between them stayed in registers. Fusing SwiGLU into the gate/up GEMM would keep its row out of memory the same way. Why would that save little at decode?`,
+      answer: "The row it keeps out of memory is tiny next to the weights the GEMM reads.",
+      why: `Fusion saves the round trip of the value through DRAM and one launch. At one token that round trip is ${roundTripKb} KB per layer, ${roundTripShare}% of the ${weightsMb} MB of gate and up weights (calculated from config.json), so it saves a launch more than bytes.`,
+      recall: "add-rmsnorm",
     },
   ],
 };

@@ -1,5 +1,10 @@
 import { sampling } from "@/content/kernels/sampling";
+import { measured } from "@/content/kernels/types";
+import { hardware } from "@/lib/data";
+import { chapterNumber } from "../book-order";
 import type { ChapterReview } from "./types";
+
+const temperature = (rows: string) => measured("sampling-branch-65", { rows }, "temperature");
 
 export const review: ChapterReview = {
   lesson: "Gumbel noise turns sampling into an argmax, so one kernel serves every mode.",
@@ -19,6 +24,12 @@ export const review: ChapterReview = {
       question: "A request moves from running alone to running in a batch, with its logits, seed, step and sampling settings unchanged. Should its next token change?",
       answer: "No.",
       why: "Philox gets each token's noise from the request's seed and its offset at that decode step. That noise does not depend on which other requests share the launch, and the tests check that the draw stays the same.",
+    },
+    {
+      question: `Chapter ${chapterNumber("split-attention")} added blocks to a batch-1 launch because most SMs sat idle. Sampling launches one block per row. Why does temperature sampling take about the same time at 16 rows as at 1?`,
+      answer: "The extra rows run on SMs that were idle.",
+      why: `At 1 row the launch is one block on one of the ${hardware().sms} SMs, the under-filled launch that split attention fixed by adding blocks. Each extra row is another block on an idle SM, so the call takes ${temperature("1")} µs at 1 row and ${temperature("16")} µs at 16 (measured, first of two runs).`,
+      recall: "split-attention",
     },
   ],
 };

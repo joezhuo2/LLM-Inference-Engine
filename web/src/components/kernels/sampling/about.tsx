@@ -56,22 +56,22 @@ export const samplingAbout: StoryStep = {
   body: (
     <>
       <p>
-        The last layer of the model, the LM head, turns the token&apos;s final vector of {fmt(shape.hidden)} values into {fmt(context.vocab)} logits, one score for every token in the vocabulary. A logit can be any number, and only the gaps between them matter. Sampling turns those scores into the one token id the model writes next.
+        The last layer of the model, the LM head, turns the token&apos;s final vector into {fmt(context.vocab)} logits, one score for every token in the vocabulary. A logit can be any number, and only the gaps between them matter. Sampling turns those scores into the one token id the model writes next.
       </p>
       <p>
-        Softmax makes them probabilities: divide each logit by a temperature T, raise e to it, and divide by the sum over all {fmt(context.vocab)}. Greedy decoding takes the largest logit, so a prompt always gets the same answer. Sampling draws one token at random with those probabilities.
+        Softmax makes them probabilities: divide each logit by a temperature T, raise e to it, and divide by the sum over the whole vocabulary. Greedy decoding takes the largest logit, so a prompt always gets the same answer. Sampling draws one token at random with those probabilities.
       </p>
       <p>
-        After &ldquo;{certain.answer_so_far}&rdquo; TinyLlama puts {pct(sure)} on {name(certain.tokens[0])}, the start of Ottawa, so both give the same word. After &ldquo;{context.answer_so_far}&rdquo; the likeliest name, {aboutContext.tokens[0]}, gets {pct(atOne[0])} at T = 1: greedy writes {aboutContext.tokens[0]} every time, sampling a different name most times.
+        After &ldquo;{certain.answer_so_far}&rdquo; TinyLlama puts nearly all its weight on {name(certain.tokens[0])}, the start of Ottawa, so both give the same word. After &ldquo;{context.answer_so_far}&rdquo; the likeliest name, {aboutContext.tokens[0]}, gets {pct(atOne[0])} at the model&apos;s own odds: greedy writes {aboutContext.tokens[0]} every time, sampling a different name most times.
       </p>
       <p>
-        Temperature sets how bold the draw is. At T = 0.5 the gaps double and {aboutContext.tokens[0]} rises to {pct(aboutContext.odds(0.5)[0])}; at T = 1.5 it falls to {pct(aboutContext.odds(1.5)[0])}. Toward T = 0 sampling becomes greedy, and the engine treats T = 0 as greedy. The rest of the chapter is how the GPU picks without sorting the vocabulary.
+        Temperature sets how bold the draw is. At half the temperature the gaps double and {aboutContext.tokens[0]} rises to {pct(aboutContext.odds(0.5)[0])}; at a higher temperature it falls. Toward zero sampling becomes greedy, and the engine treats a temperature of zero as greedy. The rest of the chapter is how the GPU picks without sorting the vocabulary.
       </p>
     </>
   ),
 };
 
-export const samplingAboutCaption = `TinyLlama's logits for “${context.answer_so_far}”, BF16 on the CPU: the ${SHOWN} likeliest of ${fmt(context.vocab)} tokens and the rest in one column; the draws are a simulation`;
+export const samplingAboutCaption = `TinyLlama's logits for “${context.answer_so_far}”, BF16 on the CPU: the ${SHOWN} likeliest of ${fmt(context.vocab)} tokens and the rest in one column; the final vector has ${fmt(shape.hidden)} values; the likeliest name has ${pct(aboutContext.odds(0.5)[0])}, ${pct(atOne[0])} and ${pct(aboutContext.odds(1.5)[0])} at T = 0.5, 1 and 1.5, and after “${certain.answer_so_far}” the likeliest token has ${pct(sure)} (calculated from the logits); the draws are a simulation`;
 
 const temps = [0.5, 1, 1.5];
 const seeds = [3, 11, 5];

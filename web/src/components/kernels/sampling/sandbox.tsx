@@ -296,7 +296,7 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
       </div>
 
       <div className="space-y-1.5 leading-relaxed text-muted">
-        <p>Try: drag T to 0 and sample, then to 2 and sample 20. Pull top-k down to 3 and watch the bars after it. Switch the stage to see what each knob does to the same row.</p>
+        <p>Try: drag T to zero and sample, then all the way up and press sample 20. Pull top-k down to a few tokens and watch the bars after it. Switch the stage to see what each knob does to the same row.</p>
         <p>{`Logits are the BF16 output of TinyLlama on the CPU (${dump.commit}, ${dump.date.slice(0, 10)}): the ${dump.top} largest and the rest in bins of ${dump.bin}. Draws use the engine's Gumbel-max rule.`}</p>
       </div>
     </>

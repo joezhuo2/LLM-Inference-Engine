@@ -19,7 +19,7 @@ const prediction: Prediction = expectAnswer({
   question: "Raise the budget from 16 tokens to 64. Does the long prompt's first token come sooner or later?",
   choices: ["sooner", "later", "no change"],
   answer: steps64 < steps16 ? "sooner" : steps64 > steps16 ? "later" : "no change",
-  why: `With ${decoders} decoders taking a row each, the ${prompt}-token prompt needs ${steps16} steps at 16 and ${steps64} at 64. Fewer steps, each a little longer: a small budget keeps every step short for the decoders and makes the prompt wait longer.`,
+  why: `With the decoders taking a row each, the prompt needs ${steps16} steps at the smallest budget and ${steps64} at the largest. Fewer steps, each a little longer: a small budget keeps every step short for the decoders and makes the prompt wait longer.`,
 }, "sooner");
 
 function SpreadPicker() {
@@ -44,13 +44,13 @@ const steps: StoryStep[] = [
       <>
         <p>
           schedule() makes every step all prefill or all decode, and prefill goes first. A long prompt is one step, and
-          every running sequence waits for it: alone, a 2,048-token prompt takes{" "}
+          every running sequence waits for it: alone, the long prompt takes{" "}
           <span className="text-warn">{alone} ms</span>.
         </p>
         <p>
-          Measured under Poisson arrivals at 4 requests per second, the longest wait between two tokens of one request is{" "}
-          <span className="text-warn">{largestGap("engine + graphs", "4")} ms</span> with whole-prompt steps, against a
-          median gap of {medianGap("engine + graphs", "4")} ms.
+          Measured under Poisson arrivals, the longest wait between two tokens of one request is{" "}
+          <span className="text-warn">{largestGap("engine + graphs", "4")} ms</span> with whole-prompt steps, many times the
+          median gap.
         </p>
       </>
     ),
@@ -82,17 +82,14 @@ const steps: StoryStep[] = [
           everyone else&apos;s.
         </p>
         <p>
-          Measured with a {fmt(stallPrompt)}-token prompt arriving among {stallDecoding} decoding requests: with no budget the longest gap is{" "}
-          <span className="text-text">{fmt(stallMs("none", "largest gap ms"))} ms</span> and the prompt&apos;s first
-          token comes after <span className="text-text">{fmt(stallMs("none", "TTFT of the long prompt ms"))} ms</span>; with
-          a budget of {chunkBudget} the gap is <span className="text-accent">{fmt(stallMs(chunkBudget, "largest gap ms"))} ms</span> and
-          the first token <span className="text-text">{fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms</span>.
+          Measured with a long prompt arriving among decoding requests, a budget cuts the longest gap to{" "}
+          <span className="text-accent">{fmt(stallMs(chunkBudget, "largest gap ms"))} ms</span>, and the prompt&apos;s first
+          token comes later.
         </p>
         <p>
-          Under load the same budget moves peak goodput from {peakGoodput("engine + graphs").value.toFixed(2)} to{" "}
-          {peakGoodput(chunked).value.toFixed(2)} requests per second; vLLM reaches {peakGoodput("vLLM").value.toFixed(2)}, so the
-          stalls were only part of the gap. Pick a budget on the right; the prompt and the three decoders there are an
-          example, not a benchmark.
+          Under load the same budget raises peak goodput to <span className="text-accent">{peakGoodput(chunked).value.toFixed(2)}</span> requests
+          per second, still below vLLM, so the stalls were only part of the gap. Pick a budget on the right; the prompt and the
+          decoders there are an example, not a benchmark.
         </p>
       </>
     ),
@@ -132,9 +129,9 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `TTFT of one 2,048-token prompt alone and the largest gap in the QPS sweep, docs/results.md; step widths are drawn, not measured`,
+  `TTFT of one ${aloneTokens}-token prompt alone and the largest gap in the QPS sweep at 4 requests per second, docs/results.md, against a median gap of ${medianGap("engine + graphs", "4")} ms; step widths are drawn, not measured`,
   "an illustrative step of 16 token slots; the engine's budget is a parameter",
-  "an example of 3 decoders and a 96-token prompt, computed by the same rule as the scheduler; the numbers in the text are measured, docs/results.md",
+  `an example of ${decoders} decoders and a ${prompt}-token prompt, computed by the same rule as the scheduler; measured, docs/results.md: a ${fmt(stallPrompt)}-token prompt arriving among ${stallDecoding} decoding requests has a longest gap of ${fmt(stallMs("none", "largest gap ms"))} ms and a first token after ${fmt(stallMs("none", "TTFT of the long prompt ms"))} ms with no budget, and ${fmt(stallMs(chunkBudget, "largest gap ms"))} ms and ${fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms with a budget of ${chunkBudget}; peak goodput in requests per second is ${peakGoodput("engine + graphs").value.toFixed(2)} for the engine, ${peakGoodput(chunked).value.toFixed(2)} with that budget and ${peakGoodput("vLLM").value.toFixed(2)} for vLLM`,
   "the running list and waiting queue of Scheduler; the sizes are a sketch",
   "the sampled list of ChunkedStep; the sizes are a sketch",
 ];

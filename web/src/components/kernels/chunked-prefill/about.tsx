@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { chunkBudget, chunkedSteps, fmt } from "@/content/kernels/chunked-prefill";
+import { modelShape } from "@/lib/data";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 import { StickyStory, type StoryStep } from "../sticky-story";
@@ -12,7 +13,7 @@ export const chunkedPrefillAbout: StoryStep = {
   body: (
     <>
       <p>
-        A request is answered in two phases. Prefill runs every token of the prompt through the model in one forward pass: all 22 layers see all the positions together, each layer writes their keys and values into the KV cache, and the logits of the last position give the first output token. The wait for it is the time to first token, TTFT.
+        A request is answered in two phases. Prefill runs every token of the prompt through the model in one forward pass: all {modelShape().layers} layers see all the positions together, each layer writes their keys and values into the KV cache, and the logits of the last position give the first output token. The wait for it is the time to first token, TTFT.
       </p>
       <p>
         Decode follows. Each step feeds the newest token back in as a single row, reads the keys and values already in the cache instead of computing them again, and produces the next token. A decoding request moves exactly one token per step, so the time between its tokens is the length of a step.

@@ -4,7 +4,7 @@ import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { chapterNumber } from "@/content/book-order";
 import { measured } from "@/content/kernels/types";
-import { cellNumber, decodeSteps, modelShape } from "@/lib/data";
+import { cellNumber, decodeSteps, hardware, modelShape } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -26,6 +26,18 @@ const gateUpWeightBytes = 2 * shape.hidden * shape.intermediate * bf16;
 const roundTripKb = ((2 * gateUpRowBytes) / 1024).toFixed(1);
 const roundTripShare = (((2 * gateUpRowBytes) / gateUpWeightBytes) * 100).toFixed(1);
 const weightsMb = (gateUpWeightBytes / 1024 ** 2).toFixed(1);
+const fmtInt = (v: number) => v.toLocaleString("en-US");
+const ffText = fmtInt(shape.intermediate);
+const hiddenText = fmtInt(shape.hidden);
+const rowValues = fmtInt(2 * shape.intermediate);
+const vecWidth = 16 / bf16;
+const scalarInstructions = 3 * vecWidth;
+const vectors = shape.intermediate / vecWidth;
+const threads = 256;
+const rowBlocks = shape.intermediate / threads;
+const sms = hardware().sms;
+const smallTokens = Math.floor((sms * (threads / 2) - 1) / vectors);
+const smallBlocks = Math.ceil(vectors / threads);
 
 const gbs = (tokens: string, column: string) => (measured(fast, at(tokens), "DRAM, fast (KB)") * 1024) / (measured(fast, at(tokens), column) * 1000);
 
@@ -53,11 +65,23 @@ const stepOp = (() => {
 })();
 
 const vector1 = measured(fast, at("1"), "fast (us)");
+const gainTokens = ["64", "512", "4096"];
+const gains = gainTokens.map((t) => measured(fast, at(t), "naive (us)") / measured(fast, at(t), "fast (us)"));
+const gainLow = Math.min(...gains).toFixed(1);
+const gainHigh = Math.max(...gains).toFixed(1);
+const smallKb = ["1", "16"].map((t) => fmtInt(measured(fast, at(t), "DRAM, fast (KB)")));
+const stepShare = (() => {
+  const t = decodeSteps.b1;
+  const row = t?.rows.find((r) => r[0] === "swiglu");
+  const value = t && row ? cellNumber(row[t.header.indexOf("% of kernel time")]) : undefined;
+  if (value === undefined) throw new Error("swiglu: no share of kernel time in the batch-1 decode step");
+  return value;
+})();
 const prediction: Prediction = expectAnswer({
   question: "At 1 token, is the vector kernel, with its 16-byte loads, faster than naive?",
   choices: ["faster", "about the same", "slower"],
   answer: vector1 / naive1 < 0.9 ? "faster" : vector1 / naive1 <= 1.1 ? "about the same" : "slower",
-  why: `At 1 token it takes ${vector1.toFixed(1)} µs against naive's ${naive1.toFixed(1)} µs. 5,632 values make only 704 vectors, 3 blocks for 26 SMs, so wide loads have little to save. Switch to 4,096 tokens to see where they pay.`,
+  why: `At 1 token the vector kernel takes ${(vector1 / naive1).toPrecision(2)}x of naive's time (calculated from the two bars). The row makes too few vectors to fill the GPU, so wide loads have little to save. Switch to the largest size to see where they pay.`,
 }, "about the same");
 
 export function TokensPicker() {
@@ -120,9 +144,9 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Every layer&apos;s MLP widens the hidden state from 2,048 to 5,632 values twice, with a gate projection and an up
+          Every layer&apos;s MLP widens the hidden state twice, with a gate projection and an up
           projection, mixes the two, and narrows it back down. The engine runs both projections as one GEMM, so each token
-          comes out as a single row of <span className="text-accent">11,264 values</span>: the gate half, then the up half.
+          comes out as a single row of <span className="text-accent">{rowValues} values</span>: the gate half, then the up half.
         </p>
         <p>
           SwiGLU is the mixing. Output j is silu(gate j) times up j. silu is close to zero for a negative gate and close to
@@ -139,7 +163,7 @@ const steps: StoryStep[] = [
         <p>
           PyTorch computes this in BF16 as two operations, act_fn(gate) and then the product, so the silu is rounded to BF16
           before it meets up. The naive kernel does exactly that, with an accurate expf and a true divide, and reproduces
-          Hugging Face&apos;s act tensor bit for bit on all 22 layers.
+          Hugging Face&apos;s act tensor bit for bit on every traced layer.
         </p>
         <p>
           This is already a small case of the fusion in chapter {chapterNumber("add-rmsnorm")}, &quot;fusion, the pattern&quot;: silu(gate) stays in a
@@ -156,15 +180,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          <Author story="Joe's first draft" book="The first draft" /> kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: 22
-          blocks of 256 threads along a row of 5,632, and the row on blockIdx.y. It was bit-identical from the start and a
-          little faster than naive at every size,{" "}
-          <span className="text-accent">{draft1.toFixed(1)} µs</span> against{" "}
-          <span className="text-text">{naive1.toFixed(1)} µs</span> at one token.
+          <Author story="Joe's first draft" book="The first draft" /> kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: blocks of threads along a row, and the row on blockIdx.y. It was bit-identical from the start and a
+          little faster than naive at every size, <span className="text-accent">{draft1.toFixed(1)} µs</span> at one token.
         </p>
         <p>
           The 2D grid had a ceiling: gridDim.y stops at 65,535, so a batch with more rows would not launch. The engine never
-          sends that many rows, but the spec promised any shape, and the tests now launch 70,000. Both kernels now run on one flat grid
+          sends that many rows, but the spec promised any shape, and the tests now launch more rows than that. Both kernels now run on one flat grid
           and work out the row from the index.
         </p>
       </>
@@ -176,16 +197,15 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Each value is 2 bytes, and a thread that loads one at a time issues 24 memory instructions for 8 outputs. The
-          vector kernel reads 8 gate values and 8 up values with two 16-byte loads and writes 8 outputs with one 16-byte
-          store: 3 instructions for the same bytes, so the threads spend their time waiting on memory and not issuing loads.
-          The two loads are {gateToUpBytes} bytes apart. The one GEMM writes each row as the gate half and then the up half, so up
-          value j sits {shape.intermediate.toLocaleString("en-US")} values after gate value j, and because that is a multiple of 8 both loads stay 16-byte aligned.
+          A thread that loads one value at a time issues a memory instruction for every value it touches. The
+          vector kernel reads a vector of gate values and a vector of up values with two wide loads and writes the matching outputs with one wide
+          store: an eighth of the instructions for the same bytes, so the threads spend their time waiting on memory and not issuing loads.
+          The two loads are half a row apart. The one GEMM writes each row as the gate half and then the up half, so up
+          value j sits half a row after gate value j, and because half a row is a whole number of vectors both loads stay aligned.
         </p>
         <p>
-          With enough tokens that is what the kernel is limited by. At 4,096 tokens it takes{" "}
-          <span className="text-accent">{vectorBig.toFixed(0)} µs</span> against{" "}
-          <span className="text-text">{naiveBig.toFixed(0)} µs</span> for naive, which is the GPU&apos;s measured
+          With enough tokens that is what the kernel is limited by. At the largest size it takes{" "}
+          <span className="text-accent">{vectorBig.toFixed(0)} µs</span>, well under naive&apos;s time, which is the GPU&apos;s measured
           peak bandwidth: there is no faster way to move those bytes.
         </p>
       </>
@@ -197,15 +217,14 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          A decode step has one token per request. At one token the 5,632 values make only 704 vectors, 3 blocks on a GPU
-          with 26 SMs, and each thread runs its 8 exp and divide chains one after another. The vector kernel was no faster
+          A decode step has one token per request. At one token the row makes only a few hundred vectors, {smallBlocks} blocks on a GPU
+          with many SMs, and each thread runs its exp and divide chains one after another. The vector kernel was no faster
           than naive there.
         </p>
         <p>
-          So the kernel counts its work first: below half a block per SM, 4 tokens or fewer here, it takes the scalar path,
-          whose 22 blocks spread the same chains over most of the GPU. At one token that is{" "}
-          <span className="text-accent">{smallFast.toFixed(2)} µs</span> against{" "}
-          <span className="text-text">{smallVector.toFixed(2)} µs</span> for the vector kernel in the same session.
+          So the kernel counts its work first: below half a block per SM, a handful of tokens here, it takes the scalar path,
+          whose blocks spread the same chains over most of the GPU. At one token that is{" "}
+          <span className="text-accent">{smallFast.toFixed(2)} µs</span>, faster than the vector kernel in the same session.
         </p>
       </>
     ),
@@ -216,15 +235,14 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          From 64 tokens up the vector kernel is 1.6x to 2x faster than naive, and the bandwidth line shows why the gain
-          stops there. At 1 and 16 tokens the work is a few hundred KB and the launch itself sets the time. Try the token
+          At the larger token counts the vector kernel is <span className="text-accent">{gainLow}x to {gainHigh}x</span> faster than naive, and the bandwidth line shows why the gain
+          stops there. At the smallest token counts the work is small and the launch itself sets the time. Try the token
           counts on the right.
         </p>
         <p>
-          In a decode step SwiGLU is about <span className="text-accent">0.4%</span> of the time, so none of this moves the token rate. Folding it
+          In a decode step SwiGLU is about <span className="text-accent">{stepShare}%</span> of the kernel time, so none of this moves the token rate. Folding it
           into the gate/up GEMM&apos;s epilogue would be the fusion of chapter {chapterNumber("add-rmsnorm")} again. Writing that row and reading it back
-          comes to {roundTripKb} KB per layer at one token, {roundTripShare}% of the {weightsMb} MB of gate and up weights the GEMM reads
-          (calculated from config.json), so at decode it would save a launch more than bytes; that is not done.
+          is a small share of the gate and up weights the GEMM reads, so at decode it would save a launch more than bytes; that is not done.
         </p>
       </>
     ),
@@ -232,12 +250,12 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  "16 of 5,632 values per half drawn; the silu curve is exact",
-  "the example is computed with the kernel's arithmetic; any g and u with the same roundings would do",
-  "µs per launch for one token, Nsight Compute; 4 of the rows drawn",
-  "µs and DRAM bytes from Nsight Compute at 4,096 tokens; the peak from the bandwidth test in docs/results.md",
-  "µs per launch for one token, Nsight Compute, five runs; chain bars illustrative",
-  "Nsight Compute, RTX 5060 Laptop GPU, median of three launches after thirty warm-ups",
+  `the hidden state has ${hiddenText} values and each half of the row ${ffText}; 16 of ${ffText} values per half drawn; the silu curve is exact`,
+  `the example is computed with the kernel's arithmetic; any g and u with the same roundings would do; the naive kernel matched Hugging Face's act tensor on all ${shape.layers} layers`,
+  `µs per launch for one token, Nsight Compute: naive ${naive1.toFixed(1)}, first draft ${draft1.toFixed(1)}; ${rowBlocks} blocks of ${threads} threads cover a row of ${ffText}, and the tests launch 70,000 rows; 4 of the rows drawn`,
+  `µs and DRAM bytes from Nsight Compute at 4,096 tokens: vector ${vectorBig.toFixed(0)}, naive ${naiveBig.toFixed(0)}; each value is ${bf16} bytes, so the scalar path issues ${scalarInstructions} memory instructions for ${vecWidth} outputs and the vector path 3; up sits ${ffText} values (${gateToUpBytes} bytes) after gate, a multiple of ${vecWidth}; the peak from the bandwidth test in docs/results.md`,
+  `µs per launch for one token, Nsight Compute, five runs: the vector kernel took ${smallVector.toFixed(2)} µs; ${ffText} values make ${vectors} vectors, ${smallBlocks} blocks on ${sms} SMs with ${vecWidth} chains per thread; the scalar path runs ${rowBlocks} blocks and takes ${smallTokens} tokens or fewer; chain bars illustrative`,
+  `Nsight Compute, RTX 5060 Laptop GPU, median of three launches after thirty warm-ups; ${gainLow}x to ${gainHigh}x is naive time over vector time at ${gainTokens.map((t) => fmtInt(Number(t))).join(", ")} tokens (calculated); DRAM bytes of the vector kernel at 1 and 16 tokens: ${smallKb.join(" KB and ")} KB (measured); ${stepShare}% is the share of kernel time in a batch-1 decode step (measured); the row written and read back is ${roundTripKb} KB per layer at one token, ${roundTripShare}% of the ${weightsMb} MB of gate and up weights (calculated from config.json)`,
 ];
 
 export const swigluSteps = steps;

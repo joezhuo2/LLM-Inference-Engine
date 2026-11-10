@@ -1,5 +1,10 @@
-import { chunkBudget } from "@/content/kernels/chunked-prefill";
+import { chunkBudget, fmt, stallPrompt } from "@/content/kernels/chunked-prefill";
+import { kvReplay } from "@/lib/data";
+import { chapterNumber } from "../book-order";
 import type { ChapterReview } from "./types";
+
+const blockSize = kvReplay().meta.block_size;
+const promptBlocks = Math.ceil(stallPrompt / blockSize);
 
 export const review: ChapterReview = {
   lesson: "Cap the tokens in each step so one long prompt cannot stall everyone else.",
@@ -19,6 +24,12 @@ export const review: ChapterReview = {
       question: "You lower the budget while keeping the prompt and decoding requests the same. Why can the prompt wait longer for its first token even though the steps are shorter?",
       answer: "The prompt needs more chunks before it can produce a token.",
       why: "Smaller chunks spread prefill over more steps. Only the chunk that finishes the prompt adds it to the sampled list.",
+    },
+    {
+      question: `Chapter ${chapterNumber("paged-kv")} gave a request ceil(L / ${blockSize}) blocks of ${blockSize} tokens. A ${fmt(stallPrompt)}-token prompt is admitted with a budget of ${chunkBudget}. How many blocks does it hold before its first chunk runs, and how many after?`,
+      answer: `${promptBlocks} blocks both times.`,
+      why: `Blocks for the whole prompt are allocated at admission, so ceil(${fmt(stallPrompt)} / ${blockSize}) = ${promptBlocks} are held before the first chunk, and the chunks only fill them. That is why a sequence in prefill never runs out of blocks halfway.`,
+      recall: "paged-kv",
     },
   ],
 };
