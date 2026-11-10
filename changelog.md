@@ -18,6 +18,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: FlashAttention prefill teaches the idea first (prefill is a square of rows against keys, 16 rows share each key tile, a tile of scores is one mma, an online softmax per row keeps it in registers), then how it got built, then the measurements; the slower first kernel is in the Errata.
 - Part A: FlashAttention prefill ends on "your turn": a roofline prediction of sharing K and V across the 8 query heads of a KV head (16 to 128 FLOP per byte loaded against a ridge of 107, calculated), with an open exercise and an estimate card; nothing about it is measured.
 - Part A: `web/scripts/step-history.mjs` records the decode step profile of every committed version of `results/decode_step.md` in `step-history.json`, so a page can show how the step's time moved between operations.
+- Part A: Every Byte gets a closing chapter, "where the time went" (Part V): the decode step profiled after each kernel, the read of the weights as the floor, time to first token at 2,048 tokens against llama.cpp, the engine under load against vLLM, and three next steps ranked by measured payoff.
 
 ## kernel/flash-prefill-div32
 

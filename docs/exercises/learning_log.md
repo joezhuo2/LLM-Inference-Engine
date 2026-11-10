@@ -2123,3 +2123,5 @@
 - **arithmetic intensity per byte loaded** => 
 - **register-limited occupancy** => 
 - **a profile per commit read from git history** => 
+- **span and busy time of a step** => 
+- **weight-read floor of a token** => 

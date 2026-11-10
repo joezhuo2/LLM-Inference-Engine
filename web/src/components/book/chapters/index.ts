@@ -14,4 +14,5 @@ export const bookChapters: Record<string, () => Promise<ChapterDef>> = {
   "split-attention": () => import("./split-attention").then((m) => m.splitAttentionChapter),
   sampling: () => import("./sampling").then((m) => m.samplingChapter),
   "add-rmsnorm": () => import("./add-rmsnorm").then((m) => m.addRmsnormChapter),
+  "where-the-time-went": () => import("./where-the-time-went").then((m) => m.whereTheTimeWentChapter),
 };

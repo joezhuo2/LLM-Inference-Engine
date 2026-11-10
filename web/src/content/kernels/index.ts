@@ -11,10 +11,11 @@ import { rope } from "./rope";
 import { sampling } from "./sampling";
 import { splitAttention } from "./split-attention";
 import { swiglu } from "./swiglu";
+import { whereTheTimeWent } from "./where-the-time-went";
 import { deadEnds } from "../dead-ends";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill];
+export const kernelStories: KernelStory[] = [foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, whereTheTimeWent];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);

@@ -37,6 +37,8 @@ import { SplitAboutStory } from "./split-attention/about";
 import { SplitAttentionStory } from "./split-attention/story";
 import { SwigluAboutStory } from "./swiglu/about";
 import { SwigluStory } from "./swiglu/story";
+import { TimeAboutStory } from "./where-the-time-went/about";
+import { TimeStory } from "./where-the-time-went/story";
 
 export function KernelStoryView({ slug }: { slug: string }) {
   switch (slug) {
@@ -66,6 +68,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <ChunkedPrefillStory />;
     case "flash-prefill":
       return <FlashPrefillStory />;
+    case "where-the-time-went":
+      return <TimeStory />;
     default:
       return null;
   }
@@ -110,6 +114,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <SplitAboutStory />;
     case "sampling":
       return <SamplingAboutStory />;
+    case "where-the-time-went":
+      return <TimeAboutStory />;
     default:
       return null;
   }
