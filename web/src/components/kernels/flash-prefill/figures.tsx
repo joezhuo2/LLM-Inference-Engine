@@ -495,29 +495,47 @@ export function TtftFigure({ lengths, series }: { lengths: number[]; series: Ttf
   );
 }
 
-export function OpenFigure({ whole, chunked, cost, budget, chunks, tokens, items }: { whole: number; chunked: number; cost: number; budget: string; chunks: number; tokens: string; items: string[] }) {
+type OpenParts = { attention: number; gemms: number; rest: number; span: number; blocks: number };
+
+export function OpenFigure({ whole, chunked, atOnce, registers, budget, chunks, tokens, items }: { whole: OpenParts; chunked: OpenParts; atOnce: number; registers: number; budget: string; chunks: number; tokens: string; items: string[] }) {
   const { on, grow } = useLoop(12);
+  const px = 320 / chunked.span;
+  const rows = [
+    { label: "one step", parts: whole, y: 42, tone: "accent", end: 0.04 + (0.3 * whole.span) / chunked.span },
+    { label: `${chunks} chunks of ${budget}`, parts: chunked, y: 66, tone: "warn", end: 0.34 },
+  ] as const;
   return (
-    <Frame label={`What is still open: ${items.join("; ")}; chunking a lone ${tokens}-token prompt with a budget of ${budget} now costs ${cost.toFixed(0)}%`}>
-      <Label x={20} y={24} className="fill-text">{`one ${tokens}-token prompt alone, ms to the first token (measured)`}</Label>
-      <Label x={20} y={52}>one step</Label>
-      <rect x={130} y={42} width={320} height={12} rx={2} className="fill-border" />
-      <motion.rect x={130} y={42} width={(320 * whole) / chunked} height={12} rx={2} className="fill-accent" {...grow(0.04, 0.04 + (0.3 * whole) / chunked)} />
-      <Label x={458} y={52} className="fill-accent">{`${fmt(whole)} ms`}</Label>
-      <Label x={20} y={76} className="fill-warn">{`${chunks} chunks of ${budget}`}</Label>
-      <rect x={130} y={66} width={320} height={12} rx={2} className="fill-border" />
-      <motion.rect x={130} y={66} width={320} height={12} rx={2} className="fill-warn" {...grow(0.04, 0.34)} />
-      <Label x={458} y={76} className="fill-warn">{`${fmt(chunked)} ms`}</Label>
-      <Label x={20} y={104}>{`${cost.toFixed(0)}% more (calculated); which part of the extra steps costs it was not profiled`}</Label>
-      <line x1={20} y1={124} x2={540} y2={124} className="stroke-border" />
-      <Label x={20} y={150} className="fill-text">
+    <Frame label={`One ${tokens}-token prompt alone, kernel time from Nsight Systems: in one step ${whole.span} ms, of which attention ${whole.attention} and the GEMMs ${whole.gemms}; as ${chunks} chunks of ${budget} ${chunked.span} ms, of which attention ${chunked.attention} and the GEMMs ${chunked.gemms}; ${atOnce} thread blocks fit on the GPU at once and a chunk launches ${chunked.blocks}. Still open: ${items.join("; ")}`}>
+      <Label x={20} y={24} className="fill-text">{`one ${tokens}-token prompt alone: where the ms go (measured, Nsight Systems)`}</Label>
+      {rows.map((r) => (
+        <g key={r.label}>
+          <Label x={20} y={r.y + 10} className={r.tone === "warn" ? "fill-warn" : undefined}>
+            {r.label}
+          </Label>
+          <rect x={130} y={r.y} width={320} height={12} rx={2} className="fill-border" />
+          <motion.g {...grow(0.04, r.end)}>
+            <rect x={130} y={r.y} width={r.parts.attention * px} height={12} rx={2} className={r.tone === "warn" ? "fill-warn" : "fill-accent"} />
+            <rect x={130 + r.parts.attention * px + 1} y={r.y} width={r.parts.gemms * px - 1} height={12} className="fill-muted/60" />
+            <rect x={130 + (r.parts.attention + r.parts.gemms) * px + 1} y={r.y} width={r.parts.rest * px - 1} height={12} rx={2} className="fill-muted/30" />
+          </motion.g>
+          <Label x={458} y={r.y + 10} className={r.tone === "warn" ? "fill-warn" : "fill-accent"}>{`${fmt(r.parts.span)} ms`}</Label>
+        </g>
+      ))}
+      <Label x={20} y={102}>
+        <tspan className="fill-warn">{`attention ${whole.attention.toFixed(1)} → ${chunked.attention.toFixed(1)} ms`}</tspan>
+        {` · GEMMs ${whole.gemms.toFixed(1)} → ${chunked.gemms.toFixed(1)} · the rest ${whole.rest.toFixed(1)} → ${chunked.rest.toFixed(1)}`}
+      </Label>
+      <Label x={20} y={120}>{`${atOnce} thread blocks fit on the GPU at once (calculated, ${registers} registers per thread);`}</Label>
+      <Label x={20} y={136}>{`a ${budget}-row chunk launches ${chunked.blocks}, so ${chunked.blocks - atOnce} run after the others`}</Label>
+      <line x1={20} y1={154} x2={540} y2={154} className="stroke-border" />
+      <Label x={20} y={178} className="fill-text">
         not done yet
       </Label>
       {items.map((item, i) => (
         <motion.g key={item} {...on(0.3 + i * 0.12)}>
-          <rect x={22} y={170 + i * 50} width={12} height={12} rx={2} className="fill-none stroke-warn" />
+          <rect x={22} y={196 + i * 50} width={12} height={12} rx={2} className="fill-none stroke-warn" />
           {item.split("\n").map((line, k) => (
-            <Label key={line} x={46} y={180 + i * 50 + k * 16} className={k === 0 ? "fill-text" : "fill-muted"}>
+            <Label key={line} x={46} y={206 + i * 50 + k * 16} className={k === 0 ? "fill-text" : "fill-muted"}>
               {line}
             </Label>
           ))}

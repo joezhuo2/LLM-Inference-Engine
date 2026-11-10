@@ -168,6 +168,8 @@ def kernel_table(kernels, top):
 def bandwidth_section(summary_path: Path, peak_gb_s: float, weight_bytes: float, decode_busy_us):
     with open(summary_path, newline="") as f:
         row = next(csv.DictReader(f))
+    if not row["tpot_s_p50"]:
+        return None
     tpot = float(row["tpot_s_p50"])
     weight_bytes = float(row.get("decode_weight_bytes") or weight_bytes)
     achieved = weight_bytes / tpot / 1e9
@@ -245,6 +247,7 @@ def report(conn, top=12, summary=None, peak=323.6, weight_bytes=DECODE_WEIGHT_BY
     if summary:
         busy = statistics.median(s["busy_us"] for s in decode) if decode else None
         b = bandwidth_section(summary, peak, weight_bytes, busy)
+    if summary and b:
         out.append("## Decode bandwidth")
         out.append("")
         out.append(f"- max_batch {b['max_batch']}, median TPOT {b['tpot_ms']:.2f} ms")

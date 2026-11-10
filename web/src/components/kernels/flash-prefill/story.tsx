@@ -2,7 +2,7 @@
 
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
-import { flashFmt, flashKeyRows, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashShape, flashShort, flashSystems, flashTokens, flashTtft } from "@/content/kernels/flash-prefill";
+import { flashFmt, flashKeyRows, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashShape, flashShort, flashSystems, flashTokens, flashTtft } from "@/content/kernels/flash-prefill";
 import { modelShape } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { expectAnswer, type Prediction, Predict } from "../predict";
@@ -11,6 +11,7 @@ import { Toggle } from "../toggle";
 import { FirstKernelFigure, FragmentFigure, MmaFigure, OpenFigure, RegistersFigure, type SpecGroup, SpecFigure, SquareFigure, TileSweepFigure, TtftFigure, type TtftSeries } from "./figures";
 
 const n = flashNumbers;
+const pf = flashProfile;
 const s = flashShape;
 const layers = modelShape().layers;
 const longTokens = flashTokens(flashLong);
@@ -228,10 +229,10 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The kernel has not been profiled with Nsight Compute, so how busy the tensor cores are and how many bytes it reads are not known. The <span className="text-accent">{s.group}</span> query heads that share a KV head each read the same keys and values again; loading them once into shared memory for all of them was not tried.
+          Nsight Compute has still not run on the kernel, so how busy the tensor cores are and how many bytes it reads are not known. The <span className="text-accent">{s.group}</span> query heads that share a KV head each read the same keys and values again; loading them once into shared memory for all of them was not tried.
         </p>
         <p>
-          Chunking a lone prompt used to be nearly free. With a budget of {budget} it now costs <span className="text-warn">{n.chunkedCost.toFixed(0)}%</span> at {flashLong} tokens, because a second of attention no longer hides the extra steps. And the load sweeps of the chunked prefill chapter were measured before this kernel and have not been rerun.
+          Chunking a lone prompt used to be nearly free. With a budget of {budget} it now costs <span className="text-warn">{n.chunkedCost.toFixed(0)}%</span> at {flashLong} tokens. A timeline from Nsight Systems shows where: of {pf.extra.toFixed(1)} ms more, <span className="text-warn">{pf.extraAttention.toFixed(1)}</span> are the attention kernel itself. Only {pf.blocksAtOnce} of its thread blocks fit on the GPU at once and a {budget}-row chunk launches {pf.chunked.blocks}, so the last {pf.chunked.blocks - pf.blocksAtOnce} run on a nearly empty GPU. The load sweeps of the chunked prefill chapter were measured before this kernel and have not been rerun.
         </p>
       </>
     ),
@@ -248,7 +249,7 @@ const captions = [
   `calculated from the kernel's fragment sizes at head_dim ${s.headDim}: ${qWords} words of Q and ${accs} accumulators per lane; a head of up to ${s.maxHeadDim} dimensions in steps of ${s.tile} is accepted`,
   `docs/results.md, Prefill against prompt length: one request per run, median of 5 runs, RTX 5060 Laptop GPU; per prompt token the tiled kernel stays between ${n.perTokenLow} and ${n.perTokenHigh} ms while the per-row path climbs from ${n.pagedPerTokenShort} to ${n.pagedPerTokenLong} ms; llama.cpp with -ub 512`,
   `the same medians; ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms at ${flashLong} tokens is ${n.ratio.toFixed(1)} times less, and ${n.ahead.toFixed(0)}% less than llama.cpp's ${flashFmt(n.llama)} ms (calculated); the first kernel was measured at its own commit in the same session`,
-  `docs/results.md: engine + graphs alone, ${flashFmt(n.graphsMs)} ms in one step and ${flashFmt(n.chunkedMs)} ms as ${chunks} chunks under a budget of ${budget}, measured; what was not measured is listed in docs/profiling.md, FlashAttention prefill`,
+  `docs/profiling.md, FlashAttention prefill in chunks: Nsight Systems, median of 3 captures, kernel time summed by name, ${pf.whole.span} ms from the first kernel to the last in one step and ${pf.chunked.span} ms as ${chunks} chunks under a budget of ${budget}; ${pf.blocksAtOnce} blocks at once is calculated from ${pf.registers} registers per thread; the ${n.chunkedCost.toFixed(0)}% is from docs/results.md, measured earlier the same day`,
 ];
 
 export const flashPrefillSteps = steps;
@@ -287,7 +288,7 @@ export function FlashTtft() {
 }
 
 export function FlashOpen() {
-  return <OpenFigure whole={n.graphsMs} chunked={n.chunkedMs} cost={n.chunkedCost} budget={budget} chunks={chunks} tokens={flashLong} items={openItems} />;
+  return <OpenFigure whole={pf.whole} chunked={pf.chunked} atOnce={pf.blocksAtOnce} registers={pf.registers} budget={budget} chunks={chunks} tokens={flashLong} items={openItems} />;
 }
 
 const figures = [FlashSquare, FlashSpec, FlashFirst, FlashTiles, FlashMma, FlashFragment, FlashRegisters, FlashTtft, LengthPicker, FlashOpen];

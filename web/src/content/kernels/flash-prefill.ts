@@ -46,6 +46,28 @@ const longTiles = longTokens / kernel.tile;
 export const flashKeyRows = { perRow: (longTokens * (longTokens + 1)) / 2, tiled: (kernel.tile * longTiles * (longTiles + 1)) / 2 };
 const chunkedCost = (flashTtft(flashSystems.chunked, flashLong) / flashTtft(flashSystems.graphs, flashLong) - 1) * 100;
 
+const chunksSection = "flashattention-prefill-in-chunks-branch-141";
+const budgetOf = (system: string) => /budget ([\d,]+)/.exec(system)?.[1] ?? "";
+const profileRow = (budget: string) => {
+  const cell = (column: string) => measured(chunksSection, { budget }, column);
+  const part = { attention: cell("attention"), gemms: cell("GEMMs"), rest: cell("other kernels") + cell("gaps") };
+  return { ...part, span: cell("span"), steps: cell("steps"), blocks: cell("blocks") };
+};
+const launch = profilingTable(chunksSection, 1);
+const launchCell = (column: string) => Number(launch.rows[0][launch.header.indexOf(column)].replace(/,/g, ""));
+const profileWhole = profileRow("none");
+const profileChunked = profileRow(budgetOf(flashSystems.chunked));
+
+export const flashProfile = {
+  whole: profileWhole,
+  chunked: profileChunked,
+  extra: profileChunked.span - profileWhole.span,
+  extraAttention: profileChunked.attention - profileWhole.attention,
+  attentionShare: (profileWhole.attention / profileWhole.span) * 100,
+  registers: launchCell("registers per thread"),
+  blocksAtOnce: launchCell("blocks at once"),
+};
+
 export const flashNumbers = {
   paged,
   tiled,
