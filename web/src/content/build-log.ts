@@ -14,7 +14,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
-  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup";
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -76,6 +76,16 @@ const profiledBatches = profilingTable(sweep, 1, "results").rows.map((r) => r[0]
 export const sweepScene = { knee, points: sweepBatches.map((b) => ({ batch: b, tokens: sweepTokens(b), share: profiledBatches.includes(b) ? tableValue(sweep, { "max batch": b }, "attention share", 1, "results") : undefined })), gains: sweepBatches.map((_, i) => sweepGain[i]), toKnee: sweepTokens(knee) / sweepTokens(sweepBatches[0]) };
 
 export const lookup = embeddingLaunch();
+
+const longPrompt = "2,048";
+
+function prefillPath(path: string) {
+  return tableValue("flashattention-prefill-kernels", { "prefill attention": path }, longPrompt, 0, "results");
+}
+
+const llamaPrefill = tableValue("prefill-against-prompt-length", { system: "llama.cpp -ub 512" }, longPrompt, 0, "results");
+
+export const tilesScene = { prompt: longPrompt, paged: prefillPath("paged decode kernels"), first: prefillPath("flash, first kernel"), tiled: prefillPath("flash, tiled kernel"), llama: llamaPrefill };
 
 export const milestones: Milestone[] = [
   {
@@ -463,6 +473,26 @@ export const milestones: Milestone[] = [
           bars: [
             { label: "naive", value: lookup.decodeUs.naive },
             { label: "fast::embedding", value: lookup.decodeUs.fast, highlight: true },
+          ],
+        },
+      },
+      {
+        date: "Nov 10",
+        prs: [184, 185, 197],
+        branch: "runtime/flash-prefill-wiring",
+        scene: "tiles",
+        title: "Prefill in tiles on the tensor cores",
+        text: `Prefill ran the decode attention once per prompt token, every row walking its whole context alone, so a ${tilesScene.prompt}-token prompt took about ${(tilesScene.paged / tilesScene.llama).toFixed(1)} times as long as in llama.cpp (calculated). Joe's first FlashAttention kernel read the prompt's keys from a new place but kept that walk, and once wired in it was slower: ${tilesScene.first.toLocaleString("en-US")} against ${tilesScene.paged.toLocaleString("en-US")} ms. The second version, written by Claude at Joe's request, gives each warp 16 query rows and streams the keys past them 16 at a time through the tensor cores. The first token of that prompt now arrives ${(tilesScene.paged / tilesScene.tiled).toFixed(1)} times sooner (calculated), ahead of llama.cpp.`,
+        metric: {
+          kind: "bars",
+          label: `ms to the first token of a ${tilesScene.prompt}-token prompt, measured in one session`,
+          unit: "ms",
+          digits: 0,
+          bars: [
+            { label: "per-row attention", value: tilesScene.paged },
+            { label: "first flash kernel", value: tilesScene.first },
+            { label: "llama.cpp", value: tilesScene.llama },
+            { label: "tiled kernel", value: tilesScene.tiled, highlight: true },
           ],
         },
       },
