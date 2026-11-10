@@ -1,0 +1,567 @@
+{
+ "source": "git log -- results/decode_step.md results/decode_step_graphs.md",
+ "stages": [
+  {
+   "commit": "c6eb1f0",
+   "date": "2026-10-15",
+   "eager": {
+    "kernels": 267,
+    "span_us": 8703,
+    "busy_us": 7648,
+    "idle_pct": 11.2,
+    "gaps": 17,
+    "tpot_ms": 9.37,
+    "sample_us": 9.6,
+    "ops": [
+     [
+      "gate_up",
+      3057.6
+     ],
+     [
+      "down",
+      1686.4
+     ],
+     [
+      "attention",
+      868.5
+     ],
+     [
+      "qkv",
+      737.5
+     ],
+     [
+      "o_proj",
+      602.3
+     ],
+     [
+      "lm_head",
+      388.2
+     ],
+     [
+      "rope",
+      96.7
+     ],
+     [
+      "norm2",
+      71.1
+     ],
+     [
+      "norm1",
+      66.9
+     ],
+     [
+      "write_kv",
+      29.4
+     ],
+     [
+      "swiglu",
+      22.7
+     ],
+     [
+      "add1",
+      19.3
+     ],
+     [
+      "add2",
+      18.7
+     ],
+     [
+      "embedding",
+      3
+     ],
+     [
+      "final_norm",
+      3
+     ]
+    ]
+   },
+   "graphs": null
+  },
+  {
+   "commit": "7ce15d4",
+   "date": "2026-10-17",
+   "eager": {
+    "kernels": 267,
+    "span_us": 8782,
+    "busy_us": 7725,
+    "idle_pct": 11.4,
+    "gaps": 18,
+    "tpot_ms": 9.53,
+    "sample_us": 9.7,
+    "ops": [
+     [
+      "gate_up",
+      3118.8
+     ],
+     [
+      "down",
+      1715.8
+     ],
+     [
+      "attention",
+      880.4
+     ],
+     [
+      "qkv",
+      750.6
+     ],
+     [
+      "o_proj",
+      612.7
+     ],
+     [
+      "lm_head",
+      395.6
+     ],
+     [
+      "rope",
+      96.7
+     ],
+     [
+      "norm2",
+      71.6
+     ],
+     [
+      "norm1",
+      67.4
+     ],
+     [
+      "write_kv",
+      29.7
+     ],
+     [
+      "swiglu",
+      22.8
+     ],
+     [
+      "add1",
+      19.3
+     ],
+     [
+      "add2",
+      18.7
+     ],
+     [
+      "embedding",
+      3.1
+     ],
+     [
+      "final_norm",
+      3
+     ]
+    ]
+   },
+   "graphs": {
+    "span_us": 7923,
+    "busy_us": 7854,
+    "idle_pct": 0.9,
+    "tpot_ms": 8.55
+   }
+  },
+  {
+   "commit": "72e666f",
+   "date": "2026-10-19",
+   "eager": {
+    "kernels": 224,
+    "span_us": 8650,
+    "busy_us": 7635,
+    "idle_pct": 10,
+    "gaps": 15,
+    "tpot_ms": 9.3,
+    "sample_us": 9.7,
+    "ops": [
+     [
+      "gate_up",
+      3073.5
+     ],
+     [
+      "down",
+      1692.7
+     ],
+     [
+      "attention",
+      882.9
+     ],
+     [
+      "qkv",
+      740.6
+     ],
+     [
+      "o_proj",
+      605.2
+     ],
+     [
+      "lm_head",
+      390.2
+     ],
+     [
+      "add1_norm2",
+      106.3
+     ],
+     [
+      "add2_norm1",
+      94.7
+     ],
+     [
+      "rope",
+      56.1
+     ],
+     [
+      "write_kv",
+      30.4
+     ],
+     [
+      "swiglu",
+      23.2
+     ],
+     [
+      "embedding",
+      3.1
+     ],
+     [
+      "norm1",
+      3
+     ],
+     [
+      "final_norm",
+      3
+     ],
+     [
+      "add2",
+      0.9
+     ]
+    ]
+   },
+   "graphs": {
+    "span_us": 7640,
+    "busy_us": 7587,
+    "idle_pct": 0.7,
+    "tpot_ms": 8.37
+   }
+  },
+  {
+   "commit": "334736d",
+   "date": "2026-10-20",
+   "eager": {
+    "kernels": 224,
+    "span_us": 9343,
+    "busy_us": 7002,
+    "idle_pct": 24.3,
+    "gaps": 39,
+    "tpot_ms": 11.01,
+    "sample_us": 8.7,
+    "ops": [
+     [
+      "gate_up",
+      3093.3
+     ],
+     [
+      "down",
+      1705
+     ],
+     [
+      "qkv",
+      743.3
+     ],
+     [
+      "o_proj",
+      606
+     ],
+     [
+      "lm_head",
+      394.5
+     ],
+     [
+      "attention",
+      271.7
+     ],
+     [
+      "add1_norm2",
+      92.4
+     ],
+     [
+      "add2_norm1",
+      84.7
+     ],
+     [
+      "rope",
+      49.6
+     ],
+     [
+      "write_kv",
+      27.4
+     ],
+     [
+      "swiglu",
+      20.3
+     ],
+     [
+      "embedding",
+      2.8
+     ],
+     [
+      "norm1",
+      2.7
+     ],
+     [
+      "final_norm",
+      2.7
+     ],
+     [
+      "add2",
+      0.8
+     ]
+    ]
+   },
+   "graphs": {
+    "span_us": 7091,
+    "busy_us": 7037,
+    "idle_pct": 0.8,
+    "tpot_ms": 7.9
+   }
+  },
+  {
+   "commit": "f701cd2",
+   "date": "2026-10-20",
+   "eager": {
+    "kernels": 224,
+    "span_us": 8045,
+    "busy_us": 6912,
+    "idle_pct": 11.1,
+    "gaps": 24,
+    "tpot_ms": 9.25,
+    "sample_us": 10.4,
+    "ops": [
+     [
+      "gate_up",
+      3145.1
+     ],
+     [
+      "down",
+      1726.1
+     ],
+     [
+      "qkv",
+      757.9
+     ],
+     [
+      "o_proj",
+      617.9
+     ],
+     [
+      "lm_head",
+      399.5
+     ],
+     [
+      "attention",
+      325.6
+     ],
+     [
+      "rope",
+      61.1
+     ],
+     [
+      "add1_norm2",
+      38
+     ],
+     [
+      "add2_norm1",
+      34.5
+     ],
+     [
+      "write_kv",
+      31.6
+     ],
+     [
+      "swiglu",
+      24.8
+     ],
+     [
+      "norm1",
+      3.2
+     ],
+     [
+      "embedding",
+      3.2
+     ],
+     [
+      "final_norm",
+      3.2
+     ],
+     [
+      "add2",
+      0.9
+     ]
+    ]
+   },
+   "graphs": {
+    "span_us": 6939,
+    "busy_us": 6884,
+    "idle_pct": 0.8,
+    "tpot_ms": 8.23
+   }
+  },
+  {
+   "commit": "707bbc4",
+   "date": "2026-10-25",
+   "eager": {
+    "kernels": 224,
+    "span_us": 8198,
+    "busy_us": 6918,
+    "idle_pct": 11.8,
+    "gaps": 15,
+    "tpot_ms": 9.28,
+    "sample_us": 10.2,
+    "ops": [
+     [
+      "gate_up",
+      3161.5
+     ],
+     [
+      "down",
+      1743.4
+     ],
+     [
+      "qkv",
+      764.1
+     ],
+     [
+      "o_proj",
+      621.8
+     ],
+     [
+      "lm_head",
+      402.7
+     ],
+     [
+      "attention",
+      317.1
+     ],
+     [
+      "rope",
+      59.5
+     ],
+     [
+      "add1_norm2",
+      37.1
+     ],
+     [
+      "add2_norm1",
+      33.7
+     ],
+     [
+      "write_kv",
+      30.9
+     ],
+     [
+      "swiglu",
+      24.5
+     ],
+     [
+      "embedding",
+      3.2
+     ],
+     [
+      "norm1",
+      3.2
+     ],
+     [
+      "final_norm",
+      3.1
+     ],
+     [
+      "add2",
+      0.9
+     ]
+    ]
+   },
+   "graphs": {
+    "span_us": 6983,
+    "busy_us": 6927,
+    "idle_pct": 0.8,
+    "tpot_ms": 7.77
+   }
+  },
+  {
+   "commit": "b4b79bc",
+   "date": "2026-10-25",
+   "eager": {
+    "kernels": 224,
+    "span_us": 8069,
+    "busy_us": 6909,
+    "idle_pct": 11.5,
+    "gaps": 17,
+    "tpot_ms": 8.85,
+    "sample_us": 10.6,
+    "ops": [
+     [
+      "gate_up",
+      3138.8
+     ],
+     [
+      "down",
+      1724.2
+     ],
+     [
+      "qkv",
+      759.2
+     ],
+     [
+      "o_proj",
+      619.1
+     ],
+     [
+      "lm_head",
+      398.3
+     ],
+     [
+      "attention",
+      332.8
+     ],
+     [
+      "rope",
+      61.7
+     ],
+     [
+      "add1_norm2",
+      38.5
+     ],
+     [
+      "add2_norm1",
+      34.9
+     ],
+     [
+      "write_kv",
+      32
+     ],
+     [
+      "swiglu",
+      25.2
+     ],
+     [
+      "norm1",
+      3.3
+     ],
+     [
+      "final_norm",
+      3.3
+     ],
+     [
+      "embedding",
+      3.3
+     ],
+     [
+      "add2",
+      0.9
+     ]
+    ]
+   },
+   "graphs": {
+    "span_us": 6973,
+    "busy_us": 6917,
+    "idle_pct": 0.8,
+    "tpot_ms": 7.79
+   }
+  }
+ ]
+}

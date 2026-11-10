@@ -2122,3 +2122,4 @@
 - **online softmax per row** => 
 - **arithmetic intensity per byte loaded** => 
 - **register-limited occupancy** => 
+- **a profile per commit read from git history** => 
