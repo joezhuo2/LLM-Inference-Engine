@@ -251,7 +251,7 @@ export function BuildTimeline() {
   const reduced = usePrefersReducedMotion();
   const panel = useRef<HTMLDivElement>(null);
   const { active, progress, refs, scrollTo } = useActiveStep(panel);
-  const prs = entries.flatMap((e) => e.prs).length;
+  const prs = new Set(entries.flatMap((e) => e.prs)).size;
   return (
     <div className="md:grid md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-10">
       <div ref={panel} className="sticky top-12 z-10 -mx-4 mb-8 border-b border-border bg-bg px-4 pb-3 pt-2 sm:mx-0 sm:px-0 md:top-20 md:mb-0 md:self-start md:border-0 md:bg-transparent md:p-0">

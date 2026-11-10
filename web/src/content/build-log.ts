@@ -1,5 +1,5 @@
 import { measured as tableValue } from "@/content/kernels/types";
-import { medianOf } from "@/lib/data";
+import { cellNumber, embeddingLaunch, medianOf, profilingTable } from "@/lib/data";
 
 export type Bar = { label: string; value: number; highlight?: boolean };
 
@@ -32,6 +32,35 @@ function largestGap(system: string) {
 function goodputAt(system: string, qps: string) {
   return tableValue("under-load", { system, QPS: qps }, "goodput req/s", 0, "results");
 }
+
+const sweep = "batch-size-past-16";
+
+function sweepTokens(maxBatch: string) {
+  return tableValue(sweep, { "max batch": maxBatch }, "graphs tokens/s", 0, "results");
+}
+
+function padding(steps: string, column: string) {
+  return tableValue(sweep, { "graph steps": steps }, column, 2, "results");
+}
+
+function graphBuckets(maxBatch: number, steps: number) {
+  const sizes: number[] = [];
+  for (let lo = 1; lo < maxBatch; lo *= 2) for (let b = lo; b < Math.min(2 * lo, maxBatch); b += Math.max(1, lo / steps)) sizes.push(b);
+  return [...sizes, maxBatch];
+}
+
+const whole = (n: number) => n.toLocaleString("en-US");
+const sweepBatches = profilingTable(sweep, 0, "results").rows.map((r) => r[0]);
+const sweepGain = sweepBatches.map((b, i) => (i ? sweepTokens(b) / sweepTokens(sweepBatches[i - 1]) : 0));
+const knee = sweepBatches.slice(1, -1).reduce((best, b) => (sweepGain[sweepBatches.indexOf(b)] - sweepGain[sweepBatches.indexOf(b) + 1] > sweepGain[sweepBatches.indexOf(best)] - sweepGain[sweepBatches.indexOf(best) + 1] ? b : best));
+const afterKnee = sweepBatches.slice(sweepBatches.indexOf(knee) + 1);
+const bucketColumn = profilingTable(sweep, 2, "results").header.find((h) => h.startsWith("bucket for")) ?? "";
+const paddedRows = cellNumber(bucketColumn.replace("bucket for", ""));
+const graphSteps = profilingTable(sweep, 2, "results").rows.map((r) => r[0]);
+const defaultSteps = 2;
+const bucket = (steps: string) => padding(steps, bucketColumn);
+const padded = { coarse: padding("1", "TPOT p50 (ms)"), fine: padding(String(defaultSteps), "TPOT p50 (ms)") };
+const lookup = embeddingLaunch();
 
 export const milestones: Milestone[] = [
   {
@@ -352,7 +381,7 @@ export const milestones: Milestone[] = [
   {
     id: "M6",
     name: "refinements",
-    dates: "Nov 4 to 5",
+    dates: "Nov 4 to 10",
     goal: "Refine how the engine serves requests now that it has shipped.",
     entries: [
       {
@@ -371,6 +400,51 @@ export const milestones: Milestone[] = [
             { label: "whole prompts", value: largestGap("engine + graphs") },
             { label: "budget 2,048", value: largestGap("engine + graphs, budget 2048") },
             { label: "budget 256", value: largestGap("engine + graphs, budget 256"), highlight: true },
+          ],
+        },
+      },
+      {
+        date: "Nov 10",
+        prs: [176, 183, 187, 190],
+        branch: "runtime/graph-steps-default",
+        title: "Graphs between the powers of two",
+        text: `A CUDA Graph is captured for a fixed number of rows, so a step with ${paddedRows} sequences used to replay the graph for ${bucket("1")} and pay for the padding. Joe wrote decode_graph_buckets, and engine bench and engine serve take --graph-steps: at ${defaultSteps}, now the default, max batch ${sweepBatches[0]} gets graphs at ${graphBuckets(Number(sweepBatches[0]), defaultSteps).join(", ")} where it had only the powers of two. Padding ${paddedRows} rows to ${bucket("1")} cost about ${((100 * (padded.coarse - padded.fine)) / padded.fine).toFixed(0)}% per token against the graph for ${bucket(String(defaultSteps))} (calculated from the bars). Finer steps gained nothing.`,
+        metric: {
+          kind: "bars",
+          label: `measured ms per token with ${paddedRows} sequences, by the graph they replay`,
+          unit: "ms",
+          digits: 2,
+          bars: graphSteps.map((steps) => ({ label: `graph for ${bucket(steps)}`, value: padding(steps, "TPOT p50 (ms)"), highlight: steps === String(defaultSteps) })),
+        },
+      },
+      {
+        date: "Nov 10",
+        prs: [187],
+        branch: "runtime/graph-buckets-wiring",
+        title: `Batch size past ${sweepBatches[0]}`,
+        text: `Every earlier result stopped at max batch ${sweepBatches[0]}. A sweep up to ${sweepBatches[sweepBatches.length - 1]} shows where batching stops paying on this GPU: throughput with graphs climbs from ${whole(sweepTokens(sweepBatches[0]))} to ${whole(sweepTokens(knee))} tok/s at max batch ${knee}, then flattens to ${afterKnee.map((b) => whole(sweepTokens(b))).join(" and ")}. Past ${knee} the step time doubles with the rows: at ${afterKnee[0]} attention is ${tableValue(sweep, { "max batch": afterKnee[0] }, "attention share", 1, "results")}% of a step's GPU time and the GEMMs have turned compute bound.`,
+        metric: {
+          kind: "bars",
+          label: "measured output tokens per second with graphs, by max batch",
+          unit: "tok/s",
+          digits: 0,
+          bars: sweepBatches.map((b) => ({ label: `max batch ${b}`, value: sweepTokens(b), highlight: b === knee })),
+        },
+      },
+      {
+        date: "Nov 10",
+        prs: [188],
+        branch: "kernel/embedding-lookup",
+        title: "A faster kernel that moved nothing",
+        text: `The embedding lookup copies one row of a table per token. Claude rewrote it at Joe's request: one thread per ${lookup.bytesPerThread} bytes over all the rows at once, where the naive kernel gave every token its own block and copied ${lookup.bytesPerThread / lookup.valuesPerLoad} bytes at a time. The output is bit-identical and a launch is ${(lookup.decodeUs.naive / lookup.decodeUs.fast).toFixed(1)}x faster (calculated). No end-to-end number moved, because the lookup is under ${lookup.underPct}% of a step either way. It was never where the time went.`,
+        metric: {
+          kind: "bars",
+          label: "measured median launch in decode steps",
+          unit: "µs",
+          digits: 1,
+          bars: [
+            { label: "naive", value: lookup.decodeUs.naive },
+            { label: "fast::embedding", value: lookup.decodeUs.fast, highlight: true },
           ],
         },
       },
