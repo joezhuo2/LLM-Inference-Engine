@@ -2008,7 +2008,15 @@
 - **chunked prefill: the cached prefix from the paged cache, the chunk's own K and V from the qkv buffer** => 
 - **sizing a grid without reading device-side lengths on the host (graph capture)** => 
 
-## Graph bucket wiring (Branch 129)
+## Exercise paths (Branch 129)
+
+- **CPU reference implementations of GPU kernels** => 
+- **gathering K and V through a block table** => 
+- **merging split partials with (max, sum, output)** => 
+- **testing with NaN in unused cache slots** => 
+- **float32 tolerance vs. BF16 rounding** => 
+
+## Graph bucket wiring (Branch 130)
 
 - **choosing the graph for a batch: the smallest captured bucket that holds it** => 
 - **padded rows in a replayed graph: compute spent on rows nobody reads** => 
