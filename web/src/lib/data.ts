@@ -1,5 +1,6 @@
 import decodeStepsJson from "@/data/decode_steps.json";
 import environmentJson from "@/data/environment.json";
+import graphRuleJson from "@/data/graph_rule.json";
 import hardwareJson from "@/data/hardware.json";
 import kvDemoJson from "@/data/kv_demo.json";
 import kvReplayJson from "@/data/kv_replay.json";
@@ -161,6 +162,10 @@ export function hardware(): Hardware {
 export type ModelShape = { hidden: number; intermediate: number; layers: number; heads: number; kv_heads: number; vocab: number; max_positions: number; roofline_context: number };
 
 export const modelShape = (): ModelShape => modelShapeJson;
+
+export type GraphRule = { steps: number; split_blocks: number; max_splits: number; min_split_tokens: number };
+
+export const graphRule = (): GraphRule => graphRuleJson;
 
 export function loadRun(): LoadRun {
   if (!resultsDoc.load) throw new Error("docs/results.md has no \"Engine runs measured\" line in its Under load section");

@@ -2056,6 +2056,11 @@
 - **interruptible animations: compressing a running tween instead of waiting for it** => 
 - **input latency vs. animation length** => 
 
+## Graph buckets and the batch sweep on the site (Branch 137)
+
+- **graph bucket (batch sizes that have a captured graph) and padding cost** => 
+- **why throughput stops rising with batch size once a step turns compute bound** => 
+
 ## Embedding lookup and timeline scenes on the site (Branch 138)
 
 - **a faster kernel that moves no end-to-end number (Amdahl's law)** => 

@@ -3,14 +3,15 @@
 import NumberFlow from "@number-flow/react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { longPrompt, twoRuns } from "@/content/kernels/cuda-graphs";
+import { chapterNumber } from "@/content/book-order";
+import { longPrompt, padding, sweepKnee, sweepOps, sweepPoints, twoRuns } from "@/content/kernels/cuda-graphs";
 import { measured } from "@/content/kernels/types";
 import { launchGaps, modelShape } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { useLoop } from "../loop";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
-import { buckets, CaptureFigure, EagerTimelineFigure, eagerLayer, GapFigure, graphLayer, GraphGridFigure, layerIndex, splitCounts, StageFigure, thresholds } from "./figures";
+import { BucketFigure, buckets, CaptureFigure, EagerTimelineFigure, eagerLayer, GapFigure, graphCount, graphLayer, graphMaxBatch, GraphGridFigure, layerIndex, splitCounts, StageFigure, stageRequests, stageRows, SweepFigure, thresholds } from "./figures";
 import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const eager = launchGaps("eager");
@@ -153,8 +154,13 @@ const gateUp = eagerLayer.find((k) => k.op === "gate_up");
 if (!gateUp) throw new Error("cuda-graphs: no gate_up kernel in the profiled layer");
 const gateUpUs = gateUp.end - gateUp.start;
 const shape = modelShape();
-const paddedBucket = buckets.find((b) => b >= 3);
 const walkedTo = thresholds[thresholds.length - 1].context;
+const kneePoint = sweepPoints.find((p) => p.batch === sweepKnee);
+const lastPoint = sweepPoints[sweepPoints.length - 1];
+const halfStep = sweepOps.find((o) => o.share >= 50) ?? sweepOps[sweepOps.length - 1];
+if (!kneePoint || kneePoint === lastPoint) throw new Error("cuda-graphs: the batch sweep has no size past its knee");
+const afterKnee = Math.round(100 * (lastPoint.graphs / kneePoint.graphs - 1));
+const list = (values: (number | string)[]) => values.join(", ");
 
 const steps: StoryStep[] = [
   {
@@ -228,7 +234,28 @@ const steps: StoryStep[] = [
         <p>
           The arrays sit at offsets that depend on the number of rows, and so does every GEMM&apos;s shape. A batch is padded
           up to the next bucket with rows that write nowhere and attend to nothing, so it replays that bucket&apos;s graph.
-          Together {buckets.length} buckets cover every decode batch.
+          Together {buckets.length} buckets cover every decode batch up to {graphMaxBatch} rows.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "buckets",
+    title: "two buckets per power of two",
+    body: (
+      <>
+        <p>
+          A padded row writes nothing, but it is not free: every kernel in the graph runs at the bucket&apos;s row count,
+          padding included. With one bucket per power of two, a batch of {padding.rows} rows replays the{" "}
+          {padding.coarseBucket}-row graph, and{" "}
+          <span className="text-warn">{`${padding.coarseBucket - padding.rows}`}</span> of the rows it pays for are padding.
+        </p>
+        <p>
+          So decode_graph_buckets adds sizes in between: it walks from each power of two to the next in equal steps, {padding.steps}{" "}
+          of them by default, and ends at the max batch. The same batch now replays the {padding.fineBucket}-row graph.
+          Padding it to {padding.coarseBucket} rows instead costs{" "}
+          <span className="text-accent">{`${padding.costPct}%`}</span> more time per token (calculated from the two
+          measured runs). Finer steps gained nothing more, so the default stays at {padding.steps}.
         </p>
       </>
     ),
@@ -271,15 +298,38 @@ const steps: StoryStep[] = [
       </>
     ),
   },
+  {
+    id: "sweep",
+    title: `past ${graphMaxBatch} rows`,
+    body: (
+      <>
+        <p>
+          Every number so far stops at {graphMaxBatch} rows. Raise the max batch, submit twice that many requests at once,
+          and the throughput with graphs keeps climbing up to {sweepKnee} rows:{" "}
+          <span className="text-accent">{`${fmt(kneePoint.graphs)} tok/s`}</span> (measured). After that it nearly stops:{" "}
+          {lastPoint.batch / sweepKnee} times the rows add little.
+        </p>
+        <p>
+          Two things change there. Attention reads each row&apos;s own keys and values, so its time grows with the rows,
+          and by {halfStep.batch} rows it is <span className="text-warn">{`${halfStep.share}%`}</span> of the step. And the
+          GEMMs of chapter {chapterNumber("gemm")} stop being one read of the weights that every row shares: past the ridge
+          they are compute bound, and their time grows with the rows too. From then on a step with twice the rows takes
+          about twice as long, and a bigger batch buys almost nothing.
+        </p>
+      </>
+    ),
+  },
 ];
 
 const captions = [
   `one decode step from the batch-1 Nsight Systems profile behind results/decode_step.md (commit ${trace.commit}): real start and end times, layer ${layerIndex} drawn; ${eagerLayer.length} kernels in a layer, ${shape.layers} layers; cudaLaunchKernel median ${fmt(trace.eager.launches.cudaLaunchKernel.median_us)} µs on the CPU; mid-step the CPU is ${fmt(trace.eager.cpu_ahead_us / 1000, 1)} ms ahead, about ${layersAhead} layers`,
   `gap = start of a kernel minus the end of the one before it, over every decode step of both profiles (web/scripts/step-timeline.py); the gate/up GEMV runs ${fmt(gateUpUs)} µs, a step has ${eager.kernels - 1} boundaries, and ${shortKernels} of the ${eagerLayer.length} kernels in a layer run under 3 µs`,
   "one layer of the 224 nodes drawn; the code is capture() in src/runtime/decode_graphs.cpp",
-  `the token ids, positions and slots are made up; a batch of 3 would pad to the ${paddedBucket}-row bucket, and the buckets run from ${buckets[0]} to ${buckets[buckets.length - 1]} rows; the layout is PagedRunner::stage's`,
-  `graph count and split rule from docs/profiling.md, Split attention in CUDA Graphs; split counts ${splitCounts.join(", ")}, contexts walked up to ${fmt(walkedTo)} tokens, ${longRun.before.toFixed(1)} ms per token before and ${longRun.after.toFixed(1)} after at the ${longPrompt.prompt}-token prompt; ms per token from engine bench, mean of two runs`,
-  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in docs/results.md (TPOT p50, 3 runs); the saving is ${savedShare}% of a batch-1 token (calculated)`,
+  `the token ids, positions and slots are made up; ${stageRequests} requests pad to ${stageRows.length} rows because the buckets at max batch ${graphMaxBatch} are ${list(buckets)} (calculated from the bucket rule); the layout is PagedRunner::stage's`,
+  `graph sizes calculated with the rule of decode_graph_buckets in src/sched/graph_buckets.cpp, ${padding.steps} per power of two by default; ${padding.rows} requests at max batch ${padding.maxBatch}, 256 output tokens, TPOT p50, median of 5 short and noisy runs, from docs/results.md, Batch size past 16: ${list(padding.runs.map((r) => r.tpot.toFixed(2)))} ms with ${list(padding.runs.map((r) => r.steps))} sizes per power of two; why 8 was slower was not profiled; the capture time and memory of the extra graphs were not measured`,
+  `graph count calculated from the bucket rule and the split rule of attention_splits in src/sched/paged_batch.cpp: ${graphCount} graphs at max batch ${graphMaxBatch}, split counts ${list(splitCounts)}, contexts walked up to ${fmt(walkedTo)} tokens; ${longRun.before.toFixed(1)} ms per token before and ${longRun.after.toFixed(1)} after at the ${longPrompt.prompt}-token prompt, from docs/profiling.md, Split attention in CUDA Graphs (engine bench at max batch 1, where there is one bucket, mean of two runs)`,
+  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in docs/results.md (TPOT p50, 3 runs), measured with one bucket per power of two; the saving is ${savedShare}% of a batch-1 token (calculated)`,
+  `engine bench with twice as many requests as the max batch, all submitted at once (an offline workload, not a serving result), 64 prompt and 64 output tokens, median of 3 runs, from docs/results.md, Batch size past 16, measured with one bucket per power of two; ${sweepKnee} to ${lastPoint.batch} rows add ${afterKnee}% (calculated); step shares are medians per op from eager Nsight Systems profiles, so attention and the GEMMs can add up to slightly more than the step; one workload shape on one GPU`,
 ];
 
 export const cudaGraphsSteps = steps;
@@ -296,6 +346,7 @@ export const cudaGraphsNumbers = {
   saved,
   batches: ["1", "4", "16"],
   longRun,
+  graphCount,
 };
 
 export function CudaGraphsStory() {
@@ -314,9 +365,13 @@ export function CudaGraphsStory() {
           case 3:
             return <StageFigure />;
           case 4:
+            return <BucketFigure rows={padding.rows} maxBatch={padding.maxBatch} coarse={padding.coarse} fine={padding.fine} steps={padding.steps} runs={padding.runs} costPct={padding.costPct} />;
+          case 5:
             return <GraphGridFigure {...longRun} />;
-          default:
+          case 6:
             return <ReplayPicker />;
+          default:
+            return <SweepFigure points={sweepPoints} ops={sweepOps} knee={sweepKnee} />;
         }
       }}
     />
