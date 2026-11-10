@@ -1,9 +1,10 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { BucketFigure, graphCount, graphMaxBatch, SweepFigure } from "@/components/kernels/cuda-graphs/figures";
 import { cudaGraphsCaptions, cudaGraphsNumbers, cudaGraphsSteps, ReplayPicker } from "@/components/kernels/cuda-graphs/story";
 import { cudaGraphsAbout, cudaGraphsAboutCaption } from "@/components/kernels/cuda-graphs/about";
-import { cudaGraphs } from "@/content/kernels/cuda-graphs";
+import { cudaGraphs, padding, sweepKnee, sweepOps, sweepPoints } from "@/content/kernels/cuda-graphs";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
 import { createCudaGraphsAboutModel } from "./cuda-graphs-about-model";
@@ -31,13 +32,15 @@ const beats: Beat[][] = [
     close("Close up: the padded row in pink, slot -1", [0.45, 0.05, -0.28], 0.8, 0.44, -16, 40),
     close("From the side: the kernels read fixed offsets", [0.5, 0.04, 0.0], 0.8, 0.4, 22, 26),
   ],
+  [flat(`${padding.rows} rows: padded to ${padding.coarseBucket}, or to ${padding.fineBucket}`)],
   [
-    overview("11 graphs: buckets by split counts"),
+    overview(`${graphCount} graphs: buckets by split counts`),
     close("Close up: the 1-row graphs, one per split count", [0.5, 0.04, -0.44], 0.8, 0.3, -18, 40),
     close("The rail: the longest context picks the graph", [0.5, 0.04, 0.02], 0.84, 0.3, 0, 44),
-    close("From the side: 5 graphs against 11", [0.5, 0.05, 0.24], 0.8, 0.3, 20, 34),
+    close("From the side: one graph per bucket against one per split count", [0.5, 0.05, 0.24], 0.8, 0.3, 20, 34),
   ],
   [flat("Switch eager and graph, pick a batch")],
+  [flat(`Past ${graphMaxBatch} rows: the curve bends at ${sweepKnee}`)],
 ];
 
 const instructions = [
@@ -45,11 +48,22 @@ const instructions = [
   "Watch each gap open and the idle column climb.",
   "Watch the launches drop into the graph and the lid close.",
   "Watch the rows land at fixed offsets and the kernels read them.",
+  "Watch the padded rows fill each graph, then compare the time per token.",
   "Drag the pink ball along the rail to change the context.",
+  undefined,
+  "Watch the curve climb and flatten, then where the step's time goes.",
 ];
 
-function CudaGraphsOverlay({ kind, target }: OverlayProps) {
-  return kind === "replay" && target && createPortal(<ReplayPicker />, target);
+function CudaGraphsOverlay({ kind, target, narrow }: OverlayProps) {
+  if (!target) return null;
+  if (kind === "replay") return createPortal(<ReplayPicker />, target);
+  if (kind !== "buckets" && kind !== "sweep") return null;
+  return createPortal(
+    <div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>
+      {kind === "buckets" ? <BucketFigure rows={padding.rows} maxBatch={padding.maxBatch} coarse={padding.coarse} fine={padding.fine} steps={padding.steps} runs={padding.runs} costPct={padding.costPct} /> : <SweepFigure points={sweepPoints} ops={sweepOps} knee={sweepKnee} />}
+    </div>,
+    target,
+  );
 }
 
 const chapter: ChapterDef = {
@@ -59,8 +73,8 @@ const chapter: ChapterDef = {
   formula: cudaGraphs.formula,
   steps: cudaGraphsSteps,
   captions: cudaGraphsCaptions,
-  exhibits: [0, 1, 2, 3, 4, null],
-  overlays: [null, null, null, null, null, "replay"],
+  exhibits: [0, 1, 2, 3, null, 4, null, null],
+  overlays: [null, null, null, null, "buckets", null, "replay", "sweep"],
   instructions,
   beats,
   workbench: [],

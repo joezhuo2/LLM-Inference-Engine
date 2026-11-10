@@ -1,6 +1,6 @@
 import { kvReplay, launchGaps } from "@/lib/data";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
-import { measured } from "@/content/kernels/types";
+import { padding, sweepKnee, sweepOps, sweepPoints } from "@/content/kernels/cuda-graphs";
 import { chapterNumber } from "../book-order";
 import type { ChapterReview } from "./types";
 
@@ -13,8 +13,10 @@ const shortest = Math.min(...lengths);
 const longest = Math.max(...lengths);
 const idleShare = (us: number) => (100 * gap) / (us + gap);
 const pct = (v: number) => (v < 10 ? v.toFixed(1) : Math.round(v).toString());
-const tpot = (system: string, batch: string) => measured("throughput-and-latency", { system, "max batch": batch }, "TPOT p50 ms", 0, "results");
-const savedShare = (batch: string) => (100 * (tpot("engine", batch) - tpot("engine + graphs", batch))) / tpot("engine", batch);
+const kneePoint = sweepPoints.find((p) => p.batch === sweepKnee) ?? sweepPoints[0];
+const lastPoint = sweepPoints[sweepPoints.length - 1];
+const afterKnee = Math.round(100 * (lastPoint.graphs / kneePoint.graphs - 1));
+const halfStep = sweepOps.find((o) => o.share >= 50) ?? sweepOps[sweepOps.length - 1];
 
 export const review: ChapterReview = {
   lesson: "When kernels are short, the gaps between launches cost time: record the step once and replay it.",
@@ -22,7 +24,7 @@ export const review: ChapterReview = {
   takeaways: [
     `Launched one by one, every kernel is preceded by a gap of a few microseconds while the GPU takes the next launch and sets up its grid. Those gaps leave the GPU idle for ${eager.idle_pct}% of a batch-1 decode step, and faster kernels would not remove them.`,
     `A CUDA Graph records the chain of launches once and replays it with a single launch, which cuts the idle share to ${replay.idle_pct}% while the kernels take the same time. The saving is about a fixed time per step, because every step has the same kernel boundaries.`,
-    "A graph freezes each kernel's pointers and grid, so a replay can only change values. Inputs go through fixed buffers, batches are padded to a bucket size, and anything that changes a grid, like the split count of attention, needs its own graph.",
+    `A graph freezes each kernel's pointers and grid, so a replay can only change values. Inputs go through fixed buffers, and anything that changes a grid, like the split count of attention, needs its own graph. Batches are padded to a bucket, and padded rows are still computed, so the buckets come ${padding.steps} per power of two: padding ${padding.rows} rows to ${padding.coarseBucket} instead of ${padding.fineBucket} costs about ${padding.costPct}% more time per token.`,
   ],
   questions: [
     {
@@ -31,9 +33,9 @@ export const review: ChapterReview = {
       why: `The gap is about the same before every kernel, so its share is the gap divided by the kernel plus the gap: about ${pct(idleShare(shortest))}% for the shortest kernel and ${pct(idleShare(longest))}% for the longest. Short kernels are where launches hurt, and a graph removes the gap without touching the kernels.`,
     },
     {
-      question: "A graph replay saves about the same time per step at batch 1 and at batch 16, because both launch the same kernels. Does it help a batch-16 token more or less, as a share of its time?",
-      answer: "Less.",
-      why: `The saved time is nearly fixed per step, but a batch-16 step takes longer, so the same saving is a smaller share: about ${pct(savedShare("1"))}% of a batch-1 token and ${pct(savedShare("16"))}% of a batch-16 token.`,
+      question: `With graphs, the max batch goes from ${sweepKnee} to ${lastPoint.batch} rows, ${lastPoint.batch / sweepKnee} times as many. Does the throughput rise by about as much?`,
+      answer: "No, by very little.",
+      why: `It rises by about ${afterKnee}% (calculated from the measured medians of an offline run). Up to ${sweepKnee} rows a bigger batch shares each read of the weights among more rows. Past that the GEMMs are compute bound and attention, which reads each row's own keys and values, is ${halfStep.share}% of the step at ${halfStep.batch} rows, so a step with twice the rows takes about twice as long.`,
     },
     {
       question: `Chapter ${chapterNumber("paged-kv")} finds a request's cached tokens through a block table. A CUDA Graph freezes every kernel's pointers. Why can one captured graph still serve a request whose context grows every step?`,

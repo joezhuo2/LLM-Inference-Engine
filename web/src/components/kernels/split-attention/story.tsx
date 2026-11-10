@@ -278,7 +278,7 @@ const captions = [
   `measured with Nsight Compute: ${waves.map((w) => w.us.toFixed(1)).join(", ")} µs for ${waves.map((w) => w.splits).join(", ")} splits; up to ${waves[2].splits} splits (${waves[2].blocks} blocks) the grid fits one wave; at ${waves[3].splits} splits ${slots} blocks run first and ${waves[3].blocks - slots} wait; slot placement is a sketch`,
   "the layout of the scratch buffer; the record contents are illustrative",
   `${loopV2} µs → ${loop8} µs per call, one row at 2,048 tokens, v2 against 8 splits, merge included; example values; the same arithmetic as one pass over the whole context`,
-  `TPOT p50 of the first of two runs, RTX 5060 Laptop GPU, 64 output tokens; eager at a 1,984-token prompt: v2 ${graphBars[0].ms} → split ${graphBars[1].ms} ms per token; ${graphKeys.reduce((a, k) => a + k.splits.length, 0)} graphs instead of ${graphKeys.length}`,
+  `TPOT p50 of the first of two runs, RTX 5060 Laptop GPU, 64 output tokens; eager at a 1,984-token prompt: v2 ${graphBars[0].ms} → split ${graphBars[1].ms} ms per token; ${graphKeys.reduce((a, k) => a + k.splits.length, 0)} graphs instead of ${graphKeys.length} for the batch sizes ${graphKeys.map((k) => k.bucket).join(", ")}, measured with those sizes; the CUDA Graphs chapter adds batch sizes in between`,
   `µs per call from the bench loop; the engine never picks 16; ${fullRows} rows × ${modelShape().heads} heads = ${fullBlocks} blocks against ${slots} slots; the short context is 128 tokens; the rule needs at least ${minTokens} tokens per split, at most ${maxBlocks} blocks and ${maxSplits} splits`,
 ];
 

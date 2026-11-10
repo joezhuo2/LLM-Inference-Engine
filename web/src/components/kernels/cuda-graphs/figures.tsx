@@ -2,6 +2,8 @@
 
 import { motion } from "motion/react";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
+import { batches, graphRule, modelShape } from "@/lib/data";
+import { capturedSplits, decodeGraphBuckets, splitThresholds } from "@/lib/graph-buckets";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 
@@ -257,16 +259,20 @@ export const stageRows = [
   { name: "request A", v: ["417", "88", "1,432", "89", "12 4 31 …"], pad: false },
   { name: "request B", v: ["29", "7", "520", "8", "2 …"], pad: false },
   { name: "request C", v: ["1,863", "301", "4,925", "302", "8 9 17 …"], pad: false },
+  { name: "request D", v: ["905", "40", "2,216", "41", "20 6 …"], pad: false },
+  { name: "request E", v: ["12", "163", "3,395", "164", "5 26 14 …"], pad: false },
   { name: "padding", v: ["0", "0", "-1", "0", "0 0 0 …"], pad: true },
 ];
+
+export const stageRequests = stageRows.filter((r) => !r.pad).length;
 
 export function StageFigure() {
   const { on } = useLoop(12);
   const rows = stageRows;
   const cx = (j: number) => 112 + j * 86;
   return (
-    <Frame label="A decode batch of three requests padded to the bucket of four rows, then copied by stage into one device buffer whose five arrays sit at offsets fixed by the row count, where the captured kernels read them on every replay">
-      <Label x={20} y={24}>{"stage(): 3 requests padded to the 4-row bucket, then copied to the GPU"}</Label>
+    <Frame label={`A decode batch of ${stageRequests} requests padded to the bucket of ${rows.length} rows, then copied by stage into one device buffer whose five arrays sit at offsets fixed by the row count, where the captured kernels read them on every replay`}>
+      <Label x={20} y={24}>{`stage(): ${stageRequests} requests padded to the ${rows.length}-row bucket, then copied to the GPU`}</Label>
       {fields.map((f, j) => (
         <Label key={f} x={cx(j)} y={50}>
           {f}
@@ -274,21 +280,21 @@ export function StageFigure() {
       ))}
       {rows.map((r, i) => (
         <motion.g key={r.name} {...(r.pad ? on(0.08) : {})}>
-          <Label x={20} y={74 + i * 20} className={r.pad ? "fill-warn" : "fill-text"}>
+          <Label x={20} y={72 + i * 16} className={r.pad ? "fill-warn" : "fill-text"}>
             {r.name}
           </Label>
           {r.v.map((v, j) => (
-            <Label key={j} x={cx(j)} y={74 + i * 20} className={r.pad ? "fill-warn" : "fill-text"}>
+            <Label key={j} x={cx(j)} y={72 + i * 16} className={r.pad ? "fill-warn" : "fill-text"}>
               {v}
             </Label>
           ))}
         </motion.g>
       ))}
       <motion.g {...on(0.1)}>
-        <Label x={20} y={168} className="fill-warn">{"a padded row writes nowhere (slot -1) and reads nothing (context 0)"}</Label>
+        <Label x={20} y={174} className="fill-warn">{"a padded row writes nowhere (slot -1) and reads nothing (context 0)"}</Label>
       </motion.g>
       <motion.g {...on(0.3)}>
-        <Label x={20} y={204}>{"one device buffer of int32, at the same address on every step (t = 4 rows):"}</Label>
+        <Label x={20} y={204}>{`one device buffer of int32, at the same address on every step (t = ${rows.length} rows):`}</Label>
         {fields.map((f, j) => {
           const w = j === 4 ? 152 : 86;
           return (
@@ -324,44 +330,44 @@ export function StageFigure() {
   );
 }
 
-export const buckets = [1, 2, 4, 8, 16];
-export const splitCounts = [1, 2, 4, 8];
-export const captured: Record<number, number[]> = { 1: [1, 2, 4, 8], 2: [1, 2, 4], 4: [1, 2], 8: [1], 16: [1] };
-export const thresholds = [
-  { context: 0, splits: 1 },
-  { context: 512, splits: 2 },
-  { context: 1024, splits: 4 },
-  { context: 2048, splits: 8 },
-];
+export const graphMaxBatch = Math.max(...batches);
+export const graphMaxContext = modelShape().max_positions;
+export const graphSteps = graphRule().steps;
+export const buckets = decodeGraphBuckets(graphMaxBatch, graphSteps);
+export const captured: Record<number, number[]> = Object.fromEntries(buckets.map((b) => [b, capturedSplits(b, graphMaxContext)]));
+export const splitCounts = [...new Set(Object.values(captured).flat())].sort((a, b) => a - b);
+export const thresholds = splitThresholds(buckets[0], graphMaxContext);
+export const graphCount = Object.values(captured).reduce((s, v) => s + v.length, 0);
+if (buckets.find((b) => b >= stageRequests) !== stageRows.length) throw new Error(`cuda-graphs: the stage figure pads ${stageRequests} requests to ${stageRows.length} rows, but the bucket rule gives ${buckets.find((b) => b >= stageRequests)}`);
 
 export function GraphGridFigure({ before, after, eager }: { before: number; after: number; eager: number }) {
   const { on } = useLoop(12);
   const gx = (j: number) => 140 + j * 74;
-  const gy = (i: number) => 64 + i * 34;
-  const count = Object.values(captured).reduce((s, v) => s + v.length, 0);
+  const gy = (i: number) => 60 + i * 22;
   const max = Math.max(before, after, eager);
+  const foot = gy(buckets.length);
   return (
-    <Frame label={`The ${count} captured graphs as a grid of batch-size buckets by attention split counts; a one-row request's context grows from 0 to 2,048 tokens and its replays move from the 1-split to the 2-, 4- and 8-split graph`}>
-      <Label x={20} y={24}>{`${count} graphs: one per (bucket, split count) at a 2,048-token max context`}</Label>
-      <Label x={20} y={50}>bucket</Label>
+    <Frame label={`The ${graphCount} graphs captured at a max batch of ${graphMaxBatch} as a grid of batch-size buckets by attention split counts; a one-row request's context grows from 0 to ${fmt(graphMaxContext)} tokens and its replays move from the 1-split graph to the graphs with more splits`}>
+      <Label x={20} y={24}>{`${graphCount} graphs at max batch ${graphMaxBatch}: one per (bucket, split count), contexts to ${fmt(graphMaxContext)} tokens`}</Label>
+      <Label x={20} y={48}>bucket</Label>
       {splitCounts.map((s, j) => (
-        <Label key={s} x={gx(j) + 30} y={50} anchor="middle">{`${s} split${s > 1 ? "s" : ""}`}</Label>
+        <Label key={s} x={gx(j) + 30} y={48} anchor="middle">{`${s} split${s > 1 ? "s" : ""}`}</Label>
       ))}
       {buckets.map((b, i) => (
         <g key={b}>
-          <Label x={20} y={gy(i) + 17} className="fill-text">{`${b} row${b > 1 ? "s" : ""}`}</Label>
+          <Label x={20} y={gy(i) + 12} className="fill-text">{`${b} row${b > 1 ? "s" : ""}`}</Label>
           {splitCounts.map((s, j) =>
             captured[b].includes(s) ? (
-              <rect key={s} x={gx(j)} y={gy(i)} width={60} height={24} rx={4} className="fill-accent/30 stroke-accent" strokeWidth={0.75} />
+              <rect key={s} x={gx(j)} y={gy(i)} width={60} height={16} rx={4} className="fill-accent/30 stroke-accent" strokeWidth={0.75} />
             ) : (
-              <rect key={s} x={gx(j)} y={gy(i)} width={60} height={24} rx={4} className="fill-none stroke-border" strokeDasharray="3 3" strokeWidth={0.75} />
+              <rect key={s} x={gx(j)} y={gy(i)} width={60} height={16} rx={4} className="fill-none stroke-border" strokeDasharray="3 3" strokeWidth={0.75} />
             ),
           )}
         </g>
       ))}
       {thresholds.map((t, j) => {
         const s = 0.06 + j * 0.2;
-        return <motion.rect key={t.context} x={gx(j)} y={gy(0)} width={60} height={24} rx={4} className="fill-accent" {...on(s, s + 0.2, j === 2)} />;
+        return <motion.rect key={t.context} x={gx(splitCounts.indexOf(t.splits))} y={gy(0)} width={60} height={16} rx={4} className="fill-accent" {...on(s, s + 0.2, j === 2)} />;
       })}
       <Label x={460} y={gy(0) + 10} className="fill-accent">one request,</Label>
       <Label x={460} y={gy(0) + 24} className="fill-accent">context from</Label>
@@ -369,24 +375,158 @@ export function GraphGridFigure({ before, after, eager }: { before: number; afte
         const s = 0.06 + j * 0.2;
         return (
           <motion.g key={t.context} {...on(s, s + 0.2, j === 2)}>
-            <Label x={460} y={gy(0) + 38} className="fill-accent">{`${t.context.toLocaleString("en-US")} tokens`}</Label>
+            <Label x={460} y={gy(0) + 38} className="fill-accent">{`${fmt(t.context)} tokens`}</Label>
           </motion.g>
         );
       })}
-      <Label x={20} y={258}>{"dashed: a split count the rule never gives that bucket"}</Label>
-      <Label x={20} y={290} className="fill-text">ms per token, one request with a 1,984-token prompt</Label>
+      <Label x={20} y={foot + 14}>{"dashed: a split count the rule never gives that bucket"}</Label>
+      <Label x={20} y={foot + 46} className="fill-text">ms per token, one request with a 1,984-token prompt</Label>
       {[
-        { label: "5 graphs, 1 split", v: before, cls: "fill-baseline" },
+        { label: "one graph per bucket", v: before, cls: "fill-baseline" },
         { label: "eager, split", v: eager, cls: "fill-text/60" },
-        { label: "11 graphs", v: after, cls: "fill-accent" },
+        { label: "one per split count", v: after, cls: "fill-accent" },
       ].map((b, i) => (
         <g key={b.label}>
-          <Label x={20} y={316 + i * 22}>{b.label}</Label>
-          <rect x={160} y={306 + i * 22} width={300} height={12} rx={6} className="fill-border" />
-          <motion.rect x={160} y={306 + i * 22} width={(300 * b.v) / max} height={12} rx={6} className={b.cls} {...on(0.1 + i * 0.06)} />
-          <Label x={470} y={316 + i * 22} className={i === 2 ? "fill-accent" : "fill-text"}>{`${b.v.toFixed(1)} ms`}</Label>
+          <Label x={20} y={foot + 72 + i * 22}>{b.label}</Label>
+          <rect x={160} y={foot + 62 + i * 22} width={300} height={12} rx={6} className="fill-border" />
+          <motion.rect x={160} y={foot + 62 + i * 22} width={(300 * b.v) / max} height={12} rx={6} className={b.cls} {...on(0.1 + i * 0.06)} />
+          <Label x={470} y={foot + 72 + i * 22} className={i === 2 ? "fill-accent" : "fill-text"}>{`${b.v.toFixed(1)} ms`}</Label>
         </g>
       ))}
+    </Frame>
+  );
+}
+
+export type PaddingRun = { steps: number; bucket: number; tpot: number };
+
+export function BucketFigure({ rows, maxBatch, coarse, fine, steps, runs, costPct }: { rows: number; maxBatch: number; coarse: number[]; fine: number[]; steps: number; runs: PaddingRun[]; costPct: number }) {
+  const { on, grow } = useLoop(14);
+  const span = Math.log2(maxBatch);
+  const bx = (b: number) => 190 + (340 * Math.log2(b)) / span;
+  const hit = (list: number[]) => list.find((b) => b >= rows) ?? maxBatch;
+  const lists = [
+    { label: "1 per power of two", list: coarse, y: 44, cls: "fill-warn/20 stroke-warn", at: 0.06 },
+    { label: `${steps} per power of two`, list: fine, y: 70, cls: "fill-accent/20 stroke-accent", at: 0.3 },
+  ];
+  const strips = [
+    { bucket: hit(coarse), y: 134, at: 0.1, cls: "fill-warn/70", text: "fill-warn" },
+    { bucket: hit(fine), y: 196, at: 0.34, cls: "fill-accent/70", text: "fill-accent" },
+  ];
+  const max = Math.max(...runs.map((r) => r.tpot));
+  return (
+    <Frame label={`A decode batch of ${rows} rows at a max batch of ${maxBatch}: with one bucket per power of two it is padded to the ${strips[0].bucket}-row graph, with ${steps} per power of two to the ${strips[1].bucket}-row graph, and the measured time per token is lower with less padding`}>
+      <Label x={20} y={22}>{`the graph sizes up to max batch ${maxBatch}, and the first one that holds ${rows} rows`}</Label>
+      {lists.map((l) => (
+        <g key={l.label}>
+          <Label x={20} y={l.y + 12} className="fill-text">{l.label}</Label>
+          {l.list.map((b) => (
+            <g key={b}>
+              <rect x={bx(b) - 12} y={l.y} width={24} height={17} rx={3} className="fill-surface stroke-border" strokeWidth={0.75} />
+              {b === hit(l.list) && <motion.rect x={bx(b) - 12} y={l.y} width={24} height={17} rx={3} className={l.cls} strokeWidth={1.5} {...on(l.at)} />}
+              <Label x={bx(b)} y={l.y + 12} anchor="middle" className="fill-text">{`${b}`}</Label>
+            </g>
+          ))}
+        </g>
+      ))}
+      {strips.map((s) => (
+        <g key={s.bucket}>
+          <Label x={20} y={s.y - 8} className="fill-text">{`the ${s.bucket}-row graph`}</Label>
+          {Array.from({ length: s.bucket }, (_, j) =>
+            j < rows ? (
+              <rect key={j} x={20 + j * 16} y={s.y} width={13} height={18} rx={2} className="fill-text/60" />
+            ) : (
+              <motion.rect key={j} x={20 + j * 16} y={s.y} width={13} height={18} rx={2} className={s.cls} {...on(s.at + (j - rows) * 0.012)} />
+            ),
+          )}
+          <Label x={20} y={s.y + 34}>{`${rows} rows of the batch`}</Label>
+          <motion.g {...on(s.at + (s.bucket - rows) * 0.012)}>
+            <Label x={20 + rows * 16} y={s.y + 34} className={s.text}>{`+ ${s.bucket - rows} padded rows, computed and thrown away`}</Label>
+          </motion.g>
+        </g>
+      ))}
+      <Label x={20} y={266} className="fill-text">{`ms per token for the ${rows} rows (measured), by graph sizes per power of two`}</Label>
+      {runs.map((r, i) => (
+        <g key={r.steps}>
+          <Label x={20} y={290 + i * 20} className={r.steps === steps ? "fill-accent" : "fill-muted"}>{`${r.steps}: the ${r.bucket}-row graph`}</Label>
+          <rect x={160} y={281 + i * 20} width={280} height={11} rx={5.5} className="fill-border" />
+          <motion.rect x={160} y={281 + i * 20} width={(280 * r.tpot) / max} height={11} rx={5.5} className={r.steps === steps ? "fill-accent" : r.steps === 1 ? "fill-warn" : "fill-baseline"} {...grow(0.52 + i * 0.05, 0.66 + i * 0.05)} />
+          <Label x={450} y={290 + i * 20} className={r.steps === steps ? "fill-accent" : "fill-text"}>{`${r.tpot.toFixed(2)} ms`}</Label>
+        </g>
+      ))}
+      <motion.g {...on(0.78)}>
+        <Label x={20} y={382} className="fill-warn">{`padding to ${strips[0].bucket} rows instead of ${strips[1].bucket}: ${costPct}% more time per token (calculated)`}</Label>
+      </motion.g>
+    </Frame>
+  );
+}
+
+export type SweepPoint = { batch: number; graphs: number; eager: number };
+export type StepShare = { batch: number; attention: number; gemms: number; busy: number; share: number };
+
+export function SweepFigure({ points, ops, knee }: { points: SweepPoint[]; ops: StepShare[]; knee: number }) {
+  const { on, grow } = useLoop(14);
+  const top = Math.ceil(Math.max(...points.map((p) => p.graphs)) / 500) * 500;
+  const cx = (i: number) => 90 + (i * 410) / (points.length - 1);
+  const cy = (v: number) => 196 - (146 * v) / top;
+  const at = (i: number) => 0.05 + i * 0.07;
+  const kneeIndex = points.findIndex((p) => p.batch === knee);
+  const ticks = Array.from({ length: Math.floor(top / 1000) + 1 }, (_, k) => k * 1000);
+  return (
+    <Frame label={`Output tokens per second against the max batch from ${points[0].batch} to ${points[points.length - 1].batch} rows, with graphs and eager: the curve climbs to ${knee} rows and then flattens; below, the share of a decode step spent in attention and in the GEMMs at each size`}>
+      <Label x={20} y={22} className="fill-text">tokens per second against max batch (measured)</Label>
+      <line x1={392} x2={410} y1={18} y2={18} className="stroke-accent" strokeWidth={1.75} />
+      <Label x={416} y={22} className="fill-accent">graphs</Label>
+      <line x1={470} x2={488} y1={18} y2={18} className="stroke-muted" strokeWidth={1.25} strokeDasharray="4 3" />
+      <Label x={494} y={22}>eager</Label>
+      {ticks.map((v) => (
+        <g key={v}>
+          <line x1={64} x2={520} y1={cy(v)} y2={cy(v)} className="stroke-border" strokeWidth={0.5} />
+          <Label x={58} y={cy(v) + 4} anchor="end">{fmt(v)}</Label>
+        </g>
+      ))}
+      {kneeIndex >= 0 && (
+        <motion.g {...on(at(points.length))}>
+          <line x1={cx(kneeIndex)} x2={cx(kneeIndex)} y1={cy(points[kneeIndex].eager) + 8} y2={cy(0)} className="stroke-warn" strokeWidth={0.75} strokeDasharray="3 3" />
+          <Label x={cx(kneeIndex) + 8} y={cy(0) - 8} className="fill-warn">{`the curve bends at ${knee} rows`}</Label>
+        </motion.g>
+      )}
+      {points.slice(1).map((p, i) => (
+        <motion.g key={p.batch} {...on(at(i + 1))}>
+          <line x1={cx(i)} x2={cx(i + 1)} y1={cy(points[i].eager)} y2={cy(p.eager)} className="stroke-muted" strokeWidth={1.25} strokeDasharray="4 3" />
+          <line x1={cx(i)} x2={cx(i + 1)} y1={cy(points[i].graphs)} y2={cy(p.graphs)} className="stroke-accent" strokeWidth={1.75} />
+        </motion.g>
+      ))}
+      {points.map((p, i) => (
+        <g key={p.batch}>
+          <Label x={cx(i)} y={214} anchor="middle" className="fill-text">{`${p.batch}`}</Label>
+          <motion.g {...on(at(i))}>
+            <circle cx={cx(i)} cy={cy(p.eager)} r={2.5} className="fill-muted" />
+            <circle cx={cx(i)} cy={cy(p.graphs)} r={3.5} className="fill-accent" />
+            <Label x={cx(i)} y={cy(p.graphs) - 9} anchor="middle" className="fill-accent">{fmt(p.graphs)}</Label>
+          </motion.g>
+        </g>
+      ))}
+      <Label x={20} y={214}>rows</Label>
+      <Label x={20} y={246} className="fill-text">where the GPU time of a decode step goes (eager profiles, measured)</Label>
+      {ops.map((o, i) => (
+        <g key={o.batch}>
+          <Label x={20} y={270 + i * 22}>{`${o.batch} rows`}</Label>
+          <rect x={90} y={260 + i * 22} width={250} height={12} rx={2} className="fill-border" />
+          <motion.rect x={90} y={260 + i * 22} width={250 * Math.min(1, (o.attention + o.gemms) / o.busy)} height={12} rx={2} className="fill-baseline" {...grow(0.5 + i * 0.04, 0.62 + i * 0.04)} />
+          <motion.rect x={90} y={260 + i * 22} width={(250 * o.share) / 100} height={12} rx={2} className="fill-accent" {...grow(0.5 + i * 0.04, 0.62 + i * 0.04)} />
+          <Label x={350} y={270 + i * 22} className="fill-accent">{`attention ${o.share}%`}</Label>
+          <Label x={436} y={270 + i * 22}>{`GEMMs ${fmt(o.gemms / 1000, 1)} ms`}</Label>
+        </g>
+      ))}
+      <rect x={20} y={356} width={10} height={10} rx={2} className="fill-accent" />
+      <Label x={36} y={365}>attention</Label>
+      <rect x={100} y={356} width={10} height={10} rx={2} className="fill-baseline" />
+      <Label x={116} y={365}>the five GEMMs</Label>
+      <rect x={216} y={356} width={10} height={10} rx={2} className="fill-border" />
+      <Label x={232} y={365}>everything else</Label>
+      <motion.g {...on(0.74)}>
+        <Label x={20} y={388} className="fill-warn">{`from ${knee} rows on, a step with twice the rows takes about twice as long`}</Label>
+      </motion.g>
     </Frame>
   );
 }
