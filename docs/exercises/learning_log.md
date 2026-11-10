@@ -2104,3 +2104,5 @@
 - **the idea of a chapter against the history of how it was built** => 
 - **block table** => 
 - **contiguous reads within a block** => 
+- **online softmax as one pass** => 
+- **shared memory per block** => 

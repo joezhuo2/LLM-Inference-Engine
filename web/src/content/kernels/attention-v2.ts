@@ -13,7 +13,7 @@ export const attentionV2: KernelStory = {
   title: "attention v1 → v2",
   book: true,
   about: true,
-  short: "The first paged attention kept every score in shared memory and made three passes. An online softmax made it one pass over constant shared memory, with eight lanes per key.",
+  short: "An online softmax keeps a running maximum and sum, so attention reads every key once with shared memory the size of one chunk and no cap on the context. Eight lanes share each key. It replaced a kernel that kept every score and made three passes.",
   formula: "m′ = max(m, mₖ), l′ = l·eᵐ⁻ᵐ′ + Σ eˢ⁻ᵐ′",
   headline: {
     value: `${(measured(v2Wired, attentionRow, "before (e07c022)") / measured(v2Wired, attentionRow, "after (79c1f91)")).toFixed(1)}x`,

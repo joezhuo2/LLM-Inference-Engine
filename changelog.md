@@ -6,6 +6,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Part A: a story step can carry a `group` ("how it got built"). The scroll page shows it in the step's kicker, the book shows it in the page kicker, and the chapter's "in this chapter" list starts the group with a heading, so a chapter can put its idea first and its build history after.
 - Part A: Paged attention opens on the block table and what paging costs; the v1 to v2 to split history moves under how it got built.
+- Part A: Attention v2 opens on the online softmax, then lanes and the profile; v1's three passes and cap move under how it got built, and the decode step and size sweep under measured.
 
 ## kernel/flash-prefill-div32
 
