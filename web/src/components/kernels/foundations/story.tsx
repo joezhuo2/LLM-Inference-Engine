@@ -149,7 +149,7 @@ export function RowsPicker() {
 const steps: StoryStep[] = [
   {
     id: "hierarchy",
-    title: "grid, block, warp, thread",
+    title: "threads in blocks, warps in lockstep",
     body: (
       <>
         <p>
@@ -167,7 +167,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "memory",
-    title: "four places to keep a number",
+    title: "the nearer the data, the faster",
     body: (
       <>
         <p>
@@ -190,7 +190,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "bytes",
-    title: "bytes against FLOPs",
+    title: "the slower of bytes and FLOPs wins",
     body: (
       <>
         <p>
@@ -209,7 +209,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "roofline",
-    title: "the roofline",
+    title: "the ridge splits memory from compute",
     body: (
       <>
         <p>
@@ -243,7 +243,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "fusion",
-    title: "fewer trips to memory",
+    title: "fused kernels skip a trip to memory",
     body: (
       <>
         <p>
@@ -274,7 +274,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "lookup",
-    title: "a faster kernel, the same step",
+    title: "speed up only what the step waits on",
     body: (
       <>
         <p>

@@ -12,6 +12,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: SwiGLU teaches wide loads at peak bandwidth and the one-token block shortage first; the first draft's 2D grid ceiling moves under how it got built.
 - Part A: Sampling steps are titled by their lessons; cost, FP64 noise and one block per row are grouped as measured.
 - Part A: CUDA Graphs leads with launch gaps, capture, staging and what a replay saves; buckets and split-count graphs are grouped as how it got built, the batch sweep as measured.
+- Part A: Foundations steps and the latency big idea are titled by their lesson instead of their topic, and the latency idea no longer calls chunked prefill the last chapter.
 
 ## kernel/flash-prefill-div32
 
