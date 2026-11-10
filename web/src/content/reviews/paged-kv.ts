@@ -31,5 +31,11 @@ export const review: ChapterReview = {
       answer: `${doubledBlock - 1} slots, up from ${B - 1}.`,
       why: `A request only wastes the rest of its last block, because a new block is taken only when the last one is full. So the worst case is one slot short of a full block, and it grows with the block size.`,
     },
+    {
+      question: `RoPE turns each key right before write_kv copies it into a ${B}-token block. Why can the cache keep that rotated key for the rest of the request instead of turning it again as new tokens arrive?`,
+      answer: "A key is turned by its own position only, and that never changes.",
+      why: "RoPE gives each key the angle of its own position, and the score with any later query depends only on their gap. So the stored key stays correct in whatever block it lands, and each token is written once and only read after.",
+      recall: "rope",
+    },
   ],
 };

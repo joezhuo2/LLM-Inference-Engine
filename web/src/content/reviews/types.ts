@@ -1,4 +1,4 @@
-export type ReviewQuestion = { question: string; answer: string; why: string };
+export type ReviewQuestion = { question: string; answer: string; why: string; recall?: string };
 
 export type ChapterReview = { lesson: string; why: string; takeaways: string[]; questions: ReviewQuestion[] };
 

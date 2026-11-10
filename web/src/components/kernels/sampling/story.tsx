@@ -3,7 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
-import { profilingTable } from "@/lib/data";
+import { hardware, modelShape, profilingTable } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -23,6 +23,8 @@ const columns = [
 
 const at = (rows: string, column: string) => measured(section, { rows }, column);
 const one = (column: string) => at("1", column);
+const vocab = modelShape().vocab.toLocaleString("en-US");
+const sms = hardware().sms;
 
 const fp64 = (metric: string) => measured(section, { metric }, "value", 1);
 const busy = fp64("FP64 pipe busy");
@@ -42,7 +44,7 @@ const prediction: Prediction = expectAnswer({
   question: "From 1 row to 16, how much longer does greedy decoding take?",
   choices: ["about 16 times", "a few times", "barely longer"],
   answer: greedyRatio > 8 ? "about 16 times" : greedyRatio > 1.6 ? "a few times" : "barely longer",
-  why: `${at("1", "greedy").toFixed(1)} µs for 1 row, ${at("16", "greedy").toFixed(1)} µs for 16. Each row gets its own block, so the 16 rows run side by side on different SMs.`,
+  why: `Greedy takes ${greedyRatio.toPrecision(2)}x as long at 16 rows as at 1 row (calculated from the two bars). Each row gets its own block, so the rows run side by side on different SMs.`,
 }, "barely longer");
 
 export function ModePicker() {
@@ -68,7 +70,7 @@ export function ModePicker() {
         ))}
       </div>
       <div className="space-y-1 border-t border-border pt-2 leading-relaxed text-muted">
-        <div>{`${rows === "1" ? "1 row uses 1 of 26 SMs" : "16 rows run side by side on 16 SMs"}, so the times barely move`}</div>
+        <div>{`${rows === "1" ? `1 row uses 1 of ${sms} SMs` : "16 rows run side by side on 16 SMs"}, so the times barely move`}</div>
       </div>
     </div>
   );
@@ -81,8 +83,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          After the LM head, each sequence has 32,000 logits and needs one token id. Greedy decoding takes the largest:
-          1,024 threads stride across the row, each keeping the best value and index it saw, and a tree halves them to
+          After the LM head, each sequence has {vocab} logits and needs one token id. Greedy decoding takes the largest:
+          a block of threads strides across the row, each keeping the best value and index it saw, and a tree halves them to
           one.
         </p>
         <p>
@@ -116,7 +118,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           The noise comes from Philox, a counter-based generator: token i at decode step s gets the number at offset
-          s × <span className="text-accent">32,000</span> + i of the request&apos;s seed. Nothing is stored between calls.
+          s × <span className="text-accent">{vocab}</span> + i of the request&apos;s seed. Nothing is stored between calls.
         </p>
         <p>
           The same seed repeats a whole answer, and a row draws the same token whether it runs alone or in a batch of
@@ -132,12 +134,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Top-k keeps the k largest logits. Sorting 32,000 values per row to find them is the usual way. Here the
+          Top-k keeps the k largest logits. Sorting {vocab} values per row to find them is the usual way. Here the
           kernel binary-searches a threshold instead: each pass every thread counts its logits at or above the cut, one
           block sum, and the cut moves up or down.
         </p>
         <p>
-          Logits become 32-bit keys that sort like the floats, so <span className="text-accent">32 passes</span> find the exact cut, and every token tied
+          Logits become keys that sort like the floats, and each pass settles one bit of the key, so <span className="text-accent">32 passes</span> find the exact cut, and every token tied
           with the k-th largest stays in.
         </p>
       </>
@@ -163,9 +165,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Top-k 50 takes <span className="text-accent">{one("top-k 50")} µs</span>. Sorting the row alone, before
-          any prefix sum or draw, takes <span className="text-text">{one("full sort alone")} µs</span>, so the
-          search wins by about 2x.
+          Top-k takes <span className="text-accent">{one("top-k 50")} µs</span>. Sorting the row alone, before
+          any prefix sum or draw, takes about twice as long, so the search wins comfortably.
         </p>
         <p>
           Two columns break the pattern: top-p alone, and plain temperature sampling at{" "}
@@ -181,8 +182,8 @@ const steps: StoryStep[] = [
       <>
         <p>
           The noise uses double-precision log. A laptop GPU runs FP64 at a small fraction of its FP32 rate, and Nsight
-          Compute shows the FP64 pipe busy <span className="text-accent">{busy}%</span> of the time for {share}% of the instructions. With temperature alone
-          every one of 32,000 tokens gets noise; with top-k only the 50 kept ones do.
+          Compute shows the FP64 pipe busy <span className="text-accent">{busy}%</span> of the time for a small share of the instructions. With temperature alone
+          every token gets noise; with top-k only the kept ones do.
         </p>
         <p>
           A throwaway float version ran in {Math.min(...floatRuns).toFixed(0)} to {Math.max(...floatRuns).toFixed(0)} µs.
@@ -197,7 +198,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Every mode launches one block per row, so one row uses one of the <span className="text-accent">26 SMs</span> and 16 rows use 16. That is why the
+          Every mode launches one block per row, so a single row uses one of the <span className="text-accent">{sms} SMs</span> and each extra row uses another. That is why the
           times barely change with the batch: the rows run side by side.
         </p>
         <p>Try both row counts on the right.</p>
@@ -207,13 +208,13 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `${one("greedy")} µs per call from scripts/sample_bench.cu; 12 of 32,000 logits shown`,
+  `${one("greedy")} µs per call from scripts/sample_bench.cu, 1,024 threads striding across the row; 12 of ${vocab} logits shown`,
   "a live simulation of Gumbel-max on these 12 logits at T = 1, not engine output",
   "the offsets are the kernel's; the cells are a sketch",
   "example keys; the kernel searches the 32-bit key of every logit, 32 passes",
   "example keys; the bar is the kept share of the probability mass",
-  "µs per call, first of two runs, RTX 5060 Laptop GPU (docs/profiling.md)",
-  "Nsight Compute on one temperature-only launch; float times from a throwaway copy",
+  `µs per call at 1 row, first of two runs, RTX 5060 Laptop GPU (docs/profiling.md); top-k 50 ${one("top-k 50")}, sorting the row alone ${one("full sort alone")}`,
+  `Nsight Compute on one temperature-only launch: the FP64 instructions are ${share}% of all instructions, and ${vocab} tokens get noise where top-k 50 computes it for 50; float times from a throwaway copy`,
   "µs per call, first of two runs; blue is faster than sorting the row alone",
 ];
 

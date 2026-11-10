@@ -39,5 +39,11 @@ export const review: ChapterReview = {
       answer: `Batch 16: ${gain(2)}% against ${gain(0)}% at batch 1, with CUDA Graphs.`,
       why: "Attention work grows with the number of rows while the weight reads of the GEMVs do not. So attention is a bigger share of a batch-16 step, and a faster attention kernel saves more of it.",
     },
+    {
+      recall: "gemm",
+      question: "The GEMM chapter said that at the memory roof the only way to go faster is to read fewer bytes. Would reading fewer bytes have sped up v1, and how can you tell?",
+      answer: `No: neither kernel's DRAM throughput passed ${dram.toFixed(1)}% of peak, so v1 was far from the roof.`,
+      why: "A kernel only has to read fewer bytes when memory is what limits it. Both kernels sat far below the roof, so their time was spent waiting on loads with too few warps to cover them, and v2 fixed that instead of cutting bytes.",
+    },
   ],
 };

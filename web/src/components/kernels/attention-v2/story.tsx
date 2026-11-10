@@ -117,12 +117,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          v1 gives each row and query head one block of 256 threads. Pass one writes a score for every token of the
+          v1 gives each row and query head one thread block. Pass one writes a score for every token of the
           context into shared memory. Pass two finds the maximum, then the exponentials and their sum. Pass three
-          multiplies by the values, one thread per dimension: 64 threads work and 192 wait.
+          multiplies by the values, one thread per dimension: only 64 of the block&apos;s threads work and the rest wait.
         </p>
         <p>
-          Each thread also computes a whole dot product alone. One row at 2,048 tokens:{" "}
+          Each thread also computes a whole dot product alone. One row at a long context:{" "}
           <span className="text-accent">{v1At2048} µs</span>.
         </p>
       </>
@@ -134,12 +134,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Keeping every score means shared memory grows with the context, 4 bytes per token. The host code sizes it from
+          Keeping every score means shared memory grows with the context, one float per token. The host code sizes it from
           the block table and refuses any table longer than {cap.toLocaleString("en-US")} tokens, TinyLlama&apos;s full
-          context. That is why the 8,192-token rows of the benchmark read n/a for v1.
+          context. That is why the longest rows of the benchmark read n/a for v1.
         </p>
         <p>
-          The memory itself was not the wall: at 2,048 tokens v1 uses{" "}
+          The memory itself was not the wall: at the cap v1 uses{" "}
           <span className="text-accent">{(sharedPoints[2].v1 ?? 0).toLocaleString("en-US")} bytes</span> per block,
           a fifth of the default limit. The cap was a design choice that a longer model would have hit.
         </p>
@@ -152,7 +152,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          v2 keeps three things between chunks of 256 tokens: the largest score so far, the sum of exponentials, and the
+          v2 keeps three things between chunks of keys: the largest score so far, the sum of exponentials, and the
           weighted values. When a chunk brings a larger score, the old sum and values are scaled down by
           exp(m_old − m_new) and the new chunk is added.
         </p>
@@ -170,8 +170,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          In v1 neighbouring threads read keys 128 bytes apart. In v2 a group of <span className="text-accent">8</span> lanes shares one key: at every step
-          they read 8 neighbouring dimensions together, one 16-byte read, and three shuffles add their partial sums.
+          In v1 neighbouring threads read keys a whole key apart. In v2 a group of <span className="text-accent">8</span> lanes shares one key: at every step
+          they read neighbouring dimensions together, in one wide read, and a few shuffles add their partial sums.
         </p>
         <p>The values step also uses every thread instead of 64.</p>
       </>
@@ -199,8 +199,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Wired into the runner, attention per decode step fell from <span className="text-text">{stepBefore}</span>{" "}
-          to <span className="text-accent">{stepAfter} µs</span> with contexts of at most 64 tokens.
+          Wired into the runner, attention per decode step fell to <span className="text-accent">{stepAfter} µs</span> on
+          short contexts. The figure shows v1&apos;s time beside it.
         </p>
         <p>
           Batch 16 gained the most, because attention work grows with the number of rows while the weight reads of the
@@ -215,8 +215,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          From 512 tokens up v2 is about <span className="text-accent">3x</span> faster than v1 ({(v1At2048 / v2At2048).toFixed(1)}x at one row and 2,048
-          tokens); at 128 tokens with one row there is little to overlap and the gain is smaller. Try the measured times
+          From a context of a few hundred tokens up v2 is about <span className="text-accent">3x</span> faster than v1; at the
+          shortest context with one row there is little to overlap and the gain is smaller. Try the measured times
           on the right.
         </p>
         <p>
@@ -232,13 +232,13 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `${v1At2048} µs per launch from the bench loop; the threads and cells are a sketch`,
-  "bytes from the launch code of each kernel (docs/profiling.md); 48 KB is CUDA's default per-block limit",
-  "example scores; m only ever rises, and every rise rescales what came before",
-  "lane j reads dims j, j + 8, j + 16 … so each step's 8 reads are side by side in memory",
+  `one row at 2,048 tokens, ${v1At2048} µs per launch from the bench loop; a block has 256 threads, so 64 work and 192 wait in pass three; the threads and cells are a sketch`,
+  "bytes from the launch code of each kernel (docs/profiling.md): 4 bytes per token for v1, and the benchmark's longest rows are 8,192 tokens; 48 KB is CUDA's default per-block limit",
+  "example scores; m only ever rises, and every rise rescales what came before; a chunk is 256 tokens",
+  "lane j reads dims j, j + 8, j + 16 … so each step's 8 reads are side by side in memory: one 16-byte read, three shuffles, against v1's keys 128 bytes apart",
   "Nsight Compute, clocks locked and caches cold, so slower than the bench loop",
-  "before e07c022, after 79c1f91, scripts/reproduce.sh, RTX 5060 Laptop GPU",
-  "µs per launch from the bench loop, every row at the full context",
+  `attention per decode step ${stepBefore} → ${stepAfter} µs with contexts of at most 64 tokens (eager profile); before e07c022, after 79c1f91, scripts/reproduce.sh, RTX 5060 Laptop GPU`,
+  `µs per launch from the bench loop, every row at the full context; v2 is ${(v1At2048 / v2At2048).toFixed(1)}x faster than v1 at one row and 2,048 tokens, and about 3x from 512 tokens up; the shortest context is 128 tokens`,
 ];
 
 export const attentionV2Steps = steps;

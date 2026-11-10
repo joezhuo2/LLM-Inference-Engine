@@ -67,7 +67,7 @@ const workbench: WorkbenchPage[] = [
       foundations.sandbox?.intro ?? "",
       "Predict first: set the batch where you think the op turns compute bound and lock it in, or say it never crosses. A dashed line marks your guess on the chart, and the verdict tells you how far off it was.",
       "For the QKV projection, o_proj, gate/up and down, every row reuses the same weights, so the FLOPs grow with the rows while the bytes barely move and the ring climbs toward the ridge. Attention, RMSNorm, SwiGLU and RoPE have no shared weight matrix, so more rows add bytes as fast as FLOPs.",
-      "Attention also takes a context length, because every row reads its own K and V cache. The solid dot appears only where the profiles measured the op, at 1 and 16 rows.",
+      "Attention also takes a context length, because every row reads its own K and V cache. The solid dot appears only where the profiles measured the op, at the batch sizes they ran.",
     ],
   },
   {

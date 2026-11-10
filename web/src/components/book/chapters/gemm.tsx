@@ -51,7 +51,7 @@ const instructions = [
   "Watch one row of W lift in all three places: the same four addresses.",
   "Watch each weight row stream past x and leave one value of y.",
   "Watch the five blue towers reach the glass roof while attention stays low.",
-  "Drag the pink ball along the rail to change the rows from 1 to 16.",
+  "Drag the pink ball along the rail to change the rows from one to 16.",
 ];
 
 const workbench: WorkbenchPage[] = [
@@ -60,10 +60,10 @@ const workbench: WorkbenchPage[] = [
     overlay: "stream-view",
     caption: "Stream it yourself: the weights",
     paragraphs: [
-      `The board is one weight matrix of a decode step, gate/up to start with, cut into 16 by 16 tiles. Press play and the GPU's ${sms} SMs read the tiles from DRAM in waves, one tile per SM per wave, colored by the SM that read it.`,
+      `The board is one weight matrix of a decode step, gate/up to start with, cut into a square grid of tiles. Press play and the GPU's ${sms} SMs read the tiles from DRAM in waves, one tile per SM per wave, colored by the SM that read it.`,
       "When a tile arrives its slab rises: that is its bytes, the same at any batch. The pillar on top is how many multiply-adds each of those weights feeds, which is the number of rows M, one step up for every doubling.",
       "The strip along the front left is x, one row per request in the batch; the strip along the front right is y, and each of its cells fills as the K loop works through the columns of its rows. Hover a tile for its rows, columns, bytes and the FLOPs it feeds.",
-      "Switch rows M between 1, 16 and 512 while it plays. The slabs do not change, only the pillars, and at 512 they rise through the dashed ridge. The board is downsampled and which SM reads which tile is illustrative; cuBLAS picks its own.",
+      "Switch rows M between one row, a small batch and a long prompt while it plays. The slabs do not change, only the pillars, and for the long prompt they rise through the dashed ridge. The board is downsampled and which SM reads which tile is illustrative; cuBLAS picks its own.",
     ],
   },
   {
@@ -71,10 +71,10 @@ const workbench: WorkbenchPage[] = [
     overlay: "stream-table",
     caption: "Stream it yourself: the bytes and the ceilings",
     paragraphs: [
-      "Answer the prediction first. The table then counts one whole decode step for the matrix you picked at all three batch sizes: the weight bytes of one layer, the x and y bytes, the bytes of the step across all ${gemmNumbers.projections[0].per} layers (the LM head is read once), and the FLOPs.",
-      `FLOPs divided by bytes is the arithmetic intensity. The ridge at ${Math.round(gemmNumbers.ridge)} FLOP per byte is where the two measured ceilings meet, ${gemmNumbers.peak.gbs} GB/s and ${gemmNumbers.peak.tflops} TFLOP/s: under it the bytes set the time, over it the tensor cores do.`,
-      "Each weight costs 2 bytes and feeds 2 FLOPs per row of x, so the intensity is about M. At 1 and 16 rows that is far under the ridge, and the measured time per step barely moves: 16 tokens for the price of one.",
-      "At 512 rows the compute bar passes the memory bar and the matrix is compute bound. The profiles only measured 1 and 16 rows, so the table says not measured there; the two roof times are computed from the measured ceilings.",
+      `Answer the prediction first. The table then counts one whole decode step for the matrix you picked at all three batch sizes: the weight bytes of one layer, the x and y bytes, the bytes of the step across all ${gemmNumbers.projections[0].per} layers (the LM head is read once), and the FLOPs.`,
+      `FLOPs divided by bytes is the arithmetic intensity. The ridge at ${Math.round(gemmNumbers.ridge)} FLOP per byte is where the two measured ceilings meet, the bandwidth and the compute peak: under it the bytes set the time, over it the tensor cores do.`,
+      "Each weight feeds one FLOP per byte for every row of x, so the intensity is about M. For one row and a small batch that is far under the ridge, and the measured time per step barely moves: 16 tokens for the price of one.",
+      "For a long prompt the compute bar passes the memory bar and the matrix is compute bound. The profiles only measured the two smaller batches, so the table says not measured there; the two roof times are computed from the measured ceilings.",
     ],
   },
   {
@@ -96,7 +96,7 @@ const workbench: WorkbenchPage[] = [
       "The same controls as on the last spread, now with the totals for every block. The bars compare the naive DRAM traffic, where every multiply-add reads its two operands, with the tiled traffic, and show how much shared memory one block needs.",
       "Set rows to 512 and change the tile: the reuse climbs and the FLOPs per byte with it, until the slower ceiling stops being bandwidth and becomes the tensor cores. Push the tile and the k step too far and the block no longer fits in shared memory.",
       "At one or sixteen rows no tile gets near the ridge, which is the decode case this chapter measured: the time is the time it takes to read the weights.",
-      `The byte counts are computed from the tile sizes, counting every tile load as DRAM traffic with no L2 cache. The two ceilings, ${gemmNumbers.peak.gbs} GB/s and ${gemmNumbers.peak.tflops} TFLOP/s, are measured on the same GPU.`,
+      "The byte counts are computed from the tile sizes, counting every tile load as DRAM traffic with no L2 cache. The two ceilings are measured on the same GPU, and the note at the foot of the figure gives them.",
     ],
   },
 ];

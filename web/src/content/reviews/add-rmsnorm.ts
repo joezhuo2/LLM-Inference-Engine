@@ -1,5 +1,11 @@
 import { chapterNumber } from "../book-order";
+import { measured } from "@/content/kernels/types";
+import { ceilings } from "@/lib/data";
 import type { ChapterReview } from "./types";
+
+const fusedKb = measured("fused-add-rmsnorm-branch-30", { tokens: "64" }, "fast DRAM (KB)");
+const fusedUs = measured("fused-add-rmsnorm-branch-30", { tokens: "64" }, "fast (us)");
+const memoryUs = (fusedKb * 1024 * 1e6) / (ceilings().gbs * 1e9);
 
 export const review: ChapterReview = {
   lesson: "Fusing two kernels keeps the value between them on the chip and drops a launch; it saves time only as far as the fused kernel stops waiting on itself.",
@@ -19,6 +25,12 @@ export const review: ChapterReview = {
       question: "A fused kernel keeps the sum in float for normalization and rounds only the sum it writes. Should it match the naive pair's norm, and why?",
       answer: "No, the norm must use the rounded sum too.",
       why: "The naive norm reads the BF16 sum written by the add. Squaring an unrounded float sum changes the values being reduced and breaks that contract.",
+    },
+    {
+      recall: "foundations",
+      question: `Foundations gave a floor for any op: bytes moved divided by memory bandwidth. At 64 tokens the first fused kernel moves ${fusedKb.toFixed(0)} KB of DRAM traffic and takes ${fusedUs.toFixed(1)} µs. How much of that time does the floor explain?`,
+      answer: `About ${memoryUs.toFixed(1)} µs (calculated at the measured ${ceilings().gbs} GB/s), a small part of it.`,
+      why: "The rest is not bandwidth. The floor says the least time memory could take, and the kernel sits far above it because it waits on dependent loads and barriers. That is why removing more bytes would not have helped.",
     },
   ],
 };

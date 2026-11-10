@@ -42,19 +42,19 @@ export const pagedKvAbout: StoryStep = {
       </p>
       <p>
         The keys and values of earlier tokens never change, so the engine keeps them instead of computing them again on every step. That store is the KV cache, K for keys and V for values. Each new
-        token is computed once, adds one row of keys and one row of values in every layer, and from then on is only read. For TinyLlama a row is {shape.kv_heads} KV heads of {headDim} numbers in
-        bfloat16, so every token a request sees adds <span className="text-accent">{`${fmt(kvAbout.tokenBytes)} bytes`}</span> over the {kvAbout.layers} layers.
+        token is computed once, adds one row of keys and one row of values in every layer, and from then on is only read. For TinyLlama a row is the KV heads of one layer in
+        bfloat16, so every token a request sees adds <span className="text-accent">{`${fmt(kvAbout.tokenBytes)} bytes`}</span> over all the layers.
       </p>
       <p>
         Paged means the cache is not one long array per request. Its memory is cut into blocks of {kvAbout.block} tokens, handed out one at a time as a request grows, wherever one is free, and each
-        request keeps a block table that says which block holds its tokens 0 to {kvAbout.block - 1}, {kvAbout.block} to {2 * kvAbout.block - 1} and so on, the way an operating system finds a
+        request keeps a block table that says which block holds each run of its tokens, the first block&apos;s worth, the next and so on, the way an operating system finds a
         program&apos;s memory through page tables. That lets many requests share one pool, so the chapter starts with how the engine decides which requests run together.
       </p>
     </>
   ),
 };
 
-export const pagedKvAboutCaption = `illustrative: one request in one of ${kvAbout.layers} layers and a pool of ${kvAbout.pool.length} blocks; the engine's blocks are ${kvAbout.block} tokens, as here, and its pool holds ${fmt(replay.meta.kv_blocks)} of them`;
+export const pagedKvAboutCaption = `illustrative: one request in one of ${kvAbout.layers} layers and a pool of ${kvAbout.pool.length} blocks; the engine's blocks are ${kvAbout.block} tokens, as here, and its pool holds ${fmt(replay.meta.kv_blocks)} of them; a row of keys is ${shape.kv_heads} KV heads of ${headDim} numbers, the block table maps tokens 0 to ${kvAbout.block - 1}, ${kvAbout.block} to ${2 * kvAbout.block - 1} and so on`;
 
 const B = kvAbout.block;
 const used = Math.ceil(kvAbout.tokens / B);

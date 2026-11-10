@@ -69,9 +69,9 @@ const workbench: WorkbenchPage[] = [
     overlay: "sandbox-one",
     caption: "Sample it yourself: turn the knobs",
     paragraphs: [
-      "Pick a prompt and drag the three knobs on the right. The bars are the next-token logits TinyLlama produced for three real contexts: the twelve likeliest tokens and the rest grouped together.",
+      "Pick a prompt and drag the knobs on the right. The bars are the next-token logits TinyLlama produced for real contexts: the twelve likeliest tokens and the rest grouped together.",
       "Switch the stage to watch the engine's steps in order: the raw logits, divide by the temperature, keep the top-k, then keep the smallest set of those whose probability reaches top-p. Grey bars are cut. The thin bar under each token is the running total of what top-k left, and the line across it is top-p.",
-      "Drag T toward 0 and the top bar takes nearly all the mass; drag it toward 2 and the odds flatten. At T = 0 the engine is greedy and ignores top-k and top-p, as the greedy kernel does.",
+      "Drag T toward zero and the top bar takes nearly all the mass; drag it up and the odds flatten. At a T of zero the engine is greedy and ignores top-k and top-p, as the greedy kernel does.",
       "The logits are the BF16 output of TinyLlama on the CPU, the largest ones kept and the rest in bins. The steps are the engine's sample kernel's, in the same order.",
     ],
   },
@@ -80,10 +80,10 @@ const workbench: WorkbenchPage[] = [
     overlay: "sandbox-two",
     caption: "Sample it yourself: draw and predict",
     paragraphs: [
-      "Press sample to draw one token with the engine's Gumbel-max rule, or sample 20 to draw twenty. The draws run on a seed and a step, like the kernel's Philox noise, so a new seed gives a new sequence and the same seed repeats it.",
+      "Press sample to draw one token with the engine's Gumbel-max rule, or sample 20 to draw a run of them. The draws run on a seed and a step, like the kernel's Philox noise, so a new seed gives a new sequence and the same seed repeats it.",
       "The table counts the candidates left after top-k and top-p, the entropy of what is left, the share of the likeliest token and how much mass the cuts removed.",
-      "Predict first: with top-p 0.90 and top-k off, raise the temperature from 0.7 to 1.5. Do the candidates left grow, shrink or stay the same? Answer, then set it and check.",
-      "Flatter odds spread the mass over more tokens, so the 90% line sits further down the list. The answer under the buttons gives the counts for the prompt you picked.",
+      "Predict first, in the box under the table: set the knobs it names, raise the temperature, and say whether the candidates left grow, shrink or stay the same. Answer, then set it and check.",
+      "Flatter odds spread the mass over more tokens, so the top-p line sits further down the list. The answer under the buttons gives the counts for the prompt you picked.",
     ],
   },
 ];

@@ -15,6 +15,8 @@ const time4 = at(4, "time (us)");
 const time8 = at(8, "time (us)");
 const before = measured(graphs, longPrompt, "main graphs");
 const after = measured(graphs, longPrompt, "this branch graphs");
+const mFirst = 2;
+const mGlobal = 3;
 
 export const review: ChapterReview = {
   lesson: "A long job on too few blocks leaves most of the GPU idle: cut it up.",
@@ -34,6 +36,12 @@ export const review: ChapterReview = {
       question: "Splitting is wired into the decode step, but each CUDA graph was captured on a dummy batch with no context, where the rule picks 1 split. At a 1,984-token prompt, what do the replayed steps launch?",
       answer: "v2's grid, so nothing gets faster.",
       why: `A graph replays the launch it was captured with, and with no context the rule chose 1 split. Capturing one graph per batch size and split count, and replaying the matching one, took the step from ${before} to ${after} ms.`,
+    },
+    {
+      recall: "attention-v2",
+      question: `Two splits finish with largest scores ${mFirst.toFixed(1)} and ${mGlobal.toFixed(1)}. By what factor does the merge scale the first split's sum and values?`,
+      answer: `By ${Math.exp(mFirst - mGlobal).toFixed(2)}, exp(${mFirst.toFixed(1)} − ${mGlobal.toFixed(1)}), the same rescale as the online softmax of attention v2.`,
+      why: `v2 scaled its old sum by exp(m_old − m_new) when a chunk raised the maximum. The merge applies the same factor to each split's partial result, with the global maximum as the new one, so every partial is measured against one maximum before they are added. The split that holds the global maximum is scaled by 1.`,
     },
   ],
 };

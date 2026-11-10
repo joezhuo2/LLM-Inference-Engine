@@ -29,16 +29,13 @@ export const ropeAbout: StoryStep = {
       <p>
         Take two values of a vector as a point on a plane. Turning the point around the centre keeps its length and changes
         only its direction. RoPE turns each query and each key by an angle proportional to its token&apos;s position, so a
-        query at position 9 and a key at position 6 end up three positions&apos; worth of angle apart, exactly as at
-        positions 5 and 2. The score then changes with the distance between the two tokens and stays the same when both move
+        query and a key <span className="text-accent">three positions</span> apart end up the same angle apart wherever they sit, as the figure shows for two such pairs of positions. The score then changes with the distance between the two tokens and stays the same when both move
         along together.
       </p>
       <p>The figure turns one pair of values. A head has {PAIRS} such pairs, each turning at its own rate.</p>
     </>
   ),
 };
-
-export const ropeAboutCaption = `illustrative: one pair of values turning at pair ${ABOUT_PAIR}'s real rate of ${aboutTheta.toFixed(2)} radians per position; the query and key start out pointing the same way`;
 
 const slots = 12;
 const boxW = 30;
@@ -57,6 +54,8 @@ const states = [
   { m: 9, n: 6 },
   { m: 9, n: 3 },
 ];
+
+export const ropeAboutCaption = `illustrative: one pair of values turning at pair ${ABOUT_PAIR}'s real rate of ${aboutTheta.toFixed(2)} radians per position; the query and key start out pointing the same way, then sit at positions ${states.map((s) => `${s.m} and ${s.n}`).join(", then ")}`;
 const times = [0, 0.25, 0.33, 0.58, 0.66, 0.92, 1];
 const final = states[2];
 const deg = (pos: number) => (-pos * aboutTheta * 180) / Math.PI;

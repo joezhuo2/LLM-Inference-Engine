@@ -14,24 +14,24 @@ export const swigluAbout: StoryStep = {
       <p>
         SwiGLU stands for Swish-gated linear unit. A gated linear unit, or GLU, makes two linear projections of the same
         input and multiplies them value by value: one of them, the gate, decides how much of the other gets through. The
-        first GLU squashed its gate with a sigmoid, which runs from 0 to 1. SwiGLU, one of the variants Noam Shazeer
-        compared in 2020, puts the gate through Swish instead, which with its parameter at 1 is the function PyTorch calls
+        first GLU squashed its gate with a sigmoid, which runs from zero to one. SwiGLU, one of the variants Noam Shazeer
+        compared in 2020, puts the gate through Swish instead, which with its parameter at one is the function PyTorch calls
         SiLU: silu(g) = g × sigmoid(g).
       </p>
       <p>
-        In TinyLlama it is the middle of every layer&apos;s MLP, the block after attention. The normalized hidden state of
-        2,048 values is projected twice, by a gate matrix and an up matrix, into 5,632 values each. SwiGLU turns each gate
-        and up pair into one value, and the down matrix takes the 5,632 results back to 2,048, which are added onto the
+        In TinyLlama it is the middle of every layer&apos;s MLP, the block after attention. The normalized hidden state
+        is projected twice, by a gate matrix and an up matrix, into 5,632 values each. SwiGLU turns each gate
+        and up pair into one value, and the down matrix takes the results back to the hidden size, and they are added onto the
         hidden state.
       </p>
       <p>
-        sigmoid(g) is the share of the gate that silu keeps: about a half at 0, almost none below −4, nearly all of it
-        above 4. So a negative gate shuts its up value off and a large one lets it through, scaled by about g. The curve
-        bends smoothly, with a small dip below zero, where a ReLU would cut off at 0 with a corner.
+        sigmoid(g) is the share of the gate that silu keeps: about a half at zero, almost none for a strongly negative gate, nearly all of it
+        for a strongly positive one. So a negative gate shuts its up value off and a large one lets it through, scaled by about g. The curve
+        bends smoothly, with a small dip below zero, where a ReLU would cut off at zero with a corner.
       </p>
       <p>
-        The gate costs a third matrix. 5,632 is two thirds of 4 × 2,048, rounded up to a multiple of 256, so the three
-        matrices hold about as many weights as a plain MLP&apos;s two that widen to 8,192.
+        The gate costs a third matrix. The width is two thirds of the usual four times the hidden size, rounded up to a multiple of a GPU-friendly block size, so the three
+        matrices hold about as many weights as a plain MLP&apos;s two that widen to four times the hidden size.
       </p>
     </>
   ),
@@ -49,7 +49,7 @@ const ffCells = FF / PER_CELL;
 const hiddenCells = HIDDEN / PER_CELL;
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-export const swigluAboutCaption = `illustrative: each cell stands for ${PER_CELL} values, ${ffCells} for ${fmt(FF)} and ${hiddenCells} for ${fmt(HIDDEN)}; the gate and up values are made up, the curves are exact`;
+export const swigluAboutCaption = `illustrative: each cell stands for ${PER_CELL} values, ${ffCells} for ${fmt(FF)} and ${hiddenCells} for ${fmt(HIDDEN)}; the gate and up values are made up, the curves are exact; calculated: ${fmt(FF)} is two thirds of 4 × ${fmt(HIDDEN)} rounded up to a multiple of 256, and a plain MLP would widen to ${fmt(4 * HIDDEN)}`;
 
 const top = 52;
 const cellH = 13;

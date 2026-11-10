@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { recallOf } from "@/content/reviews";
 import type { KernelStory } from "@/content/kernels/types";
 import type { ChapterReview } from "@/content/reviews/types";
 import { Disclosure } from "./disclosure";
@@ -34,18 +36,26 @@ export function ReviewView({ story, review }: { story: KernelStory; review: Chap
           <h3 className="font-serif text-2xl text-text">check yourself</h3>
           <p className="text-sm text-muted">Decide your answer before you open it.</p>
           <ol className="space-y-5">
-            {review.questions.map((q, i) => (
-              <li key={i} className="space-y-2 rounded border border-border p-4">
-                <p className="text-text">
-                  <span className="mr-2 tabular-nums text-accent">{i + 1}</span>
-                  {gloss(q.question)}
-                </p>
-                <Disclosure summary="show the answer">
-                  <p className="text-text">{gloss(q.answer)}</p>
-                  <p className="mt-1 text-muted">{gloss(q.why)}</p>
-                </Disclosure>
-              </li>
-            ))}
+            {review.questions.map((q, i) => {
+              const recall = recallOf(q);
+              return (
+                <li key={i} className="space-y-2 rounded border border-border p-4">
+                  <p className="text-text">
+                    <span className="mr-2 tabular-nums text-accent">{i + 1}</span>
+                    {gloss(q.question)}
+                  </p>
+                  {recall && (
+                    <Link href={recall.href} className="link-underline inline-block text-xs text-accent">
+                      {recall.line}
+                    </Link>
+                  )}
+                  <Disclosure summary="show the answer">
+                    <p className="text-text">{gloss(q.answer)}</p>
+                    <p className="mt-1 text-muted">{gloss(q.why)}</p>
+                  </Disclosure>
+                </li>
+              );
+            })}
           </ol>
         </div>
       </div>

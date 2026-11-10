@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { chapterNumber } from "@/content/book-order";
 import { measured } from "@/content/kernels/types";
-import { cellNumber, decodeSteps } from "@/lib/data";
+import { ceilings, cellNumber, decodeSteps, modelShape } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { EasedBar } from "../eased-bar";
 import { Toggle } from "../toggle";
@@ -29,6 +29,9 @@ const kbPerToken = (kb: number) => (kb / fusionTokens).toFixed(1);
 const stepKernels = (column: string) => measured(wired, { "decode step at batch 1": "kernels per step" }, column);
 const kernelsNaive = stepKernels("naive kernels, eager");
 const kernelsFast = stepKernels("fast kernels, eager");
+const shape = modelShape();
+const peak = ceilings();
+const memoryUs = (measured(fused, at(String(fusionTokens)), "fast DRAM (KB)") * 1024 * 1e6) / (peak.gbs * 1e9);
 
 const stepOps = (() => {
   const t = decodeSteps.b1;
@@ -146,18 +149,16 @@ const steps: StoryStep[] = [
           launch, not arithmetic.
         </p>
         <p>
-          Here the pair moves <span className="text-text">{kbPerToken(naiveKb64)} KB</span> per token at {fusionTokens} tokens and the
-          fused kernel <span className="text-accent">{kbPerToken(fusedKb64)} KB</span> (calculated from the bytes per launch), and a decode step
-          runs <span className="text-accent">{kernelsFast} kernels</span> instead of {kernelsNaive} (measured). Fewer bytes still did not make
-          the first fused kernel faster: <span className="text-text">{first1.toFixed(1)} µs</span> against the pair&apos;s {pair1.toFixed(1)} µs
-          at one token. The errata entry &quot;
+          Here the fused kernel moves <span className="text-accent">{kbPerToken(fusedKb64)} KB</span> per token where the pair moves
+          more (calculated from the bytes per launch), and a decode step runs fewer kernels (measured). Fewer bytes still did not make
+          the first fused kernel faster: at one token it took about the same time as the pair. The errata entry &quot;
           <Link href="/kernels/dead-ends" className="link-underline text-accent">
             Fusing two kernels saved bytes, not time
           </Link>
           &quot; tells that story.
         </p>
         <p>
-          The same pattern returns in SwiGLU, chapter {chapterNumber("swiglu")}. CUDA Graphs, chapter {chapterNumber("cuda-graphs")}, remove the
+          The same pattern returns in SwiGLU, chapter {chapterNumber("swiglu")}. CUDA Graphs, a later chapter, remove the
           launch part of the cost for every kernel at once.
         </p>
       </>
@@ -174,8 +175,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           A fused kernel reads x, the residual and the weight once, writes the sum and the norm once, and keeps the sum on
-          the chip in between. At 64 tokens that is <span className="text-text">{naiveKb64}</span> to{" "}
-          <span className="text-accent">{fusedKb64} KB</span> of DRAM traffic, and one launch instead of two.
+          the chip in between. The DRAM traffic falls to <span className="text-accent">{fusedKb64} KB</span> per launch, and one launch replaces two.
         </p>
       </>
     ),
@@ -186,15 +186,14 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The first fused kernel runs one block of 256 threads per row. Each thread adds and squares 8 values, the block
-          reduces the squares, thread 0 computes rstd and shares it, and a second pass reads the sums back and writes the
+          The first fused kernel runs one block of 256 threads per row. Each thread adds and squares a few values, the block
+          reduces the squares, one thread computes rstd and shares it, and a second pass reads the sums back and writes the
           norm.
         </p>
         <p>
           It moves a third fewer bytes, but takes the same time as the pair:{" "}
-          <span className="text-text">{pair1.toFixed(1)}</span> against{" "}
-          <span className="text-accent">{first1.toFixed(1)} µs</span> for one token. 64 rows of 4 KB are under 2 µs of
-          memory traffic; the rest is waiting on dependent loads and two barriers.
+          <span className="text-accent">{first1.toFixed(1)} µs</span> for one token. The memory traffic is a small part of
+          that; the rest is waiting on dependent loads and barriers.
         </p>
       </>
     ),
@@ -221,11 +220,11 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          A row of 2,048 BF16 values is 256 pieces of 16 bytes, one per thread. The tuned kernel loads each piece with one
-          <span className="text-accent">128-bit</span> instruction instead of 8 separate 2-byte loads, for x and the residual alike.
+          A row is split into pieces of 16 bytes, one per thread. The tuned kernel loads each piece with one{" "}
+          <span className="text-accent">128-bit</span> instruction instead of a separate small load for every value, for x and the residual alike.
         </p>
         <p>
-          It also keeps the 8 rounded sums in registers, so the second pass never goes back to memory for them, and writes
+          It also keeps the rounded sums in registers, so the second pass never goes back to memory for them, and writes
           the sum and the norm with 128-bit stores.
         </p>
       </>
@@ -241,8 +240,8 @@ const steps: StoryStep[] = [
           behind a second barrier.
         </p>
         <p>
-          With xor shuffles, each lane swaps partial sums with the lane whose index differs in one bit. After five swaps
-          all 32 lanes hold the warp&apos;s total; after <span className="text-accent">one barrier</span> and one more round over the 8 warps, every thread holds
+          With xor shuffles, each lane swaps partial sums with the lane whose index differs in one bit. After a few swaps
+          all the lanes of a warp hold the warp&apos;s total; after <span className="text-accent">one barrier</span> and one more round over the warps, every thread holds
           the row&apos;s total and computes rstd itself.
         </p>
       </>
@@ -254,8 +253,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The tuned kernel takes <span className="text-accent">{tuned1.toFixed(1)} µs</span> for one token against{" "}
-          <span className="text-text">{tunedPair1.toFixed(1)} µs</span> for the pair, and stays near that up to 64 rows.
+          The tuned kernel takes <span className="text-accent">{tuned1.toFixed(1)} µs</span> for one token, about a third of the pair&apos;s time, and stays near that up to the largest token count measured.
           Try the token counts on the right.
         </p>
         <p>
@@ -269,13 +267,13 @@ const steps: StoryStep[] = [
 
 const captions = [
   "one row; the values and the square bars are illustrative",
-  `an illustration of any two elementwise kernels in a row; per-token bytes are calculated from the Nsight Compute bytes per launch at ${fusionTokens} tokens, kernels per step from the nsys profile`,
+  `an illustration of any two elementwise kernels in a row; per-token bytes are calculated from the Nsight Compute bytes per launch at ${fusionTokens} tokens: the pair moves ${kbPerToken(naiveKb64)} KB per token against ${kbPerToken(fusedKb64)} KB; kernels per step from the nsys profile: ${kernelsFast} instead of ${kernelsNaive}; at one token the first fused kernel takes ${first1.toFixed(1)} µs against the pair's ${pair1.toFixed(1)} µs`,
   `DRAM bytes per launch at 64 tokens from Nsight Compute: ${naiveKb64} KB → ${fusedKb64} KB`,
-  `µs per launch for one token (Nsight Compute); phase widths are illustrative, not measured`,
+  `µs per launch for one token (Nsight Compute): the pair ${pair1.toFixed(1)}, the first fused kernel ${first1.toFixed(1)}; each of the 256 threads handles 8 values; ${fusionTokens} rows move ${fusedKb64} KB, ${memoryUs.toFixed(1)} µs of DRAM time at the measured ${peak.gbs} GB/s (calculated); phase widths are illustrative, not measured`,
   "the order of operations required by the spec and checked by the tests",
-  "8 threads of 256 shown; one load = 8 values = 16 bytes",
-  "8 lanes and 3 swaps shown; a warp has 32 lanes and does 5",
-  "Nsight Compute, hidden 2048, RTX 5060 Laptop GPU; times and bytes from two separate runs",
+  `a row of ${shape.hidden.toLocaleString("en-US")} BF16 values is ${(shape.hidden * 2) / 16} pieces of 16 bytes; 8 threads of 256 shown; one load = 8 values = 16 bytes, where 2-byte loads would take 8`,
+  "8 lanes and 3 swaps shown; a warp has 32 lanes and does 5; a block of 256 threads is 8 warps",
+  `Nsight Compute, hidden 2048, RTX 5060 Laptop GPU; times and bytes from two separate runs; at one token the pair takes ${tunedPair1.toFixed(1)} µs, and the tuned kernel stays near ${tuned1.toFixed(1)} µs up to 64 rows`,
 ];
 
 export const addRmsnormSteps = steps;

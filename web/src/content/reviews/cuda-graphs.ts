@@ -1,10 +1,12 @@
-import { launchGaps } from "@/lib/data";
+import { kvReplay, launchGaps } from "@/lib/data";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
 import { measured } from "@/content/kernels/types";
+import { chapterNumber } from "../book-order";
 import type { ChapterReview } from "./types";
 
 const eager = launchGaps("eager");
 const replay = launchGaps("graphs");
+const blockSize = kvReplay().meta.block_size;
 const gap = trace.eager.gap_us.p50;
 const lengths = trace.eager.kernels_in_layer.map((k) => k.end - k.start);
 const shortest = Math.min(...lengths);
@@ -32,6 +34,12 @@ export const review: ChapterReview = {
       question: "A graph replay saves about the same time per step at batch 1 and at batch 16, because both launch the same kernels. Does it help a batch-16 token more or less, as a share of its time?",
       answer: "Less.",
       why: `The saved time is nearly fixed per step, but a batch-16 step takes longer, so the same saving is a smaller share: about ${pct(savedShare("1"))}% of a batch-1 token and ${pct(savedShare("16"))}% of a batch-16 token.`,
+    },
+    {
+      question: `Chapter ${chapterNumber("paged-kv")} finds a request's cached tokens through a block table. A CUDA Graph freezes every kernel's pointers. Why can one captured graph still serve a request whose context grows every step?`,
+      answer: "Each step changes values in the staged table and slots, never an address.",
+      why: `The kernels read the cache pool and the staged block table at fixed addresses. Token pos goes to slot table[pos / ${blockSize}] · ${blockSize} + pos mod ${blockSize}, and stage writes the new table, slots and context length into the same buffer before each replay, so the same pointers reach different blocks. A request gets a new block only every ${blockSize} tokens.`,
+      recall: "paged-kv",
     },
   ],
 };

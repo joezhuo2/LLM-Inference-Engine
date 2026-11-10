@@ -3,7 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
-import { onchip } from "@/lib/data";
+import { modelShape, onchip } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -17,8 +17,16 @@ const occupancy = "split-attention-occupancy-branch-66";
 const v2Section = "paged-attention-v2-branch-37";
 
 const perSm = 6;
+const sms = 26;
+const slots = perSm * sms;
 const headDim = 64;
 const maxBlocks = 256;
+const minTokens = 256;
+const maxSplits = 8;
+const fullRows = 16;
+const fullBlocks = fullRows * modelShape().heads;
+const cutContext = 2048;
+const cutSplits = 8;
 
 function occ(kernel: string, splits: number): Occupancy {
   const m = { kernel, splits: String(splits) };
@@ -54,7 +62,7 @@ const graphBars = [
 
 export function attentionSplits(rows: number, context: number, heads = 32) {
   let s = 1;
-  while (s < 8 && 2 * s * rows * heads <= maxBlocks && context >= 2 * s * 256) s *= 2;
+  while (s < maxSplits && 2 * s * rows * heads <= maxBlocks && context >= 2 * s * minTokens) s *= 2;
   return s;
 }
 
@@ -117,7 +125,7 @@ export function SplitPicker() {
         <div>
           <span className="text-muted">grid </span>
           <span className="text-text">{`${Number(rows) * 32 * picked} blocks`}</span>
-          <span className="text-muted">{` for ${perSm * 26} slots`}</span>
+          <span className="text-muted">{` for ${slots} slots`}</span>
         </div>
         <div>
           <span className="text-muted">engine picks </span>
@@ -141,11 +149,11 @@ const steps: StoryStep[] = [
       <>
         <p>
           v2 launches one thread block per row and query head. At batch 1 that is {v2.blocks} blocks. Each SM of this GPU
-          holds at most {perSm} of them at once (registers and warps both stop it there), so 26 SMs have {perSm * 26}{" "}
-          slots.
+          holds only a few of them at once (registers and warps both stop it there), so the SMs together have a fixed
+          number of slots.
         </p>
         <p>
-          {v2.blocks} of {perSm * 26} is <span className="text-accent">{v2.waves}</span> of a wave. Every block
+          That fills only <span className="text-accent">{v2.waves}</span> of a wave. Every block
           walks its head&apos;s whole context alone, and most of the GPU has nothing to do.
         </p>
       </>
@@ -161,9 +169,8 @@ const steps: StoryStep[] = [
           <span className="text-text">{dram}%</span> of its peak. The kernel is not short of bandwidth.
         </p>
         <p>
-          It is short of warps. A load that has to go to DRAM waits about{" "}
-          <span className="text-text">{dramCycles} cycles</span> on this GPU ({l2Cycles} when it hits L2, both
-          measured with a pointer chase), and a GPU hides that wait by running other warps in the meantime. With <span className="text-accent">{v2.warps}%</span> of warp slots filled, there are
+          It is short of warps. A load that has to go to DRAM waits several hundred cycles on this GPU, much longer than one
+          that hits L2, and a GPU hides that wait by running other warps in the meantime. With <span className="text-accent">{v2.warps}%</span> of warp slots filled, there are
           too few to switch to.
         </p>
       </>
@@ -178,7 +185,7 @@ const steps: StoryStep[] = [
           The split kernel adds a grid dimension: blocks are (split, head, row). Each split takes a range of whole KV
           blocks, so no 16-token block is shared by two ranges, and runs the same online-softmax loop as v2 over it.
         </p>
-        <p>One head&apos;s 2,048 tokens become <span className="text-accent">8</span> ranges of 256, worked on at the same time.</p>
+        <p>One head&apos;s long context becomes <span className="text-accent">8</span> ranges, worked on at the same time.</p>
       </>
     ),
   },
@@ -188,12 +195,11 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Each doubling of the split count doubles the grid. Up to 4 splits (128 blocks) everything still fits in one
-          wave, and the time halves each time: {waves.map((w) => w.us.toFixed(1)).join(", ")} µs for 1, 2, 4 and 8 splits.
+          Each doubling of the split count doubles the grid. While the whole grid fits in one wave, the time halves each
+          time.
         </p>
         <p>
-          At 8 splits the grid is <span className="text-accent">{waves[3].waves}</span> waves. The first {perSm * 26} blocks run together and the last{" "}
-          {waves[3].blocks - perSm * 26} wait for a second, mostly empty wave, so each block has half the work and the
+          At the last doubling the grid is <span className="text-accent">{waves[3].waves}</span> waves. The first wave&apos;s worth of blocks run together and the rest wait for a second, mostly empty wave, so each block has half the work and the
           time barely moves.
         </p>
       </>
@@ -206,7 +212,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           A split cannot write the output, because it only saw part of the context. It writes three things to a float
-          scratch buffer: its largest score m, its sum of exponentials l, and its 64 weighted values, not yet divided.
+          scratch buffer: its largest score m, its sum of exponentials l, and its {headDim} weighted values, not yet divided.
         </p>
         <p>
           The buffer was a new argument to the kernel, which is why split attention needed its own signature. The runner
@@ -226,8 +232,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Splits finish in whatever order the GPU runs them, but the merge always adds them the same way, so the same
-          input gives the same bits on every run. One row at 2,048 tokens: <span className="text-text">{loopV2}</span>{" "}
-          to <span className="text-accent">{loop8} µs</span> per call, merge included.
+          input gives the same bits on every run. One row at a long context now takes <span className="text-accent">{loop8} µs</span> per call, merge included.
         </p>
       </>
     ),
@@ -238,13 +243,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Wired into the decode step, splitting took a 1,984-token prompt from {graphBars[0].ms} to {graphBars[1].ms} ms
-          per token in eager mode. With CUDA Graphs nothing moved: each graph had been captured on a dummy batch with no
-          context, where the rule says 1 split, so every replay launched v2&apos;s grid.
+          Wired into the decode step, splitting made a long prompt faster per token in eager mode. With CUDA Graphs nothing moved: each graph had been captured on a dummy batch with no
+          context, where the rule says one split, so every replay launched v2&apos;s grid.
         </p>
         <p>
-          The fix captures one graph per batch size and split count, {graphKeys.reduce((a, k) => a + k.splits.length, 0)}{" "}
-          instead of 5, and replays the one that matches the batch: <span className="text-accent">{graphBars[3].ms} ms</span>.
+          The fix captures one graph per batch size and split count, more graphs than before, and replays the one that
+          matches the batch: <span className="text-accent">{graphBars[3].ms} ms</span>.
         </p>
       </>
     ),
@@ -255,12 +259,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          With 16 rows v2 already launches <span className="text-accent">512</span> blocks, more than three waves, and splitting only adds the partial writes
-          and the merge. At 128 tokens a split holds too few keys to pay for its second launch.
+          With many rows v2 already launches <span className="text-accent">{fullBlocks}</span> blocks, enough to fill the GPU several times over, and splitting only adds the partial writes
+          and the merge. At a very short context a split holds too few keys to pay for its second launch.
         </p>
         <p>
-          So the rule doubles the split count only while the grid stays at or under 256 blocks and every split keeps at
-          least 256 tokens, up to 8. Try the measured times on the right.
+          So the rule doubles the split count only while the grid stays at or under {maxBlocks} blocks and each split keeps
+          enough tokens to pay for itself. Try the measured times on the right.
         </p>
       </>
     ),
@@ -268,19 +272,19 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `${perSm} blocks per SM and ${v2.warps}% warps active are measured (Nsight Compute, 1 row × 2,048 tokens)`,
-  `from the v2 Nsight Compute table in docs/profiling.md; ${smThroughput}% SM throughput; load latencies from scripts/onchip_bench.cu`,
-  "one row, one head; the other 31 heads are cut the same way",
-  "block counts, waves, warps and times measured with Nsight Compute; slot placement is a sketch",
+  `${perSm} blocks per SM and ${v2.warps}% warps active are measured (Nsight Compute, 1 row × 2,048 tokens); ${sms} SMs hold ${slots} blocks at once, calculated`,
+  `from the v2 Nsight Compute table in docs/profiling.md; ${smThroughput}% SM throughput; a DRAM load waits about ${dramCycles} cycles and an L2 hit ${l2Cycles}, both measured with a pointer chase (scripts/onchip_bench.cu)`,
+  `one row, one head: ${cutContext.toLocaleString("en-US")} tokens become ${cutSplits} ranges of ${cutContext / cutSplits}; the other ${modelShape().heads - 1} heads are cut the same way`,
+  `measured with Nsight Compute: ${waves.map((w) => w.us.toFixed(1)).join(", ")} µs for ${waves.map((w) => w.splits).join(", ")} splits; up to ${waves[2].splits} splits (${waves[2].blocks} blocks) the grid fits one wave; at ${waves[3].splits} splits ${slots} blocks run first and ${waves[3].blocks - slots} wait; slot placement is a sketch`,
   "the layout of the scratch buffer; the record contents are illustrative",
-  "example values; the same arithmetic as one pass over the whole context",
-  "TPOT p50 of the first of two runs, RTX 5060 Laptop GPU, 64 output tokens",
-  "µs per call from the bench loop; the engine never picks 16",
+  `${loopV2} µs → ${loop8} µs per call, one row at 2,048 tokens, v2 against 8 splits, merge included; example values; the same arithmetic as one pass over the whole context`,
+  `TPOT p50 of the first of two runs, RTX 5060 Laptop GPU, 64 output tokens; eager at a 1,984-token prompt: v2 ${graphBars[0].ms} → split ${graphBars[1].ms} ms per token; ${graphKeys.reduce((a, k) => a + k.splits.length, 0)} graphs instead of ${graphKeys.length}`,
+  `µs per call from the bench loop; the engine never picks 16; ${fullRows} rows × ${modelShape().heads} heads = ${fullBlocks} blocks against ${slots} slots; the short context is 128 tokens; the rule needs at least ${minTokens} tokens per split, at most ${maxBlocks} blocks and ${maxSplits} splits`,
 ];
 
 export const splitSteps = steps;
 export const splitCaptions = captions;
-export const splitNumbers = { perSm, sms: 26, headDim, v2, waves, dram, smThroughput, dramCycles, l2Cycles, loopV2, loop8, graphBars, graphKeys, scratchBytes, replaySplits: attentionSplits(1, 1984) };
+export const splitNumbers = { perSm, sms, headDim, v2, waves, dram, smThroughput, dramCycles, l2Cycles, loopV2, loop8, graphBars, graphKeys, scratchBytes, replaySplits: attentionSplits(1, 1984) };
 export type SplitNumbers = typeof splitNumbers;
 
 export function SplitAttentionStory() {
