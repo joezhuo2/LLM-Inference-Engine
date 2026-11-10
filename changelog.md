@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-link-hover
+
+- Part A: Every Byte draws a dotted underline under the hovered or keyboard-focused link on a page (contents entries, chapter intro rows, start-here map rows, Errata and exercise links), left to right in 300 ms and erased in 220 ms, reversing from where it is when interrupted, with no animation under reduced motion. It is a shader mesh over the page (`web/src/components/book/underline.ts`) that shares the page geometry, so no page texture is repainted; the magnifier lens draws the same underline for left pages; glossary marks keep their permanent dots and now share one dotted rule with it. By a Claude subagent, checked by Claude.
+
 ## web/practice-pass
 
 - Part A: the same text pass over foundations, GEMM, RoPE and paged KV cache: one key number per step paragraph, sandbox intro and book workbench paragraph, the rest moved to captions labelled measured or calculated, or put into words checked against the data ("several milliseconds" is 6.4 ms, "about twice" 1.96x); head, pair and layer counts in RoPE and paged KV now come from config.json, and a GEMM book paragraph that painted a raw `${...}` expression now shows its layer count. Each review gains a recall question: the life of a token for foundations (a 512-token prompt pays 4.0 MB of the weight read per token against 2.07 GB for a decoded token), the roofline for GEMM, the bandwidth floor for RoPE (0.05 µs of its 6.5 µs) and RoPE's position-only rotation for paged KV. A recall of start here links to /every-byte/start. Drafted by Kiro, finished by a Claude subagent, checked by Claude.

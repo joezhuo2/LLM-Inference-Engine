@@ -2055,3 +2055,7 @@
 
 - **interruptible animations: compressing a running tween instead of waiting for it** => 
 - **input latency vs. animation length** => 
+
+## Link hover underline in Every Byte (Branch 139)
+
+- **overlay mesh with a shader instead of repainting a canvas texture** => 
