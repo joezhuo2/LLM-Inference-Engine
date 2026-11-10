@@ -104,14 +104,14 @@ export function CopyLanes({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function LaunchBars({ compact = false }: { compact?: boolean }) {
+export function LaunchBars({ compact = false, brief = false }: { compact?: boolean; brief?: boolean }) {
   const groups = [
     { label: "median launch in decode steps, µs, measured", max: n.decodeUs.naive, bars: [{ name: "naive", us: n.decodeUs.naive, text: `${n.decodeUs.naive} µs` }, { name: "fast", us: n.decodeUs.fast, text: `${n.decodeUs.fast} µs` }] },
     { label: `largest launch in ${whole(n.prefillTokens)}-token prefill steps, µs, measured`, max: n.prefillUs.naive[1], bars: [{ name: "naive", us: n.prefillUs.naive[1], text: `${range(n.prefillUs.naive)} µs` }, { name: "fast", us: n.prefillUs.fast[1], text: `${range(n.prefillUs.fast)} µs` }] },
   ];
   return (
     <div className="space-y-3 tabular-nums text-xs">
-      {groups.map((g, i) => (
+      {groups.slice(0, brief ? 1 : groups.length).map((g, i) => (
         <div key={g.label} className={clsx("space-y-1.5", compact && i > 0 && "max-md:hidden")}>
           <div className="text-muted">{g.label}</div>
           {g.bars.map((b) => (
@@ -125,11 +125,13 @@ export function LaunchBars({ compact = false }: { compact?: boolean }) {
           ))}
         </div>
       ))}
-      <div className="border-t border-border pt-2 leading-relaxed text-muted">
-        {`${n.run}. `}
-        <span className="text-text">{`${n.speedup.toFixed(1)}x faster per launch (calculated)`}</span>
-        {`, and under ${n.underPct}% of a step either way, so no end-to-end number moved.`}
-      </div>
+      {!brief && (
+        <div className="border-t border-border pt-2 leading-relaxed text-muted">
+          {`${n.run}. `}
+          <span className="text-text">{`${n.speedup.toFixed(1)}x faster per launch (calculated)`}</span>
+          {`, and under ${n.underPct}% of a step either way, so no end-to-end number moved.`}
+        </div>
+      )}
     </div>
   );
 }
@@ -142,6 +144,15 @@ export function EmbeddingPanel({ compact = false }: { compact?: boolean }) {
       </div>
       <CopyLanes compact={compact} />
       <LaunchBars compact={compact} />
+    </div>
+  );
+}
+
+export function LookupScene() {
+  return (
+    <div className="flex h-full flex-col justify-center gap-4 px-2">
+      <GatherFigure />
+      <LaunchBars brief />
     </div>
   );
 }

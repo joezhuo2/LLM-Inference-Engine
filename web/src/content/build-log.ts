@@ -14,7 +14,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
-  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep";
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -75,7 +75,7 @@ const profiledBatches = profilingTable(sweep, 1, "results").rows.map((r) => r[0]
 
 export const sweepScene = { knee, points: sweepBatches.map((b) => ({ batch: b, tokens: sweepTokens(b), share: profiledBatches.includes(b) ? tableValue(sweep, { "max batch": b }, "attention share", 1, "results") : undefined })), gains: sweepBatches.map((_, i) => sweepGain[i]), toKnee: sweepTokens(knee) / sweepTokens(sweepBatches[0]) };
 
-const lookup = embeddingLaunch();
+export const lookup = embeddingLaunch();
 
 export const milestones: Milestone[] = [
   {
@@ -452,6 +452,7 @@ export const milestones: Milestone[] = [
         date: "Nov 10",
         prs: [188],
         branch: "kernel/embedding-lookup",
+        scene: "lookup",
         title: "A faster kernel that moved nothing",
         text: `The embedding lookup copies one row of a table per token. Claude rewrote it at Joe's request: one thread per ${lookup.bytesPerThread} bytes over all the rows at once, where the naive kernel gave every token its own block and copied ${lookup.bytesPerThread / lookup.valuesPerLoad} bytes at a time. The output is bit-identical and a launch is ${(lookup.decodeUs.naive / lookup.decodeUs.fast).toFixed(1)}x faster (calculated). No end-to-end number moved, because the lookup is under ${lookup.underPct}% of a step either way. It was never where the time went.`,
         metric: {
