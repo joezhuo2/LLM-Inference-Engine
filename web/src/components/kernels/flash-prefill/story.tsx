@@ -218,7 +218,7 @@ const steps: StoryStep[] = [
           The gain is largest where the square was largest, <span className="text-accent">{n.ratio.toFixed(1)} times</span> less time at {flashLong} tokens, and it shrinks with the prompt. Pick a length on the right to see the four measured paths.
         </p>
         <p>
-          llama.cpp&apos;s number is the time of its prompt decode calls with no sampler, and the engine&apos;s includes sampling the first token, so the comparison slightly favours llama.cpp. The engine is ahead at every length measured.
+          llama.cpp&apos;s number is the time of its prompt decode calls with no sampler, and the engine&apos;s includes sampling the first token, so the two are not timed in quite the same way. The engine is ahead at every length measured.
         </p>
       </>
     ),
@@ -248,7 +248,7 @@ const captions = [
   `from src/kernels/flash_prefill.cu: 4 of the 32 lanes shown in turn above, the ${s.lanesPerRow} lanes of query row 0 below; the weights are not yet divided by the sum, that happens once at the end`,
   `calculated from the kernel's fragment sizes at head_dim ${s.headDim}: ${qWords} words of Q and ${accs} accumulators per lane; a head of up to ${s.maxHeadDim} dimensions in steps of ${s.tile} is accepted`,
   `docs/results.md, Prefill against prompt length: one request per run, median of 5 runs, RTX 5060 Laptop GPU; per prompt token the tiled kernel stays between ${n.perTokenLow} and ${n.perTokenHigh} ms while the per-row path climbs from ${n.pagedPerTokenShort} to ${n.pagedPerTokenLong} ms; llama.cpp with -ub 512`,
-  `the same medians; ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms at ${flashLong} tokens is ${n.ratio.toFixed(1)} times less and ${n.ahead.toFixed(0)}% ahead of llama.cpp (calculated); the first kernel was measured at its own commit in the same session`,
+  `the same medians; ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms at ${flashLong} tokens is ${n.ratio.toFixed(1)} times less, and ${n.ahead.toFixed(0)}% less than llama.cpp's ${flashFmt(n.llama)} ms (calculated); the first kernel was measured at its own commit in the same session`,
   `docs/results.md: engine + graphs alone, ${flashFmt(n.graphsMs)} ms in one step and ${flashFmt(n.chunkedMs)} ms as ${chunks} chunks under a budget of ${budget}, measured; what was not measured is listed in docs/profiling.md, FlashAttention prefill`,
 ];
 

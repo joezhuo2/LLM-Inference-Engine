@@ -33,7 +33,7 @@ export function TileSweepFigure({ mode, tile, tableMb, tileBytes, warps }: { mod
   const at = (c: number) => 0.06 + c * slot;
   const cells: [number, number][] = [];
   for (let r = 0; r < n; r++) for (let c = 0; c <= r; c++) cells.push([r, c]);
-  const px = 262;
+  const px = 284;
   return (
     <Frame label={mode === "about" ? `FlashAttention cuts the triangle of scores into tiles of ${tile} query rows by ${tile} keys: one tile of scores exists at a time while each row keeps a running maximum, sum and weighted values` : `One warp owns a tile of ${tile} query rows and the key tiles of the sequence stream past it, ${tile} keys at a time; the last tile is masked where a key comes after its query`}>
       <Label x={20} y={24} className="fill-text">{mode === "about" ? "the scores of a prompt: query rows down, keys across" : `one warp, ${tile} query rows of one head`}</Label>
@@ -56,18 +56,18 @@ export function TileSweepFigure({ mode, tile, tableMb, tileBytes, warps }: { mod
       <Label x={x0} y={y0 + n * s + 34} className="fill-warn">
         pink corner: keys after the query, masked
       </Label>
-      <rect x={px} y={52} width={278} height={92} rx={3} className="fill-none stroke-border" />
+      <rect x={px} y={52} width={258} height={92} rx={3} className="fill-none stroke-border" />
       <Label x={px + 12} y={72} className="fill-text">
         one tile of scores at a time
       </Label>
-      <path d={gridPath(px + 12, 84, 8, 4, 12)} className="fill-none stroke-border" />
+      <path d={gridPath(px + 12, 84, 7, 4, 12)} className="fill-none stroke-border" />
       {Array.from({ length: row + 1 }, (_, c) => (
-        <motion.rect key={c} x={px + 12} y={84} width={96} height={48} className="fill-accent/50" {...on(at(c), at(c) + slot * 0.7, c === row)} />
+        <motion.rect key={c} x={px + 12} y={84} width={84} height={48} className="fill-accent/50" {...on(at(c), at(c) + slot * 0.7, c === row)} />
       ))}
-      <Label x={px + 120} y={100}>{`${tile} × ${tile}, computed,`}</Label>
-      <Label x={px + 120} y={116}>used and dropped</Label>
-      {tileBytes !== undefined && <Label x={px + 120} y={132}>{`${fmt(tileBytes)} bytes in FP32`}</Label>}
-      <rect x={px} y={156} width={278} height={mode === "about" ? 96 : 78} rx={3} className="fill-none stroke-accent" />
+      <Label x={px + 108} y={100}>{`${tile} × ${tile}, computed,`}</Label>
+      <Label x={px + 108} y={116}>used and dropped</Label>
+      {tileBytes !== undefined && <Label x={px + 108} y={132}>{`${fmt(tileBytes)} bytes in FP32`}</Label>}
+      <rect x={px} y={156} width={258} height={mode === "about" ? 96 : 80} rx={3} className="fill-none stroke-accent" />
       <Label x={px + 12} y={176} className="fill-text">
         kept for every query row
       </Label>
