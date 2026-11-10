@@ -2132,3 +2132,4 @@
 - **fragment identifier** => 
 - **admission of a waiting request** => 
 - **preemption of the last admitted sequence** => 
+- **a block table per request over one shared pool** => 

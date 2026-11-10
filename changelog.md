@@ -23,6 +23,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: "beyond this engine" says a rejected draft costs bytes per kept token, not per round.
 - Part A: A one-hour path through Every Byte: chosen in `web/src/content/short-path.ts`, marked in the contents, a book mode (`?path=hour`) that turns only its spreads, and `/kernels/short-path` with its reading time counted from the built pages.
 - Part A: Every Byte gets a serving chapter, "how many requests fit", at the start of Part IV: the KV budget, how many requests fit, admission, preemption, static against continuous batching and what it bought under load; the scheduler story and the KV visualizer move into it from paged KV.
+- Part A: Paged KV puts its idea first: the memory steps with lesson titles, write_kv under how it got built, the recorded run as measured.
 
 ## kernel/flash-prefill-div32
 

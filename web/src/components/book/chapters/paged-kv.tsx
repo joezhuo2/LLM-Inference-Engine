@@ -25,11 +25,6 @@ const beats: Beat[][] = [
     close("The rail: position is the only input", [0.53, 0.02, 0.2], 0.86, 0.36, 0, 44),
   ],
   [
-    overview("write_kv: the K and V heads of one token go to one row"),
-    close("Close up: K and V at the end of the QKV row", [0.75, 0.03, -0.5], 0.5, 0.26, 20, 52),
-    close("From the side: every head lands in the same row of its tile", [0.52, 0.04, -0.24], 0.86, 0.36, -18, 52),
-  ],
-  [
     overview("One slot per decode step, one block per 16"),
     close(`Close up: block ${first.blocks[3].id} appears at position ${3 * B}`, [0.55, 0.03, -0.3], 0.78, 0.36, -18, 54),
     close("From the side: prompt slots low, decoded slots tall", [0.58, 0.03, -0.42], 0.7, 0.32, 24, 52),
@@ -38,6 +33,11 @@ const beats: Beat[][] = [
     overview("Freed blocks go out again first"),
     close("Close up: blue sinks, pink rises in the same place", [0.53, 0.03, -0.4], 0.86, 0.4, -16, 54),
     close("From the side: a full pool gives back its newest request", [0.53, 0.02, 0.1], 0.86, 0.32, 18, 58),
+  ],
+  [
+    overview("write_kv: the K and V heads of one token go to one row"),
+    close("Close up: K and V at the end of the QKV row", [0.75, 0.03, -0.5], 0.5, 0.26, 20, 52),
+    close("From the side: every head lands in the same row of its tile", [0.52, 0.04, -0.24], 0.86, 0.36, -18, 52),
   ],
   [
     overview("The recorded run, replayed at half speed"),
@@ -49,9 +49,9 @@ const beats: Beat[][] = [
 const instructions = [
   "Watch the blue rows fill against what each row reserved.",
   "Drag the pink ball to pick a position and follow its table entry into the pool.",
-  `Watch each key and value land in row ${lookup.row} of its head's tile.`,
   `Drag the pink ball: a new block appears only at a multiple of ${B}.`,
   "Watch the freed blocks go to the next requests, then the newest request give its blocks back.",
+  `Watch each key and value land in row ${lookup.row} of its head's tile.`,
   "Drag the pink ball along the run to stop at any step.",
 ];
 
@@ -62,7 +62,7 @@ const chapter: ChapterDef = {
   formula: pagedKv.formula,
   steps: pagedKvSteps,
   captions: pagedKvCaptions,
-  exhibits: [0, 1, 2, 3, 4, 5],
+  exhibits: [0, 1, 3, 4, 2, 5],
   overlays: [null, null, null, null, null, null],
   instructions,
   beats,

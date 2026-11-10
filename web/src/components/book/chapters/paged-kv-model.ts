@@ -12,7 +12,7 @@ const COLS = 12;
 const ROWS = Math.ceil((replay.max_block + 1) / COLS);
 const POOL = COLS * ROWS;
 
-export const KV_STOP = { why: 0, pool: 1, write: 2, append: 3, reuse: 4, replay: 5 };
+export const KV_STOP = { why: 0, pool: 1, append: 2, reuse: 3, write: 4, replay: 5 };
 
 const fmt = (v: number, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));

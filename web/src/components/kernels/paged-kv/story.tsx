@@ -167,7 +167,7 @@ const reqBlocks = first.blocks.length;
 export const pagedKvSteps: StoryStep[] = [
   {
     id: "why",
-    title: "memory for a context nobody knows yet",
+    title: "nobody knows a request's length, so hold only the blocks it fills",
     body: (
       <>
         <p>
@@ -199,25 +199,8 @@ export const pagedKvSteps: StoryStep[] = [
     ),
   },
   {
-    id: "write",
-    title: "write_kv",
-    body: (
-      <>
-        <p>
-          write_kv is the kernel that fills the slots. After the QKV projection and RoPE, each token&apos;s row holds its query heads and then its key heads and value heads. write_kv runs one
-          thread per (token, KV head, dimension), looks up the token&apos;s slot, and copies one key and one value bit for bit into the block and the row inside it that the slot names.
-        </p>
-        <p>
-          The cache is laid out by block, then KV head, then token, then dimension, so one head&apos;s keys in a block are one contiguous tile, which is what the attention kernel reads. Padding rows get
-          an empty slot and write nothing. It is a pure copy: <span className="text-accent">{`${fmt(writeUs, 1)} µs`}</span> per single-request decode step over one launch per layer, a small share of the kernel
-          time.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "append",
-    title: "one token at a time",
+    title: `a new block only every ${B} tokens`,
     body: (
       <>
         <p>
@@ -233,7 +216,7 @@ export const pagedKvSteps: StoryStep[] = [
   },
   {
     id: "reuse",
-    title: "giving blocks back",
+    title: "freed blocks go out again first",
     body: (
       <>
         <p>
@@ -248,8 +231,30 @@ export const pagedKvSteps: StoryStep[] = [
     ),
   },
   {
+    id: "write",
+    group: "how it got built",
+    title: "write_kv is a pure copy, one thread per value",
+    body: (
+      <>
+        <p>
+          write_kv is the kernel that fills the slots. After the QKV projection and RoPE, each token&apos;s row holds its query heads and then its key heads and value heads. write_kv runs one
+          thread per (token, KV head, dimension), looks up the token&apos;s slot, and copies one key and one value bit for bit into the block and the row inside it that the slot names.
+        </p>
+        <p>
+          The cache is laid out by block, then KV head, then token, then dimension, so one head&apos;s keys in a block are one contiguous tile, which is what the attention kernel reads. Padding rows get
+          an empty slot and write nothing. It is a pure copy: <span className="text-accent">{`${fmt(writeUs, 1)} µs`}</span> per single-request decode step over one launch per layer, a small share of the kernel
+          time.
+        </p>
+        <p>
+          The layout and the kernel&apos;s tests came before the kernel, and the tests were checked against nine deliberately broken kernels first. Joe&apos;s kernel then passed them, and one of them caught two slips in the spec: a QKV row with no query columns was accepted, and an empty batch returned before its arguments were checked.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "replay",
-    title: "the recorded run",
+    group: "measured",
+    title: `a busy run held ${replay.peak.blocks} of ${fmt(replay.meta.kv_blocks)} blocks`,
     body: (
       <>
         <p>
@@ -269,9 +274,9 @@ export const pagedKvSteps: StoryStep[] = [
 export const pagedKvCaptions = [
   `the four requests' real lengths from ${replay.file}; blocks are ${B} tokens; ${layers} layers; an answer can stop after 9 tokens; reserving ${fmt(fullContext)} tokens each, the four would hold ${4 * (fullContext / B)} blocks`,
   `block table of request ${first.id} and the pool at that step, both from the build-time replay of ${replay.file}: position ${lookup.pos} is logical block ${lookup.logical}, physical block ${lookup.phys}, among the request's ${reqBlocks} blocks; the pool is ${fmt(poolGb, 1)} GB, ${fmt(blockBytes)} bytes and ${B} tokens a block, block 0 the null block`,
-  `TinyLlama: 32 query heads and 4 KV heads of 64 dims, laid out [block, KV head, ${B}, 64] per layer, a 2 KB tile per head and block; the slot picks row slot mod ${B} of block slot / ${B}, padding rows get slot -1; time from results/decode_step.md (GPU time per op), ${layers} launches, ${writeShare}% of the kernel time`,
   `request ${first.id}'s real prompt and blocks: its ${first.prompt} prompt tokens fill blocks ${first.blocks.slice(0, Math.ceil(first.prompt / B)).map((b) => b.id).join(", ")}, then ${first.final_length - first.prompt} decode steps; at most ${B - 1} slots stay empty; the slots filled over time are drawn, not timed`,
   `block reuse from the replay: request ${first.id}'s fourth block had served another request, and all ${replay.meta.num_requests} requests stayed within blocks 1 to ${replay.max_block}; the preemption test, ForcedPreemptionKeepsTheOutputsOfEveryRequest in tests/gpu/test_serve.cpp, puts 16 requests in 56 blocks and forces 6 preemptions`,
+  `TinyLlama: 32 query heads and 4 KV heads of 64 dims, laid out [block, KV head, ${B}, 64] per layer, a 2 KB tile per head and block; the slot picks row slot mod ${B} of block slot / ${B}, padding rows get slot -1; time from results/decode_step.md (GPU time per op), ${layers} launches, ${writeShare}% of the kernel time`,
   `${replay.file}, recorded ${replay.meta.date.slice(0, 10)} on the ${replay.meta.gpu.replace("NVIDIA GeForce ", "")}: ${replay.meta.num_requests} requests at ${replay.meta.request_rate} per second, peak ${replay.peak.blocks} of ${fmt(replay.meta.kv_blocks)} blocks, the pool 90% of the memory left after the weights; measured ${fmt(tput("16"))} tokens/s at batch 16 against ${fmt(tput("1"))} at batch 1; every step's free block count checked against the trace at build time`,
 ];
 
@@ -299,4 +304,3 @@ export function PagedKvStory() {
     />
   );
 }
-
