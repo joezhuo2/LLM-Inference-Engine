@@ -9,7 +9,7 @@ export const pagedAttention: KernelStory = {
   book: true,
   about: true,
   title: "paged attention",
-  short: "One new query per sequence against its whole cached context, read through a block table: v1, then an online softmax, then one context split across the GPU.",
+  short: "One new query per sequence against its whole cached context, every key found through a block table, so the cache can sit in 16-token blocks anywhere in one shared pool.",
   formula: "out = softmax(q · Kᵀ / √d) · V",
   headline: {
     value: `${(measured(split, { rows: "1", context: "2,048" }, "v2") / measured(split, { rows: "1", context: "2,048" }, "8")).toFixed(1)}x`,

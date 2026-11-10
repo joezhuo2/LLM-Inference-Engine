@@ -2102,3 +2102,5 @@
 ## Idea first, history after (Branch 143)
 
 - **the idea of a chapter against the history of how it was built** => 
+- **block table** => 
+- **contiguous reads within a block** => 

@@ -22,7 +22,7 @@ const headDim = shape.hidden / shape.heads;
 const steps: StoryStep[] = [
   {
     id: "job",
-    title: "the job",
+    title: "one query against every cached key, every step",
     body: (
       <>
         <p>
@@ -35,7 +35,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "blocks",
-    title: "keys live in blocks",
+    title: "every key is found through the block table",
     body: (
       <>
         <p>
@@ -47,19 +47,37 @@ const steps: StoryStep[] = [
     ),
   },
   {
-    id: "v2",
-    title: "v1 → v2",
+    id: "reads",
+    title: "pages move the reads, not the math",
     body: (
       <>
         <p>
-          The first version kept every score of the context in shared memory and made several passes over it, which capped
-          the context. The second streams keys in chunks with an online softmax, shares each key between a group of lanes,
-          and runs up to <span className="text-accent">8,192</span> tokens.
+          Inside a block, one KV head&apos;s 16 keys sit side by side, {headDim} values each, so a key is one run of{" "}
+          <span className="text-accent">{headDim * 2}</span> bytes and the reads only jump at a block boundary. The table adds one read per key, an integer
+          that the 16 keys of a block share.
         </p>
         <p>
-          Attention per decode step: <span className="text-accent">{stepV2} µs</span>, down from v1&apos;s time in the caption. The whole before and after is its own story:{" "}
+          The scores, the softmax and the weighted sum are the arithmetic of ordinary attention, which is why the tests can
+          check scattered block tables against a CPU reference. What the lookup costs in time was not measured on its own.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "v2",
+    title: "an online softmax removed v1's context cap",
+    group: "how it got built",
+    body: (
+      <>
+        <p>
+          The first kernel, v1, kept every score of the context in shared memory and made three passes over it, which capped
+          the context at 2,048 tokens. The second, v2, streams keys in chunks with an online softmax, shares each key between
+          a group of lanes and has no cap; its tests reach <span className="text-accent">8,192</span> tokens.
+        </p>
+        <p>
+          Attention per decode step: <span className="text-accent">{stepV2} µs</span>, down from v1&apos;s time in the caption. How the online softmax works is the chapter{" "}
           <Link href="/kernels/attention-v2" className="link-underline text-accent">
-            attention v1 → v2
+            attention v2
           </Link>
           .
         </p>
@@ -68,20 +86,21 @@ const steps: StoryStep[] = [
   },
   {
     id: "split",
-    title: "then: split the context",
+    title: "splitting the context filled an idle GPU",
+    group: "how it got built",
     body: (
       <>
         <p>
-          v2 still launches one block per row and head, which at one row is a fifth of what the GPU holds at once. Cutting
+          v2 still launches one block per row and query head, which at one row is a fifth of what the GPU holds at once. Cutting
           each context into ranges that run side by side, then merging them, took one row at a long context down to{" "}
-          <span className="text-accent">{split8} µs</span>.
+          <span className="text-accent">{split8} µs</span>. The runner picks a split count every step and runs v2 when it picks one.
         </p>
         <p>
-          That is its own story:{" "}
+          The chapter{" "}
           <Link href="/kernels/split-attention" className="link-underline text-accent">
-            split-context attention
-          </Link>
-          , with the occupancy measurements, the merge and the CUDA Graphs fix.
+            split attention
+          </Link>{" "}
+          has the occupancy measurements, the merge and the CUDA Graphs fix.
         </p>
       </>
     ),
@@ -93,6 +112,7 @@ const captions = [
   Number.isFinite(poolBlocks) && poolBlocks > 0
     ? `example block table; the pool held ${poolBlocks.toLocaleString("en-US")} blocks in the recorded run`
     : "example block table",
+  `the same block table; inside a block one KV head's 16 keys are 16 × ${headDim} BF16 values in a row, ${(16 * headDim * 2).toLocaleString("en-US")} bytes, as paged_attention_v2.cu lays them out`,
   `${stepV1} → ${stepV2} µs per decode step (eager profile, contexts of at most 64 tokens), from docs/profiling.md; v1 made three passes and held at most 2,048 tokens, v2 shares each key between eight lanes`,
   `${v2Loop} µs → ${split8} µs, one row at 2,048 tokens, from docs/profiling.md; one block per query head is ${shape.heads} blocks at batch 1; the busy SMs are an illustration`,
 ];
@@ -111,8 +131,9 @@ export function PagedAttentionStory() {
           case 0:
             return <OverviewFigure />;
           case 1:
-            return <BlocksFigure />;
           case 2:
+            return <BlocksFigure />;
+          case 3:
             return <V2LinkFigure v1={stepV1} v2={stepV2} />;
           default:
             return <SplitFigure v2={v2Loop} split={split8} />;

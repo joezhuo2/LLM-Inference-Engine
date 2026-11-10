@@ -49,7 +49,12 @@ const beats: Beat[][] = [
     close("The rule, worked out for this token", [0.53, 0.02, 0.24], 1.12, 0.42, 0, 48),
   ],
   [
-    overview("v1: three passes; v2: one chunk at a time"),
+    overview("The table moves the reads, not the arithmetic"),
+    close("Close up: one table entry for all 16 keys of a block", [0.5, 0.04, -0.4], 1.12, 0.50, -18, 36),
+    close("From the side: the jumps fall between blocks", [0.52, 0.03, -0.08], 1.12, 0.56, 24, 32),
+  ],
+  [
+    overview("v1 held every score; v2 streams chunks with no cap"),
     close("Close up: v1 keeps every score and passes three times", [0.5, 0.03, -0.48], 1.12, 0.45, -18, 36),
     close("From the side: v2 streams keys through one chunk", [0.52, 0.04, -0.22], 1.12, 0.48, 24, 30),
     close("Attention per decode step, to scale", [0.53, 0.02, 0.18], 1.12, 0.48, 0, 48),
@@ -70,6 +75,7 @@ const instructions = [
   "Watch each full block land in whichever pool block is free.",
   "Watch the scores fill one key at a time, then the softmax weigh them all.",
   "Drag the pink ball along the sequence to pick a token.",
+  "Drag the pink ball within one block: every token there follows the same table entry.",
   "Watch v1 pass over its full tray three times while v2 streams chunks.",
   "Watch the context run as one range, then as eight at once.",
 ];
@@ -129,6 +135,8 @@ function PagedAttentionOverlay({ kind, target, narrow }: OverlayProps) {
   );
 }
 
+const ownExhibits = [0, 1, 2, 3, 4, 5, 5, 6, 7];
+
 const chapter: ChapterDef = {
   slug: "paged-attention",
   number: 5,
@@ -136,14 +144,14 @@ const chapter: ChapterDef = {
   formula: "out = softmax(q · Kᵀ / √d) · V",
   steps: [...attentionBasics, ...prologueSteps, ...attentionSteps],
   captions: [...basicsCaptions, ...prologueCaptions, ...attentionCaptions],
-  exhibits: [...attentionBasics.map(() => null), 0, 1, 2, 3, 4, 5, 6, 7],
-  overlays: [...attentionBasics.map((_, k) => `basics-${k}`), null, null, null, null, null, null, null, null],
+  exhibits: [...attentionBasics.map(() => null), ...ownExhibits],
+  overlays: [...attentionBasics.map((_, k) => `basics-${k}`), ...ownExhibits.map(() => null)],
   instructions,
   beats,
   workbench,
   buildModel: (kit, fonts) => {
     const model = createPagedAttentionModel(kit, fonts, { ...prologueNumbers, ...attentionNumbers });
-    return { ...model, enter: (stop) => model.enter?.(stop - attentionBasics.length) };
+    return { ...model, enter: (stop) => model.enter?.(ownExhibits[stop - attentionBasics.length] ?? -1) };
   },
   Overlay: PagedAttentionOverlay,
 };
