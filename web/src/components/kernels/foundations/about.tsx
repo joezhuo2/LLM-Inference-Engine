@@ -40,19 +40,19 @@ export const foundationsAbout: StoryStep = {
   body: (
     <>
       <p>
-        An inference engine is the program that runs a trained language model: it loads the weights onto the GPU, takes a prompt and writes the answer one token at a time. This one runs TinyLlama, whose {(params / 1e9).toFixed(1)} billion weights take {((params * 2) / 1e9).toFixed(1)} GB in BF16. A token is a word or a piece of one, numbered by its place in a vocabulary of {fmt(n.vocab)}: asked &ldquo;{n.prompt}&rdquo;, TinyLlama answered &ldquo;{n.answer}&rdquo; in {n.tokens.length - 1} tokens and a stop token.
+        An inference engine is the program that runs a trained language model: it loads the weights onto the GPU, takes a prompt and writes the answer one token at a time. This one runs TinyLlama, whose {(params / 1e9).toFixed(1)} billion weights are stored in BF16. A token is a word or a piece of one, numbered by its place in a fixed vocabulary: asked &ldquo;{n.prompt}&rdquo;, TinyLlama answered &ldquo;{n.answer}&rdquo; in a few tokens and a stop token.
       </p>
       <p>
-        The prompt goes through the model once, all its tokens together. After that every new token costs one decode step. The id of the last token picks one row of the embedding table, {fmt(n.hidden)} numbers that stand for that token. The row passes through the {n.layers} layers in turn, and each layer adds to it what attention reads from the earlier tokens and what its MLP computes. At the end the LM head, a matrix of {fmt(n.vocab)} rows, turns the {fmt(n.hidden)} numbers into {fmt(n.vocab)} scores called logits, one for every token in the vocabulary. One token is picked from them, and its id is the input of the next step.
+        The prompt goes through the model once, all its tokens together. After that every new token costs one decode step. The id of the last token picks one row of the embedding table, {fmt(n.hidden)} numbers that stand for that token. The row passes through every layer in turn, and each layer adds to it what attention reads from the earlier tokens and what its MLP computes. At the end the LM head, a matrix with one row for each token of the vocabulary, turns those numbers into one score per token, called logits. One token is picked from them, and its id is the input of the next step.
       </p>
       <p>
-        Each of those pieces is one or more GPU kernels, programs the CPU hands to the GPU to run. In the profile a decode step is <span className="text-accent">{n.kernels} kernels</span>, {n.perLayer} in every layer and a few around them, and one more picks the token; the whole step takes about <span className="text-text">{n.stepMs.toFixed(1)} ms</span> on this GPU. The rest of the book takes those kernels one chapter at a time. This chapter starts underneath them all: how a GPU runs a kernel, where its data lives, and why a decode step waits on memory and not on arithmetic.
+        Each of those pieces is one or more GPU kernels, programs the CPU hands to the GPU to run. In the profile a decode step is <span className="text-accent">{n.kernels} kernels</span>, some in every layer and a few around them, and one more picks the token; the whole step takes only a few milliseconds on this GPU. The rest of the book takes those kernels one chapter at a time. This chapter starts underneath them all: how a GPU runs a kernel, where its data lives, and why a decode step waits on memory and not on arithmetic.
       </p>
     </>
   ),
 };
 
-export const foundationsAboutCaption = `illustrative: ${n.layers} plates for ${n.layers} layers, a few bars for ${fmt(n.vocab)} logits; the answer and its tokens from results/kv_demo.json, kernel count and step time from the CUDA Graphs profile`;
+export const foundationsAboutCaption = `illustrative: ${n.layers} plates for ${n.layers} layers, a few bars for ${fmt(n.vocab)} logits; answer of ${n.tokens.length - 1} tokens and a stop token from results/kv_demo.json; ${((params * 2) / 1e9).toFixed(1)} GB of BF16 weights (calculated); ${n.perLayer} kernels per layer and about ${n.stepMs.toFixed(1)} ms a step, CUDA Graphs profile (measured)`;
 
 const shown = 6;
 const pick = shown - 1;

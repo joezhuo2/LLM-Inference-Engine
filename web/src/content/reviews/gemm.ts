@@ -1,9 +1,11 @@
-import { prefillRoof } from "@/content/kernels/gemm";
+import { gemmOps, prefillRoof, roofline } from "@/content/kernels/gemm";
 import { ceilings } from "@/lib/data";
 import type { ChapterReview } from "./types";
 
 const peak = ceilings();
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
+const batchRows = 16;
+const projectionUs = (rows: number) => Math.round(gemmOps.reduce((s, op) => s + roofline(op, String(rows), "us/step"), 0)).toLocaleString("en-US");
 
 export const review: ChapterReview = {
   lesson: "At the memory roof, the only way to go faster is to move fewer bytes.",
@@ -24,6 +26,12 @@ export const review: ChapterReview = {
       question: "If more requests decode together, should attention gain the same reuse of reads as the projections?",
       answer: "No, attention reads each request's own keys and values.",
       why: "The projections share weights across requests, so each weight read can serve more token rows. Attention still reads separate keys and values for every row.",
+    },
+    {
+      question: `Foundations placed every op on a roofline. Why do the five projections take about as long at ${batchRows} rows, ${projectionUs(batchRows)} µs per step, as at one row, ${projectionUs(1)} µs?`,
+      answer: `${batchRows} rows are still far under the ridge, so memory sets the time.`,
+      why: `Each extra row adds FLOPs but no weight bytes, so at ${batchRows} rows gate/up does ${roofline("gate_up", String(batchRows), "FLOP/byte").toFixed(1)} FLOP per byte (calculated) against a ridge of ${Math.round(ridge)}. On the foundations roofline that is still the bandwidth slope, where the time is the time to read the weights.`,
+      recall: "foundations",
     },
   ],
 };

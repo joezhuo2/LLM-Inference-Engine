@@ -18,9 +18,10 @@ const reviews: Record<string, ChapterReview> = { foundations, gemm, rope, "paged
 
 export const chapterReview = (slug: string): ChapterReview | undefined => (reviews[slug]?.takeaways.length ? reviews[slug] : undefined);
 
-export function recallOf(q: ReviewQuestion): { slug: string; line: string } | undefined {
+export function recallOf(q: ReviewQuestion): { slug: string; href: string; line: string } | undefined {
   if (!q.recall) return undefined;
+  if (q.recall === "start") return { slug: "start", href: "/every-byte/start", line: "recalls start here, the life of a token" };
   const title = kernelStory(q.recall)?.title;
   if (!title || chapterNumber(q.recall) === 0) throw new Error(`a review question recalls "${q.recall}", which is not a chapter of the book`);
-  return { slug: q.recall, line: `recalls chapter ${chapterNumber(q.recall)}, ${title}` };
+  return { slug: q.recall, href: `/kernels/${q.recall}`, line: `recalls chapter ${chapterNumber(q.recall)}, ${title}` };
 }

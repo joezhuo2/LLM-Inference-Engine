@@ -66,7 +66,7 @@ export const gemm: KernelStory = {
   },
   lead: {
     title: "stream it yourself",
-    intro: "At one row a decode step reads every weight from DRAM and uses it for a single multiply-add, so the GPU spends its time waiting for bytes. The board is one weight matrix cut into 256 pieces. Press play and watch the SMs pull the tiles in, one wave at a time: each tile's slab is its bytes and its pillar is how many times each of those weights gets used. Answer the prediction, then switch rows M from 1 to 16 and on to 512: the bytes stay the same, the uses grow, and at 512 the pillars rise through the ridge and the compute ceiling takes over from memory. Hover a tile for its rows, columns and bytes; the table counts the bytes and FLOPs of a whole step and puts the measured times next to them.",
+    intro: "At one row a decode step reads every weight from DRAM and uses it for a single multiply-add, so the GPU spends its time waiting for bytes. The board is one weight matrix cut into tiles. Press play and watch the SMs pull the tiles in, one wave at a time: each tile's slab is its bytes and its pillar is how many times each of those weights gets used. Answer the prediction, then switch rows M from one row to a small batch and on to a long prompt: the bytes stay the same, the uses grow, and for a long prompt the pillars rise through the ridge and the compute ceiling takes over from memory. Hover a tile for its rows, columns and bytes; the table counts the bytes and FLOPs of a whole step and puts the measured times next to them.",
   },
   sandbox: {
     title: "tile it yourself",

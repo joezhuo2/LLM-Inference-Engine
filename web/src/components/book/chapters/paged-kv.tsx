@@ -79,7 +79,7 @@ const workbench: WorkbenchPage[] = [
     overlay: "visualizer-pool",
     caption: "Allocate it yourself: the pool",
     paragraphs: [
-      `Three real chat requests, L1 to L3, were answered greedily by the engine on the ${demo.gpu.replace("NVIDIA GeForce ", "")} and recorded in results/kv_demo.json. On the right they are served from a 64-block pool by the rules of the BlockManager and the scheduler. The demo arrivals play first; press a + button to add another request at any time.`,
+      `Three real chat requests, L1 to L3, were answered greedily by the engine on the ${demo.gpu.replace("NVIDIA GeForce ", "")} and recorded in results/kv_demo.json. On the right they are served from a small block pool by the rules of the BlockManager and the scheduler. The demo arrivals play first; press a + button to add another request at any time.`,
       "Each tile is a block of 16 slots. Its height is the number of slots written, and a dashed outline marks a block that is held but not written yet. Hover a block to see its tokens and where its keys and values sit in memory.",
       "A request is admitted only when blocks for its whole length are free, every decode step appends one slot, and when the pool is full the newest request is preempted and waits for room again.",
       `Switch the cache to contiguous to run the same arrivals with every request reserving its prompt plus the ${demo.max_new_tokens} tokens it may generate, in one run of blocks, and watch how few requests fit at once.`,
@@ -91,9 +91,9 @@ const workbench: WorkbenchPage[] = [
     caption: "Allocate it yourself: the tables",
     paragraphs: [
       "The table runs both caches side by side on the same arrivals, whichever one the pool shows: requests running, requests waiting for room, blocks held of 63, slots written, slots held but empty, and preemptions.",
-      "Under paged, the list shows each running request's block table: logical block 0, 1, 2 and so on, each pointing to the physical block that holds it. A request's blocks are scattered wherever there was room when it grew.",
+      "Under paged, the list shows each running request's block table: its logical blocks in order, each pointing to the physical block that holds it. A request's blocks are scattered wherever there was room when it grew.",
       "Under contiguous, each request holds one run of blocks, listed by its first and last block, and a waiting request needs that many blocks in a row: a pool with enough free blocks in all can still turn it away when they are scattered.",
-      "Use step to move one decode step at a time, or replay demo to start over. Compare the slots held but empty row: blocks of 16 keep it under 16 slots per request, while a reservation keeps every slot a request might use.",
+      "Use step to move one decode step at a time, or replay demo to start over. Compare the slots held but empty row: blocks of 16 keep it under one block per request, while a reservation keeps every slot a request might use.",
     ],
   },
 ];

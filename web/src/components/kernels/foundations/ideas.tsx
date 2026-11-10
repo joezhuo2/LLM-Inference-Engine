@@ -23,6 +23,10 @@ const poolTokens = pool.kv_blocks * pool.block_size;
 const poolBytes = poolTokens * kvBytesPerToken;
 const chatTokens = 200;
 const chatBlocks = Math.ceil(chatTokens / pool.block_size);
+const chatsFit = poolTokens / (chatBlocks * pool.block_size);
+const reserveTokens = 2048;
+const cacheSteps = 8;
+const uncachedWork = (cacheSteps * (cacheSteps + 1)) / 2;
 
 const need = (v: number | undefined, what: string) => {
   if (v === undefined) throw new Error(`results/summaries has no ${what}`);
@@ -45,10 +49,10 @@ const ideaSteps: StoryStep[] = [
     body: (
       <>
         <p>
-          To produce one token, the GPU has to read every weight of the model once: all 22 layers, then the LM head. For TinyLlama that is <span className="text-accent">{gb(readBytes)} GB</span>. At the {peak.gbs} GB/s this GPU&apos;s memory can deliver, the reading alone takes {ms(readMs)} ms.
+          To produce one token, the GPU has to read every weight of the model once: all the layers, then the LM head. For TinyLlama that is <span className="text-accent">{gb(readBytes)} GB</span>. At the bandwidth this GPU&apos;s memory can deliver, the reading alone takes several milliseconds.
         </p>
         <p>
-          The arithmetic on those weights would take {ms(mathMs, 2)} ms if the numbers were already there. So the measured step, {ms(b1.tpot)} ms, is almost all waiting for bytes. Making the maths faster would change nothing; moving fewer bytes, or using each byte for more work, is what helps.
+          The arithmetic on those weights would take a small fraction of a millisecond if the numbers were already there. So the measured step, {ms(b1.tpot)} ms, is almost all waiting for bytes. Making the maths faster would change nothing; moving fewer bytes, or using each byte for more work, is what helps.
         </p>
         <p>The rest of this chapter builds this into the roofline, and every later chapter is judged against it.</p>
       </>
@@ -63,10 +67,10 @@ const ideaSteps: StoryStep[] = [
           Attention lets the newest token look back at every earlier one. Each token gets a query, what it is looking for, a key, what it offers, and a value, what it passes on. The new token compares its query with the key of every earlier token and mixes their values by how well they match.
         </p>
         <p>
-          The keys and values of earlier tokens never change, so the engine keeps them: the KV cache. Each step then computes K and V only for the new token and reads the rest, instead of recomputing all of them. After 8 tokens that is 8 computations instead of 36, and the gap grows with every token.
+          The keys and values of earlier tokens never change, so the engine keeps them: the KV cache. Each step then computes K and V only for the new token and reads the rest, instead of recomputing all of them. The figure counts the computations over eight steps, and the gap grows with every token.
         </p>
         <p>
-          The price is memory: <span className="text-accent">{int(kvBytesPerToken)} bytes</span> for every token of every conversation. Chapters 4 to 7 are about storing and reading this cache well.
+          The price is memory: <span className="text-accent">{int(kvBytesPerToken)} bytes</span> for every token of every conversation. The paged KV cache and attention chapters are about storing and reading this cache well.
         </p>
       </>
     ),
@@ -77,12 +81,12 @@ const ideaSteps: StoryStep[] = [
     body: (
       <>
         <p>
-          If reading the weights is the cost, read them once and use them for many requests. A batch of 16 conversations runs as one step: the weights stream in once, and each of the 16 rows does its own arithmetic on them.
+          If reading the weights is the cost, read them once and use them for many requests. A batch of 16 conversations runs as one step: the weights stream in once, and each row does its own arithmetic on them.
         </p>
         <p>
-          The step gets only a little longer, because the arithmetic was nearly free: {ms(b1.tpot)} ms at one request, {ms(b16.tpot)} ms at 16. The output goes from {int(b1.tps)} to <span className="text-accent">{int(b16.tps)} tokens per second</span>, {(b16.tps / b1.tps).toFixed(0)} times as many.
+          The step gets only a little longer, because the arithmetic was nearly free. The output rises to <span className="text-accent">{int(b16.tps)} tokens per second</span>, many times what one request gets.
         </p>
-        <p>This is why serving engines batch everything they can, and why the scheduler in chapter 4 exists.</p>
+        <p>This is why serving engines batch everything they can, and why the scheduler in the paged KV cache chapter exists.</p>
       </>
     ),
   },
@@ -92,10 +96,10 @@ const ideaSteps: StoryStep[] = [
     body: (
       <>
         <p>
-          The GPU has {hw.vram_gb.toFixed(1)} GB. The weights take {gb(storedBytes)} GB, and most of the rest becomes the KV cache: a pool of <span className="text-accent">{int(poolTokens)} token slots</span>. How many conversations fit at once is decided by that pool, not by the arithmetic.
+          The weights take a share of the GPU&apos;s memory, and most of the rest becomes the KV cache: a pool of <span className="text-accent">{int(poolTokens)} token slots</span>. How many conversations fit at once is decided by that pool, not by the arithmetic.
         </p>
         <p>
-          Reserving the longest possible answer, 2,048 tokens, for each request would fit {int(poolTokens / 2048)} of them, most of each reservation empty. Handing out 16-token blocks only as a conversation grows fits about {int(poolTokens / (chatBlocks * pool.block_size))} chats of {chatTokens} tokens. That is the paged KV cache of chapter 4.
+          Reserving the longest possible answer for each request would fit far fewer of them, most of each reservation empty. Handing out small blocks only as a conversation grows fits about <span className="text-accent">{int(chatsFit)} chats</span> of a short length. That is the paged KV cache.
         </p>
       </>
     ),
@@ -106,10 +110,10 @@ const ideaSteps: StoryStep[] = [
     body: (
       <>
         <p>
-          Bigger batches give more tokens per second in total, but each conversation waits a little longer for its next token: {ms(b1.tpot)} ms alone, {ms(b16.tpot)} ms in a batch of 16. An engine is always trading the speed one user feels against how many users it can serve.
+          Bigger batches give more tokens per second in total, but each conversation waits a little longer for its next token, {ms(b16.tpot)} ms in a full batch. An engine is always trading the speed one user feels against how many users it can serve.
         </p>
         <p>
-          A long new prompt makes the trade worse. Its prefill is one big step, and every conversation already decoding waits for it to finish. Chunked prefill, chapter 12, cuts the prompt into pieces that ride along with the decode steps, so <span className="text-accent">nobody stalls</span>. CUDA Graphs, chapter 11, shave the time between kernels so every step is shorter.
+          A long new prompt makes the trade worse. Its prefill is one big step, and every conversation already decoding waits for it to finish. Chunked prefill, the last chapter, cuts the prompt into pieces that ride along with the decode steps, so <span className="text-accent">nobody stalls</span>. CUDA Graphs shave the time between kernels so every step is shorter.
         </p>
       </>
     ),
@@ -117,17 +121,17 @@ const ideaSteps: StoryStep[] = [
 ];
 
 export const ideaCaptions = [
-  `bytes and FLOPs from config.json; ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s measured on the ${hw.gpu.replace("NVIDIA GeForce ", "")}; the step is the median time per output token of engine + CUDA Graphs at batch 1`,
-  `illustrative: 8 tokens, one head; ${int(kvBytesPerToken)} bytes = ${m.layers} layers × K and V × ${m.kv_heads} KV heads × ${headDim} values × 2 bytes`,
-  "tokens per second and time per output token: medians of engine + CUDA Graphs runs from docs/results.md",
-  `${hw.vram_gb.toFixed(1)} GB from docs/hardware.md; the pool is the ${int(pool.kv_blocks)} blocks of ${pool.block_size} tokens the engine allocated in the recorded chat run; reservations drawn to scale within each row`,
-  "illustrative: three conversations decoding while a long prompt arrives; step lengths not to scale",
+  `bytes and FLOPs from config.json; ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s measured on the ${hw.gpu.replace("NVIDIA GeForce ", "")}; reading ${ms(readMs)} ms and arithmetic ${ms(mathMs, 2)} ms calculated; the step is the median time per output token of engine + CUDA Graphs at batch 1`,
+  `illustrative: ${cacheSteps} tokens, one head; K and V computed over ${cacheSteps} steps: ${cacheSteps} with a cache, ${uncachedWork} without; ${int(kvBytesPerToken)} bytes = ${m.layers} layers × K and V × ${m.kv_heads} KV heads × ${headDim} values × 2 bytes`,
+  `measured medians of engine + CUDA Graphs runs from docs/results.md: ${int(b1.tps)} tokens per second and ${ms(b1.tpot)} ms per output token at batch 1, ${int(b16.tps)} and ${ms(b16.tpot)} ms at batch 16, ${(b16.tps / b1.tps).toFixed(0)} times the tokens per second`,
+  `${hw.vram_gb.toFixed(1)} GB from docs/hardware.md, weights ${gb(storedBytes)} GB; the pool is the ${int(pool.kv_blocks)} blocks of ${pool.block_size} tokens the engine allocated in the recorded chat run; calculated: ${int(poolTokens / reserveTokens)} reservations of ${int(reserveTokens)} tokens, or about ${int(chatsFit)} chats of ${chatTokens} tokens; reservations drawn to scale within each row`,
+  `illustrative: three conversations decoding while a long prompt arrives, step lengths not to scale; measured medians: ${ms(b1.tpot)} ms per token alone, ${ms(b16.tpot)} ms at batch 16`,
 ];
 
 export const ideaInstructions = [
   "Watch the read bar fill while the arithmetic finishes almost at once.",
   "Count the cells computed in each triangle.",
-  "Watch one weight read feed 1 row, then 16.",
+  "Watch one weight read feed one row, then 16.",
   "Compare the empty space in the two rows.",
   "Watch the three conversations stall, then keep going.",
 ];

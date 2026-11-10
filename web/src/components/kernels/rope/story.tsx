@@ -3,7 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
-import { cellNumber, decodeSteps } from "@/lib/data";
+import { cellNumber, decodeSteps, modelShape } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -12,6 +12,16 @@ import { Author } from "../authorship";
 import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const fast = "fast-rope-branch-31";
+
+const shape = modelShape();
+const headDim = shape.hidden / shape.heads;
+const pairs = headDim / 2;
+const qkHeads = shape.heads + shape.kv_heads;
+const qkvWidth = (shape.heads + 2 * shape.kv_heads) * headDim;
+const draftThreads = 128;
+const groups = 8;
+const fastThreads = groups * pairs;
+const draftTrig = qkHeads * pairs;
 
 const tokenChoices = ["1", "16", "64", "512"];
 const at = (tokens: string) => ({ tokens });
@@ -105,7 +115,7 @@ const steps: StoryStep[] = [
           it the order by turning the query and key vectors, not by adding anything to them.
         </p>
         <p>
-          Each head&apos;s 64 values are read as <span className="text-accent">32 pairs</span>, and pair i is turned by the angle position · θᵢ. A query at
+          Each head&apos;s values are read as <span className="text-accent">{pairs} pairs</span>, and pair i is turned by the angle position · θᵢ. A query at
           position p and a key at position p′ then meet at an angle that depends only on p − p′. The first pairs turn
           fast and tell nearby tokens apart; the last ones barely move and carry the long distances.
         </p>
@@ -118,12 +128,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The QKV projection leaves one row of 2,560 values per token: 32 query heads, then 4 key heads, then 4 value
-          heads. RoPE turns the 36 Q and K heads in place, right before the keys are written to the cache, and leaves V
+          The QKV projection leaves one row of values per token: the query heads, then the key heads, then the value
+          heads. RoPE turns the Q and K heads in place, right before the keys are written to the cache, and leaves V
           alone.
         </p>
         <p>
-          Inside a head, value i pairs with value i + <span className="text-accent">32</span>, not with its neighbour; that is how Hugging Face&apos;s
+          Inside a head, value i pairs with value i + <span className="text-accent">{pairs}</span>, not with its neighbour; that is how Hugging Face&apos;s
           rotate_half lays it out, and the weights were trained that way. Each pair costs one cosine, one sine, four
           products and two sums.
         </p>
@@ -140,7 +150,7 @@ const steps: StoryStep[] = [
           product rounded on its own. The fast kernel has to match the naive one bit for bit.
         </p>
         <p>
-          The frequencies were the trap. A device powf differs from the host&apos;s in the last bit for 2 of the 32, the
+          The frequencies were the trap. A device powf differs from the host&apos;s in the last bit for a couple of the frequencies, the
           angle multiplies that error by the position, and near <span className="text-accent">2,047</span> a sine lands on the other side of a BF16 rounding
           boundary. The subtraction then turns one ulp into dozens. Both kernels now take the frequencies from a table the
           host computes.
@@ -154,16 +164,13 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          <Author story="Joe's first draft" book="The first draft" /> gave each head one thread: 128 threads per token, of which 36 had a head, each walking its
-          32 pairs one after another and computing every sine and cosine again for every head.
+          <Author story="Joe's first draft" book="The first draft" /> gave each head one thread, so most of a token&apos;s threads had nothing to do and each busy one walked its
+          pairs one after another, computing every sine and cosine again for every head.
         </p>
         <p>
-          Correct once the frequencies came from the host, but a flat{" "}
-          <span className="text-text">{draftFlat}</span> at 1 to 512 tokens, against{" "}
-          <span className="text-text">{naive1.toFixed(1)} µs</span> for the naive kernel at one token. The time
-          was the chain of <span className="text-accent">32 pairs</span> per thread, not the memory: only at 512 tokens did the naive kernel get slower (
-          <span className="text-text">{naive512.toFixed(1)}</span> against{" "}
-          <span className="text-text">{draft512.toFixed(1)} µs</span>).
+          Correct once the frequencies came from the host, but flat at about{" "}
+          <span className="text-accent">{draft1.toFixed(0)} µs</span> at every token count, slower than the naive kernel at one token. The time
+          was the chain of pairs each thread walked, not the memory: only at the largest token count did the naive kernel get slower.
         </p>
       </>
     ),
@@ -174,14 +181,14 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The fast kernel turns the mapping around: 32 threads per head group, one per pair, and 8 groups, 256 threads per
-          token. Each thread computes the cosine and sine of its pair once and applies them to 4 or 5 heads, so the 36
+          The fast kernel turns the mapping around: one thread per pair in each head group, and a few groups,{" "}
+          <span className="text-accent">{fastThreads} threads</span> per token. Each thread computes the cosine and sine of its pair once and applies them to every head of its group, so the
           heads no longer wait for each other.
         </p>
         <p>
-          That is 256 sines and cosines per token instead of 1,152, and{" "}
+          That is far fewer sines and cosines per token, and{" "}
           <span className="text-accent">{fast1.toFixed(1)} µs</span> for one token. Neighbouring threads read
-          neighbouring pairs, so a warp&apos;s 2-byte loads already coalesce into a few contiguous sectors; the 128-bit loads of the
+          neighbouring pairs, so a warp&apos;s narrow loads already coalesce into a few contiguous sectors; the wide vector loads of the
           spec were never needed.
         </p>
       </>
@@ -193,8 +200,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Up to 64 tokens the fast kernel stays near {fast1.toFixed(1)} µs: a few hundred KB at most, far from the memory
-          limit, so the launch and one chain of load, sine and store set the time. At 512 tokens it is{" "}
+          For small token counts the fast kernel stays near its one-token time: a few hundred KB at most, far from the memory
+          limit, so the launch and one chain of load, sine and store set the time. At the largest count it is{" "}
           <span className="text-accent">{fast512.toFixed(1)} µs</span>, half the naive kernel&apos;s. Try the
           token counts on the right.
         </p>
@@ -208,12 +215,12 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  "8 of the 32 pairs of one head, at their real rates; the vector lengths are illustrative",
-  "TinyLlama's layout: 32 query and 4 key/value heads of 64",
-  "the chain of the bug found while writing the naive kernel; bit patterns illustrative",
-  `µs per launch for one token, Nsight Compute; the pair segments are an illustration, not measured`,
-  `µs per launch for one token, Nsight Compute; sin and cos counts from the code`,
-  "Nsight Compute, RTX 5060 Laptop GPU, one launch after ten warm-ups",
+  `8 of the ${pairs} pairs of one head of ${headDim} values, at their real rates; the vector lengths are illustrative`,
+  `TinyLlama's layout: a row of ${qkvWidth.toLocaleString("en-US")} values per token, ${shape.heads} query and ${shape.kv_heads} key/value heads of ${headDim}; RoPE turns the ${qkHeads} Q and K heads`,
+  `the chain of the bug found while writing the naive kernel: the device powf differed in the last bit for 2 of the ${pairs} frequencies; bit patterns illustrative`,
+  `µs per launch, Nsight Compute: first draft ${draftFlat} at ${tokenChoices.join(" / ")} tokens, naive ${naive1.toFixed(1)} µs at one token and ${naive512.toFixed(1)} at 512, draft ${draft512.toFixed(1)}; the draft ran ${draftThreads} threads per token, ${qkHeads} with a head, ${pairs} pairs each; the pair segments are an illustration, not measured`,
+  `µs per launch for one token, Nsight Compute; ${pairs} threads per head group, ${groups} groups, each thread on ${Math.floor(qkHeads / groups)} or ${Math.ceil(qkHeads / groups)} heads; sin and cos counts from the code, ${fastThreads} per token instead of ${draftTrig.toLocaleString("en-US")}; the loads are 2 bytes, where the spec asked for 128-bit`,
+  `Nsight Compute, RTX 5060 Laptop GPU, one launch after ten warm-ups; the fast kernel takes ${fast1.toFixed(1)} µs at one token and ${fast512.toFixed(1)} at 512, the naive ${naive512.toFixed(1)}`,
 ];
 
 export const ropeSteps = steps;

@@ -45,7 +45,7 @@ export function ReviewView({ story, review }: { story: KernelStory; review: Chap
                     {gloss(q.question)}
                   </p>
                   {recall && (
-                    <Link href={`/kernels/${recall.slug}`} className="link-underline inline-block text-xs text-accent">
+                    <Link href={recall.href} className="link-underline inline-block text-xs text-accent">
                       {recall.line}
                     </Link>
                   )}

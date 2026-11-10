@@ -1,7 +1,4 @@
-import { ceilings } from "@/lib/data";
 import { type KernelStory, measured } from "./types";
-
-const peak = ceilings();
 
 const roof = "roofline";
 
@@ -25,7 +22,7 @@ export const foundations: KernelStory = {
   },
   sandbox: {
     title: "place an op on the roofline",
-    intro: `Pick one op of a TinyLlama decode step and set the batch: the dot lands where its FLOPs per byte put it under the two ceilings measured on this GPU (${peak.gbs} GB/s and ${peak.tflops} TFLOP/s). Lock in a guess first for where the op crosses the ridge, then drag the batch from 1 to 512 rows (a log scale) and watch which bound it hits. Values marked computed come from the ceilings and the model's shapes; where the profiles measured the op, the measured dot and numbers sit next to them.`,
+    intro: "Pick one op of a TinyLlama decode step and set the batch: the dot lands where its FLOPs per byte put it under the two ceilings measured on this GPU. Lock in a guess first for where the op crosses the ridge, then drag the batch from one row up to a long prompt (a log scale) and watch which bound it hits. Values marked computed come from the ceilings and the model's shapes; where the profiles measured the op, the measured dot and numbers sit next to them.",
   },
   sources: [
     { path: "docs/hardware.md", label: "SMs, shared memory, L2, registers, VRAM" },

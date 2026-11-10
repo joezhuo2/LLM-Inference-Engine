@@ -8,6 +8,7 @@ const layerParams = m.hidden * (m.hidden + 2 * m.kv_heads * headDim) + m.hidden 
 const readBytes = (m.layers * layerParams + m.vocab * m.hidden) * 2;
 const floorMs = (readBytes / (peak.gbs * 1e9)) * 1e3;
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
+const promptTokens = 512;
 
 export const review: ChapterReview = {
   lesson: "Decode is limited by the bytes it moves, not by the arithmetic it does.",
@@ -27,6 +28,12 @@ export const review: ChapterReview = {
       question: "At batch 1 the gate/up projection does about 1 FLOP for every byte it reads. Roughly how many rows must share one read of its weights before it stops being memory bound?",
       answer: `About ${Math.round(ridge)}.`,
       why: `Each extra row adds FLOPs but almost no bytes, so FLOPs per byte grows with the rows until it reaches the ridge, ${Math.round(ridge)} FLOP per byte. That is why gate/up at 16 rows still runs at the bandwidth roof.`,
+    },
+    {
+      question: `The life of a token says prefill runs the whole prompt through at once and decode writes one token at a time. In a ${promptTokens}-token prompt, how much of the weight read does each prompt token pay for, compared with a decoded token?`,
+      answer: `About ${(readBytes / promptTokens / 1e6).toFixed(1)} MB each, against the full ${(readBytes / 1e9).toFixed(2)} GB.`,
+      why: `All ${promptTokens} rows share one read of the same weights, so the read is split ${promptTokens} ways. A decoded token is a single row, so it pays for the whole read, a floor of about ${floorMs.toFixed(1)} ms (calculated).`,
+      recall: "start",
     },
   ],
 };
