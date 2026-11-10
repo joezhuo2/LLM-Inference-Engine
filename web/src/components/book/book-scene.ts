@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { type BookPalette, createKit, inkShared, type Kit, readBookPalette } from "./ink";
 import { drawCaptionPage, drawTextPage, type Fonts, type PageText, type TermBox } from "./typeset";
+import { LinkUnderline } from "./underline";
 
 export const PAGE_W = 1;
 export const PAGE_D = 1.38;
@@ -10,7 +11,8 @@ export type Frame = { center: [number, number, number]; width: number; depth: nu
 export type Beat = { caption: string; frame: Frame; narrow?: Frame };
 export type OverlayKind = string | null;
 export type PagePainter = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => void;
-export type PageLink = { side: "left" | "right"; box: [number, number, number, number]; href: string; label: string };
+export type LinkLine = { x: number; y: number; width: number; size: number };
+export type PageLink = { side: "left" | "right"; box: [number, number, number, number]; href: string; label: string; lines?: LinkLine[] };
 export type Stop = {
   exhibit: number | null;
   spread: number;
@@ -48,7 +50,7 @@ type SceneOptions = {
   reduced: boolean;
   buildModel: (kit: Kit) => BookModel;
   onOverlay: (rect: OverlayRect | null) => void;
-  onLens: (lens: { x: number; y: number; source: HTMLCanvasElement; u: number; v: number } | null) => void;
+  onLens: (lens: { x: number; y: number; source: HTMLCanvasElement; u: number; v: number; lines: number[][]; color: string } | null) => void;
   onFrameTime?: (ms: number) => void;
   onPageClick: (side: "prev" | "next") => void;
   coverFrame?: Frame;
@@ -178,6 +180,8 @@ export class BookScene {
   private applied = { stop: -1, beat: 0 };
   private terms = new WeakMap<Stop, { seen: Set<string>; left: TermBox[]; right: TermBox[] }>();
   private hovered: string | null = null;
+  private underline: LinkUnderline;
+  private lens: { x: number; y: number; u: number; v: number } | null = null;
   private target = { stop: 0, beat: 0 };
   private running = false;
   private riffleNext = false;
@@ -275,6 +279,7 @@ export class BookScene {
     this.leftPlane = halfBook(-1, this.leftHalf);
     this.leftText = new TextSide(this.leftPlane.geometry, this.leftHalf, anisotropy, textureWidth);
     this.rightText = new TextSide(rightPage.geometry, rightHalf, anisotropy, textureWidth);
+    this.underline = new LinkUnderline({ left: [this.leftPlane.geometry, this.leftHalf], right: [rightPage.geometry, rightHalf] }, palette.blue);
 
     const spine = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, PAGE_D + 0.05), coverMaterial);
     spine.position.set(0, -BLOCK - 0.012, 0);
@@ -366,12 +371,16 @@ export class BookScene {
         this.orbit.el = THREE.MathUtils.clamp(this.orbit.el + (event.clientY - this.drag.y) * 0.18, -30, 18);
         this.drag.x = event.clientX;
         this.drag.y = event.clientY;
+        if (this.drag.moved >= 6) this.underline.set(null, this.options.reduced);
         return;
       }
-      const term = this.pickHandle(event) ? null : this.termAt(event);
+      const handle = this.pickHandle(event);
+      const term = handle ? null : this.termAt(event);
+      const link = handle || term ? null : this.linkAt(event);
       this.hoverTerm(term, event, false);
-      canvas.style.cursor = term ? "help" : this.pickHandle(event) ? "grab" : this.linkAt(event) || this.pageSide(event) || this.overCover(event) ? "pointer" : "default";
-      if (term) this.options.onLens(null);
+      this.underline.set(event.pointerType === "touch" ? null : link, this.options.reduced);
+      canvas.style.cursor = term ? "help" : handle ? "grab" : link || this.pageSide(event) || this.overCover(event) ? "pointer" : "default";
+      if (term) this.showLens(null);
       else this.updateLens(event);
     };
     const onUp = (event: PointerEvent) => {
@@ -397,8 +406,9 @@ export class BookScene {
       if (side) this.options.onPageClick(side);
     };
     const onLeave = () => {
-      this.options.onLens(null);
+      this.showLens(null);
       this.hoverTerm(null, null, false);
+      this.underline.set(null, this.options.reduced);
     };
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
@@ -478,6 +488,12 @@ export class BookScene {
     return links.find((l) => l.side === side && u >= l.box[0] && u <= l.box[2] && v >= l.box[1] && v <= l.box[3]) ?? null;
   }
 
+  focusLink(href: string | null, label?: string): void {
+    const links = this.opened && !this.running && !this.leaf.front.visible ? this.options.stops[this.applied.stop]?.links : undefined;
+    this.underline.set((href && links?.find((l) => l.href === href && (!label || l.label.startsWith(label)))) || null, this.options.reduced);
+    this.showLens(this.lens);
+  }
+
   private termAt(event: PointerEvent): string | null {
     const marks = this.terms.get(this.options.stops[this.applied.stop]);
     if (!marks || !this.opened || this.running || this.leaf.front.visible) return null;
@@ -508,17 +524,23 @@ export class BookScene {
   private updateLens(event: PointerEvent): void {
     const stop = this.options.stops[this.applied.stop];
     if (!stop?.page || this.narrow || this.camStartTime >= 0 || this.leaf.front.visible) {
-      this.options.onLens(null);
+      this.showLens(null);
       return;
     }
     this.setPointer(event);
     const hit = this.raycaster.intersectObject(this.leftPlane)[0];
     if (!hit?.uv) {
-      this.options.onLens(null);
+      this.showLens(null);
       return;
     }
     const rect = this.options.canvas.getBoundingClientRect();
-    this.options.onLens({ x: event.clientX - rect.left, y: event.clientY - rect.top, source: this.leftText.current, u: hit.uv.x, v: 1 - hit.uv.y });
+    this.showLens({ x: event.clientX - rect.left, y: event.clientY - rect.top, u: hit.uv.x, v: 1 - hit.uv.y });
+  }
+
+  private showLens(lens: { x: number; y: number; u: number; v: number } | null): void {
+    if (!lens && !this.lens) return;
+    this.lens = lens;
+    this.options.onLens(lens && { ...lens, source: this.leftText.current, lines: this.underline.lines("left"), color: this.kit.palette.blue });
   }
 
   private setVisible(visible: boolean): void {
@@ -635,11 +657,12 @@ export class BookScene {
   async close(): Promise<void> {
     if (!this.opened) return;
     this.opened = false;
+    this.underline.clear();
     await this.settling;
     this.overlayKey = "";
     this.frozen = false;
     this.options.onOverlay(null);
-    this.options.onLens(null);
+    this.showLens(null);
     const stop = this.options.stops[this.applied.stop];
     if (stop?.exhibit !== null && stop?.exhibit !== undefined) await this.foldDown(stop.exhibit);
     this.applied = { stop: -1, beat: 0 };
@@ -716,6 +739,8 @@ export class BookScene {
   private async settle(): Promise<void> {
     this.running = true;
     this.hoverTerm(null, null, false);
+    this.underline.clear();
+    this.showLens(null);
     while (this.opened && (this.applied.stop !== this.target.stop || this.applied.beat !== this.target.beat)) {
       this.rush = false;
       const { stop, beat } = this.target;
@@ -1026,6 +1051,7 @@ export class BookScene {
     if (stop?.exhibit !== null && stop?.exhibit !== undefined && this.opened) this.model.update(dt, stop.exhibit, this.applied.stop, this.options.reduced);
 
     this.applyCamera();
+    if (this.underline.update(dt)) this.showLens(this.lens);
 
     if (!this.frozen) {
       this.renderer.render(this.scene, this.camera);
