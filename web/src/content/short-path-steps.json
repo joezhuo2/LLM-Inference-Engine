@@ -1,0 +1,602 @@
+{
+ "add-rmsnorm": {
+  "about": 215,
+  "steps": [
+   {
+    "id": "job",
+    "title": "the job",
+    "words": 74
+   },
+   {
+    "id": "fusion",
+    "title": "fusion, the pattern",
+    "words": 173
+   },
+   {
+    "id": "round-trip",
+    "title": "two kernels, one round trip",
+    "words": 70
+   },
+   {
+    "id": "first",
+    "title": "fused, and no faster",
+    "words": 81
+   },
+   {
+    "id": "rounding",
+    "title": "the same bits as the naive pair",
+    "words": 74
+   },
+   {
+    "id": "vectors",
+    "title": "16 bytes at a time",
+    "words": 66
+   },
+   {
+    "id": "shuffles",
+    "title": "every thread gets the total",
+    "words": 76
+   },
+   {
+    "id": "measured",
+    "title": "measured",
+    "words": 69
+   }
+  ]
+ },
+ "attention-v2": {
+  "about": 253,
+  "steps": [
+   {
+    "id": "v1",
+    "title": "v1: three passes",
+    "words": 73
+   },
+   {
+    "id": "cap",
+    "title": "the cap",
+    "words": 82
+   },
+   {
+    "id": "online",
+    "title": "one chunk at a time",
+    "words": 69
+   },
+   {
+    "id": "lanes",
+    "title": "eight lanes per key",
+    "words": 50
+   },
+   {
+    "id": "profile",
+    "title": "what the profile says",
+    "words": 51
+   },
+   {
+    "id": "step",
+    "title": "in the decode step",
+    "words": 45
+   },
+   {
+    "id": "compare",
+    "title": "every size",
+    "words": 57
+   }
+  ]
+ },
+ "chunked-prefill": {
+  "about": 252,
+  "steps": [
+   {
+    "id": "stall",
+    "title": "one prompt stops everyone",
+    "words": 95
+   },
+   {
+    "id": "budget",
+    "title": "a step is a token budget",
+    "words": 64
+   },
+   {
+    "id": "spread",
+    "title": "a long prompt spreads over steps",
+    "words": 108
+   },
+   {
+    "id": "preempt",
+    "title": "preemption takes the prompt first",
+    "words": 67
+   },
+   {
+    "id": "sampled",
+    "title": "only finished chunks get logits",
+    "words": 62
+   }
+  ]
+ },
+ "cuda-graphs": {
+  "about": 289,
+  "steps": [
+   {
+    "id": "launches",
+    "title": "one launch per kernel",
+    "words": 96
+   },
+   {
+    "id": "gaps",
+    "title": "the gap between kernels",
+    "words": 108
+   },
+   {
+    "id": "capture",
+    "title": "record once",
+    "words": 118
+   },
+   {
+    "id": "stage",
+    "title": "same addresses, new values",
+    "words": 121
+   },
+   {
+    "id": "buckets",
+    "title": "two buckets per power of two",
+    "words": 118
+   },
+   {
+    "id": "splits",
+    "title": "one graph per split count",
+    "words": 108
+   },
+   {
+    "id": "replay",
+    "title": "the replay",
+    "words": 98
+   },
+   {
+    "id": "sweep",
+    "title": "past 16 rows",
+    "words": 126
+   }
+  ]
+ },
+ "flash-prefill": {
+  "about": 224,
+  "steps": [
+   {
+    "id": "square",
+    "title": "the square",
+    "words": 91
+   },
+   {
+    "id": "spec",
+    "title": "a spec and tests first",
+    "words": 110
+   },
+   {
+    "id": "first",
+    "title": "the first kernel",
+    "words": 96
+   },
+   {
+    "id": "tiles",
+    "title": "sixteen rows share a pass",
+    "words": 102
+   },
+   {
+    "id": "mma",
+    "title": "one mma call",
+    "words": 90
+   },
+   {
+    "id": "fragment",
+    "title": "nothing moves between lanes",
+    "words": 109
+   },
+   {
+    "id": "registers",
+    "title": "all of it in registers",
+    "words": 94
+   },
+   {
+    "id": "result",
+    "title": "the result",
+    "words": 86
+   },
+   {
+    "id": "lengths",
+    "title": "every length",
+    "words": 75
+   },
+   {
+    "id": "open",
+    "title": "what is still open",
+    "words": 147
+   }
+  ]
+ },
+ "foundations": {
+  "about": 288,
+  "steps": [
+   {
+    "id": "idea-memory",
+    "title": "decode waits on memory",
+    "words": 111
+   },
+   {
+    "id": "idea-cache",
+    "title": "the KV cache remembers",
+    "words": 136
+   },
+   {
+    "id": "idea-batch",
+    "title": "batching shares the read",
+    "words": 86
+   },
+   {
+    "id": "idea-budget",
+    "title": "memory is the budget",
+    "words": 81
+   },
+   {
+    "id": "idea-latency",
+    "title": "latency against throughput",
+    "words": 99
+   },
+   {
+    "id": "hierarchy",
+    "title": "grid, block, warp, thread",
+    "words": 116
+   },
+   {
+    "id": "memory",
+    "title": "four places to keep a number",
+    "words": 157
+   },
+   {
+    "id": "bytes",
+    "title": "bytes against FLOPs",
+    "words": 108
+   },
+   {
+    "id": "roofline",
+    "title": "the roofline",
+    "words": 99
+   },
+   {
+    "id": "measured",
+    "title": "decode sits on the slope",
+    "words": 93
+   },
+   {
+    "id": "fusion",
+    "title": "fewer trips to memory",
+    "words": 140
+   },
+   {
+    "id": "lookup",
+    "title": "a faster kernel, the same step",
+    "words": 152
+   }
+  ]
+ },
+ "gemm": {
+  "about": 202,
+  "steps": [
+   {
+    "id": "job",
+    "title": "the job",
+    "words": 106
+   },
+   {
+    "id": "trick",
+    "title": "the row-major trick",
+    "words": 81
+   },
+   {
+    "id": "gemv",
+    "title": "batch 1 is a GEMV",
+    "words": 95
+   },
+   {
+    "id": "roof",
+    "title": "at the roof",
+    "words": 86
+   },
+   {
+    "id": "batch",
+    "title": "sixteen rows",
+    "words": 98
+   },
+   {
+    "id": "prefill",
+    "title": "prefill is the other side",
+    "words": 210
+   },
+   {
+    "id": "roofline",
+    "title": "the roofline",
+    "words": 122
+   }
+  ]
+ },
+ "paged-attention": {
+  "about": 222,
+  "steps": [
+   {
+    "id": "basics-qkv",
+    "title": "three vectors per token",
+    "words": 87
+   },
+   {
+    "id": "basics-scores",
+    "title": "score, weigh, sum",
+    "words": 102
+   },
+   {
+    "id": "basics-past",
+    "title": "only the past",
+    "words": 91
+   },
+   {
+    "id": "basics-heads",
+    "title": "heads, and heads that share",
+    "words": 106
+   },
+   {
+    "id": "prefill",
+    "title": "prefill: the whole prompt at once",
+    "words": 74
+   },
+   {
+    "id": "decode",
+    "title": "decode: one token at a time",
+    "words": 71
+   },
+   {
+    "id": "cache",
+    "title": "why the cache exists",
+    "words": 69
+   },
+   {
+    "id": "home",
+    "title": "the cache has to live somewhere",
+    "words": 73
+   },
+   {
+    "id": "job",
+    "title": "the job",
+    "words": 50
+   },
+   {
+    "id": "blocks",
+    "title": "keys live in blocks",
+    "words": 50
+   },
+   {
+    "id": "v2",
+    "title": "v1 → v2",
+    "words": 71
+   },
+   {
+    "id": "split",
+    "title": "then: split the context",
+    "words": 65
+   }
+  ]
+ },
+ "paged-kv": {
+  "about": 248,
+  "steps": [
+   {
+    "id": "static",
+    "title": "static: wait for the longest",
+    "words": 75
+   },
+   {
+    "id": "continuous",
+    "title": "continuous: look again every step",
+    "words": 67
+   },
+   {
+    "id": "rules",
+    "title": "the engine's two rules",
+    "words": 121
+   },
+   {
+    "id": "watch",
+    "title": "watch it run",
+    "words": 84
+   },
+   {
+    "id": "why",
+    "title": "memory for a context nobody knows yet",
+    "words": 112
+   },
+   {
+    "id": "pool",
+    "title": "one pool, a table per request",
+    "words": 117
+   },
+   {
+    "id": "write",
+    "title": "write_kv",
+    "words": 129
+   },
+   {
+    "id": "append",
+    "title": "one token at a time",
+    "words": 105
+   },
+   {
+    "id": "reuse",
+    "title": "giving blocks back",
+    "words": 124
+   },
+   {
+    "id": "replay",
+    "title": "the recorded run",
+    "words": 125
+   }
+  ]
+ },
+ "rope": {
+  "about": 240,
+  "steps": [
+   {
+    "id": "job",
+    "title": "the job",
+    "words": 97
+   },
+   {
+    "id": "layout",
+    "title": "which values turn",
+    "words": 85
+   },
+   {
+    "id": "bits",
+    "title": "the same bits as Hugging Face",
+    "words": 99
+   },
+   {
+    "id": "serial",
+    "title": "one thread per head",
+    "words": 88
+   },
+   {
+    "id": "parallel",
+    "title": "every pair at once",
+    "words": 95
+   },
+   {
+    "id": "measured",
+    "title": "measured",
+    "words": 95
+   }
+  ]
+ },
+ "sampling": {
+  "about": 206,
+  "steps": [
+   {
+    "id": "greedy",
+    "title": "one id out of 32,000",
+    "words": 61
+   },
+   {
+    "id": "gumbel",
+    "title": "sampling is an argmax too",
+    "words": 67
+   },
+   {
+    "id": "philox",
+    "title": "noise you can replay",
+    "words": 76
+   },
+   {
+    "id": "topk",
+    "title": "top-k without a sort",
+    "words": 81
+   },
+   {
+    "id": "topp",
+    "title": "top-p: search the mass",
+    "words": 62
+   },
+   {
+    "id": "cost",
+    "title": "what it costs",
+    "words": 43
+   },
+   {
+    "id": "fp64",
+    "title": "the double-precision log",
+    "words": 80
+   },
+   {
+    "id": "rows",
+    "title": "one block per row",
+    "words": 46
+   }
+  ]
+ },
+ "split-attention": {
+  "about": 245,
+  "steps": [
+   {
+    "id": "few",
+    "title": "one block per head",
+    "words": 71
+   },
+   {
+    "id": "waiting",
+    "title": "waiting, not reading",
+    "words": 81
+   },
+   {
+    "id": "cut",
+    "title": "cut the context",
+    "words": 53
+   },
+   {
+    "id": "wave",
+    "title": "fill one wave",
+    "words": 62
+   },
+   {
+    "id": "scratch",
+    "title": "partial results",
+    "words": 65
+   },
+   {
+    "id": "merge",
+    "title": "merge in a fixed order",
+    "words": 71
+   },
+   {
+    "id": "graphs",
+    "title": "the graphs still ran v2",
+    "words": 70
+   },
+   {
+    "id": "choose",
+    "title": "when splitting loses",
+    "words": 77
+   }
+  ]
+ },
+ "swiglu": {
+  "about": 272,
+  "steps": [
+   {
+    "id": "job",
+    "title": "the job",
+    "words": 95
+   },
+   {
+    "id": "bits",
+    "title": "two roundings",
+    "words": 121
+   },
+   {
+    "id": "draft",
+    "title": "one thread per value",
+    "words": 107
+   },
+   {
+    "id": "vector",
+    "title": "eight values per load",
+    "words": 157
+   },
+   {
+    "id": "small",
+    "title": "too few blocks",
+    "words": 98
+   },
+   {
+    "id": "measured",
+    "title": "measured",
+    "words": 121
+   }
+  ]
+ }
+}

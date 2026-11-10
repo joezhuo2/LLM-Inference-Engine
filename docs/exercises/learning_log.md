@@ -2128,3 +2128,5 @@
 - **quantization as fewer weight bytes per token** => 
 - **prefix caching by sharing KV blocks** => 
 - **speculative decoding acceptance rate** => 
+- **reading-time estimate from a word count** => 
+- **fragment identifier** => 

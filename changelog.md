@@ -21,6 +21,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: Every Byte gets a closing chapter, "where the time went" (Part V): the decode step profiled after each kernel, the read of the weights as the floor, time to first token at 2,048 tokens against llama.cpp, the engine under load against vLLM, and three next steps ranked by measured payoff.
 - Part A: Every Byte gets a "beyond this engine" spread and page in place of the "not yet" line of the 4-bit estimate: quantization, speculative decoding, prefix caching and multiple GPUs, each tied to bytes per token with one source; none of the four is implemented or measured here.
 - Part A: "beyond this engine" says a rejected draft costs bytes per kept token, not per round.
+- Part A: A one-hour path through Every Byte: chosen in `web/src/content/short-path.ts`, marked in the contents, a book mode (`?path=hour`) that turns only its spreads, and `/kernels/short-path` with its reading time counted from the built pages.
 
 ## kernel/flash-prefill-div32
 

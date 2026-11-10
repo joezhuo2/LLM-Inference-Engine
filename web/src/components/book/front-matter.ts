@@ -7,6 +7,7 @@ import { kernelStory, layerOps } from "@/content/kernels";
 import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
 import { measured } from "@/content/kernels/types";
 import { chapterReview, recallOf } from "@/content/reviews";
+import { roundMinutes, shortPathName, shortRoute } from "@/content/short-path";
 import type { ChapterReview, ReviewQuestion } from "@/content/reviews/types";
 import { loadSlo } from "@/lib/data";
 import { type LinkLine, PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
@@ -21,9 +22,11 @@ export const chapterTitle = (slug: string) => kernelStory(slug)?.title ?? slug;
 const firstPage: Record<string, number> = {};
 export const chapterPage = (key: string): number | undefined => firstPage[key];
 
+const sections = ["start", "contents", ...bookOrder, "beyond", "estimates", "errata"];
+
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
-  for (const key of ["start", "contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "beyond", "estimates", "errata"]) {
+  for (const key of sections.filter((k) => !bookOrder.includes(k) || spreads[k] !== undefined)) {
     firstPage[key] = page;
     page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
   }
@@ -86,14 +89,43 @@ const under = (ctx: Ctx, text: string, x: number, y: number, size: number): Link
 const ROW = 92;
 const toBox = (x0: number, x1: number, y: number): [number, number, number, number] => [x0 / W, (y - 56) / H, x1 / W, (y + 36) / H];
 
+type RouteStop = { key: string; local: number };
+let route: { order: RouteStop[]; chapters: string[]; minutes: number } = { order: [], chapters: [], minutes: 0 };
+const routeLink = `Read the ${shortPathName} →`;
+export const startRouteLink = `The ${shortPathName} →`;
+export const bookRoute = () => route;
+export const routeLine = () => `${route.chapters.length} chapters, ${route.order.length} spreads, about ${roundMinutes(route.minutes)} minutes`;
+const rank = (key: string, local: number) => sections.indexOf(key) * 1000 + local + 1;
+export const routeIndex = (key: string, local: number) => route.order.findIndex((o) => o.key === key && o.local === local);
+export const routePage = (key: string, local: number) => (chapterPage(key) ?? 0) + local + (bookOrder.includes(key) ? 1 : 0);
+
+export function routeStep(key: string, local: number, delta: 1 | -1): RouteStop | undefined {
+  const here = rank(key, local);
+  const side = route.order.filter((o) => (delta > 0 ? rank(o.key, o.local) > here : rank(o.key, o.local) < here));
+  return delta > 0 ? side[0] : side[side.length - 1];
+}
+
+export function routeSection(key: string, delta: 1 | -1, short: boolean): string | undefined {
+  const here = sections.indexOf(key);
+  const side = sections.filter((k) => (delta > 0 ? sections.indexOf(k) > here : sections.indexOf(k) < here) && (bookOrder.includes(k) ? chapterPage(k) !== undefined : true) && (!short || k === "start" || route.chapters.includes(k)));
+  return delta > 0 ? side[0] : side[side.length - 1];
+}
+
+function routeDot(ctx: Ctx, x: number, y: number, palette: BookPalette) {
+  ctx.fillStyle = palette.blue;
+  ctx.beginPath();
+  ctx.arc(x, y, 7, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function contentsRows(parts: typeof bookParts, withErrata: boolean) {
-  const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string }[] = [];
+  const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string; slug?: string }[] = [];
   let y = 380;
   for (const part of parts) {
     rows.push({ kind: "part", y, text: `Part ${part.numeral} · ${part.title}` });
     y += 78;
     for (const slug of part.slugs) {
-      rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug) });
+      rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug), slug });
       y += ROW;
     }
     y += 40;
@@ -112,6 +144,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
   const links: PageLink[] = contentsRows(parts, withErrata)
     .filter((r) => r.href)
     .map((r) => ({ side, box: toBox(x0, x1, r.y), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
+  if (side === "left") links.push({ side, box: [x0 / W, (H - 215) / H, x1 / W, (H - 145) / H], href: "#path", label: routeLink });
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
     if (side === "left") {
@@ -129,6 +162,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
         ctx.fillText(row.text, x0, row.y);
         continue;
       }
+      if (row.slug && route.chapters.includes(row.slug)) routeDot(ctx, x0 - 28, row.y - 13, palette);
       ctx.fillStyle = palette.faint;
       ctx.font = `40px ${fonts.serif}`;
       if (row.number) ctx.fillText(row.number, x0, row.y);
@@ -148,9 +182,20 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       for (let x = end; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
     }
     if (side === "right") {
+      const rows = contentsRows(parts, withErrata);
       ctx.fillStyle = palette.blue;
       ctx.font = `40px ${fonts.serif}`;
-      paragraph(ctx, "Click a chapter to open it.", x0, H - 250, x1 - x0, 48);
+      paragraph(ctx, "Click a chapter to open it.", x0, Math.max(H - 250, rows[rows.length - 1].y + 110), x1 - x0, 48);
+    }
+    if (side === "left" && route.chapters.length) {
+      routeDot(ctx, x0 + 8, H - 249, palette);
+      ctx.fillStyle = palette.faint;
+      ctx.font = `28px ${fonts.sans}`;
+      ctx.fillText(`on the ${shortPathName}: ${routeLine()}`, x0 + 30, H - 240);
+      ctx.fillStyle = palette.blue;
+      ctx.font = `40px ${fonts.serif}`;
+      ctx.fillText(routeLink, x0, H - 180);
+      links[links.length - 1].lines = [under(ctx, routeLink, x0, H - 180, 40)];
     }
     if (side === "left") folio(ctx, String(chapterPage("contents")), side, x0, x1, palette, fonts);
   };
@@ -819,6 +864,20 @@ function mapLinks(): PageLink[] {
     .map((r) => ({ side: "right" as const, box: [170 / W, (r.y - 46) / H, (W - 130) / W, (r.y + 16) / H] as [number, number, number, number], href: bookHref(r.slugs[0]), label: `${r.label}, chapter ${chapterNumber(r.slugs[0])}` }));
 }
 
+const startRight = (link: PageLink) => (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+  textPage("right", "Every Byte · start here", "what you need first", needFirst, () => undefined, 34)(canvas, palette, fonts);
+  if (!route.chapters.length) return;
+  const x0 = 170;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = palette.faint;
+  ctx.font = `28px ${fonts.sans}`;
+  ctx.fillText(`if you have an hour: ${routeLine()}`, x0, H - 262);
+  ctx.fillStyle = palette.blue;
+  ctx.font = `40px ${fonts.serif}`;
+  ctx.fillText(startRouteLink, x0, H - 200);
+  link.lines = [under(ctx, startRouteLink, x0, H - 200, 40)];
+};
+
 export const startText = { forWho, needFirst, tokenLife, serving, servingFigure, map: () => mapRows().rows };
 
 export function startStops(): Stop[] {
@@ -826,10 +885,12 @@ export function startStops(): Stop[] {
   const next = () => (chapterPage("start") ?? 0) + 1;
   const last = () => (chapterPage("start") ?? 0) + 2;
   const links = mapLinks();
+  const hour: PageLink = { side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: "#path", label: startRouteLink };
   return [
     {
       ...flatStop(0, "Start here: who this book is for", "start here", [...forWho, ...needFirst]),
-      paint: { left: textPage("left", "Every Byte", "start here", forWho, page, 36), right: textPage("right", "Every Byte · start here", "what you need first", needFirst, page, 34) },
+      paint: { left: textPage("left", "Every Byte", "start here", forWho, page, 36), right: startRight(hour) },
+      links: [hour],
     },
     {
       ...flatStop(1, "Start here: the life of a token", "the life of a token", tokenLife),
@@ -1270,4 +1331,17 @@ export function beyondStops(firstSpread: number): Stop[] {
       links: [...sides[0].links, ...sides[1].links],
     };
   });
+}
+
+const countWords = (texts: string[]) => texts.join(" ").split(/\s+/).filter(Boolean).length;
+export const startWords = countWords([...forWho, ...needFirst, ...tokenLife, ...serving, ...servingFigure]);
+export const startSpreadCount = startSpreads;
+
+export function setBookRoute(defs: ChapterDef[]) {
+  const found = shortRoute(defs.map((d) => ({ slug: d.slug, steps: d.steps.slice(d.lead ?? 0) })), startWords, startSpreads);
+  const chapterStopsOf = (c: { slug: string; picks: number[] }) => {
+    const lead = defs.find((d) => d.slug === c.slug)?.lead ?? 0;
+    return [-1, ...Array.from({ length: lead }, (_, i) => i), ...c.picks.map((i) => i + lead)].map((local) => ({ key: c.slug, local }));
+  };
+  route = { order: [...Array.from({ length: startSpreads }, (_, local) => ({ key: "start", local })), ...found.chapters.flatMap(chapterStopsOf)], chapters: found.chapters.map((c) => c.slug), minutes: found.minutes };
 }
