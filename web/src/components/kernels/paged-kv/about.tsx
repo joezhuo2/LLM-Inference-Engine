@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { chapterNumber } from "@/content/book-order";
 import { kvReplay, modelShape } from "@/lib/data";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
@@ -48,7 +49,7 @@ export const pagedKvAbout: StoryStep = {
       <p>
         Paged means the cache is not one long array per request. Its memory is cut into blocks of {kvAbout.block} tokens, handed out one at a time as a request grows, wherever one is free, and each
         request keeps a block table that says which block holds each run of its tokens, the first block&apos;s worth, the next and so on, the way an operating system finds a
-        program&apos;s memory through page tables. That lets many requests share one pool, so the chapter starts with how the engine decides which requests run together.
+        program&apos;s memory through page tables. That lets many requests share one pool. How the engine decides which of them run together is chapter {chapterNumber("serving")}.
       </p>
     </>
   ),

@@ -188,7 +188,7 @@ export const estimates: Estimate[] = [
     ],
     answer: `About ${Math.floor(fit7)} requests with ${a.kvHeads} KV heads and about ${Math.floor(fit8)} with ${b.kvHeads}, ${n2(Math.floor(fit8) / Math.floor(fit7))} times as many (calculated).`,
     teaches: "The KV cache, not the weights, decides how many requests share a GPU, which is why paged KV and GQA matter.",
-    chapters: ["paged-kv"],
+    chapters: ["paged-kv", "serving"],
   },
   {
     id: "prefill-time",

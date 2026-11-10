@@ -86,7 +86,7 @@ export const exercises: Exercise[] = [
   {
     kind: "stub",
     id: "scheduler",
-    chapter: "paged-kv",
+    chapter: "serving",
     title: "Scheduler",
     task: "Decide, step by step, which requests run together: admit waiting requests when their blocks fit, grow every running one by a token, free the finished ones and preempt the newest when the pool runs out.",
     nudge: "Keep a waiting queue and a running list and write admit, grow and finish as separate small steps. When a running sequence cannot grow, the newest running request gives back its blocks and goes to the front of the queue.",

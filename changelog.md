@@ -22,6 +22,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: Every Byte gets a "beyond this engine" spread and page in place of the "not yet" line of the 4-bit estimate: quantization, speculative decoding, prefix caching and multiple GPUs, each tied to bytes per token with one source; none of the four is implemented or measured here.
 - Part A: "beyond this engine" says a rejected draft costs bytes per kept token, not per round.
 - Part A: A one-hour path through Every Byte: chosen in `web/src/content/short-path.ts`, marked in the contents, a book mode (`?path=hour`) that turns only its spreads, and `/kernels/short-path` with its reading time counted from the built pages.
+- Part A: Every Byte gets a serving chapter, "how many requests fit", at the start of Part IV: the KV budget, how many requests fit, admission, preemption, static against continuous batching and what it bought under load; the scheduler story and the KV visualizer move into it from paged KV.
 
 ## kernel/flash-prefill-div32
 

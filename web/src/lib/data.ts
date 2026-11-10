@@ -124,7 +124,11 @@ export function samplingLogits(): SamplingLogits {
 
 export type LoadRun = { date: string; commit: string; gpu: string };
 
-export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null; slo: { ttft_ms: number; tpot_ms: number } | null };
+export type LoadTrace = { qps: number; prefill_steps: number; prefill_s: number; run_s: number; ms_per_prompt_token: number; decode_steps: number; decode_ms: number };
+
+export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null; slo: { ttft_ms: number; tpot_ms: number } | null; load_trace?: LoadTrace | null };
+
+export const loadTrace = (): LoadTrace | null => resultsDoc.load_trace ?? null;
 
 export type Doc = "profiling" | "results";
 

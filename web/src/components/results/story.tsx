@@ -350,7 +350,7 @@ const steps: StoryStep[] = [
           llama.cpp is the baseline that matters, a mature engine running the same BF16 weights. It stays close up to
           batch 8 and falls behind at 16 (<Num>{n(tps("llamacpp", 16), 1)}</Num> tokens/s). HuggingFace transformers, a
           plain PyTorch decode loop, is far below both. The engine admits new requests into a running batch
-          (see <Story to="/kernels/paged-kv">paged KV</Story>); the baselines run static batches, so this compares serving,
+          (see <Story to="/kernels/serving">how many requests fit</Story>); the baselines run static batches, so this compares serving,
           not only kernels.
         </p>
       </>

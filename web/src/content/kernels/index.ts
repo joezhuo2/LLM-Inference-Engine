@@ -9,6 +9,7 @@ import { pagedAttention } from "./paged-attention";
 import { pagedKv } from "./paged-kv";
 import { rope } from "./rope";
 import { sampling } from "./sampling";
+import { serving } from "./serving";
 import { splitAttention } from "./split-attention";
 import { swiglu } from "./swiglu";
 import { whereTheTimeWent } from "./where-the-time-went";
@@ -16,7 +17,7 @@ import { deadEnds } from "../dead-ends";
 import { beyondTitle } from "../book-order";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, whereTheTimeWent];
+export const kernelStories: KernelStory[] = [foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, serving, whereTheTimeWent];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);

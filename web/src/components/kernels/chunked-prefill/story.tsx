@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { chapterNumber } from "@/content/book-order";
 import { chunkBudget, chunked, chunkedSteps, fmt, largestGap, medianGap, peakGoodput, perRowPrefill, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -44,7 +45,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          schedule() makes every step all prefill or all decode, and prefill goes first. A long prompt is one step, and
+          The scheduler of chapter {chapterNumber("serving")} makes every step all prefill or all decode, and prefill goes first. A long prompt is one step, and
           every running sequence waits for it: alone, with the per-row prefill attention these runs used, the long prompt takes{" "}
           <span className="text-warn">{fmt(alone)} ms</span>.
         </p>
@@ -104,8 +105,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Blocks for the whole prompt are allocated at admission, so a sequence in prefill never runs out halfway. A
-          decoder can still need a block when none is free, and the victim is the back of the running list.
+          The preemption rule of chapter {chapterNumber("serving")} does not change: when a decoder needs a block and none is free, the victim is the back of the running list. What changes is who stands there. Blocks for the whole prompt are allocated at admission, so a sequence in prefill never runs out halfway, but it can be taken from.
         </p>
         <p>
           The sequence in prefill is always last, so partly prefilled work goes first. It returns to the front of the

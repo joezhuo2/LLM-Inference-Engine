@@ -2130,3 +2130,5 @@
 - **speculative decoding acceptance rate** => 
 - **reading-time estimate from a word count** => 
 - **fragment identifier** => 
+- **admission of a waiting request** => 
+- **preemption of the last admitted sequence** => 

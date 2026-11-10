@@ -59,7 +59,7 @@ function useReplay(trace: Trace | null, feed: Feed, active: boolean, setTiles: (
   return player;
 }
 
-function Panel({ title, legend, children, className }: { title: string; legend?: React.ReactNode; children: React.ReactNode; className?: string }) {
+export function Panel({ title, legend, children, className }: { title: string; legend?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
     <section aria-label={title} className={clsx("flex min-w-0 flex-col rounded border border-border bg-surface p-3", className)}>
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -71,7 +71,7 @@ function Panel({ title, legend, children, className }: { title: string; legend?:
   );
 }
 
-function Key({ color, label }: { color: string; label: string }) {
+export function Key({ color, label }: { color: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5 text-muted">
       <span aria-hidden className="h-1 w-3 rounded-sm" style={{ background: color }} />
