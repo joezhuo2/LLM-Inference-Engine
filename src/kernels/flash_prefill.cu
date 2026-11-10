@@ -12,170 +12,234 @@ namespace engine {
 
 namespace {
 
+constexpr int kTile = 16;
+constexpr int kWarpsPerBlock = 4;
+
+__device__ __forceinline__ float half_bf16(uint32_t word, int odd) {
+    return __bfloat162float(__ushort_as_bfloat16(static_cast<unsigned short>(word >> (16 * odd))));
+}
+
+__device__ __forceinline__ void mma_bf16(float acc[4], const uint32_t a[4], uint32_t b0,
+                                         uint32_t b1) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800 && !defined(ENGINE_FLASH_EMULATE_MMA)
+    float d0, d1, d2, d3;
+    asm volatile(
+        "mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32 "
+        "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%10,%11,%12,%13};\n"
+        : "=f"(d0), "=f"(d1), "=f"(d2), "=f"(d3)
+        : "r"(a[0]), "r"(a[1]), "r"(a[2]), "r"(a[3]), "r"(b0), "r"(b1), "f"(acc[0]), "f"(acc[1]),
+          "f"(acc[2]), "f"(acc[3]));
+    acc[0] = d0;
+    acc[1] = d1;
+    acc[2] = d2;
+    acc[3] = d3;
+#else
+    const int lane = int(threadIdx.x) % 32;
+    const int group = lane / 4;
+    const int quad = lane % 4;
+    for (int pair = 0; pair < 8; ++pair) {
+        const int source = pair % 4;
+        const bool upper = pair >= 4;
+        const uint32_t a_low = __shfl_sync(0xffffffff, upper ? a[2] : a[0], 4 * group + source);
+        const uint32_t a_high = __shfl_sync(0xffffffff, upper ? a[3] : a[1], 4 * group + source);
+        const uint32_t b_even = __shfl_sync(0xffffffff, upper ? b1 : b0, 8 * quad + source);
+        const uint32_t b_odd = __shfl_sync(0xffffffff, upper ? b1 : b0, 8 * quad + 4 + source);
+        for (int odd = 0; odd < 2; ++odd) {
+            acc[0] = __fmaf_rn(half_bf16(a_low, odd), half_bf16(b_even, odd), acc[0]);
+            acc[1] = __fmaf_rn(half_bf16(a_low, odd), half_bf16(b_odd, odd), acc[1]);
+            acc[2] = __fmaf_rn(half_bf16(a_high, odd), half_bf16(b_even, odd), acc[2]);
+            acc[3] = __fmaf_rn(half_bf16(a_high, odd), half_bf16(b_odd, odd), acc[3]);
+        }
+    }
+#endif
+}
+
+__device__ __forceinline__ float round_bf16(float x) {
+    return __bfloat162float(__float2bfloat16(x));
+}
+
+__device__ __forceinline__ uint32_t pack_bf16(float lo, float hi) {
+    return uint32_t(__bfloat16_as_ushort(__float2bfloat16(lo))) |
+           (uint32_t(__bfloat16_as_ushort(__float2bfloat16(hi))) << 16);
+}
+
+__device__ __forceinline__ float group_max(float x) {
+    x = fmaxf(x, __shfl_xor_sync(0xffffffff, x, 1));
+    return fmaxf(x, __shfl_xor_sync(0xffffffff, x, 2));
+}
+
+__device__ __forceinline__ float group_sum(float x) {
+    x += __shfl_xor_sync(0xffffffff, x, 1);
+    return x + __shfl_xor_sync(0xffffffff, x, 2);
+}
+
+template <int HeadDim>
 __global__ void flash_attention_prefill_kernel(
-    nv_bfloat16* __restrict__ out, const nv_bfloat16* __restrict__ qkv,
-    const nv_bfloat16* __restrict__ k_cache, const nv_bfloat16* __restrict__ v_cache,
+    nv_bfloat16* __restrict__ out, const uint32_t* __restrict__ qkv,
+    const uint32_t* __restrict__ k_cache, const uint32_t* __restrict__ v_cache,
     const int32_t* __restrict__ block_tables, const int32_t* __restrict__ chunk_starts,
-    const int32_t* __restrict__ cached_lens, int num_chunks, int total_step_rows, int query_heads,
-    int kv_heads, int head_dim, int block_size, int blocks_per_chunk) {
-    int token_row_idx = blockIdx.x;
-    int head_idx = blockIdx.y;
+    const int32_t* __restrict__ cached_lens, int num_chunks, int total_rows, int query_heads,
+    int kv_heads, int block_size, int blocks_per_chunk) {
+    constexpr int kSteps = HeadDim / 16;
+    constexpr int kCols = HeadDim / 8;
+    constexpr int kRowWords = HeadDim / 2;
 
-    if (head_idx >= query_heads || token_row_idx >= total_step_rows) {
-        return;
+    const int head = int(blockIdx.y) * kWarpsPerBlock + int(threadIdx.x) / 32;
+    if (head >= query_heads) return;
+    const int lane = int(threadIdx.x) % 32;
+    const int group = lane / 4;
+    const int quad = lane % 4;
+    const int kv_head = head / (query_heads / kv_heads);
+    const int64_t row_words = int64_t(query_heads + 2 * kv_heads) * kRowWords;
+    const int64_t k_column = int64_t(query_heads + kv_head) * kRowWords;
+    const int64_t v_column = k_column + int64_t(kv_heads) * kRowWords;
+    const float scale = 1.0f / sqrtf(float(HeadDim));
+    const float masked = -INFINITY;
+
+    const int64_t tile_first = int64_t(blockIdx.x) * kTile;
+    const int64_t tile_end = min(tile_first + kTile, int64_t(total_rows));
+    const int64_t rows[2] = {tile_first + group, tile_first + group + 8};
+
+    int chunk = 0;
+    for (int high = num_chunks; chunk < high;) {
+        const int mid = chunk + (high - chunk) / 2;
+        if (chunk_starts[mid + 1] > tile_first)
+            high = mid;
+        else
+            chunk = mid + 1;
     }
 
-    int low = 0;
-    int high = num_chunks - 1;
-    int chunk_idx = -1;
+    for (; chunk < num_chunks && chunk_starts[chunk] < tile_end; ++chunk) {
+        const int64_t chunk_first = chunk_starts[chunk];
+        const int64_t first = max(chunk_first, tile_first);
+        const int64_t end = min(int64_t(chunk_starts[chunk + 1]), tile_end);
+        const int64_t cached = cached_lens[chunk];
+        if (first >= end || cached < 0 || cached > int64_t(blocks_per_chunk) * block_size) continue;
+        const int64_t last_position = cached + (end - 1 - chunk_first);
+        const int32_t* table = block_tables + int64_t(chunk) * blocks_per_chunk;
 
-    while (low <= high) {
-        int mid = low + (high - low) / 2;
-
-        int start = chunk_starts[mid];
-        int next = chunk_starts[mid + 1];
-
-        if (token_row_idx >= start && token_row_idx < next) {
-            chunk_idx = mid;
-            break;
-        } else if (token_row_idx < start) {
-            high = mid - 1;
-        } else {
-            low = mid + 1;
+        bool active[2];
+        int64_t position[2];
+        uint32_t q[kSteps][4];
+        for (int r = 0; r < 2; ++r) {
+            active[r] = rows[r] >= first && rows[r] < end;
+            position[r] = cached + (rows[r] - chunk_first);
+            const uint32_t* q_row = qkv + rows[r] * row_words + int64_t(head) * kRowWords;
+            for (int step = 0; step < kSteps; ++step) {
+                q[step][r] = active[r] ? q_row[8 * step + quad] : 0u;
+                q[step][2 + r] = active[r] ? q_row[8 * step + quad + 4] : 0u;
+            }
         }
-    }
 
-    if (chunk_idx < 0) {
-        return;
-    }
+        float running_max[2] = {-1e30f, -1e30f};
+        float running_sum[2] = {0.0f, 0.0f};
+        float acc[kCols][4];
+        for (int col = 0; col < kCols; ++col)
+            for (int i = 0; i < 4; ++i) acc[col][i] = 0.0f;
 
-    int lane = threadIdx.x;
-    int query_heads_per_kv_head = query_heads / kv_heads;
-    int kv_head_idx = head_idx / query_heads_per_kv_head;
-
-    int chunk_relative_token_idx = token_row_idx - chunk_starts[chunk_idx];
-    int context_cached_length = cached_lens[chunk_idx];
-
-    if (context_cached_length < 0 || static_cast<int64_t>(context_cached_length) >
-                                         static_cast<int64_t>(blocks_per_chunk) * block_size) {
-        return;
-    }
-
-    int seq_causal_boundary = context_cached_length + chunk_relative_token_idx;
-
-    float softmax_scale_factor = 1.0f / sqrtf(static_cast<float>(head_dim));
-    int qkv_row_stride = (query_heads + (2 * kv_heads)) * head_dim;
-    int64_t query_buffer_offset = (static_cast<int64_t>(token_row_idx) * qkv_row_stride) +
-                                  (static_cast<int64_t>(head_idx) * head_dim);
-
-    nv_bfloat16 query_element = __float2bfloat16(0.0f);
-
-    if (lane < head_dim) {
-        query_element = qkv[query_buffer_offset + lane];
-    }
-
-    float running_max = -1e30f;
-    float running_sum = 0.0f;
-    float running_accumulated_val = 0.0f;
-
-    __shared__ float warp_reductions[4];
-    __shared__ float final_score;
-
-    for (int context_pos = 0; context_pos <= seq_causal_boundary; ++context_pos) {
-        nv_bfloat16 key = __float2bfloat16(0.0f);
-        nv_bfloat16 val = __float2bfloat16(0.0f);
-
-        if (lane < head_dim) {
-            if (context_pos < context_cached_length) {
-                int logical_block_idx = context_pos / block_size;
-                int physical_block_idx =
-                    block_tables[(static_cast<int64_t>(chunk_idx) * blocks_per_chunk) +
-                                 logical_block_idx];
-                int block_token_os = context_pos % block_size;
-
-                int64_t block_head_idx =
-                    (static_cast<int64_t>(physical_block_idx) * kv_heads) + kv_head_idx;
-                int64_t token_slot_idx = (block_head_idx * block_size) + block_token_os;
-                int64_t cache_os = (token_slot_idx * head_dim) + lane;
-
-                key = k_cache[cache_os];
-                val = v_cache[cache_os];
+        const auto key_rows = [&](int64_t key, const uint32_t*& k_row, const uint32_t*& v_row) {
+            k_row = nullptr;
+            v_row = nullptr;
+            if (key > last_position) return;
+            if (key < cached) {
+                const int64_t block = table[key / block_size];
+                const int64_t words =
+                    ((block * kv_heads + kv_head) * block_size + key % block_size) * kRowWords;
+                k_row = k_cache + words;
+                v_row = v_cache + words;
             } else {
-                int source_chunk_os = context_pos - context_cached_length;
-                int source_global_row = chunk_starts[chunk_idx] + source_chunk_os;
-                int64_t row_start_os = static_cast<int64_t>(source_global_row) * qkv_row_stride;
+                const uint32_t* row = qkv + (chunk_first + key - cached) * row_words;
+                k_row = row + k_column;
+                v_row = row + v_column;
+            }
+        };
 
-                int64_t k_section_os = row_start_os + (query_heads * head_dim);
-                int64_t k_head_os = k_section_os + (kv_head_idx * head_dim);
-                int64_t k_os = k_head_os + lane;
+        for (int64_t tile_key = 0; tile_key <= last_position; tile_key += kTile) {
+            const int key_offset[4] = {2 * quad, 2 * quad + 1, 2 * quad + 8, 2 * quad + 9};
+            float score[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+            for (int half = 0; half < 2; ++half) {
+                const uint32_t *k_row, *unused;
+                key_rows(tile_key + 8 * half + group, k_row, unused);
+                for (int step = 0; step < kSteps; ++step) {
+                    const uint32_t b0 = k_row ? k_row[8 * step + quad] : 0u;
+                    const uint32_t b1 = k_row ? k_row[8 * step + quad + 4] : 0u;
+                    mma_bf16(score[half], q[step], b0, b1);
+                }
+            }
 
-                int64_t v_section_os = k_section_os + (kv_heads * head_dim);
-                int64_t v_head_os = v_section_os + (kv_head_idx * head_dim);
-                int64_t v_os = v_head_os + lane;
+            float weight[2][4];
+            float rescale[2];
+            for (int r = 0; r < 2; ++r) {
+                float s[4];
+                float tile_max = masked;
+                for (int i = 0; i < 4; ++i) {
+                    const float rounded =
+                        round_bf16(round_bf16(score[i / 2][2 * r + i % 2]) * scale);
+                    const bool visible = active[r] && tile_key + key_offset[i] <= position[r];
+                    s[i] = visible ? rounded : masked;
+                    tile_max = fmaxf(tile_max, s[i]);
+                }
+                const float new_max = fmaxf(running_max[r], group_max(tile_max));
+                rescale[r] = expf(running_max[r] - new_max);
+                float sum = 0.0f;
+                for (int i = 0; i < 4; ++i) {
+                    weight[r][i] = round_bf16(expf(s[i] - new_max));
+                    sum += weight[r][i];
+                }
+                running_sum[r] = running_sum[r] * rescale[r] + group_sum(sum);
+                running_max[r] = new_max;
+            }
+            const uint32_t p[4] = {
+                pack_bf16(weight[0][0], weight[0][1]), pack_bf16(weight[1][0], weight[1][1]),
+                pack_bf16(weight[0][2], weight[0][3]), pack_bf16(weight[1][2], weight[1][3])};
 
-                key = qkv[k_os];
-                val = qkv[v_os];
+            const uint32_t* v_row[4];
+            for (int i = 0; i < 4; ++i) {
+                const uint32_t* unused;
+                key_rows(tile_key + key_offset[i], unused, v_row[i]);
+            }
+            for (int pair = 0; pair < kCols / 2; ++pair) {
+                uint32_t v[4];
+                for (int i = 0; i < 4; ++i)
+                    v[i] = v_row[i] ? v_row[i][group * (kCols / 2) + pair] : 0u;
+                for (int odd = 0; odd < 2; ++odd) {
+                    const int col = 2 * pair + odd;
+                    const int shift = 16 * odd;
+                    const uint32_t b0 = ((v[0] >> shift) & 0xffffu) | ((v[1] >> shift) << 16);
+                    const uint32_t b1 = ((v[2] >> shift) & 0xffffu) | ((v[3] >> shift) << 16);
+                    acc[col][0] *= rescale[0];
+                    acc[col][1] *= rescale[0];
+                    acc[col][2] *= rescale[1];
+                    acc[col][3] *= rescale[1];
+                    mma_bf16(acc[col], p, b0, b1);
+                }
             }
         }
 
-        float partial_dot_product =
-            (lane < head_dim) ? __bfloat162float(query_element) * __bfloat162float(key) : 0.0f;
-
-        for (int shuffle_os = 16; shuffle_os > 0; shuffle_os /= 2) {
-            partial_dot_product += __shfl_down_sync(0xffffffff, partial_dot_product, shuffle_os);
-        }
-
-        int warp_id = lane / 32;
-        int lane_in_warp = lane % 32;
-        int num_warps = (head_dim + 31) / 32;
-
-        if (lane_in_warp == 0) {
-            warp_reductions[warp_id] = partial_dot_product;
-        }
-
-        __syncthreads();
-
-        if (warp_id == 0) {
-            float total_dot_product =
-                (lane_in_warp < num_warps) ? warp_reductions[lane_in_warp] : 0.0f;
-
-            for (int shuffle_os = 2; shuffle_os > 0; shuffle_os /= 2) {
-                total_dot_product += __shfl_down_sync(0xffffffff, total_dot_product, shuffle_os);
+        for (int r = 0; r < 2; ++r) {
+            if (!active[r]) continue;
+            const float inverse = 1.0f / running_sum[r];
+            nv_bfloat16* out_row = out + (rows[r] * query_heads + head) * int64_t(HeadDim);
+            for (int col = 0; col < kCols; ++col) {
+                out_row[2 * quad * kCols + col] = __float2bfloat16(acc[col][2 * r] * inverse);
+                out_row[(2 * quad + 1) * kCols + col] =
+                    __float2bfloat16(acc[col][2 * r + 1] * inverse);
             }
-
-            if (lane_in_warp == 0) {
-                nv_bfloat16 dot_bf16 = __float2bfloat16(total_dot_product);
-                float dot_fp32 = __bfloat162float(dot_bf16);
-                nv_bfloat16 scaled_score_bf16 = __float2bfloat16(dot_fp32 * softmax_scale_factor);
-                final_score = __bfloat162float(scaled_score_bf16);
-            }
-        }
-
-        __syncthreads();
-
-        float score_at_pos_j = final_score;
-
-        if (score_at_pos_j > running_max) {
-            float new_max = score_at_pos_j;
-            float scale_rescale_factor = expf(running_max - new_max);
-
-            running_max = new_max;
-            running_sum = (running_sum * scale_rescale_factor) + 1.0f;
-            running_accumulated_val =
-                (running_accumulated_val * scale_rescale_factor) + __bfloat162float(val);
-        } else {
-            float unnormalized_weight = expf(score_at_pos_j - running_max);
-            running_sum += unnormalized_weight;
-            running_accumulated_val += unnormalized_weight * __bfloat162float(val);
         }
     }
+}
 
-    if (lane < head_dim) {
-        float inverse_running_sum = 1.0f / running_sum;
-        int64_t output_element_os = static_cast<int64_t>(token_row_idx) * (query_heads * head_dim) +
-                                    (head_idx * head_dim) + lane;
-        out[output_element_os] = __float2bfloat16(running_accumulated_val * inverse_running_sum);
-    }
+template <int HeadDim>
+void launch(dim3 grid, cudaStream_t stream, const Tensor& out, const Tensor& qkv,
+            const Tensor& k_cache, const Tensor& v_cache, const Tensor& block_tables,
+            const Tensor& chunk_starts, const Tensor& cached_lens, int query_heads) {
+    flash_attention_prefill_kernel<HeadDim><<<grid, 32 * kWarpsPerBlock, 0, stream>>>(
+        static_cast<nv_bfloat16*>(out.data), static_cast<const uint32_t*>(qkv.data),
+        static_cast<const uint32_t*>(k_cache.data), static_cast<const uint32_t*>(v_cache.data),
+        static_cast<const int32_t*>(block_tables.data),
+        static_cast<const int32_t*>(chunk_starts.data),
+        static_cast<const int32_t*>(cached_lens.data), int(cached_lens.shape[0]), int(out.shape[0]),
+        query_heads, int(k_cache.shape[1]), int(k_cache.shape[2]), int(block_tables.shape[1]));
 }
 
 }  // namespace
@@ -268,26 +332,53 @@ void flash_attention_prefill(const Tensor& out, const Tensor& qkv, const Tensor&
         return;
     }
 
-    int64_t block_size = k_cache.shape[2];
-    int64_t max_blocks_per_chunk = block_tables.shape[1];
+    for (const Tensor* t : {&qkv, &k_cache, &v_cache}) {
+        if (reinterpret_cast<uintptr_t>(t->data) % alignof(uint32_t) != 0) {
+            throw std::invalid_argument(
+                "[flash_attention_prefill] qkv, k_cache and v_cache must be 4-byte aligned");
+        }
+    }
 
-    dim3 grid_dimensions(static_cast<unsigned int>(total_step_rows),
-                         static_cast<unsigned int>(num_query_heads));
-    dim3 thread_block_dimensions(static_cast<unsigned int>(((head_dim + 31) / 32) * 32));
+    const dim3 grid(
+        static_cast<unsigned int>((total_step_rows + kTile - 1) / kTile),
+        static_cast<unsigned int>((num_query_heads + kWarpsPerBlock - 1) / kWarpsPerBlock));
+    const auto execution_stream = static_cast<cudaStream_t>(stream);
+    const int heads = static_cast<int>(num_query_heads);
 
-    cudaStream_t execution_stream = static_cast<cudaStream_t>(stream);
-
-    flash_attention_prefill_kernel<<<grid_dimensions, thread_block_dimensions, 0,
-                                     execution_stream>>>(
-        static_cast<nv_bfloat16*>(out.data), static_cast<const nv_bfloat16*>(qkv.data),
-        static_cast<const nv_bfloat16*>(k_cache.data),
-        static_cast<const nv_bfloat16*>(v_cache.data),
-        static_cast<const int32_t*>(block_tables.data),
-        static_cast<const int32_t*>(chunk_starts.data),
-        static_cast<const int32_t*>(cached_lens.data), static_cast<int>(num_chunks),
-        static_cast<int>(total_step_rows), static_cast<int>(num_query_heads),
-        static_cast<int>(num_kv_heads), static_cast<int>(head_dim), static_cast<int>(block_size),
-        static_cast<int>(max_blocks_per_chunk));
+    switch (head_dim) {
+        case 16:
+            launch<16>(grid, execution_stream, out, qkv, k_cache, v_cache, block_tables,
+                       chunk_starts, cached_lens, heads);
+            break;
+        case 32:
+            launch<32>(grid, execution_stream, out, qkv, k_cache, v_cache, block_tables,
+                       chunk_starts, cached_lens, heads);
+            break;
+        case 48:
+            launch<48>(grid, execution_stream, out, qkv, k_cache, v_cache, block_tables,
+                       chunk_starts, cached_lens, heads);
+            break;
+        case 64:
+            launch<64>(grid, execution_stream, out, qkv, k_cache, v_cache, block_tables,
+                       chunk_starts, cached_lens, heads);
+            break;
+        case 80:
+            launch<80>(grid, execution_stream, out, qkv, k_cache, v_cache, block_tables,
+                       chunk_starts, cached_lens, heads);
+            break;
+        case 96:
+            launch<96>(grid, execution_stream, out, qkv, k_cache, v_cache, block_tables,
+                       chunk_starts, cached_lens, heads);
+            break;
+        case 112:
+            launch<112>(grid, execution_stream, out, qkv, k_cache, v_cache, block_tables,
+                        chunk_starts, cached_lens, heads);
+            break;
+        default:
+            launch<128>(grid, execution_stream, out, qkv, k_cache, v_cache, block_tables,
+                        chunk_starts, cached_lens, heads);
+            break;
+    }
 
     KERNEL_CHECK(stream);
 }

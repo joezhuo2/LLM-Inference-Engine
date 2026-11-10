@@ -54,6 +54,7 @@ struct Options {
     bool graphs = false;
     int graph_steps = 2;
     int token_budget = 0;
+    std::string prefill_attention = "flash";
     int warmup = 3;
     uint64_t seed = 0;
     float temperature = 0.0f;
@@ -157,6 +158,8 @@ void run(const Options& o) {
         throw std::invalid_argument("--token-budget needs --max-batch of at least 1");
     if (o.token_budget > 0 && o.token_budget < o.max_batch)
         throw std::invalid_argument("--token-budget must be at least --max-batch");
+    if (o.prefill_attention != "flash" && !batched)
+        throw std::invalid_argument("--prefill-attention needs --max-batch of at least 1");
     if (o.graph_steps < 1 || (o.graph_steps & (o.graph_steps - 1)) != 0)
         throw std::invalid_argument("--graph-steps must be a power of two");
 
@@ -183,6 +186,7 @@ void run(const Options& o) {
         paged_runner.emplace(w.config, w.weights, *cache,
                              std::max<int64_t>(max_prefill, o.token_budget), o.max_batch, context,
                              o.graphs ? owned_stream->stream : nullptr);
+        paged_runner->set_flash_prefill(o.prefill_attention == "flash");
         sampler.emplace(o.max_batch);
         if (o.graphs)
             graphs.emplace(*paged_runner, decode_graph_buckets(o.max_batch, o.graph_steps));
@@ -261,6 +265,7 @@ void run(const Options& o) {
         fields.emplace_back("preemptions", std::to_string(preemptions));
         fields.emplace_back("token_budget", std::to_string(o.token_budget));
         fields.emplace_back("graph_steps", std::to_string(o.graphs ? o.graph_steps : 0));
+        fields.emplace_back("prefill_attention", o.prefill_attention);
     } else {
         fields.emplace_back("decode_weight_bytes", std::to_string(weight_bytes));
         fields.emplace_back("bandwidth_gb_s", csv_number(bandwidth));
@@ -354,6 +359,12 @@ void add_bench_command(CLI::App& app) {
                     "prefill steps")
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
+    cmd->add_option("--prefill-attention", opts->prefill_attention,
+                    "Attention kernel for prefill rows: flash runs them through "
+                    "flash_attention_prefill, paged through the per-row decode kernels as before "
+                    "2026-11-10; paged needs --max-batch")
+        ->capture_default_str()
+        ->check(CLI::IsMember({"paged", "flash"}));
     cmd->add_option("--num-requests", opts->num_requests, "Requests to time")
         ->capture_default_str()
         ->check(CLI::PositiveNumber);

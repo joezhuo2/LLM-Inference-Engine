@@ -2056,6 +2056,17 @@
 - **interruptible animations: compressing a running tween instead of waiting for it** => 
 - **input latency vs. animation length** => 
 
+## FlashAttention prefill wiring (Branch 136)
+
+- **prefill chunk (rows of one sequence in a step) vs. decode row** => 
+- **one block table row per chunk instead of one per token** => 
+- **measuring a kernel behind a switch before making it the default** => 
+- **mma.sync (the tensor core instruction) and its fragment layout: which lane holds which element of A, B and C** => 
+- **m16n8k16: a 16 x 8 output from a 16 x 16 and a 16 x 8 input, 16 terms per dot product** => 
+- **why the score fragment of Q K^T can feed P V without moving anything between lanes** => 
+- **tiling queries and keys (FlashAttention) vs. one thread block per row** => 
+- **template on head_dim so loops unroll and arrays stay in registers** => 
+- **inline PTX (asm volatile) in a CUDA kernel** => 
 ## Graph buckets and the batch sweep on the site (Branch 137)
 
 - **graph bucket (batch sizes that have a captured graph) and padding cost** => 

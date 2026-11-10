@@ -33,6 +33,9 @@ public:
 
     Tensor logits(int64_t rows);
 
+    void set_flash_prefill(bool on) { flash_prefill_ = on; }
+    bool flash_prefill() const { return flash_prefill_; }
+
     int64_t max_tokens() const { return max_tokens_; }
     int64_t max_seqs() const { return max_seqs_; }
     int64_t max_blocks() const { return max_blocks_; }
@@ -49,6 +52,9 @@ private:
     int64_t max_blocks_;
     int64_t max_context_;
     int64_t longest_context_ = 0;
+    int64_t chunks_ = 0;
+    int64_t decode_rows_ = 0;
+    bool flash_prefill_ = true;
     Stream stream_;
     DeviceBuffer workspace_;
     Blas blas_;
