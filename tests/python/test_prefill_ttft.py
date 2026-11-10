@@ -29,6 +29,16 @@ class Commands(unittest.TestCase):
         self.assertIn("--graphs", cmd)
         self.assertEqual(cmd[cmd.index("--token-budget") + 1], "512")
 
+    def test_the_paged_series_asks_for_the_old_prefill_attention(self):
+        cmd = pt.engine_command("engine", "m", 2048, 1, 2, "o.csv", False, 0, True)
+        self.assertEqual(cmd[cmd.index("--prefill-attention") + 1], "paged")
+        self.assertNotIn("--prefill-attention", pt.engine_command("engine", "m", 2048, 1, 2, "o.csv", False))
+
+    def test_the_paged_series_comes_first(self):
+        rows = [row(pt.ENGINE, 100, 1, 0.1), row(pt.PAGED, 100, 1, 0.2)]
+        text = pt.table_markdown(rows)
+        self.assertLess(text.index(f"| {pt.PAGED} |"), text.index("| engine |"))
+
     def test_llama_context_fits_the_longest_prompt_and_its_token(self):
         cmd = pt.llama_command("bin", "m", [128, 2048], 512)
         self.assertEqual(cmd[cmd.index("-c") + 1], "2049")

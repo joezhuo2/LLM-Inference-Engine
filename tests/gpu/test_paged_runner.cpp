@@ -381,8 +381,7 @@ TEST_F(PagedRunnerTest, RejectsBadPrefillChunks) {
     for (size_t row = 0; row < 3; ++row) good.block_tables[row * size_t(runner.max_blocks())] = 1;
     good.chunk_starts = {0, 3};
     good.cached_lens = {0};
-    EXPECT_FALSE(runner.flash_prefill());
-    runner.set_flash_prefill(true);
+    EXPECT_TRUE(runner.flash_prefill());
     EXPECT_NO_THROW(runner.forward(good));
 
     const auto rejected = [&](const auto& edit) {

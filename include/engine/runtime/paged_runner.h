@@ -54,7 +54,7 @@ private:
     int64_t longest_context_ = 0;
     int64_t chunks_ = 0;
     int64_t decode_rows_ = 0;
-    bool flash_prefill_ = false;
+    bool flash_prefill_ = true;
     Stream stream_;
     DeviceBuffer workspace_;
     Blas blas_;

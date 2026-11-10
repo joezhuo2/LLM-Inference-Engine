@@ -414,34 +414,48 @@ Reading it. Every kernel ran at 2,790 to 2,812 MHz (the boost clock under load; 
 From `scripts/prefill_ttft.py`: one request per run at each prompt length, output length 1, with warmup requests of the same length first, so TTFT is the prefill of a warm process. The published throughput runs use 64-token prompts, which hides this curve.
 
 <!-- auto:prefill -->
-Measured 2026-11-05T07:07:06Z at commit 1693c46: one request per run, median of 5 runs.
+Measured 2026-11-10T12:33:36Z at commit 8297921: one request per run, median of 5 runs.
 
 TTFT in ms against prompt tokens, median (min to max):
 
 | system | 128 | 512 | 1,024 | 2,048 |
 |---|---|---|---|---|
-| engine | 15.7 (15.7 to 15.8) | 97.8 (97.3 to 98.2) | 337.0 (334.8 to 338.2) | 1152.2 (1150.5 to 1161.9) |
-| engine + graphs | 15.7 (15.6 to 15.7) | 97.8 (97.3 to 98.4) | 339.6 (338.1 to 342.0) | 1157.2 (1152.7 to 1184.1) |
-| engine + graphs, budget 256 | 15.7 (15.6 to 15.9) | 101.1 (100.8 to 102.5) | 351.9 (351.3 to 353.5) | 1181.6 (1178.6 to 1195.6) |
-| llama.cpp -ub 512 | 16.1 (14.9 to 17.1) | 44.0 (43.7 to 45.5) | 95.0 (94.8 to 95.7) | 179.5 (177.0 to 182.1) |
-| llama.cpp -ub 2048 | 15.8 (15.4 to 17.7) | 44.0 (43.7 to 46.7) | 87.0 (86.0 to 87.5) | 185.3 (184.4 to 186.6) |
+| engine, paged prefill | 17.7 (16.9 to 17.9) | 120.6 (118.4 to 121.0) | 471.6 (469.5 to 472.7) | 1507.9 (1505.8 to 1515.3) |
+| engine | 11.2 (11.2 to 11.5) | 46.4 (45.6 to 47.3) | 91.7 (91.6 to 94.8) | 203.1 (202.8 to 203.2) |
+| engine + graphs | 11.2 (11.2 to 11.7) | 46.9 (45.5 to 47.3) | 94.6 (91.9 to 94.8) | 202.7 (201.9 to 203.4) |
+| engine + graphs, budget 256 | 12.4 (11.9 to 13.3) | 52.7 (50.7 to 53.6) | 112.7 (108.6 to 114.2) | 253.3 (252.6 to 254.1) |
+| llama.cpp -ub 512 | 17.2 (16.4 to 17.4) | 51.9 (51.5 to 52.8) | 112.4 (110.8 to 112.7) | 231.4 (223.6 to 234.9) |
+| llama.cpp -ub 2048 | 17.2 (16.5 to 18.7) | 52.1 (51.2 to 52.2) | 103.0 (102.4 to 104.5) | 240.1 (236.6 to 244.5) |
 
 Median TTFT in ms per prompt token:
 
 | system | 128 | 512 | 1,024 | 2,048 |
 |---|---|---|---|---|
-| engine | 0.123 | 0.191 | 0.329 | 0.563 |
-| engine + graphs | 0.123 | 0.191 | 0.332 | 0.565 |
-| engine + graphs, budget 256 | 0.123 | 0.197 | 0.344 | 0.577 |
-| llama.cpp -ub 512 | 0.126 | 0.086 | 0.093 | 0.088 |
-| llama.cpp -ub 2048 | 0.124 | 0.086 | 0.085 | 0.090 |
+| engine, paged prefill | 0.139 | 0.236 | 0.461 | 0.736 |
+| engine | 0.088 | 0.091 | 0.090 | 0.099 |
+| engine + graphs | 0.088 | 0.092 | 0.092 | 0.099 |
+| engine + graphs, budget 256 | 0.097 | 0.103 | 0.110 | 0.124 |
+| llama.cpp -ub 512 | 0.135 | 0.101 | 0.110 | 0.113 |
+| llama.cpp -ub 2048 | 0.135 | 0.102 | 0.101 | 0.117 |
 <!-- /auto:prefill -->
 
-The engine's curve bends and llama.cpp's does not. At 128 tokens the two are level (15.7 ms against 15.8 and 16.1 ms). From 128 to 2,048 tokens, 16 times the tokens, the engine's TTFT grows 73 times, from 15.7 to 1,152.2 ms, and its cost per token grows from 0.123 to 0.563 ms, while llama.cpp stays between 0.085 and 0.126 ms per token at either micro-batch size. At 2,048 tokens the engine takes about 6 times as long as llama.cpp (1,152.2 against 179.5 and 185.3 ms). This fits how prefill runs: `build_paged_batch` makes one row per prompt token, each with a full copy of the block table, and each row runs the paged decode attention over its own context, so the KV reads grow with the square of the length. These runs do not separate that cost from the rest of the step, so the profile for [#103](https://github.com/joezhuo2/LLM-Inference-Engine/issues/103) still has to confirm it.
+With `flash_attention_prefill` the engine's prefill costs about the same per token at every length, as llama.cpp's does. The `engine, paged prefill` row is the path every result before 2026-11-10 used (`--prefill-attention paged`): one row per prompt token through the per-row decode attention, each row walking its whole context, so the KV reads grow with the square of the length and its cost per token climbs from 0.139 to 0.736 ms between 128 and 2,048 tokens. The `engine` rows run the prefill rows through the tiled kernel instead and stay between 0.088 and 0.099 ms per token. At 2,048 tokens TTFT goes from 1,507.9 to 203.1 ms (7.4 times less), at 1,024 from 471.6 to 91.7 ms, at 512 from 120.6 to 46.4 ms and at 128 from 17.7 to 11.2 ms. llama.cpp takes 231.4 and 240.1 ms at 2,048 tokens in the same session, so the engine is now ahead at every length measured, by 12% at 2,048 against `-ub 512` and by 35% at 128, where before it took 6 times as long. The attention share of what is left was not profiled; the 203.1 ms still contains 88 tensor-core GEMMs, which took 71.6 ms for 1,024 rows in the batch-16 profile above.
 
-Graphs make no difference here: `DecodeGraphs::covers` refuses prefill batches, so both engine series run the same eager path and differ only by noise. What differs between the systems: the engine's TTFT includes sampling the first token and its host work, while llama.cpp's is `t_pp` from `llama-batched-bench`, the time of the prompt's decode calls with no sampler. llama.cpp feeds its own tokens rather than the engine's workload, runs at its default flash attention setting (`auto`) and keeps its KV cache in F16, with a context of the prompt plus one token, which at 2,048 is one over the model's position limit. Longer prompts cannot be measured on this model, since the bench refuses more than TinyLlama's 2,048 positions. All of it is from this one laptop GPU, whose clocks move between runs, so the table shows the spread of the runs as well as the median. This run (2026-11-05, the same session as the sweep above) is faster for every system than the 2026-11-03 run it replaces, by 28% for the engine and 32% for llama.cpp at 2,048 tokens, with a spread under 3% of the median for the engine, so the ratios hold while the absolute times moved with the machine.
+### FlashAttention prefill kernels
 
-The `engine + graphs, budget 256` row is the same prompt alone under `--token-budget 256`, so a 2,048-token prompt runs as 8 chunks in 8 steps. It costs 2.1% more at 2,048 tokens (1,181.6 against 1,157.2 ms) and 3% to 4% more at 512 and 1,024: the extra steps add host work and smaller GEMMs, but the attention work is the same, since every chunk row still reads its whole context so far. Chunking spreads prefill out; it does not make it cheaper.
+Three attention paths for the same prefill, one request per run, median of 5 runs (min to max), TTFT in ms. The first two rows of each engine build are in the table above; the first flash kernel is the one merged in #185, measured with the wiring of this branch and that kernel (commit 9cff334, `results/prefill/first_flash_kernel.csv`), in the same session:
+
+| prefill attention | 128 | 512 | 1,024 | 2,048 |
+|---|---|---|---|---|
+| paged decode kernels | 17.7 (16.9 to 17.9) | 120.6 (118.4 to 121.0) | 471.6 (469.5 to 472.7) | 1507.9 (1505.8 to 1515.3) |
+| flash, first kernel | 16.9 (16.1 to 17.0) | 128.6 (126.5 to 128.9) | 474.8 (470.5 to 482.6) | 1638.2 (1636.6 to 1641.3) |
+| flash, tiled kernel | 11.2 (11.2 to 11.5) | 46.4 (45.6 to 47.3) | 91.7 (91.6 to 94.8) | 203.1 (202.8 to 203.2) |
+
+The first kernel read the chunk's keys and values from qkv instead of the cache and kept an online softmax, but it still ran one thread block per row and query head and walked the keys one at a time, with two barriers per key, so it did the same quadratic work as the decode kernels and came out 9% slower at 2,048 tokens. The tiled kernel gives each warp 16 query rows of one head and streams the keys past them 16 at a time through `mma.sync` on the tensor cores: the reads still grow with the square of the length, but each key tile is read once per 16 rows instead of once per row, and the dot products run at tensor-core rate. Details in `docs/profiling.md`, "FlashAttention prefill".
+
+Graphs make no difference here: `DecodeGraphs::covers` refuses prefill batches, so both engine series run the same eager path and differ only by noise. What differs between the systems: the engine's TTFT includes sampling the first token and its host work, while llama.cpp's is `t_pp` from `llama-batched-bench`, the time of the prompt's decode calls with no sampler. llama.cpp feeds its own tokens rather than the engine's workload, runs at its default flash attention setting (`auto`) and keeps its KV cache in F16, with a context of the prompt plus one token, which at 2,048 is one over the model's position limit. Longer prompts cannot be measured on this model, since the bench refuses more than TinyLlama's 2,048 positions. All of it is from this one laptop GPU, whose clocks move between runs, so the table shows the spread of the runs as well as the median. This run (2026-11-10) is slower for the unchanged systems than the 2026-11-05 run it replaces, by 31% for the paged engine path (1,507.9 against 1,152.2 ms) and 29% for llama.cpp (231.4 against 179.5 ms) at 2,048 tokens, so compare rows of this table with each other and not with earlier sections. The sections "Under load" and "A long prompt among running requests" were measured before the tiled kernel, with paged prefill, and have not been rerun.
+
+The `engine + graphs, budget 256` row is the same prompt alone under `--token-budget 256`, so a 2,048-token prompt runs as 8 chunks in 8 steps. With the tiled kernel it costs 25% more at 2,048 tokens (253.3 against 202.7 ms), 19% more at 1,024 and 12% more at 512; with paged prefill on 2026-11-05 the same split cost 2.1% (1,181.6 against 1,157.2 ms). In absolute terms the split costs about 50 ms now against 24 ms then, and it shows because a second of attention no longer sits under it. The extra steps add host work and smaller GEMMs, and a later chunk reads its cached prefix through the block table; which of these dominates was not profiled.
 
 ## Kernels
 
@@ -453,6 +467,7 @@ Every kernel exists twice, a naive one that is obviously correct (the test oracl
 | `paged_attention_decode` | v1 (one block per head and row, scores in shared memory) is the oracle and the "before" number; `paged_attention_decode_v2` (online softmax, 8 lanes per key, value sum spread over all threads, no context cap) is called by the forward pass | `tests/gpu/test_paged_attention.cpp`, `tests/gpu/test_paged_attention_v2.cpp`, `tests/gpu/test_paged_attention_split.cpp` | v2 is 1.4x to 3.6x faster than v1 per launch (1 row, context 2,048: 600 to 165 us; 16 rows, context 512: 565 to 193 us) and runs a context of 8,192 that v1 cannot; Nsight Compute: 1,310 to 383 us at 1 row and context 2,048, details in `docs/profiling.md`, "Paged attention v2"; in the decode profile (32 prompt and 32 output tokens) attention went from 883 to 272 us per step (11.5% to 3.8% of kernel time) once v2 was wired in, `docs/profiling.md`, "Paged attention v2 in the forward pass"; `paged_attention_decode_split` (the context of a row cut across blocks, partials merged in split order) is 2.8x faster than v2 at 1 row and 2,048 tokens and takes the batch-1 TPOT at a 1,984-token prompt from 14.7 to 10.2 ms eager and from 14.0 to 9.1 ms with graphs, `docs/profiling.md`, "Split-context attention", "Split attention in the forward pass" and "Split attention in CUDA Graphs" | yes, v2, and split for 1 to 4 rows at 512 tokens or more (eager and graph replays) |
 | `write_kv` | one thread per element (the only version) | `tests/gpu/test_write_kv.cpp` | measured once, no before and after: 3.8 us per launch at 1 to 16 rows, 9.3 us at 512 rows, 0.4% of a batch-1 step in Nsight Systems; `docs/profiling.md`, "write_kv" | yes |
 | add + RMSNorm | `fast::add_rmsnorm` (fused; 128-bit loads, row kept in registers) | `tests/gpu/test_add_rmsnorm.cpp` | `docs/profiling.md`, "Fused add_rmsnorm" and "Tuning add_rmsnorm" (10.9 to 4.0 us at 1 token, 11.1 to 5.3 us at 64; 105 us less per decode step) | yes, fused with the residual add |
+| Prefill attention | `flash_attention_prefill` (16 query rows of one head per warp, keys 16 at a time through `mma.sync`, online softmax per row, the chunk's keys and values read from qkv); the per-row decode kernels remain as `--prefill-attention paged` | `tests/gpu/test_flash_prefill.cpp`, `tests/gpu/test_paged_runner.cpp` | not profiled with Nsight Compute; TTFT at 2,048 prompt tokens 1,507.9 to 203.1 ms, "Prefill against prompt length" above | yes, default since 2026-11-10 |
 | Embedding lookup | `fast::embedding` (one thread per 16 bytes over every row, scalar when the width is not a multiple of 8 or a pointer is unaligned) | `tests/gpu/test_embedding.cpp`, `tests/gpu/test_embedding_fast.cpp` | nsys, max batch 16 with 512-token prompts, 2026-11-09: a decode step 4.5 to 1.5 us, a 2,048-token prefill step 72 to 79 us to 35 to 37 us; under 0.1% of a step either way | yes |
 | RoPE | `fast::rope` | `tests/gpu/test_rope_fast.cpp` | `docs/profiling.md`, "Fast RoPE" | yes |
 | SwiGLU | `fast::swiglu` (vectorized, scalar below 5 tokens) | `tests/gpu/test_swiglu_fast.cpp` | `docs/profiling.md`, "Fast SwiGLU" and "Small batches" | yes |

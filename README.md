@@ -116,13 +116,14 @@ Decoding one token at batch 1 reads every weight except all but one row of the e
 - **Paged decode attention:** version 1 keeps the scores in shared memory (context capped at 2,048); version 2 uses an online softmax with one thread block per query head and sequence, which removes the cap; the 8 query heads that share a KV head each read its K and V in their own block. For 1 to 4 sequences at 512 tokens or more, a split version cuts each context across several blocks and merges their partial softmax results, which fills the GPU at batch 1 (2.8x faster attention at 2,048 tokens).
 - **Continuous batching:** waiting, running and finished queues, admission by free blocks, and recompute-style preemption when the cache runs out. By default each step is all prefill or all decode; with `--token-budget N` (chunked prefill) a step holds at most N tokens, decode rows first and prompts split across steps, which under Poisson arrivals cuts the longest wait between two tokens about threefold at a budget of 256 (`docs/results.md`, "Under load").
 - **Sampling on the GPU:** greedy, Gumbel-max for temperature sampling, and top-k and top-p through binary-searched thresholds instead of a full sort of the vocabulary.
+- **FlashAttention-style prefill:** prompt rows go through `flash_attention_prefill`, a causal kernel that gives each warp 16 query rows of one head and streams the keys past them 16 at a time through `mma.sync` on the tensor cores with an online softmax per row; a 2,048-token prompt reaches its first token in 203 ms instead of 1,508 ms (llama.cpp 231 ms, same session, `docs/results.md`). `engine bench --prefill-attention paged` keeps the old per-row path.
 - **CUDA Graphs:** with `--graphs` decode is captured for batch sizes 1, 2, 3, 4, 6, 8, 12, 16 and so on up to the max batch (two per power of two, `--graph-steps 2`, the default; 1 keeps only the powers of two and 4 adds 5, 7, 10, 14 and so on, fewer padded rows for more graphs; `docs/results.md`, "Batch size past 16", measured the choice) and replayed from fixed device buffers, which removes per-kernel launch overhead; each batch size that can split its attention also gets one graph per split count, so long contexts replay the split kernel too; prefill runs eagerly.
 - **Serving over HTTP:** one thread owns the scheduler and the GPU, so the kernels and scheduler need no locks. A cancel takes effect between steps because `update` matches tokens to sequences by batch row, and a client that reads slowly loses step events rather than holding up the engine.
 - **Portable headers:** public headers in `include/engine/` contain no CUDA includes, so the pure C++ parts (config, parser, layout planner, checksums) build and test on machines without a GPU, including macOS.
 
 ## Beyond the MVP
 
-Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, FlashAttention-style prefill, prefix caching and copy-on-write blocks and speculative decoding.
+Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, prefix caching and copy-on-write blocks and speculative decoding.
 
 ## Hardware
 

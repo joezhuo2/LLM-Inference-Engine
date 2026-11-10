@@ -15,19 +15,22 @@ import plot  # noqa: E402
 
 ENGINE = "engine"
 GRAPHS = "engine + graphs"
+PAGED = "engine, paged prefill"
 LLAMA = "llama.cpp -ub 512"
 LLAMA_FULL = "llama.cpp -ub 2048"
-SYSTEMS = [ENGINE, GRAPHS, LLAMA, LLAMA_FULL]
-COLORS = {ENGINE: "engine", GRAPHS: "engine + graphs", LLAMA: "llama.cpp", LLAMA_FULL: "HF transformers"}
+SYSTEMS = [PAGED, ENGINE, GRAPHS, LLAMA, LLAMA_FULL]
+COLORS = {PAGED: "engine", ENGINE: "engine", GRAPHS: "engine + graphs", LLAMA: "llama.cpp", LLAMA_FULL: "HF transformers"}
 COLUMNS = ["system", "prompt_tokens", "run", "ttft_s", "date", "commit"]
 
 
-def engine_command(engine, model, prompt_len, run, warmup, out, graphs, budget=0):
+def engine_command(engine, model, prompt_len, run, warmup, out, graphs, budget=0, paged=False):
     cmd = [str(engine), "bench", "--model", str(model), "--max-batch", "1", "--num-requests", "1",
            "--prompt-len", str(prompt_len), "--output-len", "1", "--warmup", str(warmup),
            "--seed", str(run), "--out", str(out)]
     if graphs:
         cmd.append("--graphs")
+    if paged:
+        cmd += ["--prefill-attention", "paged"]
     return cmd + ["--token-budget", str(budget)] if budget else cmd
 
 
@@ -60,15 +63,15 @@ def llama_ttfts(rows):
 def measure(args):
     stamp = {"date": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "commit": args.commit}
     measured = []
-    engines = [(ENGINE, False, 0), (GRAPHS, True, 0)]
+    engines = [(PAGED, False, 0, True), (ENGINE, False, 0, False), (GRAPHS, True, 0, False)]
     if args.token_budget:
-        engines.append((f"{GRAPHS}, budget {args.token_budget}", True, args.token_budget))
+        engines.append((f"{GRAPHS}, budget {args.token_budget}", True, args.token_budget, False))
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "bench.csv"
         for run in range(1, args.repeats + 1):
             for length in args.lengths:
-                for system, graphs, budget in engines:
-                    command = engine_command(args.engine, args.model, length, run, args.warmup, out, graphs, budget)
+                for system, graphs, budget, paged in engines:
+                    command = engine_command(args.engine, args.model, length, run, args.warmup, out, graphs, budget, paged)
                     subprocess.run(command, check=True, capture_output=True, text=True)
                     measured.append({"system": system, "prompt_tokens": length, "run": run,
                                      "ttft_s": read_engine_ttft(Path(tmp) / "bench_summary.csv"), **stamp})
@@ -133,7 +136,7 @@ def plot_ttft(rows, out, theme="light"):
         xs = sorted(by_length)
         base = base_system(system)
         ax.plot(xs, [statistics.median(by_length[n]) * 1e3 for n in xs], color=t["series"][COLORS[base]],
-                linestyle="-" if system == base else "--", linewidth=2, marker="o", markersize=8,
+                linestyle="-" if system == base and system != PAGED else "--", linewidth=2, marker="o", markersize=8,
                 markeredgecolor=t["surface"], markeredgewidth=2, label=system)
     ax.set_xlabel("prompt tokens")
     ax.set_ylabel("single-request TTFT (ms)")

@@ -54,7 +54,7 @@ struct Options {
     bool graphs = false;
     int graph_steps = 2;
     int token_budget = 0;
-    std::string prefill_attention = "paged";
+    std::string prefill_attention = "flash";
     int warmup = 3;
     uint64_t seed = 0;
     float temperature = 0.0f;
@@ -158,7 +158,7 @@ void run(const Options& o) {
         throw std::invalid_argument("--token-budget needs --max-batch of at least 1");
     if (o.token_budget > 0 && o.token_budget < o.max_batch)
         throw std::invalid_argument("--token-budget must be at least --max-batch");
-    if (o.prefill_attention != "paged" && !batched)
+    if (o.prefill_attention != "flash" && !batched)
         throw std::invalid_argument("--prefill-attention needs --max-batch of at least 1");
     if (o.graph_steps < 1 || (o.graph_steps & (o.graph_steps - 1)) != 0)
         throw std::invalid_argument("--graph-steps must be a power of two");
@@ -360,8 +360,9 @@ void add_bench_command(CLI::App& app) {
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
     cmd->add_option("--prefill-attention", opts->prefill_attention,
-                    "Attention kernel for prefill rows: paged runs them through the per-row "
-                    "decode kernels, flash through flash_attention_prefill; needs --max-batch")
+                    "Attention kernel for prefill rows: flash runs them through "
+                    "flash_attention_prefill, paged through the per-row decode kernels as before "
+                    "2026-11-10; paged needs --max-batch")
         ->capture_default_str()
         ->check(CLI::IsMember({"paged", "flash"}));
     cmd->add_option("--num-requests", opts->num_requests, "Requests to time")
