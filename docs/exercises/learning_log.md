@@ -2110,3 +2110,5 @@
 - **partial softmax merge** => 
 - **kernel fusion saves bytes and launches, not arithmetic** => 
 - **xor shuffle all-reduce** => 
+- **128-bit vector loads** => 
+- **gridDim.y limit of 65,535** => 
