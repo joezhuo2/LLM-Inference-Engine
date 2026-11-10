@@ -36,7 +36,7 @@ export const beyondTopics: BeyondTopic[] = [
     unit: "the large model's bytes shared by several tokens",
     paragraphs: [
       "A small draft model writes a few tokens ahead, one decode step each. The large model then scores all of them in one pass, which reads its weights once, the same way prefill handles many prompt tokens with one read. A round reads the draft's weights once per drafted token and the large model's weights once, and it yields the accepted tokens plus one more from the large model. So the large model's bytes are divided over the tokens of the round, where plain decoding pays all of them for every token.",
-      "A drafted token is kept with a probability set by how the two models rated it, and a rejected one is replaced by a draw from a corrected distribution. With that rule the output has exactly the distribution of the large model alone. The gain depends on how often the draft is accepted: a draft that is usually wrong makes every round read more bytes than plain decoding does.",
+      "A drafted token is kept with a probability set by how the two models rated it, and a rejected one is replaced by a draw from a corrected distribution. With that rule the output has exactly the distribution of the large model alone. The gain depends on how often the draft is accepted: a draft that is usually wrong makes each kept token cost more bytes than plain decoding does, because the draft's reads are wasted.",
     ],
     source: { label: "Fast Inference from Transformers via Speculative Decoding (Leviathan et al., 2022)", href: "https://arxiv.org/abs/2211.17192" },
   },

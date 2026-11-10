@@ -2127,3 +2127,4 @@
 - **weight-read floor of a token** => 
 - **quantization as fewer weight bytes per token** => 
 - **prefix caching by sharing KV blocks** => 
+- **speculative decoding acceptance rate** => 

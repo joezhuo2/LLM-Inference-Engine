@@ -20,6 +20,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: `web/scripts/step-history.mjs` records the decode step profile of every committed version of `results/decode_step.md` in `step-history.json`, so a page can show how the step's time moved between operations.
 - Part A: Every Byte gets a closing chapter, "where the time went" (Part V): the decode step profiled after each kernel, the read of the weights as the floor, time to first token at 2,048 tokens against llama.cpp, the engine under load against vLLM, and three next steps ranked by measured payoff.
 - Part A: Every Byte gets a "beyond this engine" spread and page in place of the "not yet" line of the 4-bit estimate: quantization, speculative decoding, prefix caching and multiple GPUs, each tied to bytes per token with one source; none of the four is implemented or measured here.
+- Part A: "beyond this engine" says a rejected draft costs bytes per kept token, not per round.
 
 ## kernel/flash-prefill-div32
 
