@@ -1,3 +1,4 @@
+import { prefillRoof } from "@/content/kernels/gemm";
 import { ceilings } from "@/lib/data";
 import type { ChapterReview } from "./types";
 
@@ -11,6 +12,7 @@ export const review: ChapterReview = {
     "The wrapper asks cuBLAS for the transposed product so row-major weights and activations can stay where they are. No copy or transpose in memory is needed.",
     `Below the ridge at ${Math.round(ridge)} FLOP per byte, memory traffic limits speed. A single decode row uses each weight once, so faster arithmetic does little.`,
     "Batching lets each weight read serve several token rows. The measured batch still waits on memory, so it produces more tokens in about the same projection time.",
+    `Prefill is on the other side of the ridge. At ${prefillRoof.rows.toLocaleString("en-US")} rows each weight read feeds every row, ${Math.round(prefillRoof.intensity)} FLOP per byte (calculated), and the measured prefill projections reach ${prefillRoof.tflops.toFixed(1)} TFLOP/s, ${Math.round(prefillRoof.pct)}% of the ${peak.tflops} TFLOP/s compute roof. There the tensor cores limit the time, not memory.`,
   ],
   questions: [
     {

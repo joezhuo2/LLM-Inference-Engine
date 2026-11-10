@@ -2028,3 +2028,10 @@
 - **gather: copying rows of a table chosen by an index array** => 
 - **one thread per 16-byte vector (uint4) and the alignment it needs** => 
 - **flattening (row, column) work into one grid instead of one block per row** => 
+
+## Prefill on the roofline (Branch 132)
+
+- **prefill as many rows per weight read: FLOP per byte grows with the prompt** => 
+- **compute-bound prefill vs. memory-bound decode** => 
+- **effective TFLOP/s from a measured latency** => 
+- **per-token prefill cost and why it grows with prompt length** => 
