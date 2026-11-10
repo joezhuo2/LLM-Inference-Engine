@@ -105,6 +105,15 @@ class Bandwidth(unittest.TestCase):
         self.assertAlmostEqual(b["busy_pct_of_tpot"], 80.0)
         self.assertAlmostEqual(b["kernel_gb_s"], 250.0)
 
+    def test_no_bandwidth_without_a_tpot(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "s.csv"
+            with open(path, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["max_batch", "tpot_s_p50"])
+                w.writerow(["1", ""])
+            self.assertIsNone(pr.bandwidth_section(path, 200.0, 2e9, None))
+
     def test_report_runs_on_a_capture_without_steps(self):
         conn = sqlite3.connect(":memory:")
         conn.executescript(

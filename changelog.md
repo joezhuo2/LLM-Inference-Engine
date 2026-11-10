@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/flash-prefill-profile
+
+- Part A: `scripts/profile_report.py` no longer stops on a run with no decode steps (`--output-len 1`, so the summary has no TPOT): it leaves the decode bandwidth section out. `scripts/profile.sh nsys` on a lone prefill step now writes its report.
+
 ## web/flash-prefill
 
 - Part A: `/kernels/flash-prefill` and chapter 13 of Every Byte (part IV, after chunked prefill): FlashAttention prefill told in the order it happened. Prefill ran the decode attention once per prompt token, so the reads grew with the square of the prompt; a spec and 24 tests came first; the first kernel read the chunk's keys from qkv but kept one thread block per row and head, and once wired in it was slower than the path it replaced; the tiled kernel gives a warp 16 query rows and streams the keys past it through `mma.sync`, with the score fragment already in place as the weight fragment of the next product; the result against llama.cpp; and what is still open (no Nsight Compute profile, the heads of a kv head reread K and V, chunking a lone prompt costs 25%, the load runs were not rerun). The scroll story has a lead-in, 10 steps with 9 animated figures and a prompt-length picker with a prediction; the book has two 3D exhibits (the tile triangle with a query tile and key tiles streaming past, and one mma call with its fragment boards) and flat pages for the rest. `sync-data` reads the tile size, warps per block, head_dim limit and test count from the kernel source and its tests into `flash_kernel.json`. By a Claude subagent, checked by Claude.
