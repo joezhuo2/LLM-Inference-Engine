@@ -2112,3 +2112,4 @@
 - **xor shuffle all-reduce** => 
 - **128-bit vector loads** => 
 - **gridDim.y limit of 65,535** => 
+- **threshold search instead of a sort for top-k** => 

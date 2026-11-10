@@ -10,6 +10,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: Split attention opens on too few blocks, the cut, partial results and the exact merge; the CUDA Graphs capture bug moves under how it got built, and occupancy, waves and the split rule under measured.
 - Part A: Add + RMSNorm leads with fusion and why the first fused kernel saved bytes but not time; spec rounding, 16-byte loads and shuffles are grouped as how it got built, and the closing step is titled with its measured speedup.
 - Part A: SwiGLU teaches wide loads at peak bandwidth and the one-token block shortage first; the first draft's 2D grid ceiling moves under how it got built.
+- Part A: Sampling steps are titled by their lessons; cost, FP64 noise and one block per row are grouped as measured.
 
 ## kernel/flash-prefill-div32
 
