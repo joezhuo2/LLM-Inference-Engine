@@ -15,8 +15,13 @@ namespace {
 constexpr int kTile = 16;
 constexpr int kWarpsPerBlock = 4;
 
+__device__ __forceinline__ float half_bf16(uint32_t word, int odd) {
+    return __bfloat162float(__ushort_as_bfloat16(static_cast<unsigned short>(word >> (16 * odd))));
+}
+
 __device__ __forceinline__ void mma_bf16(float acc[4], const uint32_t a[4], uint32_t b0,
                                          uint32_t b1) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800 && !defined(ENGINE_FLASH_EMULATE_MMA)
     float d0, d1, d2, d3;
     asm volatile(
         "mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32 "
@@ -28,6 +33,25 @@ __device__ __forceinline__ void mma_bf16(float acc[4], const uint32_t a[4], uint
     acc[1] = d1;
     acc[2] = d2;
     acc[3] = d3;
+#else
+    const int lane = int(threadIdx.x) % 32;
+    const int group = lane / 4;
+    const int quad = lane % 4;
+    for (int pair = 0; pair < 8; ++pair) {
+        const int source = pair % 4;
+        const bool upper = pair >= 4;
+        const uint32_t a_low = __shfl_sync(0xffffffff, upper ? a[2] : a[0], 4 * group + source);
+        const uint32_t a_high = __shfl_sync(0xffffffff, upper ? a[3] : a[1], 4 * group + source);
+        const uint32_t b_even = __shfl_sync(0xffffffff, upper ? b1 : b0, 8 * quad + source);
+        const uint32_t b_odd = __shfl_sync(0xffffffff, upper ? b1 : b0, 8 * quad + 4 + source);
+        for (int odd = 0; odd < 2; ++odd) {
+            acc[0] = __fmaf_rn(half_bf16(a_low, odd), half_bf16(b_even, odd), acc[0]);
+            acc[1] = __fmaf_rn(half_bf16(a_low, odd), half_bf16(b_odd, odd), acc[1]);
+            acc[2] = __fmaf_rn(half_bf16(a_high, odd), half_bf16(b_even, odd), acc[2]);
+            acc[3] = __fmaf_rn(half_bf16(a_high, odd), half_bf16(b_odd, odd), acc[3]);
+        }
+    }
+#endif
 }
 
 __device__ __forceinline__ float round_bf16(float x) {
