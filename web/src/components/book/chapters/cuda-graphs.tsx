@@ -32,6 +32,7 @@ const beats: Beat[][] = [
     close("Close up: the padded row in pink, slot -1", [0.45, 0.05, -0.28], 0.8, 0.44, -16, 40),
     close("From the side: the kernels read fixed offsets", [0.5, 0.04, 0.0], 0.8, 0.4, 22, 26),
   ],
+  [flat("Switch eager and graph, pick a batch")],
   [flat(`${padding.rows} rows: padded to ${padding.coarseBucket}, or to ${padding.fineBucket}`)],
   [
     overview(`${graphCount} graphs: buckets by split counts`),
@@ -39,7 +40,6 @@ const beats: Beat[][] = [
     close("The rail: the longest context picks the graph", [0.5, 0.04, 0.02], 0.84, 0.3, 0, 44),
     close("From the side: one graph per bucket against one per split count", [0.5, 0.05, 0.24], 0.8, 0.3, 20, 34),
   ],
-  [flat("Switch eager and graph, pick a batch")],
   [flat(`Past ${graphMaxBatch} rows: the curve bends at ${sweepKnee}`)],
 ];
 
@@ -48,9 +48,9 @@ const instructions = [
   "Watch each gap open and the idle column climb.",
   "Watch the launches drop into the graph and the lid close.",
   "Watch the rows land at fixed offsets and the kernels read them.",
+  undefined,
   "Watch the padded rows fill each graph, then compare the time per token.",
   "Drag the pink ball along the rail to change the context.",
-  undefined,
   "Watch the curve climb and flatten, then where the step's time goes.",
 ];
 
@@ -73,8 +73,8 @@ const chapter: ChapterDef = {
   formula: cudaGraphs.formula,
   steps: cudaGraphsSteps,
   captions: cudaGraphsCaptions,
-  exhibits: [0, 1, 2, 3, null, 4, null, null],
-  overlays: [null, null, null, null, "buckets", null, "replay", "sweep"],
+  exhibits: [0, 1, 2, 3, null, null, 4, null],
+  overlays: [null, null, null, null, "replay", "buckets", null, "sweep"],
   instructions,
   beats,
   workbench: [],
