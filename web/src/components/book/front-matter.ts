@@ -1,22 +1,19 @@
+import { bookOrder, bookParts, chapterNumber } from "@/content/book-order";
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
 import { kernelStory, layerOps } from "@/content/kernels";
+import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
+import { measured } from "@/content/kernels/types";
 import { chapterReview } from "@/content/reviews";
 import type { ChapterReview } from "@/content/reviews/types";
+import { loadSlo } from "@/lib/data";
 import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
 import { bookHref } from "./paths";
 import type { Fonts } from "./typeset";
 
-export const bookParts = [
-  { numeral: "I", title: "the machine", slugs: ["foundations"] },
-  { numeral: "II", title: "one layer", slugs: ["gemm", "rope", "paged-kv", "paged-attention", "attention-v2", "split-attention", "add-rmsnorm", "swiglu"] },
-  { numeral: "III", title: "one step", slugs: ["sampling", "cuda-graphs"] },
-  { numeral: "IV", title: "many requests", slugs: ["chunked-prefill"] },
-];
-
-export const bookOrder = bookParts.flatMap((p) => p.slugs);
+export { bookOrder, bookParts };
 
 export const chapterTitle = (slug: string) => kernelStory(slug)?.title ?? slug;
 const firstPage: Record<string, number> = {};
@@ -505,7 +502,193 @@ export function exerciseStops(def: ChapterDef): Stop[] {
   });
 }
 
-const startSpreads = 2;
+const wholeStepMs = (rows: number) => measured("roofline", { "whole decode step": "engine + graphs", rows: String(rows) }, "TPOT us", 1, "results") / 1000;
+const batchRows = [1, 16];
+const tpotMs = batchRows.map(wholeStepMs);
+const tokensPerSecond = batchRows.map((rows, i) => (rows * 1000) / tpotMs[i]);
+const bestGoodput = { engine: peakGoodput("engine + graphs").value, chunked: peakGoodput(chunked).value, vllm: peakGoodput("vLLM").value };
+const slo = loadSlo();
+const whole = (v: number) => Math.round(v).toLocaleString("en-US");
+
+const serving = [
+  "Two times decide how serving feels. TTFT, time to first token, is the wait in the queue plus prefill. TPOT, time per output token, is one decode step.",
+  `Batching raises throughput because every row in a step shares each weight read: in the measured whole decode step, 1 row takes ${tpotMs[0].toFixed(2)} ms and 16 rows take ${tpotMs[1].toFixed(2)} ms, so decode alone goes from ${whole(tokensPerSecond[0])} to ${whole(tokensPerSecond[1])} tokens per second (calculated). The cost is that every request waits for the longer step, and one long prompt's prefill step stalls the others.`,
+  `That is why a serving engine is judged on goodput and not on tokens per second alone: the requests per second that meet both a TTFT target and a TPOT target, here ${slo.ttft_ms} ms and ${slo.tpot_ms} ms.`,
+  `Under the same Poisson arrivals the engine's best goodput over the offered rates is ${bestGoodput.engine.toFixed(2)} requests per second, ${bestGoodput.chunked.toFixed(2)} with a token budget, and vLLM's is ${bestGoodput.vllm.toFixed(2)} (measured). Chapter ${chapterNumber("chunked-prefill")}, chunked prefill, is about the stalls that are part of that gap.`,
+];
+
+const servingFigure = [
+  "Three requests share one engine, drawn as a timeline (illustrative, not measured). Every engine step is all prefill or all decode. TTFT runs from a request's arrival to its first token. TPOT is the gap between two tokens.",
+  "Request C has a long prompt. Its prefill step is wide, and A and B get no token until it ends.",
+  `Batching, to scale for the engine with CUDA Graphs: TPOT is ${tpotMs[0].toFixed(2)} ms at 1 row and ${tpotMs[1].toFixed(2)} ms at 16 rows (measured), and decode alone gives ${whole(tokensPerSecond[0])} and ${whole(tokensPerSecond[1])} tokens per second (calculated).`,
+];
+
+type ServingKind = "prefill" | "decode";
+
+const servingPlan: { kind: ServingKind; req?: number; width: number }[] = [
+  { kind: "prefill", req: 0, width: 5 },
+  { kind: "decode", width: 3 },
+  { kind: "prefill", req: 1, width: 5 },
+  { kind: "decode", width: 4 },
+  { kind: "decode", width: 4 },
+  { kind: "prefill", req: 2, width: 16 },
+  { kind: "decode", width: 5 },
+  { kind: "decode", width: 5 },
+  { kind: "decode", width: 5 },
+];
+
+const servingArrivals = [0, 6, 18];
+const servingNames = ["A", "B", "C"];
+
+const servingSteps = servingPlan.reduce<{ kind: ServingKind; req?: number; start: number; end: number }[]>((all, step) => {
+  const start = all.length ? all[all.length - 1].end : 0;
+  return [...all, { kind: step.kind, req: step.req, start, end: start + step.width }];
+}, []);
+
+const servingEnd = servingSteps[servingSteps.length - 1].end;
+
+const servingLanes = servingArrivals.map((arrive, r) => {
+  const prefill = servingSteps.find((s) => s.req === r)!;
+  const ticks = [prefill.end, ...servingSteps.filter((s) => s.kind === "decode" && s.start >= prefill.end).map((s) => s.end)];
+  return { name: servingNames[r], arrive, prefill, ticks };
+});
+
+function servingPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) {
+  const { ctx, x0, x1 } = begin(canvas, "right");
+  ctx.fillStyle = palette.faint;
+  ctx.font = `26px ${fonts.sans}`;
+  ctx.fillText("Every Byte · start here", x0, 150);
+  ctx.fillStyle = palette.ink;
+  ctx.font = `92px ${fonts.serif}`;
+  ctx.fillText("three requests", x0, 260);
+  const tx0 = x0 + 70;
+  const unit = (x1 - tx0) / servingEnd;
+  const at = (t: number) => tx0 + t * unit;
+  const centered = (text: string, x: number, y: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.textAlign = "center";
+    ctx.fillText(text, x, y);
+    ctx.textAlign = "left";
+  };
+  const bracket = (from: number, to: number, y: number, color: string) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(at(from), y);
+    ctx.lineTo(at(to), y);
+    ctx.moveTo(at(from), y - 9);
+    ctx.lineTo(at(from), y + 9);
+    ctx.moveTo(at(to), y - 9);
+    ctx.lineTo(at(to), y + 9);
+    ctx.stroke();
+  };
+  const stripY = 330;
+  ctx.fillStyle = palette.faint;
+  ctx.font = `24px ${fonts.sans}`;
+  ctx.fillText("steps", x0, stripY + 32);
+  for (const step of servingSteps) {
+    ctx.beginPath();
+    ctx.roundRect(at(step.start) + 1, stripY, (step.end - step.start) * unit - 2, 48, 6);
+    if (step.kind === "prefill") {
+      ctx.fillStyle = palette.blue;
+      ctx.fill();
+      ctx.font = `28px ${fonts.sans}`;
+      centered(servingNames[step.req!], at((step.start + step.end) / 2), stripY + 34, palette.paper);
+    } else {
+      ctx.strokeStyle = palette.faint;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+  servingLanes.forEach((lane, r) => {
+    const base = 520 + r * 150;
+    ctx.fillStyle = palette.ink;
+    ctx.font = `44px ${fonts.serif}`;
+    ctx.fillText(lane.name, x0, base + 14);
+    ctx.setLineDash([10, 8]);
+    ctx.strokeStyle = palette.faint;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(at(lane.arrive), base);
+    ctx.lineTo(at(lane.prefill.start), base);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = palette.blue;
+    ctx.beginPath();
+    ctx.roundRect(at(lane.prefill.start), base - 13, (lane.prefill.end - lane.prefill.start) * unit, 26, 6);
+    ctx.fill();
+    ctx.strokeStyle = palette.ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(at(lane.ticks[0]), base);
+    ctx.lineTo(at(lane.ticks[lane.ticks.length - 1]), base);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(at(lane.arrive), base, 8, 0, Math.PI * 2);
+    ctx.fillStyle = palette.paper;
+    ctx.fill();
+    ctx.stroke();
+    lane.ticks.forEach((t, k) => {
+      ctx.beginPath();
+      ctx.arc(at(t), base, k === 0 ? 12 : 8, 0, Math.PI * 2);
+      ctx.fillStyle = k === 0 ? palette.pink : palette.ink;
+      ctx.fill();
+    });
+    bracket(lane.arrive, lane.prefill.end, base - 44, palette.blue);
+    ctx.font = `26px ${fonts.sans}`;
+    centered("TTFT", at((lane.arrive + lane.prefill.end) / 2), base - 56, palette.blue);
+    if (r === 0) {
+      ctx.font = `24px ${fonts.sans}`;
+      ctx.fillStyle = palette.faint;
+      ctx.fillText("arrives", at(lane.arrive), base + 46);
+      const gapFrom = lane.ticks[lane.ticks.length - 4];
+      const gapTo = lane.ticks[lane.ticks.length - 3];
+      bracket(gapFrom, gapTo, base + 72, palette.pink);
+      ctx.font = `26px ${fonts.sans}`;
+      ctx.fillStyle = palette.pink;
+      ctx.fillText("A and B wait while C is prefilled", at(gapFrom), base + 108);
+    }
+    if (r === 1) {
+      const from = lane.ticks[lane.ticks.length - 3];
+      const to = lane.ticks[lane.ticks.length - 2];
+      bracket(from, to, base + 46, palette.ink);
+      ctx.font = `26px ${fonts.sans}`;
+      centered("TPOT", at((from + to) / 2), base + 84, palette.ink);
+    }
+  });
+  ctx.fillStyle = palette.faint;
+  ctx.font = `28px ${fonts.sans}`;
+  paragraph(ctx, "Pink dot: the first token. Dark dots: later tokens, one per decode step. TTFT is the wait from arrival to the first token; TPOT is the gap between two dots. Widths are illustrative, not measured.", x0, 960, x1 - x0, 40);
+  ctx.fillStyle = palette.ink;
+  ctx.font = `44px ${fonts.serif}`;
+  ctx.fillText("batching, to scale", x0, 1110);
+  ctx.fillStyle = palette.faint;
+  ctx.font = `26px ${fonts.sans}`;
+  ctx.fillText("engine with CUDA Graphs, whole decode step, docs/results.md", x0, 1148);
+  const barX = x0 + 150;
+  const barMax = x1 - 170 - barX;
+  const bars = (title: string, y: number, values: number[], text: (v: number) => string) => {
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(title, x0, y);
+    values.forEach((v, i) => {
+      const top = y + 24 + i * 52;
+      const width = (barMax * v) / Math.max(...values);
+      ctx.fillStyle = palette.ink;
+      ctx.font = `28px ${fonts.sans}`;
+      ctx.fillText(i === 0 ? "1 row" : `${batchRows[i]} rows`, x0, top + 25);
+      ctx.fillStyle = i === 0 ? palette.faint : palette.blue;
+      ctx.beginPath();
+      ctx.roundRect(barX, top, width, 34, 5);
+      ctx.fill();
+      ctx.fillStyle = palette.ink;
+      ctx.fillText(text(v), barX + width + 16, top + 26);
+    });
+  };
+  bars("time per output token, measured", 1210, tpotMs, (v) => `${v.toFixed(2)} ms`);
+  bars("tokens per second, decode alone, calculated", 1370, tokensPerSecond, (v) => whole(v));
+}
+
 
 const forWho = [
   "This book follows one token through an inference engine written from scratch in C++ and CUDA, kernel by kernel. The model is TinyLlama 1.1B and the hardware is one laptop GPU, an RTX 5060, and every number in the book was measured on it.",
@@ -535,6 +718,7 @@ function textPage(side: Side, kicker: string, title: string, paragraphs: string[
     ctx.fillText(kicker, x0, 150);
     ctx.fillStyle = palette.ink;
     ctx.font = `92px ${fonts.serif}`;
+    ctx.font = `${Math.min(92, (92 * (x1 - x0)) / ctx.measureText(title).width)}px ${fonts.serif}`;
     ctx.fillText(title, x0, 260);
     let px = size;
     const fit = (draw: boolean) => {
@@ -549,8 +733,6 @@ function textPage(side: Side, kicker: string, title: string, paragraphs: string[
     if (side === "left") folio(ctx, String(page() ?? ""), side, x0, x1, palette, fonts);
   };
 }
-
-const chapterNumber = (slug: string) => bookOrder.indexOf(slug) + 1;
 
 type MapRow = { y: number; label: string; slugs: string[]; inLayer: boolean };
 
@@ -617,11 +799,12 @@ function mapLinks(): PageLink[] {
     .map((r) => ({ side: "right" as const, box: [170 / W, (r.y - 46) / H, (W - 130) / W, (r.y + 16) / H] as [number, number, number, number], href: bookHref(r.slugs[0]), label: `${r.label}, chapter ${chapterNumber(r.slugs[0])}` }));
 }
 
-export const startText = { forWho, needFirst, tokenLife, map: () => mapRows().rows };
+export const startText = { forWho, needFirst, tokenLife, serving, servingFigure, map: () => mapRows().rows };
 
 export function startStops(): Stop[] {
   const page = () => chapterPage("start");
   const next = () => (chapterPage("start") ?? 0) + 1;
+  const last = () => (chapterPage("start") ?? 0) + 2;
   return [
     {
       ...flatStop(0, "Start here: who this book is for", "start here", [...forWho, ...needFirst]),
@@ -632,9 +815,14 @@ export function startStops(): Stop[] {
       paint: { left: textPage("left", "Every Byte · start here", "the life of a token", tokenLife, next, 32), right: tokenMapPage },
       links: mapLinks(),
     },
+    {
+      ...flatStop(2, "Start here: serving in one spread", "serving in one spread", serving),
+      paint: { left: textPage("left", "Every Byte · start here", "serving in one spread", serving, last, 32), right: servingPage },
+    },
   ];
 }
 
+const startSpreads = startStops().length;
 function fitLayout(layout: (scale: number, draw: boolean) => number, bottom: number) {
   let scale = 1;
   while (scale > 0.6 && layout(scale, false) > bottom) scale -= 0.02;

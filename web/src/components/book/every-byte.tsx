@@ -670,7 +670,7 @@ export function EveryByte() {
                   ))}
                 </ul>
               </>
-            ) : (
+            ) : meta.local === 1 ? (
               <>
                 <h1 className="font-serif text-2xl text-text">the life of a token</h1>
                 <div className="mt-2 space-y-2">
@@ -694,6 +694,27 @@ export function EveryByte() {
                   ))}
                 </ol>
                 <p className="mt-1 text-xs">Every layer repeats the indented rows, 22 times.</p>
+              </>
+            ) : (
+              <>
+                <h1 className="font-serif text-2xl text-text">serving in one spread</h1>
+                <div className="mt-2 space-y-2">
+                  {startText.serving.map((p) => (
+                    <p key={p}>{gloss(p)}</p>
+                  ))}
+                </div>
+                <h2 className="mt-3 font-serif text-xl text-text">three requests</h2>
+                <div className="mt-1 space-y-2">
+                  {startText.servingFigure.map((p) => (
+                    <p key={p}>{gloss(p)}</p>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs">
+                  Chapter {bookOrder.indexOf("chunked-prefill") + 1}, chunked prefill, is about the stalls.{" "}
+                  <Link href={bookHref("chunked-prefill")} onClick={(e) => inBook(e, "chunked-prefill")} className="link-underline text-text">
+                    Open it
+                  </Link>
+                </p>
               </>
             )
           ) : spread ? (
