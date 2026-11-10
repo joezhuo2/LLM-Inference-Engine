@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExerciseCard } from "@/components/exercise-card";
+import { EstimateCard } from "@/components/estimate-card";
+import { bookHref } from "@/components/book/paths";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
+import { estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { cloneCommand, cpuCount, exercises, numpyCount } from "@/content/exercises";
 import { ogImage } from "@/lib/og";
 
@@ -66,6 +69,28 @@ export default function Exercises() {
             ))}
           </section>
         ))}
+        <section aria-labelledby="estimates" className="space-y-6">
+          <div className="space-y-2">
+            <h2 id="estimates" className="scroll-mt-20 font-serif text-3xl text-text">
+              {estimatesTitle}
+            </h2>
+            {estimatesIntro.map((p) => (
+              <p key={p} className="max-w-2xl text-muted">
+                {p}
+              </p>
+            ))}
+            <p className="max-w-2xl text-sm text-muted">
+              The same problems are in{" "}
+              <Link href={bookHref("estimates")} className="link-underline text-text">
+                Every Byte
+              </Link>
+              , after the last chapter.
+            </p>
+          </div>
+          {estimates.map((e, i) => (
+            <EstimateCard key={e.id} estimate={e} n={i + 1} />
+          ))}
+        </section>
       </article>
     </PageTransition>
   );

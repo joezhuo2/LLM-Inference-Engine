@@ -1,11 +1,12 @@
 import { bookOrder, bookParts, chapterNumber } from "@/content/book-order";
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
+import { type Estimate, estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { kernelStory, layerOps } from "@/content/kernels";
 import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
 import { measured } from "@/content/kernels/types";
-import { chapterReview } from "@/content/reviews";
-import type { ChapterReview } from "@/content/reviews/types";
+import { chapterReview, recallOf } from "@/content/reviews";
+import type { ChapterReview, ReviewQuestion } from "@/content/reviews/types";
 import { loadSlo } from "@/lib/data";
 import { PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
@@ -21,9 +22,9 @@ export const chapterPage = (key: string): number | undefined => firstPage[key];
 
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
-  for (const key of ["start", "contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "errata"]) {
+  for (const key of ["start", "contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "estimates", "errata"]) {
     firstPage[key] = page;
-    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "errata" ? errataSpreads.length : spreads[key];
+    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
   }
   return page - 1;
 }
@@ -94,7 +95,10 @@ function contentsRows(parts: typeof bookParts, withErrata: boolean) {
     }
     y += 40;
   }
-  if (withErrata) rows.push({ kind: "entry", y: y + 20, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+  if (withErrata) {
+    rows.push({ kind: "entry", y: y + 20, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
+    rows.push({ kind: "entry", y: y + 20 + ROW, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+  }
   return rows;
 }
 
@@ -893,7 +897,14 @@ function reviewRight(def: ChapterDef, r: ChapterReview) {
         if (draw) ctx.fillText(String(i + 1), x0, y);
         ctx.fillStyle = palette.ink;
         ctx.font = `${34 * scale}px ${fonts.sans}`;
-        y = paragraph(ctx, q.question, x0 + 56, y, width - 56, 50 * scale, draw) + 60 * scale;
+        y = paragraph(ctx, q.question, x0 + 56, y, width - 56, 50 * scale, draw);
+        const recall = recallOf(q);
+        if (recall) {
+          ctx.fillStyle = palette.faint;
+          ctx.font = `${26 * scale}px ${fonts.sans}`;
+          y = paragraph(ctx, recall.line, x0 + 56, y + 2 * scale, width - 56, 36 * scale, draw);
+        }
+        y += 60 * scale;
       });
       return y;
     }, H - 320);
@@ -918,7 +929,13 @@ function answerPage(def: ChapterDef, r: ChapterReview, k: number, side: Side, pa
       fitLayout((scale, draw) => {
         ctx.fillStyle = palette.faint;
         ctx.font = `${30 * scale}px ${fonts.sans}`;
-        let y = paragraph(ctx, q.question, x0, 350, width, 44 * scale, draw) + 50 * scale;
+        let y = paragraph(ctx, q.question, x0, 350, width, 44 * scale, draw);
+        const recall = recallOf(q);
+        if (recall) {
+          ctx.font = `${26 * scale}px ${fonts.sans}`;
+          y = paragraph(ctx, recall.line, x0, y + 2 * scale, width, 36 * scale, draw);
+        }
+        y += 50 * scale;
         ctx.fillStyle = palette.blue;
         ctx.font = `${50 * scale}px ${fonts.serif}`;
         y = paragraph(ctx, q.answer, x0, y + 20 * scale, width, 62 * scale, draw) + 30 * scale;
@@ -927,6 +944,60 @@ function answerPage(def: ChapterDef, r: ChapterReview, k: number, side: Side, pa
         return paragraph(ctx, q.why, x0, y, width, 48 * scale, draw);
       }, H - 170);
     }
+    if (side === "left") folio(ctx, String(page()), side, x0, x1, palette, fonts);
+  };
+}
+
+const answersOnLeft = 2;
+const answersTop = 350;
+
+function answerBlock(ctx: Ctx, palette: BookPalette, fonts: Fonts, q: ReviewQuestion, n: number, x0: number, width: number, top: number, scale: number, draw: boolean) {
+  const text = x0 + 56;
+  const room = width - 56;
+  if (draw) {
+    ctx.fillStyle = palette.blue;
+    ctx.font = `${44 * scale}px ${fonts.serif}`;
+    ctx.fillText(String(n), x0, top + 30 * scale);
+  }
+  ctx.fillStyle = palette.faint;
+  ctx.font = `${28 * scale}px ${fonts.sans}`;
+  let y = paragraph(ctx, q.question, text, top + 26 * scale, room, 40 * scale, draw);
+  const recall = recallOf(q);
+  if (recall) {
+    ctx.font = `${24 * scale}px ${fonts.sans}`;
+    y = paragraph(ctx, recall.line, text, y + 2 * scale, room, 34 * scale, draw);
+  }
+  ctx.fillStyle = palette.blue;
+  ctx.font = `${42 * scale}px ${fonts.serif}`;
+  y = paragraph(ctx, q.answer, text, y + 24 * scale, room, 52 * scale, draw);
+  ctx.fillStyle = palette.ink;
+  ctx.font = `${29 * scale}px ${fonts.sans}`;
+  return paragraph(ctx, q.why, text, y + 6 * scale, room, 42 * scale, draw);
+}
+
+const answersOn = (r: ChapterReview, side: Side) => (side === "left" ? [0, Math.min(answersOnLeft, r.questions.length)] : [answersOnLeft, r.questions.length]);
+
+function answerStack(ctx: Ctx, palette: BookPalette, fonts: Fonts, r: ChapterReview, side: Side, x0: number, width: number, scale: number, draw: boolean) {
+  const [from, to] = answersOn(r, side);
+  let y = answersTop;
+  for (let k = from; k < to; k++) y = answerBlock(ctx, palette, fonts, r.questions[k], k + 1, x0, width, k > from ? y + 50 * scale : y, scale, draw);
+  return y;
+}
+
+function answersPage(def: ChapterDef, r: ChapterReview, side: Side, page: () => number) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    const width = x1 - x0;
+    const [from, to] = answersOn(r, side);
+    let scale = 1;
+    while (scale > 0.55 && (["left", "right"] as const).some((s) => answerStack(ctx, palette, fonts, r, s, x0, width, scale, false) > H - 170)) scale -= 0.02;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`chapter ${def.number} · review · answers`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText(to - from === 1 ? `answer ${from + 1}` : to - from === 2 ? `answers ${from + 1} and ${to}` : `answers ${from + 1} to ${to}`, x0, 260);
+    answerStack(ctx, palette, fonts, r, side, x0, width, scale, true);
     if (side === "left") folio(ctx, String(page()), side, x0, x1, palette, fonts);
   };
 }
@@ -948,6 +1019,121 @@ export function reviewStops(def: ChapterDef): Stop[] {
   });
   return [
     { ...base(first, reviewTitles[0], "Review: what to remember, then check yourself", [r.lesson, r.why, ...r.takeaways]), paint: { left: reviewLeft(def, r, page(first)), right: reviewRight(def, r) } },
-    { ...base(first + 1, reviewTitles[1], "Review: the answers", r.questions.map((q) => `${q.answer} ${q.why}`)), paint: { left: answerPage(def, r, 0, "left", page(first + 1)), right: answerPage(def, r, 1, "right", page(first + 1)) } },
+    { ...base(first + 1, reviewTitles[1], "Review: the answers", r.questions.map((q) => `${q.answer} ${q.why}`)), paint: r.questions.length > answersOnLeft ? { left: answersPage(def, r, "left", page(first + 1)), right: answersPage(def, r, "right", page(first + 1)) } : { left: answerPage(def, r, 0, "left", page(first + 1)), right: answerPage(def, r, 1, "right", page(first + 1)) } },
+  ];
+}
+
+export const estimateSpreads = 1 + estimates.length;
+
+const estimatePage = (k: number) => (chapterPage("estimates") ?? 0) + k;
+
+function estimateListPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) {
+  const { ctx, x0, x1 } = begin(canvas, "right");
+  ctx.fillStyle = palette.faint;
+  ctx.font = `26px ${fonts.sans}`;
+  ctx.fillText(`Every Byte · ${estimatesTitle}`, x0, 150);
+  ctx.fillStyle = palette.ink;
+  ctx.font = `92px ${fonts.serif}`;
+  ctx.fillText("the problems", x0, 260);
+  estimates.forEach((e, k) => {
+    const y = 380 + k * ROW;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `40px ${fonts.serif}`;
+    ctx.fillText(String(k + 1), x0, y);
+    const target = String(estimatePage(k + 1));
+    ctx.font = `30px ${fonts.sans}`;
+    const pw = ctx.measureText(target).width;
+    ctx.fillText(target, x1 - pw, y);
+    const tx = x0 + 70;
+    let size = 46;
+    ctx.font = `${size}px ${fonts.serif}`;
+    while (size > 26 && ctx.measureText(e.title).width > x1 - pw - 40 - tx) ctx.font = `${--size}px ${fonts.serif}`;
+    ctx.fillStyle = palette.ink;
+    ctx.fillText(e.title, tx, y);
+    ctx.fillStyle = palette.faint;
+    for (let x = tx + ctx.measureText(e.title).width + 18; x < x1 - pw - 22; x += 16) ctx.fillRect(x, y - 4, 3, 3);
+  });
+  ctx.fillStyle = palette.blue;
+  ctx.font = `40px ${fonts.serif}`;
+  paragraph(ctx, "Work each one out on paper, then turn the page for the working.", x0, H - 250, x1 - x0, 48);
+}
+
+function estimateQuestion(e: Estimate, k: number) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, "left");
+    const width = x1 - x0;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`${estimatesTitle} · problem ${k + 1} of ${estimates.length}`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.font = `${Math.min(92, (92 * width) / ctx.measureText(e.title).width)}px ${fonts.serif}`;
+    ctx.fillText(e.title, x0, 260);
+    fitLayout((scale, draw) => {
+      ctx.fillStyle = palette.ink;
+      ctx.font = `${38 * scale}px ${fonts.sans}`;
+      let y = paragraph(ctx, e.question, x0, 370, width, 56 * scale, draw) + 40 * scale;
+      ctx.fillStyle = palette.blue;
+      ctx.font = `${40 * scale}px ${fonts.serif}`;
+      y = paragraph(ctx, e.first, x0, y, width, 56 * scale, draw) + 50 * scale;
+      ctx.fillStyle = palette.faint;
+      ctx.font = `${24 * scale}px ${fonts.sans}`;
+      if (draw) ctx.fillText("sources", x0, y);
+      y += 14 * scale;
+      for (const source of e.sources) {
+        ctx.font = `${26 * scale}px ${fonts.sans}`;
+        y = paragraph(ctx, source, x0, y + 28 * scale, width, 36 * scale, draw) - 6 * scale;
+      }
+      return y;
+    }, H - 170);
+    folio(ctx, String(estimatePage(k + 1)), "left", x0, x1, palette, fonts);
+  };
+}
+
+function estimateWorking(e: Estimate, k: number) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, "right");
+    const width = x1 - x0;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`problem ${k + 1} · the working`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText("working", x0, 260);
+    fitLayout((scale, draw) => {
+      let y = 340;
+      e.steps.forEach((step, i) => {
+        ctx.fillStyle = palette.blue;
+        ctx.font = `${36 * scale}px ${fonts.serif}`;
+        if (draw) ctx.fillText(String(i + 1), x0, y + 28 * scale);
+        ctx.fillStyle = palette.ink;
+        ctx.font = `${29 * scale}px ${fonts.sans}`;
+        y = paragraph(ctx, step, x0 + 50, y + 28 * scale, width - 50, 42 * scale, draw) + 14 * scale;
+      });
+      ctx.fillStyle = palette.faint;
+      ctx.font = `${24 * scale}px ${fonts.sans}`;
+      y += 30 * scale;
+      if (draw) ctx.fillText("the answer", x0, y);
+      ctx.fillStyle = palette.blue;
+      ctx.font = `${40 * scale}px ${fonts.serif}`;
+      y = paragraph(ctx, e.answer, x0, y + 46 * scale, width, 52 * scale, draw) + 16 * scale;
+      ctx.fillStyle = palette.ink;
+      ctx.font = `${30 * scale}px ${fonts.sans}`;
+      return paragraph(ctx, e.teaches, x0, y + 20 * scale, width, 44 * scale, draw);
+    }, H - 170);
+  };
+}
+
+export function estimateStops(firstSpread: number): Stop[] {
+  const intro: Stop = {
+    ...flatStop(firstSpread, `Estimate it yourself: ${estimates.length} problems`, estimatesTitle, estimatesIntro),
+    paint: { left: textPage("left", "Every Byte", estimatesTitle, estimatesIntro, () => estimatePage(0), 34), right: estimateListPage },
+  };
+  return [
+    intro,
+    ...estimates.map((e, k): Stop => ({
+      ...flatStop(firstSpread + 1 + k, `Estimate ${k + 1}: ${e.title}`, e.title, [e.question, e.first, ...e.steps, e.answer, e.teaches]),
+      paint: { left: estimateQuestion(e, k), right: estimateWorking(e, k) },
+    })),
   ];
 }

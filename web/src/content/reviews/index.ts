@@ -10,8 +10,17 @@ import { review as swiglu } from "./swiglu";
 import { review as sampling } from "./sampling";
 import { review as cudaGraphs } from "./cuda-graphs";
 import { review as chunkedPrefill } from "./chunked-prefill";
-import type { ChapterReview } from "./types";
+import { chapterNumber } from "../book-order";
+import { kernelStory } from "../kernels";
+import type { ChapterReview, ReviewQuestion } from "./types";
 
 const reviews: Record<string, ChapterReview> = { foundations, gemm, rope, "paged-kv": pagedKv, "paged-attention": pagedAttention, "attention-v2": attentionV2, "split-attention": splitAttention, "add-rmsnorm": addRmsnorm, swiglu, sampling, "cuda-graphs": cudaGraphs, "chunked-prefill": chunkedPrefill };
 
 export const chapterReview = (slug: string): ChapterReview | undefined => (reviews[slug]?.takeaways.length ? reviews[slug] : undefined);
+
+export function recallOf(q: ReviewQuestion): { slug: string; line: string } | undefined {
+  if (!q.recall) return undefined;
+  const title = kernelStory(q.recall)?.title;
+  if (!title || chapterNumber(q.recall) === 0) throw new Error(`a review question recalls "${q.recall}", which is not a chapter of the book`);
+  return { slug: q.recall, line: `recalls chapter ${chapterNumber(q.recall)}, ${title}` };
+}

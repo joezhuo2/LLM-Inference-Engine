@@ -2043,3 +2043,10 @@
 - **GEMM epilogue fusion** => 
 - **TTFT as queue plus prefill, TPOT as one decode step** => 
 - **goodput against a TTFT and TPOT target** => 
+
+## Practice pass (Branch 134)
+
+- **decode floor: weight bytes divided by bandwidth, on any GPU** => 
+- **KV cache bytes per token and concurrent requests per GB** => 
+- **bytes per weight against VRAM (why quantization matters)** => 
+- **recall questions across chapters (retrieval practice)** => 

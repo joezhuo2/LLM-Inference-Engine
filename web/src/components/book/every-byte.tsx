@@ -11,20 +11,21 @@ import { gloss } from "@/components/glossed";
 import { BookText } from "@/components/kernels/authorship";
 import { Scramble } from "@/components/scramble";
 import { kindLabel } from "@/content/dead-ends";
+import { estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { chapterExercises, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
-import { chapterReview } from "@/content/reviews";
+import { chapterReview, recallOf } from "@/content/reviews";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
+import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
 
 const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
-const sectionKeys = ["start", "contents", ...chapterSlugs, "errata"];
+const sectionKeys = ["start", "contents", ...chapterSlugs, "estimates", "errata"];
 const beatMs = 6500;
 let numbered: Promise<number> | undefined;
 const numberBook = () =>
@@ -41,7 +42,7 @@ function parsePlace(): Place {
   const slug = path.split("/")[2];
   if (slug && chapterSlugs.includes(slug)) return { closed: false, key: slug, local: 0 };
   if (slug === "start") return { closed: false, key: "start", local: 0 };
-  return { closed: false, key: window.location.hash === "#errata" ? "errata" : "contents", local: 0 };
+  return { closed: false, key: window.location.hash === "#errata" ? "errata" : window.location.hash === "#estimates" ? "estimates" : "contents", local: 0 };
 }
 
 function deferred<T>() {
@@ -59,11 +60,11 @@ function Icon({ d }: { d: string }) {
 }
 
 function compose(raw: Record<string, Stop[]>) {
-  const keys = ["start", "contents", ...chapterSlugs.filter((s) => raw[s]), "errata"];
+  const keys = ["start", "contents", ...chapterSlugs.filter((s) => raw[s]), "estimates", "errata"];
   const stops: Stop[] = [];
   const meta: Meta[] = [];
   for (const key of keys) {
-    const slug = key === "start" || key === "contents" || key === "errata" ? undefined : key;
+    const slug = key === "start" || key === "contents" || key === "estimates" || key === "errata" ? undefined : key;
     raw[key].forEach((s, i) => {
       const folios = slug && i > 0 && s.page ? { page: { ...s.page, folio: String((chapterPage(key) ?? 0) + i) } } : {};
       meta.push({ key, local: slug ? i - 1 : i, slug, exhibit: slug ? s.exhibit : null });
@@ -73,7 +74,7 @@ function compose(raw: Record<string, Stop[]>) {
   return { stops, meta };
 }
 
-const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], errata: errataStops(0) };
+const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], estimates: estimateStops(0), errata: errataStops(0) };
 const initial = compose(base);
 
 export function EveryByte() {
@@ -195,7 +196,7 @@ export function EveryByte() {
   const preload = useCallback(
     (index: number) => {
       const slug = book.current.meta[index]?.slug;
-      const at = slug ? chapterSlugs.indexOf(slug) : book.current.meta[index]?.key === "errata" ? chapterSlugs.length : -1;
+      const at = slug ? chapterSlugs.indexOf(slug) : (book.current.meta[index]?.key === "estimates" || book.current.meta[index]?.key === "errata") ? chapterSlugs.length : -1;
       for (const n of [chapterSlugs[at - 1], chapterSlugs[at + 1]]) if (n) void ensure(n);
     },
     [ensure],
@@ -289,7 +290,7 @@ export function EveryByte() {
 
   const onLinkHref = useCallback(
     (href: string) => {
-      if (href === "#errata") return void goKey("errata", true);
+      if (href === "#errata" || href === "#estimates") return void goKey(href.slice(1), true);
       if (/^https?:\/\//.test(href)) return void window.open(href, "_blank", "noopener,noreferrer");
       const [path, at] = href.split("#");
       const slug = path.startsWith(`${BOOK}/`) ? path.slice(BOOK.length + 1) : "";
@@ -460,6 +461,7 @@ export function EveryByte() {
   const title = stops[stop]?.page?.title ?? "";
   const caption = open ? (beats[beat]?.caption ?? title) : "Every Byte: click the cover to open the book";
   const spread = segment === "errata" && meta ? errataSpreads[meta.local] : null;
+  const problem = segment === "estimates" && meta ? estimates[meta.local - 1] : undefined;
   const chapterStep = def && meta ? def.steps[meta.local] : undefined;
   const bench = def && meta ? def.workbench[meta.local - def.steps.length] : undefined;
   const reviewAt = def && meta ? meta.local - def.steps.length - def.workbench.length : -1;
@@ -618,7 +620,10 @@ export function EveryByte() {
                 <h2 className="mt-3 font-serif text-xl text-text">check yourself</h2>
                 <ol className="mt-1 list-decimal space-y-1 pl-4">
                   {review.questions.map((q) => (
-                    <li key={q.question}>{gloss(q.question)}</li>
+                    <li key={q.question}>
+                      {gloss(q.question)}
+                      {recallOf(q) && <span className="block text-xs">{recallOf(q)?.line}</span>}
+                    </li>
                   ))}
                 </ol>
                 <p className="mt-1 text-xs">Decide your answers, then turn the page.</p>
@@ -630,6 +635,7 @@ export function EveryByte() {
                 {review.questions.map((q, i) => (
                   <section key={q.question} className="mt-2 space-y-1">
                     <p className="text-xs">{`${i + 1}. ${q.question}`}</p>
+                    {recallOf(q) && <p className="text-xs">{recallOf(q)?.line}</p>}
                     <p className="text-text">{gloss(q.answer)}</p>
                     <p>{gloss(q.why)}</p>
                   </section>
@@ -717,6 +723,45 @@ export function EveryByte() {
                 </p>
               </>
             )
+          ) : segment === "estimates" && meta ? (
+            problem ? (
+              <>
+                <h2 className="text-xs">{`${estimatesTitle} · problem ${meta.local} of ${estimates.length}`}</h2>
+                <h1 className="font-serif text-2xl text-text">{problem.title}</h1>
+                <p className="mt-2 text-text">{gloss(problem.question)}</p>
+                <p className="mt-2">{gloss(problem.first)}</p>
+                <ul className="mt-2 text-xs">
+                  {problem.sources.map((s) => (
+                    <li key={s}>{s}</li>
+                  ))}
+                </ul>
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-text">the working and the answer</summary>
+                  <ol className="mt-1 list-decimal space-y-1 pl-4">
+                    {problem.steps.map((s) => (
+                      <li key={s}>{gloss(s)}</li>
+                    ))}
+                  </ol>
+                  <p className="mt-2 font-serif text-lg text-accent">{gloss(problem.answer)}</p>
+                  <p className="mt-1 text-text">{gloss(problem.teaches)}</p>
+                </details>
+              </>
+            ) : (
+              <>
+                <h1 className="font-serif text-2xl text-text">{estimatesTitle}</h1>
+                <div className="mt-2 space-y-2">
+                  {estimatesIntro.map((p) => (
+                    <p key={p}>{p}</p>
+                  ))}
+                </div>
+                <h2 className="mt-3 font-serif text-xl text-text">the problems</h2>
+                <ol className="mt-1 list-decimal pl-4">
+                  {estimates.map((e) => (
+                    <li key={e.id}>{e.title}</li>
+                  ))}
+                </ol>
+              </>
+            )
           ) : spread ? (
             <>
               {!spread.left && (
@@ -762,6 +807,10 @@ export function EveryByte() {
                   </ol>
                 </div>
               ))}
+              <button type="button" onClick={() => void goKey("estimates", true)} className="link-underline mt-2 flex w-full text-text">
+                Estimate it yourself
+                <span className="ml-auto tabular-nums text-muted">{chapterPage("estimates")}</span>
+              </button>
               <button type="button" onClick={() => void goKey("errata", true)} className="link-underline mt-2 flex w-full text-text">
                 {`Errata: ${errataTitle}`}
                 <span className="ml-auto tabular-nums text-muted">{chapterPage("errata")}</span>
