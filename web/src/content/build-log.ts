@@ -14,7 +14,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
-  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked";
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -60,6 +60,21 @@ const graphSteps = profilingTable(sweep, 2, "results").rows.map((r) => r[0]);
 const defaultSteps = 2;
 const bucket = (steps: string) => padding(steps, bucketColumn);
 const padded = { coarse: padding("1", "TPOT p50 (ms)"), fine: padding(String(defaultSteps), "TPOT p50 (ms)") };
+const ladderMax = bucket("1");
+
+function ladder(steps: number) {
+  const sizes = graphBuckets(ladderMax, steps);
+  const size = bucket(String(steps));
+  if (paddedRows === undefined || sizes.find((b) => b >= paddedRows) !== size) throw new Error(`docs/results.md Batch size past 16: the padding table puts ${paddedRows} rows in the graph for ${size} at ${steps} graph steps, the bucket rule does not`);
+  return { steps, sizes, size, ms: padding(String(steps), "TPOT p50 (ms)") };
+}
+
+export const bucketScene = { rows: paddedRows ?? 0, maxBatch: ladderMax, ladders: [ladder(1), ladder(defaultSteps)], costPct: (100 * (padded.coarse - padded.fine)) / padded.fine };
+
+const profiledBatches = profilingTable(sweep, 1, "results").rows.map((r) => r[0]);
+
+export const sweepScene = { knee, points: sweepBatches.map((b) => ({ batch: b, tokens: sweepTokens(b), share: profiledBatches.includes(b) ? tableValue(sweep, { "max batch": b }, "attention share", 1, "results") : undefined })), gains: sweepBatches.map((_, i) => sweepGain[i]), toKnee: sweepTokens(knee) / sweepTokens(sweepBatches[0]) };
+
 const lookup = embeddingLaunch();
 
 export const milestones: Milestone[] = [
@@ -407,8 +422,9 @@ export const milestones: Milestone[] = [
         date: "Nov 10",
         prs: [176, 183, 187, 190],
         branch: "runtime/graph-steps-default",
+        scene: "buckets",
         title: "Graphs between the powers of two",
-        text: `A CUDA Graph is captured for a fixed number of rows, so a step with ${paddedRows} sequences used to replay the graph for ${bucket("1")} and pay for the padding. Joe wrote decode_graph_buckets, and engine bench and engine serve take --graph-steps: at ${defaultSteps}, now the default, max batch ${sweepBatches[0]} gets graphs at ${graphBuckets(Number(sweepBatches[0]), defaultSteps).join(", ")} where it had only the powers of two. Padding ${paddedRows} rows to ${bucket("1")} cost about ${((100 * (padded.coarse - padded.fine)) / padded.fine).toFixed(0)}% per token against the graph for ${bucket(String(defaultSteps))} (calculated from the bars). Finer steps gained nothing.`,
+        text: `A CUDA Graph is captured for a fixed number of rows, so a step with ${paddedRows} sequences used to replay the graph for ${bucket("1")} and pay for the padding. Joe wrote decode_graph_buckets, and engine bench and engine serve take --graph-steps: at ${defaultSteps}, now the default, max batch ${sweepBatches[0]} gets graphs at ${graphBuckets(Number(sweepBatches[0]), defaultSteps).join(", ")} where it had only the powers of two. Padding ${paddedRows} rows to ${bucket("1")} cost about ${bucketScene.costPct.toFixed(0)}% per token against the graph for ${bucket(String(defaultSteps))} (calculated from the bars). Finer steps gained nothing.`,
         metric: {
           kind: "bars",
           label: `measured ms per token with ${paddedRows} sequences, by the graph they replay`,
@@ -421,6 +437,7 @@ export const milestones: Milestone[] = [
         date: "Nov 10",
         prs: [187],
         branch: "runtime/graph-buckets-wiring",
+        scene: "sweep",
         title: `Batch size past ${sweepBatches[0]}`,
         text: `Every earlier result stopped at max batch ${sweepBatches[0]}. A sweep up to ${sweepBatches[sweepBatches.length - 1]} shows where batching stops paying on this GPU: throughput with graphs climbs from ${whole(sweepTokens(sweepBatches[0]))} to ${whole(sweepTokens(knee))} tok/s at max batch ${knee}, then flattens to ${afterKnee.map((b) => whole(sweepTokens(b))).join(" and ")}. Past ${knee} the step time doubles with the rows: at ${afterKnee[0]} attention is ${tableValue(sweep, { "max batch": afterKnee[0] }, "attention share", 1, "results")}% of a step's GPU time and the GEMMs have turned compute bound.`,
         metric: {
