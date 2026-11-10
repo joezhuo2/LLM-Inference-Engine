@@ -65,6 +65,8 @@ const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 const rad = (deg: number) => (deg * Math.PI) / 180;
 const defaultCoverFrame: Frame = { center: [0.45, 0, 0], width: 1.9, depth: 2, az: 12, el: 58 };
 
+const HURRY = 0.12;
+
 type Tween = { elapsed: number; duration: number; step: (t: number) => void; resolve: () => void };
 
 function pageGeometry(side: 1 | -1, y: number): THREE.BufferGeometry {
@@ -154,6 +156,7 @@ export class BookScene {
   private camera = new THREE.PerspectiveCamera(26, 1, 0.05, 40);
   private timer = new THREE.Timer();
   private tweens: Tween[] = [];
+  private rush = false;
   private raf = 0;
   private visible = true;
   private frozen = false;
@@ -575,6 +578,7 @@ export class BookScene {
   }
 
   private tween(duration: number, step: (t: number) => void): Promise<void> {
+    if (this.rush) duration = Math.min(duration, HURRY);
     if (duration <= 0 || this.options.reduced) {
       step(1);
       return Promise.resolve();
@@ -674,7 +678,24 @@ export class BookScene {
   goTo(stop: number, beat: number, riffle = false): void {
     this.target = { stop, beat };
     this.riffleNext = riffle;
+    if (this.running) {
+      this.rush = true;
+      this.hurry(HURRY);
+    }
     this.kick();
+  }
+
+  private hurry(seconds: number): void {
+    for (const tween of this.tweens) {
+      const t = clamp01(tween.elapsed / tween.duration);
+      if (t >= 1 || tween.duration - tween.elapsed <= seconds) continue;
+      tween.duration = seconds / (1 - t);
+      tween.elapsed = t * tween.duration;
+    }
+  }
+
+  private moved(stop: number, beat: number): boolean {
+    return this.target.stop !== stop || this.target.beat !== beat;
   }
 
   setStops(stops: Stop[], map: (index: number) => number): void {
@@ -696,6 +717,7 @@ export class BookScene {
     this.running = true;
     this.hoverTerm(null, null, false);
     while (this.opened && (this.applied.stop !== this.target.stop || this.applied.beat !== this.target.beat)) {
+      this.rush = false;
       const { stop, beat } = this.target;
       if (stop === this.applied.stop) {
         this.applied.beat = beat;
@@ -703,12 +725,13 @@ export class BookScene {
         this.frozen = false;
         this.options.onOverlay(null);
         this.setCamGoal(this.beatOf(stop, beat)!, 1.9);
-        await this.waitForCamera();
+        if (!this.moved(stop, beat)) await this.waitForCamera();
       } else {
         await this.moveToStop(stop, beat);
       }
       this.publishOverlay();
     }
+    this.rush = false;
     this.running = false;
   }
 
@@ -725,7 +748,7 @@ export class BookScene {
     this.frozenSoon = false;
     this.options.onOverlay(null);
     const exhibitChanges = from.exhibit !== to.exhibit || from.spread !== to.spread;
-    if (exhibitChanges && from.exhibit !== null) await this.foldDown(from.exhibit);
+    const fold = exhibitChanges && from.exhibit !== null ? this.foldDown(from.exhibit) : null;
     this.setCamGoal(this.beatOf(stop, beat)!, 1.9);
     const riffle = this.riffleNext;
     this.riffleNext = false;
@@ -741,16 +764,22 @@ export class BookScene {
       this.leftText.commit(left);
       this.rightText.commit(right);
     }
+    if (fold) await fold;
     this.applied.stop = stop;
     this.applied.beat = beat;
     this.model.enter?.(stop);
+    if (this.moved(stop, beat)) return;
     if (exhibitChanges && to.exhibit !== null) await this.popUp(to.exhibit, 0.05);
-    await this.waitForCamera();
+    if (!this.moved(stop, beat)) await this.waitForCamera();
   }
 
   private foldDown(index: number): Promise<void> {
     const exhibit = this.model.exhibits[index];
     const start = exhibit.scale.y;
+    if (!exhibit.visible || start <= 0.01) {
+      exhibit.visible = false;
+      return Promise.resolve();
+    }
     return this.tween(0.55, (t) => {
       exhibit.scale.y = Math.max(0.001, start * (1 - easeInOut(t)));
       if (t >= 1) exhibit.visible = false;

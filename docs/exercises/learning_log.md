@@ -2043,3 +2043,8 @@
 - **GEMM epilogue fusion** => 
 - **TTFT as queue plus prefill, TPOT as one decode step** => 
 - **goodput against a TTFT and TPOT target** => 
+
+## Responsive page turns (Branch 135)
+
+- **interruptible animations: compressing a running tween instead of waiting for it** => 
+- **input latency vs. animation length** => 
