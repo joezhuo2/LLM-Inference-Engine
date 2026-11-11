@@ -18,6 +18,7 @@ public:
     bool can_append(SeqId seq) const;
     int append_slot(SeqId seq);
     void free(SeqId seq);
+    void truncate(SeqId seq, int length);
 
     int slot(SeqId seq, int pos) const;
     const std::vector<int>& table(SeqId seq) const;

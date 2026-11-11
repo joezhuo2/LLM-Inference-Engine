@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## sched/speculative-stub
+
+- Add the speculative decoding Part C stub for #102 with its TODO(JOE) spec (`include/engine/sched/speculative.h`, `src/sched/speculative.cpp`, `BlockManager::truncate` in `include/engine/kv/block_manager.h`): `propose_prompt_lookup` guesses the next tokens by finding where the last few tokens appeared before in the context (longest pattern first, latest match), `count_accepted` counts how many guesses the model agreed with, and `truncate` gives back the cache slots of the rows computed from a wrong guess. The spec describes the step they serve (k + 1 rows of one sequence, a + 1 tokens emitted, the same tokens as plain decode). 24 todo_joe tests in `tests/todo/unit/test_speculative.cpp`, checked against a throwaway implementation and eight mutants. The three functions throw std::logic_error; the scheduler and runner side is not stubbed yet. (Part C stub)
+
 ## kv/prefix-cache-stub
 
 - Add the prefix caching Part C stub for #99 on `BlockManager` (`include/engine/kv/block_manager.h`, `src/kv/block_manager.cpp`) with its TODO(JOE) spec: `match_prefix`, `can_allocate_tokens`, `allocate_tokens`, `publish`, `ref_count` and `num_cached`. Full blocks are published with the tokens of the sequence up to their end, matched by the whole chain, shared through a count per block, kept after `free` and evicted least recently used first (the end of a chain before its start) only when no blank block is left. The last token of a request is never matched, and partial blocks are never shared, so there is no copy on write. 27 todo_joe tests in `tests/todo/unit/test_prefix_cache.cpp` (new target `todo_unit_tests`), checked against a throwaway implementation and eight mutants. The six functions throw std::logic_error; the scheduler does not call them yet. (Part C stub)

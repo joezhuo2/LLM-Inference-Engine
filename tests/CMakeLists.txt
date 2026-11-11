@@ -99,6 +99,7 @@ endif()
 
 add_executable(todo_unit_tests
   todo/unit/test_prefix_cache.cpp
+  todo/unit/test_speculative.cpp
 )
 target_link_libraries(todo_unit_tests PRIVATE engine_core GTest::gtest_main)
 gtest_discover_tests(todo_unit_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
