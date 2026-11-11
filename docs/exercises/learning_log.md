@@ -2194,3 +2194,8 @@
 - **bits per weight and what fits** => 
 - **a package mirror near the CI runner** => 
 - **a container on the host's network against a bridge network** => 
+
+## Fewer pages, more terms (Branch 149)
+
+- **a glossary alias matched by exact spelling** => 
+- **the first use of a term on a page gets the card** => 
