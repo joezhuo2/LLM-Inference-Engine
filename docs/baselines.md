@@ -60,19 +60,19 @@ Comparability: the same BF16 weights (the script stops if the server's log repor
 - **Memory:** neither system is short of KV space (0 preemptions in vLLM's runs): vLLM's cache holds 153,888 tokens at 70% of the VRAM.
 - **The limit of 16:** this matches the engine's run but is not vLLM's default for this GPU (128 sequences for the server), so these curves do not show what vLLM does with more concurrency. A sweep of both systems past 16 would be the fairer test at high rates.
 
-Reading (RTX 5060 Laptop GPU, 2026-11-05, rerun on the same day as the engine's budget sweep because the machine measured both systems faster than on 2026-11-03; median of 3 runs, 0 preemptions, every stream chunk carried exactly one token):
+Reading (RTX 5060 Laptop GPU, 2026-11-11 UTC, measured in the same boot as the engine's sweep in `docs/results.md`; median of 3 runs, 0 preemptions, every stream chunk carried exactly one token):
 
 | QPS | output tok/s | TTFT p50 ms | TTFT p99 ms | TPOT p50 ms | TPOT p99 ms |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 168 | 42 | 68 | 7.6 | 8.5 |
-| 2 | 331 | 28 | 48 | 7.5 | 8.1 |
-| 3 | 489 | 29 | 39 | 7.6 | 8.3 |
-| 4 | 641 | 30 | 41 | 8.1 | 8.4 |
-| 5 | 789 | 31 | 55 | 8.2 | 8.7 |
-| 6 | 933 | 31 | 90 | 8.3 | 8.7 |
-| 8 | 1,208 | 34 | 507 | 8.5 | 8.8 |
+| 1 | 167 | 60 | 121 | 8.8 | 11.5 |
+| 2 | 330 | 32 | 53 | 8.5 | 9.1 |
+| 3 | 482 | 45 | 122 | 9.6 | 14.3 |
+| 4 | 638 | 36 | 72 | 8.9 | 12.1 |
+| 5 | 785 | 34 | 63 | 8.8 | 9.5 |
+| 6 | 927 | 36 | 313 | 9.0 | 10.6 |
+| 8 | 1,192 | 38 | 644 | 9.2 | 9.5 |
 
-The client's own delay in sending a request reached at most 8 ms (p99 at most 5.4 ms) and is in these TTFTs, since they count from the scheduled arrival.
+vLLM's code and setup are those of the 2026-11-05 run, which measured a TPOT p50 of 7.5 to 8.5 ms: the machine was slower in this boot, and the repeats were less steady (at 3 and 4 QPS one run's TPOT p50 is about 10% from the median of its three). The client's own delay in sending a request reached at most 67 ms (p99 at most 47 ms) and is in these TTFTs, since they count from the scheduled arrival.
 
 ## Plots
 

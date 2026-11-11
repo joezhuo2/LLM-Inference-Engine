@@ -2135,3 +2135,12 @@
 - **a block table per request over one shared pool** => 
 - **a token budget per step** => 
 - **waiting for the remaining time of a tween against a whole new one** => 
+
+## Load sweep with flash prefill (Branch 144)
+
+- **goodput at an SLO** => 
+- **measuring two systems in the same boot** => 
+- **median of repeats against a single run** => 
+- **longest gap between two tokens against TPOT p99** => 
+- **where the time of a loaded run goes, by step kind** => 
+- **the 99th percentile when the slow events are under 1% of the samples** => 
