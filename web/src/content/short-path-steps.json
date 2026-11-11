@@ -98,7 +98,7 @@
    {
     "id": "stall",
     "title": "one prompt stops everyone",
-    "words": 98
+    "words": 94
    },
    {
     "id": "budget",
@@ -234,7 +234,7 @@
     "id": "open",
     "title": "your turn: 8 heads read the same keys",
     "group": "measured",
-    "words": 310
+    "words": 302
    }
   ]
  },
@@ -585,13 +585,13 @@
     "id": "load",
     "title": "goodput peaks at an offered 5 requests a second",
     "group": "measured",
-    "words": 192
+    "words": 184
    },
    {
     "id": "vllm",
     "title": "vLLM won on kernel speed, not scheduling",
     "group": "measured",
-    "words": 245
+    "words": 247
    }
   ]
  },
@@ -702,7 +702,7 @@
    {
     "id": "load",
     "title": "under load, vLLM still serves more",
-    "words": 223
+    "words": 216
    },
    {
     "id": "next",

@@ -121,7 +121,7 @@ export const flashRoofline = {
   warpsShared: sharedBlocksPerSm * group,
 };
 
-export const flashSweepsNote = "The load sweeps of the chunked prefill chapter were measured before this kernel, with per-row prefill, and have not been rerun.";
+export const flashSweepsNote = "The load sweeps of the chunked prefill chapter were rerun with this kernel.";
 
 export const flashNumbers = {
   paged,

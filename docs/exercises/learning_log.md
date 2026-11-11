@@ -2135,6 +2135,8 @@
 - **a block table per request over one shared pool** => 
 - **a token budget per step** => 
 - **waiting for the remaining time of a tween against a whole new one** => 
+- **text that branches on the date of its data** => 
+- **a number and the kernel it was measured with** => 
 
 ## Load sweep with flash prefill (Branch 144)
 

@@ -32,6 +32,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: The contents page spaces its left rows to end above the one-hour path note; with FlashAttention prefill in Part II the tenth row ran into it.
 - Part A: The replay spread of the serving chapter lets its KV pool panel take its own height, so its notes stay clear of the controls.
 - Part A: The serving chapter's queue exhibit note is shortened; it ran past the edge of its card.
+- Part A: The book's load sentences follow the rerun sweep: the chunked prefill chapter gives the long prompt's time with the FlashAttention prefill kernel (and the per-row time as what it replaced), the serving chapter and the results page say the rest of the gap to vLLM is the decode step at a batch of 16, and no page says the sweep predates the kernel.
 
 ## bench/load-sweep-flash
 
