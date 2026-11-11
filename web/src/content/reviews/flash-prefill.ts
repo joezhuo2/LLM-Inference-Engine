@@ -13,7 +13,7 @@ export const review: ChapterReview = {
   takeaways: [
     `With one walk per row, a ${flashLong}-token prompt reads ${flashFmt(flashKeyRows.perRow)} key rows per head; with one pass per ${s.tile} rows it reads ${flashFmt(flashKeyRows.tiled)} (calculated). The score and value products are the same number, and they move to the tensor cores.`,
     `Tests prove a kernel right, not fast. The first kernel passed all ${s.tests} tests and took ${flashFmt(n.first)} ms where the path it replaced took ${flashFmt(pagedPath)} ms (measured), so it stayed behind a switch.`,
-    `The tiled kernel takes the same prompt from ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms (measured) and keeps the cost per prompt token between ${n.perTokenLow} and ${n.perTokenHigh} ms. Nsight Compute, run later, found the tensor cores at ${flashProfile.step.tensor}% of their peak rate and DRAM at ${flashProfile.step.dram}% of its throughput (measured): neither is the limit, the number of warps the registers let onto an SM is.`,
+    `The tiled kernel takes the same prompt from ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms (measured) and keeps the cost per prompt token between ${n.perTokenLow} and ${n.perTokenHigh} ms. Nsight Compute, run later, found the tensor cores at ${flashProfile.step.tensor}% of their peak rate and DRAM at ${flashProfile.step.dram}% of its throughput (measured): neither is at its limit. Registers cap how many warps fit on an SM (measured); whether that is what holds the tensor cores back was not measured.`,
   ],
   questions: [
     {

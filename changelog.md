@@ -26,6 +26,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: Paged KV puts its idea first: the memory steps with lesson titles, write_kv under how it got built, the recorded run as measured.
 - Part A: Chunked prefill puts its idea first: a lesson title for the budget trade-off, and the sampled list with its build history under how it got built.
 - Part A: FlashAttention prefill moves to Part II, after split attention, since it is a compute chapter; every chapter takes its number from `book-order.ts`, and sentences that named a neighbour by position name it by title or part.
+- Part A: The flash prefill review no longer says registers are the kernel's limit: they cap the warps on an SM (measured), and whether that holds the tensor cores back was not measured.
 
 ## kernel/flash-prefill-div32
 
