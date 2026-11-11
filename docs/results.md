@@ -78,94 +78,94 @@ llama.cpp (release b11870, CUDA, the same BF16 weights as a GGUF, flash attentio
 
 ![Tail time per output token against offered load](../results/load/tpot_p99_vs_qps.png)
 
-From `scripts/load_sweep.sh` and `scripts/load_report.py`: `engine bench --max-batch 16 --graphs` with 120 requests arriving as a Poisson process at each rate, prompts of 16 to 512 tokens and outputs of 16 to 256 drawn uniformly, greedy, EOS ignored, seed 0, median of 3 runs, once with whole-prompt prefill steps and once each with `--token-budget` 256, 512 and 2,048 (chunked prefill, #101). The four configurations were interleaved run by run (run 1 of each, then run 2 of each), so drift on the machine hits them alike, and every run wrote a step trace, from which `load_report.py --traces` takes the gap between every two consecutive tokens of a request. Measured on 2026-11-05 on the RTX 5060 Laptop GPU, release build, at commit 1693c46 (the engine code is that of main at 2eb2f91). The 1-minute load average stayed between 1.0 and 4.8 as the median over a run (median of runs 1.6, highest sample 5.3, including about 0.7 from the engine itself), no other GPU program ran, and every run agreed with its repeats: no TPOT p50 differed from the median of its three runs by more than 3.5%, so none was redone. `results/load/` holds the per-request and summary CSVs and `token_gaps.csv`; the traces themselves are not committed. The offline runs above submit identical requests at once, which never shows queueing.
+From `scripts/load_sweep.sh` and `scripts/load_report.py`: `engine bench --max-batch 16 --graphs` with 120 requests arriving as a Poisson process at each rate, prompts of 16 to 512 tokens and outputs of 16 to 256 drawn uniformly, greedy, EOS ignored, seed 0, median of 3 runs, once with whole-prompt prefill steps and once each with `--token-budget` 256, 512 and 2,048 (chunked prefill, #101). The four configurations were interleaved run by run (run 1 of each, then run 2 of each), so drift on the machine hits them alike, and every run wrote a step trace, from which `load_report.py --traces` takes the gap between every two consecutive tokens of a request. Measured on 2026-11-11 (UTC) on the RTX 5060 Laptop GPU, release build, at commit 1feaba9, with the defaults of that commit: the FlashAttention prefill kernel (`flash_attention_prefill`, #103) and two graph buckets per power of two. vLLM, the long-prompt probe below and the engine sweep ran one after another in the same boot, on wall power, with no other GPU program. The 1-minute load average at the start of an engine run was between 0.6 and 1.5 (median 1.1). Three of the 84 engine runs had a TPOT p50 more than 4% from the median of their three repeats (5.0% at most) and were kept, since the table takes the median. `results/load/` holds the per-request and summary CSVs and `token_gaps.csv`; the traces themselves are not committed. The offline runs above submit identical requests at once, which never shows queueing.
 
-These files supersede the 2026-11-03 sweep under the same names. That sweep measured the same scheduler path 35% slower: the 2fec1f3 binary it used, rerun today at 4 and 6 QPS, gives TPOT p50 12.3 and 15.3 ms, the same as the new build (12.4 and 15.3 ms) and far from its 18.5 and 19.6 ms of 2026-11-03, so the machine, not the code, was slower then (the GPU clock was not logged, so the cause is not known). vLLM was therefore rerun on the same day as the engine, with the same setup as before (`docs/baselines.md`); its TPOT p50 at 4 QPS moved from 10.4 to 8.1 ms. Load average during the vLLM runs: median 1.3, highest 2.8; its repeats agree within 1% on TPOT p50.
+These files supersede the 2026-11-05 sweep under the same names, which ran prefill through the paged decode attention kernel. Do not compare times across the two dates: the machine was slower in this boot. vLLM, whose code did not change, has a TPOT p50 of 8.9 ms at 4 QPS here against 8.1 ms then, and a first pass of the engine sweep, in an earlier boot of the same evening, had a TPOT p50 of 8.95 ms at 1 QPS where this one has 9.5. That pass was discarded and the whole engine sweep repeated in the boot that measured vLLM, so the rows of this table compare with each other. vLLM's repeats were less steady than on 2026-11-05: at 3 and 4 QPS one run's TPOT p50 is 9.6% and 10.6% from the median of its three, and elsewhere they agree within 4%.
 
 <!-- auto:load -->
-Engine runs measured 2026-11-05 at commit 1693c46 on NVIDIA GeForce RTX 5060 Laptop GPU; vLLM runs measured 2026-11-05 (vllm 0.32.0, torch 2.13.0).
+Engine runs measured 2026-11-11 at commit 1feaba9 on NVIDIA GeForce RTX 5060 Laptop GPU; vLLM runs measured 2026-11-11 (vllm 0.32.0, torch 2.13.0).
 
 SLO: TTFT at most 500 ms and TPOT at most 50 ms; goodput is the requests per second that meet both.
 
 | system | QPS | output tok/s | TTFT p50 ms | TTFT p99 ms | TPOT p50 ms | TPOT p99 ms | SLO met | goodput req/s | preemptions | runs |
 |---|---|---|---|---|---|---|---|---|---|---|
-| engine + graphs | 1 | 168 | 46 | 102 | 8.4 | 11.2 | 100% | 1.14 | 0 | 3 |
-| engine + graphs | 2 | 330 | 46 | 115 | 9.4 | 12.9 | 100% | 2.24 | 0 | 3 |
-| engine + graphs | 3 | 486 | 48 | 123 | 10.7 | 15.6 | 100% | 3.30 | 0 | 3 |
-| engine + graphs | 4 | 635 | 64 | 605 | 12.3 | 17.8 | 98% | 4.21 | 0 | 3 |
-| engine + graphs | 5 | 765 | 80 | 1192 | 14.1 | 17.2 | 85% | 4.42 | 0 | 3 |
-| engine + graphs | 6 | 839 | 240 | 1991 | 15.3 | 19.7 | 64% | 3.66 | 0 | 3 |
-| engine + graphs | 8 | 885 | 1415 | 5007 | 15.5 | 19.9 | 25% | 1.50 | 0 | 3 |
-| engine + graphs, budget 256 | 1 | 168 | 52 | 121 | 8.3 | 10.3 | 100% | 1.14 | 0 | 3 |
-| engine + graphs, budget 256 | 2 | 330 | 56 | 136 | 9.2 | 12.1 | 100% | 2.24 | 0 | 3 |
-| engine + graphs, budget 256 | 3 | 486 | 57 | 146 | 10.2 | 14.0 | 100% | 3.30 | 0 | 3 |
-| engine + graphs, budget 256 | 4 | 635 | 70 | 413 | 11.5 | 16.2 | 99% | 4.28 | 0 | 3 |
-| engine + graphs, budget 256 | 5 | 776 | 80 | 1033 | 13.2 | 16.4 | 87% | 4.57 | 0 | 3 |
-| engine + graphs, budget 256 | 6 | 862 | 116 | 1642 | 14.2 | 17.5 | 69% | 4.05 | 0 | 3 |
-| engine + graphs, budget 256 | 8 | 919 | 1117 | 4316 | 14.6 | 18.6 | 26% | 1.61 | 0 | 3 |
-| engine + graphs, budget 512 | 1 | 168 | 46 | 107 | 8.3 | 10.8 | 100% | 1.14 | 0 | 3 |
-| engine + graphs, budget 512 | 2 | 330 | 48 | 117 | 9.2 | 12.3 | 100% | 2.24 | 0 | 3 |
-| engine + graphs, budget 512 | 3 | 486 | 52 | 138 | 10.3 | 14.6 | 100% | 3.30 | 0 | 3 |
-| engine + graphs, budget 512 | 4 | 635 | 67 | 477 | 11.7 | 16.9 | 99% | 4.28 | 0 | 3 |
-| engine + graphs, budget 512 | 5 | 772 | 74 | 1087 | 13.6 | 17.2 | 86% | 4.50 | 0 | 3 |
-| engine + graphs, budget 512 | 6 | 854 | 119 | 1755 | 14.5 | 18.8 | 68% | 3.97 | 0 | 3 |
-| engine + graphs, budget 512 | 8 | 912 | 1147 | 4466 | 14.8 | 19.2 | 26% | 1.60 | 0 | 3 |
-| engine + graphs, budget 2048 | 1 | 168 | 46 | 106 | 8.4 | 10.8 | 100% | 1.14 | 0 | 3 |
-| engine + graphs, budget 2048 | 2 | 330 | 48 | 120 | 9.2 | 12.3 | 100% | 2.24 | 0 | 3 |
-| engine + graphs, budget 2048 | 3 | 486 | 51 | 130 | 10.4 | 14.6 | 100% | 3.30 | 0 | 3 |
-| engine + graphs, budget 2048 | 4 | 635 | 65 | 506 | 11.8 | 17.3 | 98% | 4.25 | 0 | 3 |
-| engine + graphs, budget 2048 | 5 | 769 | 80 | 1105 | 13.6 | 17.2 | 85% | 4.44 | 0 | 3 |
-| engine + graphs, budget 2048 | 6 | 853 | 139 | 1761 | 14.5 | 18.7 | 68% | 3.96 | 0 | 3 |
-| engine + graphs, budget 2048 | 8 | 916 | 1153 | 4397 | 14.9 | 18.9 | 26% | 1.61 | 0 | 3 |
-| vLLM | 1 | 168 | 42 | 68 | 7.6 | 8.5 | 100% | 1.14 | 0 | 3 |
-| vLLM | 2 | 331 | 28 | 48 | 7.5 | 8.1 | 100% | 2.25 | 0 | 3 |
-| vLLM | 3 | 489 | 29 | 39 | 7.6 | 8.3 | 100% | 3.33 | 0 | 3 |
-| vLLM | 4 | 641 | 30 | 41 | 8.1 | 8.4 | 100% | 4.36 | 0 | 3 |
-| vLLM | 5 | 789 | 31 | 55 | 8.2 | 8.7 | 100% | 5.36 | 0 | 3 |
-| vLLM | 6 | 933 | 31 | 90 | 8.3 | 8.7 | 100% | 6.34 | 0 | 3 |
-| vLLM | 8 | 1208 | 34 | 507 | 8.5 | 8.8 | 98% | 8.07 | 0 | 3 |
+| engine + graphs | 1 | 167 | 35 | 103 | 9.5 | 11.4 | 100% | 1.14 | 0 | 3 |
+| engine + graphs | 2 | 329 | 34 | 67 | 10.1 | 12.6 | 100% | 2.23 | 0 | 3 |
+| engine + graphs | 3 | 480 | 35 | 67 | 11.5 | 14.7 | 100% | 3.26 | 0 | 3 |
+| engine + graphs | 4 | 632 | 38 | 467 | 12.6 | 16.5 | 99% | 4.26 | 0 | 3 |
+| engine + graphs | 5 | 763 | 45 | 1094 | 14.4 | 16.8 | 86% | 4.45 | 0 | 3 |
+| engine + graphs | 6 | 845 | 93 | 1669 | 15.3 | 17.4 | 67% | 3.83 | 0 | 3 |
+| engine + graphs | 8 | 898 | 1304 | 4592 | 15.4 | 17.6 | 25% | 1.53 | 0 | 3 |
+| engine + graphs, budget 256 | 1 | 167 | 43 | 94 | 9.3 | 10.9 | 100% | 1.14 | 0 | 3 |
+| engine + graphs, budget 256 | 2 | 327 | 42 | 85 | 9.8 | 12.1 | 100% | 2.23 | 0 | 3 |
+| engine + graphs, budget 256 | 3 | 484 | 45 | 99 | 10.7 | 13.7 | 100% | 3.29 | 0 | 3 |
+| engine + graphs, budget 256 | 4 | 626 | 48 | 289 | 12.0 | 15.2 | 100% | 4.25 | 0 | 3 |
+| engine + graphs, budget 256 | 5 | 771 | 55 | 921 | 13.5 | 15.2 | 87% | 4.54 | 0 | 3 |
+| engine + graphs, budget 256 | 6 | 858 | 70 | 1447 | 14.3 | 15.9 | 74% | 4.32 | 0 | 3 |
+| engine + graphs, budget 256 | 8 | 924 | 1077 | 4062 | 14.8 | 16.7 | 26% | 1.62 | 0 | 3 |
+| engine + graphs, budget 512 | 1 | 167 | 36 | 101 | 9.3 | 10.9 | 100% | 1.14 | 0 | 3 |
+| engine + graphs, budget 512 | 2 | 329 | 36 | 69 | 10.0 | 12.2 | 100% | 2.23 | 0 | 3 |
+| engine + graphs, budget 512 | 3 | 481 | 38 | 82 | 11.1 | 14.1 | 100% | 3.27 | 0 | 3 |
+| engine + graphs, budget 512 | 4 | 632 | 41 | 295 | 11.9 | 15.4 | 100% | 4.30 | 0 | 3 |
+| engine + graphs, budget 512 | 5 | 771 | 46 | 941 | 13.6 | 15.4 | 87% | 4.54 | 0 | 3 |
+| engine + graphs, budget 512 | 6 | 855 | 58 | 1463 | 14.5 | 16.1 | 74% | 4.31 | 0 | 3 |
+| engine + graphs, budget 512 | 8 | 920 | 1098 | 4143 | 14.9 | 17.0 | 26% | 1.62 | 0 | 3 |
+| engine + graphs, budget 2048 | 1 | 167 | 35 | 89 | 9.3 | 11.3 | 100% | 1.14 | 0 | 3 |
+| engine + graphs, budget 2048 | 2 | 329 | 36 | 69 | 9.8 | 12.2 | 100% | 2.24 | 0 | 3 |
+| engine + graphs, budget 2048 | 3 | 484 | 38 | 75 | 10.9 | 14.1 | 100% | 3.29 | 0 | 3 |
+| engine + graphs, budget 2048 | 4 | 626 | 42 | 298 | 12.2 | 15.5 | 100% | 4.25 | 0 | 3 |
+| engine + graphs, budget 2048 | 5 | 771 | 46 | 947 | 13.6 | 15.4 | 87% | 4.54 | 0 | 3 |
+| engine + graphs, budget 2048 | 6 | 856 | 58 | 1462 | 14.4 | 16.1 | 74% | 4.32 | 0 | 3 |
+| engine + graphs, budget 2048 | 8 | 917 | 1099 | 4211 | 14.9 | 17.0 | 26% | 1.61 | 0 | 3 |
+| vLLM | 1 | 167 | 60 | 121 | 8.8 | 11.5 | 100% | 1.14 | 0 | 3 |
+| vLLM | 2 | 330 | 32 | 53 | 8.5 | 9.1 | 100% | 2.24 | 0 | 3 |
+| vLLM | 3 | 482 | 45 | 122 | 9.6 | 14.3 | 100% | 3.28 | 0 | 3 |
+| vLLM | 4 | 638 | 36 | 72 | 8.9 | 12.1 | 100% | 4.34 | 0 | 3 |
+| vLLM | 5 | 785 | 34 | 63 | 8.8 | 9.5 | 100% | 5.34 | 0 | 3 |
+| vLLM | 6 | 927 | 36 | 313 | 9.0 | 10.6 | 100% | 6.30 | 0 | 3 |
+| vLLM | 8 | 1192 | 38 | 644 | 9.2 | 9.5 | 92% | 7.49 | 0 | 3 |
 
 Gaps between consecutive output tokens of one request, from the engine's step traces: every token of every request, medians of the runs' p50, p99 and largest gap.
 
 | system | QPS | gap p50 ms | gap p99 ms | largest gap ms | runs |
 |---|---|---|---|---|---|
-| engine + graphs | 1 | 8.0 | 9.6 | 158 | 3 |
-| engine + graphs | 2 | 8.5 | 51.1 | 161 | 3 |
-| engine + graphs | 3 | 9.1 | 75.8 | 178 | 3 |
-| engine + graphs | 4 | 9.9 | 86.8 | 201 | 3 |
-| engine + graphs | 5 | 11.0 | 96.5 | 212 | 3 |
-| engine + graphs | 6 | 11.4 | 99.3 | 182 | 3 |
-| engine + graphs | 8 | 11.5 | 101.7 | 173 | 3 |
-| engine + graphs, budget 256 | 1 | 8.0 | 26.4 | 65 | 3 |
-| engine + graphs, budget 256 | 2 | 8.5 | 36.4 | 65 | 3 |
-| engine + graphs, budget 256 | 3 | 9.1 | 39.8 | 66 | 3 |
-| engine + graphs, budget 256 | 4 | 9.8 | 44.9 | 67 | 3 |
-| engine + graphs, budget 256 | 5 | 10.8 | 49.9 | 68 | 3 |
-| engine + graphs, budget 256 | 6 | 11.3 | 54.4 | 70 | 3 |
-| engine + graphs, budget 256 | 8 | 11.5 | 59.0 | 71 | 3 |
-| engine + graphs, budget 512 | 1 | 8.0 | 10.8 | 97 | 3 |
-| engine + graphs, budget 512 | 2 | 8.5 | 44.7 | 98 | 3 |
-| engine + graphs, budget 512 | 3 | 9.1 | 67.8 | 98 | 3 |
-| engine + graphs, budget 512 | 4 | 9.8 | 76.8 | 100 | 3 |
-| engine + graphs, budget 512 | 5 | 10.9 | 81.8 | 103 | 3 |
-| engine + graphs, budget 512 | 6 | 11.4 | 84.8 | 105 | 3 |
-| engine + graphs, budget 512 | 8 | 11.5 | 86.9 | 106 | 3 |
-| engine + graphs, budget 2048 | 1 | 8.1 | 10.9 | 96 | 3 |
-| engine + graphs, budget 2048 | 2 | 8.5 | 44.9 | 100 | 3 |
-| engine + graphs, budget 2048 | 3 | 9.1 | 68.8 | 102 | 3 |
-| engine + graphs, budget 2048 | 4 | 9.9 | 78.4 | 116 | 3 |
-| engine + graphs, budget 2048 | 5 | 10.9 | 85.6 | 163 | 3 |
-| engine + graphs, budget 2048 | 6 | 11.4 | 91.1 | 158 | 3 |
-| engine + graphs, budget 2048 | 8 | 11.5 | 92.5 | 160 | 3 |
+| engine + graphs | 1 | 9.1 | 18.7 | 110 | 3 |
+| engine + graphs | 2 | 9.5 | 39.4 | 93 | 3 |
+| engine + graphs | 3 | 10.2 | 50.1 | 101 | 3 |
+| engine + graphs | 4 | 11.0 | 54.9 | 108 | 3 |
+| engine + graphs | 5 | 12.4 | 55.8 | 113 | 3 |
+| engine + graphs | 6 | 12.8 | 57.9 | 120 | 3 |
+| engine + graphs | 8 | 12.9 | 59.6 | 86 | 3 |
+| engine + graphs, budget 256 | 1 | 9.0 | 21.4 | 41 | 3 |
+| engine + graphs, budget 256 | 2 | 9.4 | 26.0 | 42 | 3 |
+| engine + graphs, budget 256 | 3 | 10.1 | 29.1 | 41 | 3 |
+| engine + graphs, budget 256 | 4 | 11.1 | 30.7 | 41 | 3 |
+| engine + graphs, budget 256 | 5 | 12.1 | 31.2 | 41 | 3 |
+| engine + graphs, budget 256 | 6 | 12.7 | 32.1 | 47 | 3 |
+| engine + graphs, budget 256 | 8 | 13.0 | 32.7 | 42 | 3 |
+| engine + graphs, budget 512 | 1 | 9.1 | 13.8 | 67 | 3 |
+| engine + graphs, budget 512 | 2 | 9.5 | 34.2 | 53 | 3 |
+| engine + graphs, budget 512 | 3 | 10.1 | 41.9 | 54 | 3 |
+| engine + graphs, budget 512 | 4 | 10.9 | 45.8 | 56 | 3 |
+| engine + graphs, budget 512 | 5 | 12.1 | 47.9 | 63 | 3 |
+| engine + graphs, budget 512 | 6 | 12.7 | 48.5 | 59 | 3 |
+| engine + graphs, budget 512 | 8 | 13.0 | 50.9 | 58 | 3 |
+| engine + graphs, budget 2048 | 1 | 9.0 | 13.1 | 54 | 3 |
+| engine + graphs, budget 2048 | 2 | 9.3 | 34.1 | 66 | 3 |
+| engine + graphs, budget 2048 | 3 | 10.1 | 41.5 | 68 | 3 |
+| engine + graphs, budget 2048 | 4 | 11.1 | 46.1 | 65 | 3 |
+| engine + graphs, budget 2048 | 5 | 12.1 | 48.3 | 72 | 3 |
+| engine + graphs, budget 2048 | 6 | 12.7 | 48.9 | 73 | 3 |
+| engine + graphs, budget 2048 | 8 | 13.0 | 51.4 | 77 | 3 |
 <!-- /auto:load -->
 
-Chunked prefill does what it is for: it shortens the stalls. With whole-prompt steps, every prompt is one step and every running sequence waits for it, so the longest gap between two tokens of a request is 158 to 212 ms at every rate, against a median gap of 8 to 12 ms. A budget of 256 caps that at 65 to 71 ms, 512 at about 100 ms, and 2,048 at 96 to 163 ms (at 2,048 several prompts still fit in one step). The gap p99 falls with it at 4 QPS and above, from 87 to 45 ms at 4 QPS with a budget of 256. The TTFT tail improves too, because a waiting prompt no longer queues behind a whole prefill step: TTFT p99 at 4 QPS falls from 605 ms to 413 (256), 477 (512) and 506 ms (2,048).
+The stalls are about half as long as on 2026-11-05, with or without a budget, because a prefill step is that much cheaper with the FlashAttention kernel. With whole-prompt steps, every prompt is one step and every running sequence waits for it, so the longest gap between two tokens of a request is 86 to 120 ms across the rates (158 to 212 ms before), against a median gap of 9 to 13 ms. Chunked prefill still shortens them: a budget of 256 caps the longest gap at 41 to 47 ms, 512 at 53 to 67 ms, and 2,048 at 54 to 77 ms. The gap p99 falls with it at 2 QPS and above, from 55 to 31 ms at 4 QPS with a budget of 256. The TTFT tail improves too, because a waiting prompt no longer queues behind a whole prefill step: TTFT p99 at 4 QPS falls from 467 ms to 289 (256), 295 (512) and 298 ms (2,048).
 
-The gain in goodput is small. The engine's peak moves from 4.42 to 4.57 requests per second (budget 256; 4.50 at 512, 4.44 at 2,048), both at an offered 5, and past the peak the budgets hold up better (4.05 against 3.66 at an offered 6) but the queue still grows. vLLM, rerun on the same day with the same token ids, arrival times and limit of 16 sequences, reaches 6.34 at an offered 6 and 8.07 at 8, still meeting the SLO for 98% of requests, about 1.8x the engine's best. TPOT p99 hides all of this: it is the per-request mean of the gaps, so a 200 ms stall spread over a 200-token answer adds 1 ms, and it stays under 20 ms for every engine configuration.
+Goodput did not move with the new prefill kernel. The engine's peak is 4.45 requests per second with whole-prompt steps and 4.54 with any of the three budgets, both at an offered 5 (4.42 and 4.57 on 2026-11-05), and past the peak the budgets hold up better (4.32 against 3.83 at an offered 6) but the queue still grows. vLLM, measured in the same boot with the same token ids, arrival times and limit of 16 sequences, reaches 6.30 at an offered 6 and 7.49 at 8, where it still meets the SLO for 92% of requests, about 1.65x the engine's best. TPOT p99 hides the stalls: it is the per-request mean of the gaps, so a 100 ms stall spread over a 200-token answer adds 0.5 ms, and it stays under 18 ms for every engine configuration.
 
-What chunking does not change is how much work there is. In the whole-prompt run at 8 QPS (run 1, from its trace), 114 prefill steps take 5.3 of the 19.7 seconds, 0.17 ms per prompt token, and the 1,374 decode steps average 10.5 ms, close to vLLM's whole TPOT of 8.5 ms with its prefill included. A budget only moves the prefill rows into mixed steps (that run takes 18.8 seconds), and every one of those rows still runs through the paged decode attention kernel, the same cost the prefill curve below shows growing with the square of the prompt. So the remaining gap to vLLM is kernel speed, mostly prefill ([#103](https://github.com/joezhuo2/LLM-Inference-Engine/issues/103)), not scheduling. Mixed steps also run eager, since `DecodeGraphs` only covers pure decode.
+The traces say why a faster prefill did not buy goodput: prefill is no longer where the time goes. In the whole-prompt run at 8 QPS (run 1, from its trace), 113 prefill steps take 3.4 of the 19.6 seconds, 0.11 ms per prompt token (5.3 of 19.7 seconds and 0.17 ms on 2026-11-05), and the 1,362 decode steps take the other 16.2 seconds at 11.9 ms each. vLLM's whole TPOT at that rate is 9.2 ms with its prefill included. So even with prefill at no cost the engine would spend more per token than vLLM does, and the remaining gap is the decode step at a batch of 16, not prefill and not scheduling. A budget only moves the prefill rows into mixed steps (the budget 256 run takes 19.1 seconds), and mixed steps run eager, since `DecodeGraphs` only covers pure decode.
 
-Small budgets have a cost at low load. At 1 to 3 QPS a budget of 256 adds 6 to 10 ms to the TTFT p50 (52 to 57 against 46 to 48 ms), since a prompt longer than what is left of the budget after the decode rows takes two or three steps, and the gap p99 at 1 QPS rises from 9.6 to 26.4 ms, because more decode steps share a step with a chunk instead of replaying a graph alone. 512 costs almost nothing there and keeps most of the tail benefit, which makes it the better default for this workload; 256 gives the shortest stalls.
+Small budgets have a cost at low load. At 1 to 3 QPS a budget of 256 adds 8 to 10 ms to the TTFT p50 (42 to 45 against 34 to 35 ms), since a prompt longer than what is left of the budget after the decode rows takes two or three steps, and the gap p99 at 1 QPS rises from 18.7 to 21.4 ms, because more decode steps share a step with a chunk instead of replaying a graph alone. 512 costs 1 to 3 ms there and keeps most of the tail benefit, which makes it the better default for this workload; 256 gives the shortest stalls.
 
 Limits of these numbers. The lengths are uniform, not a real chat distribution such as ShareGPT, and the tokens are random. There is no HTTP in the engine's path, since `engine bench` calls the scheduler directly, while vLLM's times include its Python server and HTTP. With 120 requests a run ends before an overloaded queue reaches any steady state, so TTFT past saturation depends on the run length: read those points as "overloaded", not as stable values. Goodput at 1 and 2 QPS is above the offered rate because this seed's 120 arrivals span about 104 and 52 seconds rather than 120 and 60. The KV cache was never the limit: 0 preemptions at every rate and budget.
 
@@ -174,17 +174,17 @@ Limits of these numbers. The lengths are uniform, not a real chat distribution s
 From `scripts/stall_probe.py`: 15 short chat prompts from `scripts/prompts.json` and then one long prompt (a sentence repeated, 1,917 tokens with the chat template) arrive as Poisson arrivals at 16 per second, each asking for 128 tokens, through `engine bench --max-batch 16 --graphs --prompts --trace`, 3 runs per budget. In every run the long prompt arrived while all 15 short ones were decoding, and the table shows what that costs them and what it costs the prompt.
 
 <!-- auto:stall -->
-Measured 2026-11-05T07:05:42Z at commit 1693c46: a 1917-token prompt arrives among short requests, medians of the runs.
+Measured 2026-11-11T03:55:32Z at commit 1feaba9: a 1917-token prompt arrives among short requests, medians of the runs.
 
 | token budget | long prompt tokens | decoding when it arrives | TTFT of the long prompt ms | gap p99 ms | largest gap ms | runs |
 |---|---|---|---|---|---|---|
-| none | 1917 | 15 | 1030 | 76 | 1043 | 3 |
-| 256 | 1917 | 15 | 1081 | 207 | 223 | 3 |
-| 512 | 1917 | 15 | 1055 | 344 | 388 | 3 |
-| 2048 | 1917 | 15 | 1040 | 14 | 1033 | 3 |
+| none | 1917 | 15 | 230 | 60 | 241 | 3 |
+| 256 | 1917 | 15 | 297 | 37 | 38 | 3 |
+| 512 | 1917 | 15 | 267 | 66 | 67 | 3 |
+| 2048 | 1917 | 15 | 234 | 18 | 229 | 3 |
 <!-- /auto:stall -->
 
-With whole-prompt steps the 15 decoding requests wait 1,043 ms for the long prompt, one step as long as the prompt's own TTFT. A budget of 256 cuts the longest wait to 223 ms and 512 to 388 ms, while the long prompt's first token comes only 25 to 51 ms later (1,081 and 1,055 against 1,030 ms). A budget of 2,048 changes nothing here: the prompt fits in one step, so it is one mixed step instead of one prefill step. The waits do not shrink in proportion to the budget. A chunk of 241 rows (256 minus the 15 decode rows) late in the prompt still takes over 200 ms, because each of its rows runs the decode attention kernel over up to 1,917 tokens of context, so the cost of a chunk grows with its position as well as its size. The gap p99 rises with the small budgets (207 and 344 ms against 76 ms with no budget) for the same reason the gaps above do: the long prompt now spreads over 8 or 4 slow steps instead of one, so more tokens of the short requests wait behind a chunk, each for less time.
+With whole-prompt steps the 15 decoding requests wait 241 ms for the long prompt, one step as long as the prompt's own TTFT of 230 ms (1,043 and 1,030 ms on 2026-11-05, before the FlashAttention prefill kernel). A budget of 256 cuts the longest wait to 38 ms and 512 to 67 ms, while the long prompt's first token comes 67 and 37 ms later (297 and 267 against 230 ms). A budget of 2,048 changes nothing here: the prompt fits in one step, so it is one mixed step instead of one prefill step. The waits now shrink almost in proportion to the budget, which they did not with the paged kernel, where a late chunk of 241 rows still took over 200 ms. With budgets of 256 and 512 the gap p99 is the length of a chunk step (37 and 66 ms), because the prompt spreads over 8 or 4 steps and more than 1% of the short requests' tokens wait behind one. With no budget and with 2,048 the one long step holds about 0.8% of the gaps, just under the 99th percentile, so the gap p99 there (60 and 18 ms) depends on the few gaps next to it and should not be read as a difference between the two.
 
 ## Batch size past 16
 
