@@ -350,7 +350,7 @@ const steps: StoryStep[] = [
           llama.cpp is the baseline that matters, a mature engine running the same BF16 weights. It stays close up to
           batch 8 and falls behind at 16 (<Num>{n(tps("llamacpp", 16), 1)}</Num> tokens/s). HuggingFace transformers, a
           plain PyTorch decode loop, is far below both. The engine admits new requests into a running batch
-          (see <Story to="/kernels/paged-kv">paged KV</Story>); the baselines run static batches, so this compares serving,
+          (see <Story to="/kernels/serving">how many requests fit</Story>); the baselines run static batches, so this compares serving,
           not only kernels.
         </p>
       </>
@@ -487,8 +487,7 @@ const steps: StoryStep[] = [
         <p>
           vLLM&apos;s tail stays at <Num>{n(loadValue(ttftTailSeries, "vllm", gapAt))} ms</Num>. Past its peak the
           engine&apos;s queue grows whatever the budget: chunks move prefill work between steps but do not shrink it, and
-          in these runs the engine&apos;s prefill ran every prompt row through the decode attention kernel, so the rest of the gap was
-          kernel speed, not scheduling. The <Story to="/kernels/flash-prefill">FlashAttention prefill</Story> kernel has since replaced that path, and the sweep has not been rerun with it.
+          with the <Story to="/kernels/flash-prefill">FlashAttention prefill</Story> kernel prefill is the smaller part of a loaded run. The rest of the gap is the decode step at a batch of 16, not scheduling.
         </p>
       </>
     ),

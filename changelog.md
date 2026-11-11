@@ -2,6 +2,38 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/idea-first
+
+- Part A: a story step can carry a `group` ("how it got built"). The scroll page shows it in the step's kicker, the book shows it in the page kicker, and the chapter's "in this chapter" list starts the group with a heading, so a chapter can put its idea first and its build history after.
+- Part A: Paged attention opens on the block table and what paging costs; the v1 to v2 to split history moves under how it got built.
+- Part A: Attention v2 opens on the online softmax, then lanes and the profile; v1's three passes and cap move under how it got built, and the decode step and size sweep under measured.
+- Part A: Split attention opens on too few blocks, the cut, partial results and the exact merge; the CUDA Graphs capture bug moves under how it got built, and occupancy, waves and the split rule under measured.
+- Part A: Add + RMSNorm leads with fusion and why the first fused kernel saved bytes but not time; spec rounding, 16-byte loads and shuffles are grouped as how it got built, and the closing step is titled with its measured speedup.
+- Part A: SwiGLU teaches wide loads at peak bandwidth and the one-token block shortage first; the first draft's 2D grid ceiling moves under how it got built.
+- Part A: Sampling steps are titled by their lessons; cost, FP64 noise and one block per row are grouped as measured.
+- Part A: CUDA Graphs leads with launch gaps, capture, staging and what a replay saves; buckets and split-count graphs are grouped as how it got built, the batch sweep as measured.
+- Part A: Foundations steps and the latency big idea are titled by their lesson instead of their topic, and the latency idea no longer calls chunked prefill the last chapter.
+- Part A: GEMM puts its idea first (matrix products, one FLOP per weight byte, cuBLAS at the roof, batching, prefill past the ridge) and moves the row-major trick under how it got built; every step is titled by its lesson.
+- Part A: RoPE puts its idea first (the gap from turning by position, which values turn, independent pairs sharing a sine, the last-bit error that position multiplies) and moves the first draft under how it got built and the timing under measured.
+- Part A: FlashAttention prefill teaches the idea first (prefill is a square of rows against keys, 16 rows share each key tile, a tile of scores is one mma, an online softmax per row keeps it in registers), then how it got built, then the measurements; the slower first kernel is in the Errata.
+- Part A: FlashAttention prefill ends on "your turn": a roofline prediction of sharing K and V across the 8 query heads of a KV head (16 to 128 FLOP per byte loaded against a ridge of 107, calculated), with an open exercise and an estimate card; nothing about it is measured.
+- Part A: `web/scripts/step-history.mjs` records the decode step profile of every committed version of `results/decode_step.md` in `step-history.json`, so a page can show how the step's time moved between operations.
+- Part A: Every Byte gets a closing chapter, "where the time went" (Part V): the decode step profiled after each kernel, the read of the weights as the floor, time to first token at 2,048 tokens against llama.cpp, the engine under load against vLLM, and three next steps ranked by measured payoff.
+- Part A: Every Byte gets a "beyond this engine" spread and page in place of the "not yet" line of the 4-bit estimate: quantization, speculative decoding, prefix caching and multiple GPUs, each tied to bytes per token with one source; none of the four is implemented or measured here.
+- Part A: "beyond this engine" says a rejected draft costs bytes per kept token, not per round.
+- Part A: A one-hour path through Every Byte: chosen in `web/src/content/short-path.ts`, marked in the contents, a book mode (`?path=hour`) that turns only its spreads, and `/kernels/short-path` with its reading time counted from the built pages.
+- Part A: Every Byte gets a serving chapter, "how many requests fit", at the start of Part IV: the KV budget, how many requests fit, admission, preemption, static against continuous batching and what it bought under load; the scheduler story and the KV visualizer move into it from paged KV.
+- Part A: Paged KV puts its idea first: the memory steps with lesson titles, write_kv under how it got built, the recorded run as measured.
+- Part A: Chunked prefill puts its idea first: a lesson title for the budget trade-off, and the sampled list with its build history under how it got built.
+- Part A: FlashAttention prefill moves to Part II, after split attention, since it is a compute chapter; every chapter takes its number from `book-order.ts`, and sentences that named a neighbour by position name it by title or part. The closing chapter's last sentence links to "beyond this engine".
+- Part A: The flash prefill review no longer says registers are the kernel's limit: they cap the warps on an SM (measured), and whether that holds the tensor cores back was not measured.
+- Part A: The one-hour path is recounted from the built pages with every chapter's idea steps, the serving chapter and the closing chapter.
+- Part A: Links in Every Byte work as soon as a turned page lands. The scene waited a second full camera move (1.9 s) after every turn before links, overlays and the next turn were released, and links were off for that whole wait; it now waits only what is left of the camera move, links follow the leaf, and the link under a resting pointer is underlined when the page lands.
+- Part A: The contents page spaces its left rows to end above the one-hour path note; with FlashAttention prefill in Part II the tenth row ran into it.
+- Part A: The replay spread of the serving chapter lets its KV pool panel take its own height, so its notes stay clear of the controls.
+- Part A: The serving chapter's queue exhibit note is shortened; it ran past the edge of its card.
+- Part A: The book's load sentences follow the rerun sweep: the chunked prefill chapter gives the long prompt's time with the FlashAttention prefill kernel (and the per-row time as what it replaced), the serving chapter and the results page say the rest of the gap to vLLM is the decode step at a batch of 16, and no page says the sweep predates the kernel.
+
 ## bench/load-sweep-flash
 
 - Part A: Rerun the load sweep (`results/load/`: 84 engine runs, 21 vLLM runs, the long-prompt probe, four plots) on 2026-11-11 at 1feaba9, the first sweep with the FlashAttention prefill kernel and two graph buckets per power of two as defaults. The engine and vLLM were measured in one boot; an engine pass from an earlier boot of the same evening was about 8% faster and was discarded.

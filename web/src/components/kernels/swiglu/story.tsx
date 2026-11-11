@@ -140,7 +140,7 @@ export function TokensPicker() {
 const steps: StoryStep[] = [
   {
     id: "job",
-    title: "the job",
+    title: "each output is silu(gate) times up",
     body: (
       <>
         <p>
@@ -157,7 +157,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "bits",
-    title: "two roundings",
+    title: "keep PyTorch's two roundings",
     body: (
       <>
         <p>
@@ -166,7 +166,7 @@ const steps: StoryStep[] = [
           Hugging Face&apos;s act tensor bit for bit on every traced layer.
         </p>
         <p>
-          This is already a small case of the fusion in chapter {chapterNumber("add-rmsnorm")}, &quot;fusion, the pattern&quot;: silu(gate) stays in a
+          This is already a small case of the fusion in chapter {chapterNumber("add-rmsnorm")}, &quot;fusion keeps the value on the chip&quot;: silu(gate) stays in a
           register, and the BF16 rounding that writing it out as a tensor would have done is still done there. Every
           faster version had to keep that chain. Skipping the first rounding looks harmless and gives a different
           answer: in the example on the right the output moves by <span className="text-accent">one BF16 step</span>.
@@ -175,25 +175,8 @@ const steps: StoryStep[] = [
     ),
   },
   {
-    id: "draft",
-    title: "one thread per value",
-    body: (
-      <>
-        <p>
-          <Author story="Joe's first draft" book="The first draft" /> kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: blocks of threads along a row, and the row on blockIdx.y. It was bit-identical from the start and a
-          little faster than naive at every size, <span className="text-accent">{draft1.toFixed(1)} µs</span> at one token.
-        </p>
-        <p>
-          The 2D grid had a ceiling: gridDim.y stops at 65,535, so a batch with more rows would not launch. The engine never
-          sends that many rows, but the spec promised any shape, and the tests now launch more rows than that. Both kernels now run on one flat grid
-          and work out the row from the index.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "vector",
-    title: "eight values per load",
+    title: "wide loads reach peak bandwidth",
     body: (
       <>
         <p>
@@ -213,7 +196,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "small",
-    title: "too few blocks",
+    title: "at one token, blocks beat wide loads",
     body: (
       <>
         <p>
@@ -223,15 +206,34 @@ const steps: StoryStep[] = [
         </p>
         <p>
           So the kernel counts its work first: below half a block per SM, a handful of tokens here, it takes the scalar path,
-          whose blocks spread the same chains over most of the GPU. At one token that is{" "}
+          one thread per value, whose blocks spread the same chains over most of the GPU. At one token that is{" "}
           <span className="text-accent">{smallFast.toFixed(2)} µs</span>, faster than the vector kernel in the same session.
         </p>
       </>
     ),
   },
   {
+    id: "draft",
+    title: "a 2D grid stops at 65,535 rows",
+    group: "how it got built",
+    body: (
+      <>
+        <p>
+          <Author story="Joe's first draft" book="The first draft" /> kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: blocks of threads along a row, and the row on blockIdx.y. It was bit-identical from the start and a
+          little faster than naive at every size, <span className="text-accent">{draft1.toFixed(1)} µs</span> at one token.
+        </p>
+        <p>
+          The 2D grid had a ceiling: gridDim.y stops at 65,535, so a batch with more rows would not launch. The engine never
+          sends that many rows, but the spec promised any shape, and the tests now launch more rows than that. Both kernels now run on one flat grid
+          and work out the row from the index.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "measured",
-    title: "measured",
+    title: `${gainLow}x to ${gainHigh}x, but ${stepShare}% of a step`,
+    group: "measured",
     body: (
       <>
         <p>
@@ -252,9 +254,9 @@ const steps: StoryStep[] = [
 const captions = [
   `the hidden state has ${hiddenText} values and each half of the row ${ffText}; 16 of ${ffText} values per half drawn; the silu curve is exact`,
   `the example is computed with the kernel's arithmetic; any g and u with the same roundings would do; the naive kernel matched Hugging Face's act tensor on all ${shape.layers} layers`,
-  `µs per launch for one token, Nsight Compute: naive ${naive1.toFixed(1)}, first draft ${draft1.toFixed(1)}; ${rowBlocks} blocks of ${threads} threads cover a row of ${ffText}, and the tests launch 70,000 rows; 4 of the rows drawn`,
   `µs and DRAM bytes from Nsight Compute at 4,096 tokens: vector ${vectorBig.toFixed(0)}, naive ${naiveBig.toFixed(0)}; each value is ${bf16} bytes, so the scalar path issues ${scalarInstructions} memory instructions for ${vecWidth} outputs and the vector path 3; up sits ${ffText} values (${gateToUpBytes} bytes) after gate, a multiple of ${vecWidth}; the peak from the bandwidth test in docs/results.md`,
   `µs per launch for one token, Nsight Compute, five runs: the vector kernel took ${smallVector.toFixed(2)} µs; ${ffText} values make ${vectors} vectors, ${smallBlocks} blocks on ${sms} SMs with ${vecWidth} chains per thread; the scalar path runs ${rowBlocks} blocks and takes ${smallTokens} tokens or fewer; chain bars illustrative`,
+  `µs per launch for one token, Nsight Compute: naive ${naive1.toFixed(1)}, first draft ${draft1.toFixed(1)}; ${rowBlocks} blocks of ${threads} threads cover a row of ${ffText}, and the tests launch 70,000 rows; 4 of the rows drawn`,
   `Nsight Compute, RTX 5060 Laptop GPU, median of three launches after thirty warm-ups; ${gainLow}x to ${gainHigh}x is naive time over vector time at ${gainTokens.map((t) => fmtInt(Number(t))).join(", ")} tokens (calculated); DRAM bytes of the vector kernel at 1 and 16 tokens: ${smallKb.join(" KB and ")} KB (measured); ${stepShare}% is the share of kernel time in a batch-1 decode step (measured); the row written and read back is ${roundTripKb} KB per layer at one token, ${roundTripShare}% of the ${weightsMb} MB of gate and up weights (calculated from config.json)`,
 ];
 
@@ -284,15 +286,15 @@ export function SwigluStory() {
           case 1:
             return <ChainFigure />;
           case 2:
-            return <GridFigure naive={naive1} draft={draft1} />;
-          case 3:
             return (
               <VectorFigure
                 bars={swigluNumbers.bandwidth}
               />
             );
-          case 4:
+          case 3:
             return <SmFigure naive={smallNaive} vector={smallVector} dispatch={smallFast} />;
+          case 4:
+            return <GridFigure naive={naive1} draft={draft1} />;
           default:
             return <TokensPicker />;
         }

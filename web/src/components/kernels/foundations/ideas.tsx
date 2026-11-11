@@ -106,14 +106,14 @@ const ideaSteps: StoryStep[] = [
   },
   {
     id: "idea-latency",
-    title: "latency against throughput",
+    title: "batching trades latency for throughput",
     body: (
       <>
         <p>
           Bigger batches give more tokens per second in total, but each conversation waits a little longer for its next token, {ms(b16.tpot)} ms in a full batch. An engine is always trading the speed one user feels against how many users it can serve.
         </p>
         <p>
-          A long new prompt makes the trade worse. Its prefill is one big step, and every conversation already decoding waits for it to finish. Chunked prefill, the last chapter, cuts the prompt into pieces that ride along with the decode steps, so <span className="text-accent">nobody stalls</span>. CUDA Graphs shave the time between kernels so every step is shorter.
+          A long new prompt makes the trade worse. Its prefill is one big step, and every conversation already decoding waits for it to finish. Chunked prefill, in Part IV, cuts the prompt into pieces that ride along with the decode steps, so <span className="text-accent">nobody stalls</span>. CUDA Graphs shave the time between kernels so every step is shorter.
         </p>
       </>
     ),

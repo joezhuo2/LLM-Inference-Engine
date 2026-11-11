@@ -12,6 +12,8 @@ export const bookChapters: Record<string, () => Promise<ChapterDef>> = {
   "paged-attention": () => import("./paged-attention").then((m) => m.pagedAttentionChapter),
   "cuda-graphs": () => import("./cuda-graphs").then((m) => m.cudaGraphsChapter),
   "split-attention": () => import("./split-attention").then((m) => m.splitAttentionChapter),
+  serving: () => import("./serving").then((m) => m.servingChapter),
   sampling: () => import("./sampling").then((m) => m.samplingChapter),
   "add-rmsnorm": () => import("./add-rmsnorm").then((m) => m.addRmsnormChapter),
+  "where-the-time-went": () => import("./where-the-time-went").then((m) => m.whereTheTimeWentChapter),
 };

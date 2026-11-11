@@ -25,18 +25,22 @@ import { FoundationsIdeasStory } from "./foundations/ideas";
 import { FoundationsSandbox } from "./foundations/sandbox";
 import { FoundationsStory } from "./foundations/story";
 import { PagedKvAboutStory } from "./paged-kv/about";
-import { BatchingStory, PagedKvStory } from "./paged-kv/story";
-import { KvVisualizer } from "./paged-kv/visualizer";
+import { PagedKvStory } from "./paged-kv/story";
 import { RopeAboutStory } from "./rope/about";
 import { RopeSandbox } from "./rope/sandbox";
 import { RopeStory } from "./rope/story";
 import { SamplingAboutStory } from "./sampling/about";
 import { SamplingSandbox } from "./sampling/sandbox";
 import { SamplingStory } from "./sampling/story";
+import { ServingAboutStory } from "./serving/about";
+import { ServingSandbox } from "./serving/sandbox";
+import { ServingStory } from "./serving/story";
 import { SplitAboutStory } from "./split-attention/about";
 import { SplitAttentionStory } from "./split-attention/story";
 import { SwigluAboutStory } from "./swiglu/about";
 import { SwigluStory } from "./swiglu/story";
+import { TimeAboutStory } from "./where-the-time-went/about";
+import { TimeStory } from "./where-the-time-went/story";
 
 export function KernelStoryView({ slug }: { slug: string }) {
   switch (slug) {
@@ -66,6 +70,10 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <ChunkedPrefillStory />;
     case "flash-prefill":
       return <FlashPrefillStory />;
+    case "serving":
+      return <ServingStory />;
+    case "where-the-time-went":
+      return <TimeStory />;
     default:
       return null;
   }
@@ -110,6 +118,10 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <SplitAboutStory />;
     case "sampling":
       return <SamplingAboutStory />;
+    case "serving":
+      return <ServingAboutStory />;
+    case "where-the-time-went":
+      return <TimeAboutStory />;
     default:
       return null;
   }
@@ -119,8 +131,6 @@ export function KernelLeadView({ slug }: { slug: string }) {
   switch (slug) {
     case "paged-attention":
       return <PrologueStory />;
-    case "paged-kv":
-      return <KvVisualizer />;
     case "gemm":
       return <GemmStream />;
     default:
@@ -130,8 +140,6 @@ export function KernelLeadView({ slug }: { slug: string }) {
 
 export function KernelPrologueView({ slug }: { slug: string }) {
   switch (slug) {
-    case "paged-kv":
-      return <BatchingStory />;
     default:
       return null;
   }
@@ -151,6 +159,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <PagedAttentionSandbox />;
     case "sampling":
       return <SamplingSandbox />;
+    case "serving":
+      return <ServingSandbox />;
     default:
       return null;
   }

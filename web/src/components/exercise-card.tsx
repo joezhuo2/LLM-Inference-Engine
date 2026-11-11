@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { repoUrl } from "@/content/build-log";
 import specs from "@/content/exercise-specs.json";
-import { compareCommand, type Exercise, exerciseCommands, implLabel, type Numpy, numpyCommand, numpyFile, numpyInstall, numpyNote, numpyOf, numpyShapes, numpySolution, prUrl, runsLabel } from "@/content/exercises";
+import { compareCommand, type Exercise, exerciseCommands, implLabel, type Numpy, numpyCommand, numpyFile, numpyInstall, numpyNote, numpyOf, numpyShapes, numpySolution, openTag, prUrl, runsLabel } from "@/content/exercises";
 import { Disclosure } from "./disclosure";
 import { gloss } from "./glossed";
 
@@ -45,7 +45,7 @@ export function ExerciseCard({ exercise: e, chapterLink = false }: { exercise: E
             <Tag strong={e.runs === "cpu"}>{runsLabel[e.runs]}</Tag>
             {numpyOf(e) && <Tag strong>NumPy version runs on a CPU</Tag>}
             {e.kind === "stub" && e.model && <Tag>some tests load TinyLlama</Tag>}
-            {e.kind === "open" && <Tag>no tests, open ended</Tag>}
+            {e.kind === "open" && <Tag>{openTag(e)}</Tag>}
           </div>
         </div>
         <p className="max-w-2xl text-muted">{gloss(e.task)}</p>
@@ -171,9 +171,9 @@ function StubSteps({ e }: { e: Extract<Exercise, { kind: "stub" }> }) {
 function OpenSteps({ e }: { e: Extract<Exercise, { kind: "open" }> }) {
   return (
     <ol className="space-y-4 text-sm">
-      <Step n={1} title="Write it from scratch">
-        <p className="text-muted">Any file will do: a single .cu built with nvcc is enough. Nothing in the engine needs to change.</p>
-        <Commands lines={["nvcc -O3 -arch=native copy.cu -o copy && ./copy"]} />
+      <Step n={1} title={e.write?.title ?? "Write it from scratch"}>
+        <p className="text-muted">{e.write?.text ?? "Any file will do: a single .cu built with nvcc is enough. Nothing in the engine needs to change."}</p>
+        <Commands lines={e.write?.commands ?? ["nvcc -O3 -arch=native copy.cu -o copy && ./copy"]} />
       </Step>
       <Step n={2} title="Check it">
         <p className="text-muted">{e.check}</p>

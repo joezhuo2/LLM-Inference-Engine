@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { chapterNumber } from "@/content/book-order";
 import { chunkBudget, chunked, chunkedSteps, fmt, largestGap, medianGap, peakGoodput, perRowPrefill, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -8,8 +9,8 @@ import { AllPrefillFigure, BudgetBarFigure, PreemptFigure, SampledFigure, Spread
 import { expectAnswer, type Prediction, Predict } from "../predict";
 
 const aloneTokens = "2,048";
-const alone = prefillMs(perRowPrefill, aloneTokens);
-const aloneNow = prefillMs("engine", aloneTokens);
+const alone = prefillMs("engine", aloneTokens);
+const aloneBefore = prefillMs(perRowPrefill, aloneTokens);
 const decoders = 3;
 const prompt = 96;
 const budgets = ["16", "32", "64"];
@@ -44,8 +45,8 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          schedule() makes every step all prefill or all decode, and prefill goes first. A long prompt is one step, and
-          every running sequence waits for it: alone, with the per-row prefill attention these runs used, the long prompt takes{" "}
+          The scheduler of chapter {chapterNumber("serving")} makes every step all prefill or all decode, and prefill goes first. A long prompt is one step, and
+          every running sequence waits for it: alone, the long prompt takes{" "}
           <span className="text-warn">{fmt(alone)} ms</span>.
         </p>
         <p>
@@ -54,7 +55,7 @@ const steps: StoryStep[] = [
           median gap.
         </p>
         <p>
-          Every load number in this chapter was measured before the FlashAttention prefill kernel of the next chapter, which shortens the long step itself. They have not been rerun with it.
+          The FlashAttention prefill kernel of Part II already shortened that step: with per-row prefill attention the same prompt took {fmt(aloneBefore)} ms. Every load number in this chapter is measured with the new kernel.
         </p>
       </>
     ),
@@ -77,7 +78,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "spread",
-    title: "a long prompt spreads over steps",
+    title: "the budget trades the prompt's wait for everyone's",
     body: (
       <>
         <p>
@@ -104,8 +105,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Blocks for the whole prompt are allocated at admission, so a sequence in prefill never runs out halfway. A
-          decoder can still need a block when none is free, and the victim is the back of the running list.
+          The preemption rule of chapter {chapterNumber("serving")} does not change: when a decoder needs a block and none is free, the victim is the back of the running list. What changes is who stands there. Blocks for the whole prompt are allocated at admission, so a sequence in prefill never runs out halfway, but it can be taken from.
         </p>
         <p>
           The sequence in prefill is always last, so partly prefilled work goes first. It returns to the front of the
@@ -116,6 +116,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "sampled",
+    group: "how it got built",
     title: "only finished chunks get logits",
     body: (
       <>
@@ -127,13 +128,16 @@ const steps: StoryStep[] = [
           update() takes exactly one token per sampled entry, in that order. It can be empty, and the call is still
           required. first_token is stamped when the token arrives, not at the first chunk.
         </p>
+        <p>
+          This list is what the runner was wired to. The spec came first, with 25 tests that 14 deliberately broken schedulers fail. Joe implemented it, and one fix drafted with Claude followed: a preempted decoder now replays its prompt and its output. The batch builder then put the decode rows first and the chunk rows after them, with logit rows only for the sampled sequences. Pure decode steps kept their CUDA Graph, and a step that holds a chunk runs without one.
+        </p>
       </>
     ),
   },
 ];
 
 const captions = [
-  `TTFT of one ${aloneTokens}-token prompt alone with per-row prefill attention and the largest gap in the QPS sweep at 4 requests per second, docs/results.md, against a median gap of ${medianGap("engine + graphs", "4")} ms; with the FlashAttention prefill kernel the same prompt alone takes ${fmt(aloneNow)} ms, and the sweep has not been rerun with it; step widths are drawn, not measured`,
+  `TTFT of one ${aloneTokens}-token prompt alone and the largest gap in the QPS sweep at 4 requests per second, docs/results.md, against a median gap of ${medianGap("engine + graphs", "4")} ms; with per-row prefill attention the same prompt alone took ${fmt(aloneBefore)} ms; step widths are drawn, not measured`,
   "an illustrative step of 16 token slots; the engine's budget is a parameter",
   `an example of ${decoders} decoders and a ${prompt}-token prompt, computed by the same rule as the scheduler; measured, docs/results.md: a ${fmt(stallPrompt)}-token prompt arriving among ${stallDecoding} decoding requests has a longest gap of ${fmt(stallMs("none", "largest gap ms"))} ms and a first token after ${fmt(stallMs("none", "TTFT of the long prompt ms"))} ms with no budget, and ${fmt(stallMs(chunkBudget, "largest gap ms"))} ms and ${fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms with a budget of ${chunkBudget}; peak goodput in requests per second is ${peakGoodput("engine + graphs").value.toFixed(2)} for the engine, ${peakGoodput(chunked).value.toFixed(2)} with that budget and ${peakGoodput("vLLM").value.toFixed(2)} for vLLM`,
   "the running list and waiting queue of Scheduler; the sizes are a sketch",
@@ -167,7 +171,7 @@ export function ChunkedPrefillStory() {
       figure={(i) => {
         switch (i) {
           case 0:
-            return <AllPrefillFigure ms={`${fmt(alone)} ms with per-row prefill attention`} />;
+            return <AllPrefillFigure ms={`${fmt(alone)} ms`} />;
           case 1:
             return <BudgetBarFigure budget={16} decoders={decoders} />;
           case 2:

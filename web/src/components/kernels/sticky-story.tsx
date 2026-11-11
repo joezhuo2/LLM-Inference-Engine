@@ -7,7 +7,7 @@ import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { gloss } from "../glossed";
 import { useActiveStep } from "./use-active-step";
 
-export type StoryStep = { id: string; title: string; body: ReactNode };
+export type StoryStep = { id: string; title: string; body: ReactNode; group?: string };
 
 const ease = [0.23, 1, 0.32, 1] as const;
 
@@ -72,8 +72,10 @@ export function StickyStory({
         {steps.map((s, i) => (
           <section
             key={s.id}
+            id={`step-${s.id}`}
+            data-group={s.group}
             aria-current={i === active ? "step" : undefined}
-            className="flex min-h-[55svh] flex-col justify-center py-8 first:pt-0 md:min-h-[80svh]"
+            className="flex min-h-[55svh] scroll-mt-[calc((100vw-3.5rem)*0.714+9rem)] flex-col justify-center py-8 first:pt-0 md:min-h-[80svh] md:scroll-mt-0"
           >
             <div
               data-step={i}
@@ -82,7 +84,7 @@ export function StickyStory({
               }}
             >
               <div className="tabular-nums text-xs text-muted">
-                {kicker ?? `${String(i + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`}
+                {kicker ?? `${s.group ? `${s.group} · ` : ""}${String(i + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`}
               </div>
               <h2
                 className={clsx(

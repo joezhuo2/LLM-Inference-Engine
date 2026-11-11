@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import { lengths, slots } from "@/components/kernels/paged-kv/batching";
-import { batchGrids, first, fullContext, heldAt, lender, lookup, reqs, writeShare, writeUs } from "@/components/kernels/paged-kv/figures";
+import { first, fullContext, heldAt, lender, lookup, reqs, writeShare, writeUs } from "@/components/kernels/paged-kv/figures";
 import { stepAt } from "@/components/kernels/paged-kv/story";
 import { kvReplay } from "@/lib/data";
 import { createCard, type Kit, ribbonTube, washPlane } from "../ink";
@@ -13,7 +12,7 @@ const COLS = 12;
 const ROWS = Math.ceil((replay.max_block + 1) / COLS);
 const POOL = COLS * ROWS;
 
-export const KV_STOP = { static: 0, roomy: 1, tight: 2, watch: 3, why: 4, pool: 5, write: 6, append: 7, reuse: 8, replay: 9 };
+export const KV_STOP = { why: 0, pool: 1, append: 2, reuse: 3, write: 4, replay: 5 };
 
 const fmt = (v: number, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
@@ -139,184 +138,6 @@ function poolGrid(kit: Kit, x0: number, z0: number, pitch: number) {
       fills.set(id, cx, 0.008, cz, pitch * 0.78, h, pitch * 0.78, color);
     },
     commit: fills.commit,
-  };
-}
-
-type Kind = "static" | "roomy" | "tight";
-
-function batchingExhibit(kit: Kit, fonts: Fonts) {
-  const root = new THREE.Group();
-  const c = colors(kit);
-  root.add(placed(washPlane(kit.palette.blue, 0.95, 0.5, 0.12), 0.52, 0.002, -0.2));
-  const kinds: Kind[] = ["static", "roomy", "tight"];
-  const columns = Math.max(...kinds.map((k) => batchGrids[k].steps));
-  const gx0 = 0.15;
-  const gx1 = 0.92;
-  const cw = (gx1 - gx0) / columns;
-  const pitch = 0.07;
-  const gz0 = -0.38;
-  const rowZ = (s: number) => gz0 + (s + 0.5) * pitch;
-  const plate = kit.solid(new THREE.BoxGeometry(gx1 - gx0 + 0.016, 0.006, slots * pitch + 0.01));
-  plate.position.set((gx0 + gx1) / 2, 0.003, gz0 + (slots * pitch) / 2);
-  root.add(plate);
-  const cells = boxes(slots * columns);
-  root.add(cells.mesh);
-  const marks = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 16, 12), kit.pink, slots * columns);
-  marks.castShadow = true;
-  root.add(marks);
-  const dummy = new THREE.Object3D();
-
-  const qx0 = 0.34;
-  const qPitch = (0.92 - qx0) / lengths.length;
-  const qz = -0.53;
-  const chips = lengths.map((len, id) => {
-    const chip = kit.solid(new THREE.BoxGeometry(qPitch * 0.78, len * 0.011, 0.05));
-    chip.children[0].position.y = (len * 0.011) / 2;
-    chip.children[chip.children.length - 1].position.y = (len * 0.011) / 2;
-    chip.position.set(qx0 + (id + 0.5) * qPitch, 0, qz);
-    root.add(chip);
-    return chip;
-  });
-  const chipLevel = lengths.map(() => 1);
-  const chipLabels = floorLabel(0.92 - qx0, 0.04, (ctx, W, H) => {
-    ctx.fillStyle = kit.palette.ink;
-    ctx.font = `${H * 0.62}px ${fonts.sans}`;
-    ctx.textAlign = "center";
-    lengths.forEach((len, id) => ctx.fillText(`${id}:${len}`, ((id + 0.5) / lengths.length) * W, H * 0.72));
-  });
-  chipLabels.mesh.position.set((qx0 + 0.92) / 2, 0.003, qz + 0.048);
-  const queueCard = textCard(kit, fonts, 0.2, 0.075, () => [
-    { text: "the queue", y: 0.42, size: 0.36, color: kit.palette.ink, serif: true, x: 0.05 },
-    { text: "request:steps, illustrative", y: 0.8, size: 0.2, color: kit.palette.faint, x: 0.05 },
-  ]);
-  queueCard.group.position.set(0.22, 0, qz + 0.005);
-  root.add(chipLabels.mesh, queueCard.group);
-
-  let kind: Kind = "static";
-  let focus = false;
-  let col = 0;
-  let held = false;
-  let shownCol = -1;
-  const g = () => batchGrids[kind];
-
-  const ids = floorLabel(gx1 - gx0 + 0.06, slots * pitch, (ctx, W, H) => {
-    const grid = g();
-    const upto = Math.min(Math.floor(col + 0.5), grid.steps);
-    const sx = (x: number) => ((x - (gx0 - 0.06)) / (gx1 - gx0 + 0.06)) * W;
-    ctx.textAlign = "center";
-    ctx.font = `${H * 0.09}px ${fonts.sans}`;
-    for (let s = 0; s < slots; s++) {
-      const y = ((s + 0.62) / slots) * H;
-      ctx.fillStyle = kit.palette.faint;
-      ctx.fillText(`${s + 1}`, sx(gx0 - 0.03), y);
-      ctx.fillStyle = kit.palette.paper;
-      for (let t = 0; t < upto; t++) {
-        const id = grid.cells[s][t];
-        if (id !== null && !grid.redo[s][t]) ctx.fillText(`${id}`, sx(gx0 + (t + 0.5) * cw), y);
-      }
-    }
-  });
-  ids.mesh.position.set((gx0 - 0.06 + gx1) / 2, 0.034, gz0 + (slots * pitch) / 2);
-  root.add(ids.mesh);
-
-  const idle = (grid: ReturnType<typeof g>, upto: number) => {
-    let n = 0;
-    for (let s = 0; s < grid.slots; s++) for (let t = 0; t < upto; t++) if (grid.cells[s][t] === null || grid.redo[s][t]) n++;
-    return n;
-  };
-  const stats = textCard(kit, fonts, 0.8, 0.1, () => {
-    const grid = g();
-    const upto = Math.min(Math.floor(col + 0.5), grid.steps);
-    const running = upto ? grid.running[upto - 1] : 0;
-    const out =
-      kind === "static"
-        ? [
-            ["steps so far", `${upto}`, kit.palette.ink],
-            ["slots in use", `${running}`, kit.palette.ink],
-            ["wasted slot-steps", `${idle(grid, upto)}`, kit.palette.pink],
-            ["steps to finish", `${grid.steps}`, kit.palette.faint],
-          ]
-        : [
-            ["requests running", `${running}`, focus ? kit.palette.blue : kit.palette.ink],
-            ["preemptions", `${grid.evictions.slice(0, upto).reduce((n, e) => n + e, 0)}`, focus ? kit.palette.blue : kit.palette.pink],
-            ["wasted slot-steps", `${idle(grid, upto)}`, kit.palette.pink],
-            ["static batching wasted", `${batchGrids.static.wasted}`, kit.palette.faint],
-          ];
-    return out.flatMap(([label, value, color], i): Line[] => [
-      { text: label, y: 0.32, size: 0.17, color: kit.palette.faint, x: 0.03 + i * 0.245 },
-      { text: value, y: 0.8, size: 0.42, color, serif: true, x: 0.03 + i * 0.245 },
-    ]);
-  });
-  stats.group.position.set(0.53, 0, 0.0);
-  root.add(stats.group);
-
-  const knob = rail(kit, 0.17, gx0, gx1);
-  const readout = textCard(kit, fonts, 0.36, 0.065, () => [
-    { text: `step ${Math.min(Math.floor(col + 0.5), g().steps)} of ${g().steps}`, y: 0.48, size: 0.4, color: kit.palette.ink, serif: true, x: 0.04 },
-    { text: "one column per step, 4 slots", y: 0.86, size: 0.2, color: kit.palette.faint, x: 0.04 },
-  ]);
-  readout.group.position.set(0.53, 0, 0.23);
-  root.add(knob.group, readout.group);
-
-  const apply = (dt: number, reduced: boolean) => {
-    const grid = g();
-    const upto = Math.min(col, grid.steps);
-    for (let s = 0; s < slots; s++) {
-      for (let t = 0; t < columns; t++) {
-        const i = s * columns + t;
-        const id = t < grid.steps ? grid.cells[s][t] : null;
-        const redo = t < grid.steps && grid.redo[s][t];
-        const grow = t < grid.steps ? smooth(t, t + 1, upto) : 0;
-        const x = gx0 + (t + 0.5) * cw;
-        if (id !== null && !redo) cells.set(i, x, 0.006, rowZ(s), cw * 0.86, 0.026 * grow, pitch * 0.78, c.blue);
-        else if (redo) cells.set(i, x, 0.006, rowZ(s), cw * 0.86, 0.026 * grow, pitch * 0.78, c.pink);
-        else cells.set(i, x, 0.006, rowZ(s), cw * 0.86, t < grid.steps ? 0.005 * grow : 0, pitch * 0.78, c.pink);
-        const gone = t < grid.steps && grid.preempted[s].includes(t);
-        dummy.position.set(x, 0.05, rowZ(s));
-        dummy.scale.setScalar(gone ? 0.011 * grow + 0.0001 : 0.0001);
-        dummy.updateMatrix();
-        marks.setMatrixAt(i, dummy.matrix);
-      }
-    }
-    cells.commit();
-    marks.instanceMatrix.needsUpdate = true;
-    const whole = Math.min(Math.floor(col + 0.5), grid.steps);
-    const waiting = new Set(whole === 0 ? lengths.map((_, id) => id) : grid.waiting[whole - 1]);
-    const k = settle(dt, reduced);
-    chips.forEach((chip, id) => {
-      chipLevel[id] += ((waiting.has(id) ? 1 : 0.02) - chipLevel[id]) * k;
-      chip.scale.y = Math.max(0.001, chipLevel[id]);
-    });
-    knob.set(upto / grid.steps);
-    if (whole !== shownCol) {
-      shownCol = whole;
-      ids.redraw();
-      stats.redraw();
-      readout.redraw();
-    }
-  };
-
-  return {
-    root,
-    knob: knob.knob,
-    setKind: (next: Kind, nextFocus: boolean) => {
-      kind = next;
-      focus = nextFocus;
-      col = 0;
-      shownCol = -1;
-    },
-    setHeld: (v: boolean) => {
-      held = v;
-    },
-    drag: (x: number) => {
-      col = knob.frac(x) * g().steps;
-    },
-    update: (dt: number, reduced: boolean) => {
-      const steps = g().steps;
-      if (reduced && !held) col = steps;
-      else if (!held) col = col + dt / 0.7 > steps + 4 ? 0 : col + dt / 0.7;
-      apply(dt, reduced);
-    },
   };
 }
 
@@ -868,18 +689,17 @@ function replayExhibit(kit: Kit, fonts: Fonts) {
 }
 
 export function createPagedKvModel(kit: Kit, fonts: Fonts): BookModel {
-  const batching = batchingExhibit(kit, fonts);
   const why = whyExhibit(kit, fonts);
   const pool = poolExhibit(kit, fonts);
   const write = writeExhibit(kit, fonts);
   const append = appendExhibit(kit, fonts);
   const reuse = reuseExhibit(kit, fonts);
   const replayed = replayExhibit(kit, fonts);
-  const draggable = [batching, pool, append, replayed];
+  const draggable = [pool, append, replayed];
   let active: (typeof draggable)[number] | null = null;
   let entered = -1;
   return {
-    exhibits: [batching.root, why.root, pool.root, write.root, append.root, reuse.root, replayed.root],
+    exhibits: [why.root, pool.root, write.root, append.root, reuse.root, replayed.root],
     handles: draggable.map((d) => d.knob),
     dragStart: (handle) => {
       active = draggable.find((d) => d.knob === handle) ?? null;
@@ -893,10 +713,6 @@ export function createPagedKvModel(kit: Kit, fonts: Fonts): BookModel {
     enter: (stop) => {
       if (stop === entered) return;
       entered = stop;
-      if (stop === KV_STOP.static) batching.setKind("static", false);
-      if (stop === KV_STOP.roomy) batching.setKind("roomy", false);
-      if (stop === KV_STOP.tight) batching.setKind("tight", false);
-      if (stop === KV_STOP.watch) batching.setKind("tight", true);
       if (stop === KV_STOP.why) why.reset();
       if (stop === KV_STOP.pool) pool.reset();
       if (stop === KV_STOP.write) write.reset();
@@ -905,13 +721,12 @@ export function createPagedKvModel(kit: Kit, fonts: Fonts): BookModel {
       if (stop === KV_STOP.replay) replayed.reset();
     },
     update: (dt, exhibit, _stop, reduced) => {
-      if (exhibit === 0) batching.update(dt, reduced);
-      if (exhibit === 1) why.update(dt, reduced);
-      if (exhibit === 2) pool.update(dt, reduced);
-      if (exhibit === 3) write.update(dt, reduced);
-      if (exhibit === 4) append.update(dt, reduced);
-      if (exhibit === 5) reuse.update(dt, reduced);
-      if (exhibit === 6) replayed.update(dt, reduced);
+      if (exhibit === 0) why.update(dt, reduced);
+      if (exhibit === 1) pool.update(dt, reduced);
+      if (exhibit === 2) write.update(dt, reduced);
+      if (exhibit === 3) append.update(dt, reduced);
+      if (exhibit === 4) reuse.update(dt, reduced);
+      if (exhibit === 5) replayed.update(dt, reduced);
     },
   };
 }

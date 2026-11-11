@@ -1,4 +1,5 @@
 import type { Metric } from "@/content/build-log";
+import { flashFmt, flashLong, flashNumbers, flashPath, flashPaths, flashShape } from "@/content/kernels/flash-prefill";
 import { type Author, measured } from "@/content/kernels/types";
 
 export type DeadEndKind = "slower" | "broke" | "cliff" | "misread";
@@ -257,6 +258,31 @@ export const deadEnds: DeadEnd[] = [
       bars: [
         { label: "top-k 50", value: measured(sampling, { rows: "1" }, "top-k 50"), highlight: true },
         { label: "temperature", value: measured(sampling, { rows: "1" }, "temperature") },
+      ],
+    },
+  },
+  {
+    slug: "flash-prefill",
+    kernel: "FlashAttention prefill",
+    date: "Nov 10",
+    prs: [185],
+    branch: "kernel/flash-prefill-impl",
+    author: "both",
+    kind: "slower",
+    title: "A shorter path to each byte, the same walk",
+    tried: "A first prefill kernel that read the chunk's own keys and values straight from the QKV buffer instead of through the block table, with an online softmax, in the shape of the decode kernels: one thread block per row and query head, one key at a time, two barriers per key.",
+    happened: `It passed all ${flashShape.tests} tests and, once wired into the runner, was ${flashNumbers.firstLoss.toFixed(0)}% slower than the decode kernels at ${flashLong} tokens. Every row still walked every key alone, so the number of fetches was the same and only their address changed.`,
+    kept: `The spec, the tests and the interface. The switch stayed off until the tiled kernel passed the same tests: ${flashShape.tile} rows share each key tile and the products run on the tensor cores, ${flashFmt(flashNumbers.tiled)} ms.`,
+    source: profiling("flashattention-prefill-branch-136", "FlashAttention prefill"),
+    metric: {
+      kind: "bars",
+      label: `TTFT of one ${flashLong}-token prompt, ms`,
+      unit: "ms",
+      digits: 1,
+      bars: [
+        { label: "decode kernels", value: flashPath(flashPaths.paged, flashLong) },
+        { label: "first kernel", value: flashNumbers.first },
+        { label: "tiled kernel", value: flashNumbers.tiled, highlight: true },
       ],
     },
   },

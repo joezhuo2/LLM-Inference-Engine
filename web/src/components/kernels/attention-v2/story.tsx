@@ -4,7 +4,7 @@ import NumberFlow from "@number-flow/react";
 import Link from "next/link";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
-import { profilingTable } from "@/lib/data";
+import { modelShape, profilingTable } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -58,6 +58,9 @@ const contextChoices = ["128", "512", "2,048", "8,192"];
 
 const v1At512 = measured(v2Section, { rows: "16", context: "512" }, "v1 (us)");
 const v2At512 = measured(v2Section, { rows: "16", context: "512" }, "v2 (us)");
+const typical = Math.round(v1At512 / v2At512);
+const shape = modelShape();
+const headDim = shape.hidden / shape.heads;
 const prediction: Prediction = expectAnswer({
   question: "16 rows at 512 tokens: how many times faster is v2 than v1?",
   choices: ["under 2x", "2x to 5x", "over 5x"],
@@ -112,12 +115,60 @@ export function V1V2Picker() {
 
 const steps: StoryStep[] = [
   {
-    id: "v1",
-    title: "v1: three passes",
+    id: "online",
+    title: "one pass: a running max, sum and output",
     body: (
       <>
         <p>
-          v1 gives each row and query head one thread block. Pass one writes a score for every token of the
+          v2 reads the keys in chunks of 256 and keeps three things between chunks: the largest score so far, the sum of
+          exponentials, and the weighted values. When a chunk brings a larger score, the old sum and values are scaled down by
+          exp(m_old − m_new) and the new chunk is added.
+        </p>
+        <p>
+          The result is the same softmax, in one pass, and shared memory holds one chunk:{" "}
+          <span className="text-accent">{sharedPoints[0].v2.toLocaleString("en-US")} bytes</span> at any length.
+          With no buffer of scores, nothing in the kernel caps the context.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "lanes",
+    title: "eight lanes share each key in one wide read",
+    body: (
+      <>
+        <p>
+          A score is a dot product over {headDim} values. If each thread computes a whole one alone, neighbouring threads read keys a whole key apart. In v2 a group of <span className="text-accent">8</span> lanes shares one key: at every step
+          they read neighbouring dimensions together, in one wide read, and a few shuffles add their partial sums.
+        </p>
+        <p>The values step also uses every thread, where one thread per dimension would leave most of the block waiting.</p>
+      </>
+    ),
+  },
+  {
+    id: "profile",
+    title: "faster from busier warps, not more bandwidth",
+    body: (
+      <>
+        <p>
+          Nsight Compute on v2 and on v1, the three-pass kernel it replaced, shows both reading far less than the memory
+          system could deliver, so the gain is not bandwidth. v2 keeps more warps busy and gives them less to wait on.
+        </p>
+        <p>
+          One thing that did not help: replacing v2&apos;s shared-memory reductions with warp shuffles was 15 to 20%
+          slower, so it was dropped.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "v1",
+    title: "v1 kept every score and passed three times",
+    group: "how it got built",
+    body: (
+      <>
+        <p>
+          v1, the first version, gives each row and query head one thread block. Pass one writes a score for every token of the
           context into shared memory. Pass two finds the maximum, then the exponentials and their sum. Pass three
           multiplies by the values, one thread per dimension: only 64 of the block&apos;s threads work and the rest wait.
         </p>
@@ -130,7 +181,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "cap",
-    title: "the cap",
+    title: "keeping every score capped the context",
+    group: "how it got built",
     body: (
       <>
         <p>
@@ -141,61 +193,15 @@ const steps: StoryStep[] = [
         <p>
           The memory itself was not the wall: at the cap v1 uses{" "}
           <span className="text-accent">{(sharedPoints[2].v1 ?? 0).toLocaleString("en-US")} bytes</span> per block,
-          a fifth of the default limit. The cap was a design choice that a longer model would have hit.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "online",
-    title: "one chunk at a time",
-    body: (
-      <>
-        <p>
-          v2 keeps three things between chunks of keys: the largest score so far, the sum of exponentials, and the
-          weighted values. When a chunk brings a larger score, the old sum and values are scaled down by
-          exp(m_old − m_new) and the new chunk is added.
-        </p>
-        <p>
-          The result is the same softmax, in one pass, and shared memory holds one chunk:{" "}
-          <span className="text-accent">{sharedPoints[0].v2.toLocaleString("en-US")} bytes</span> at any length.
-          The cap is gone.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "lanes",
-    title: "eight lanes per key",
-    body: (
-      <>
-        <p>
-          In v1 neighbouring threads read keys a whole key apart. In v2 a group of <span className="text-accent">8</span> lanes shares one key: at every step
-          they read neighbouring dimensions together, in one wide read, and a few shuffles add their partial sums.
-        </p>
-        <p>The values step also uses every thread instead of 64.</p>
-      </>
-    ),
-  },
-  {
-    id: "profile",
-    title: "what the profile says",
-    body: (
-      <>
-        <p>
-          Both kernels read far less than the memory system could deliver, so the gain is not bandwidth. v2 keeps more
-          warps busy and gives them less to wait on.
-        </p>
-        <p>
-          One thing that did not help: replacing v2&apos;s shared-memory reductions with warp shuffles was 15 to 20%
-          slower, so it was dropped.
+          a fifth of the default limit. The cap was a design choice that a longer model would have hit, and the online softmax removed it.
         </p>
       </>
     ),
   },
   {
     id: "step",
-    title: "in the decode step",
+    title: "in the decode step, the gain grows with the batch",
+    group: "measured",
     body: (
       <>
         <p>
@@ -211,20 +217,21 @@ const steps: StoryStep[] = [
   },
   {
     id: "compare",
-    title: "every size",
+    title: "faster at every size, least at the shortest",
+    group: "measured",
     body: (
       <>
         <p>
-          From a context of a few hundred tokens up v2 is about <span className="text-accent">3x</span> faster than v1; at the
+          From a context of a few hundred tokens up v2 is about <span className="text-accent">{typical}x</span> faster than v1; at the
           shortest context with one row there is little to overlap and the gain is smaller. Try the measured times
           on the right.
         </p>
         <p>
-          With a single row v2 still launches only 32 blocks, which is the next story:{" "}
+          With a single row v2 still launches only {shape.heads} blocks, one per query head. The chapter{" "}
           <Link href="/kernels/split-attention" className="link-underline text-accent">
-            split-context attention
-          </Link>
-          .
+            split attention
+          </Link>{" "}
+          cuts the context to fill the rest of the GPU.
         </p>
       </>
     ),
@@ -232,13 +239,13 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `one row at 2,048 tokens, ${v1At2048} µs per launch from the bench loop; a block has 256 threads, so 64 work and 192 wait in pass three; the threads and cells are a sketch`,
-  "bytes from the launch code of each kernel (docs/profiling.md): 4 bytes per token for v1, and the benchmark's longest rows are 8,192 tokens; 48 KB is CUDA's default per-block limit",
   "example scores; m only ever rises, and every rise rescales what came before; a chunk is 256 tokens",
   "lane j reads dims j, j + 8, j + 16 … so each step's 8 reads are side by side in memory: one 16-byte read, three shuffles, against v1's keys 128 bytes apart",
   "Nsight Compute, clocks locked and caches cold, so slower than the bench loop",
+  `one row at 2,048 tokens, ${v1At2048} µs per launch from the bench loop; a block has 256 threads, so 64 work and 192 wait in pass three; the threads and cells are a sketch`,
+  "bytes from the launch code of each kernel (docs/profiling.md): 4 bytes per token for v1, and the benchmark's longest rows are 8,192 tokens; 48 KB is CUDA's default per-block limit",
   `attention per decode step ${stepBefore} → ${stepAfter} µs with contexts of at most 64 tokens (eager profile); before e07c022, after 79c1f91, scripts/reproduce.sh, RTX 5060 Laptop GPU`,
-  `µs per launch from the bench loop, every row at the full context; v2 is ${(v1At2048 / v2At2048).toFixed(1)}x faster than v1 at one row and 2,048 tokens, and about 3x from 512 tokens up; the shortest context is 128 tokens`,
+  `µs per launch from the bench loop, every row at the full context; v2 is ${(v1At2048 / v2At2048).toFixed(1)}x faster than v1 at one row and 2,048 tokens, and about ${typical}x from 512 tokens up; the shortest context is 128 tokens`,
 ];
 
 export const attentionV2Steps = steps;
@@ -259,18 +266,18 @@ export function AttentionV2Story() {
       steps={steps}
       caption={(i) => captions[i]}
       figure={(i) => {
-        switch (i) {
-          case 0:
+        switch (steps[i].id) {
+          case "v1":
             return <ThreePassFigure us={v1At2048} />;
-          case 1:
+          case "cap":
             return <SharedMemoryFigure points={sharedPoints} cap={cap} limit={limit} />;
-          case 2:
+          case "online":
             return <OnlineSoftmaxFigure />;
-          case 3:
+          case "lanes":
             return <LanesFigure />;
-          case 4:
+          case "profile":
             return <AttentionV2Profile />;
-          case 5:
+          case "step":
             return <AttentionV2Step />;
           default:
             return <V1V2Picker />;

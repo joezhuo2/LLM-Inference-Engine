@@ -2137,3 +2137,42 @@
 - **where the time of a loaded run goes, by step kind** => 
 - **the 99th percentile when the slow events are under 1% of the samples** => 
 - **prose that a script parses** => 
+
+## Idea first, history after (Branch 147)
+
+- **the idea of a chapter against the history of how it was built** => 
+- **block table** => 
+- **contiguous reads within a block** => 
+- **online softmax as one pass** => 
+- **shared memory per block** => 
+- **wave of thread blocks** => 
+- **partial softmax merge** => 
+- **kernel fusion saves bytes and launches, not arithmetic** => 
+- **xor shuffle all-reduce** => 
+- **128-bit vector loads** => 
+- **gridDim.y limit of 65,535** => 
+- **threshold search instead of a sort for top-k** => 
+- **padding a batch to a graph bucket** => 
+- **the ridge point as the line between memory bound and compute bound** => 
+- **row-major W read column-major as its transpose** => 
+- **a last-bit frequency error multiplied by the position** => 
+- **launch-bound kernel at small token counts** => 
+- **mma.sync fragment** => 
+- **online softmax per row** => 
+- **arithmetic intensity per byte loaded** => 
+- **register-limited occupancy** => 
+- **a profile per commit read from git history** => 
+- **span and busy time of a step** => 
+- **weight-read floor of a token** => 
+- **quantization as fewer weight bytes per token** => 
+- **prefix caching by sharing KV blocks** => 
+- **speculative decoding acceptance rate** => 
+- **reading-time estimate from a word count** => 
+- **fragment identifier** => 
+- **admission of a waiting request** => 
+- **preemption of the last admitted sequence** => 
+- **a block table per request over one shared pool** => 
+- **a token budget per step** => 
+- **waiting for the remaining time of a tween against a whole new one** => 
+- **text that branches on the date of its data** => 
+- **a number and the kernel it was measured with** => 

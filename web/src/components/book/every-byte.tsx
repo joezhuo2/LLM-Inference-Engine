@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
@@ -10,31 +10,41 @@ import { GlossProvider, type PointTerm, PointGloss } from "@/components/gloss";
 import { gloss } from "@/components/glossed";
 import { BookText } from "@/components/kernels/authorship";
 import { Scramble } from "@/components/scramble";
+import { beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
 import { kindLabel } from "@/content/dead-ends";
 import { estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { chapterExercises, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
 import { chapterReview, recallOf } from "@/content/reviews";
+import { shortPathName, shortPathQuery } from "@/content/short-path";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { bookOrder, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
+import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, routePage, routeSection, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
 
 const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
-const sectionKeys = ["start", "contents", ...chapterSlugs, "estimates", "errata"];
+const backKeys = ["beyond", "estimates", "errata"];
+const sectionKeys = ["start", "contents", ...chapterSlugs, ...backKeys];
 const beatMs = 6500;
 let numbered: Promise<number> | undefined;
 const numberBook = () =>
-  (numbered ??= Promise.all(chapterSlugs.map((slug) => bookChapters[slug]().then((c) => [slug, 1 + c.steps.length + c.workbench.length + reviewCount(slug) + chapterExercises(slug).length] as const))).then((pairs) => numberPages(Object.fromEntries(pairs))));
+  (numbered ??= Promise.all(chapterSlugs.map((slug) => bookChapters[slug]())).then((all) => {
+    setBookRoute(all);
+    return numberPages(Object.fromEntries(all.map((c) => [c.slug, 1 + c.steps.length + c.workbench.length + reviewCount(c.slug) + chapterExercises(c.slug).length])));
+  }));
 
 type Meta = { key: string; local: number; slug?: string; exhibit: number | null };
 type Place = { closed: true } | { closed: false; key: string; local: number };
 
-const urlOf = bookHref;
+const urlOf = (key: string, short: boolean) => {
+  const [path, hash] = bookHref(key).split("#");
+  return `${path}${short ? `?${shortPathQuery}` : ""}${hash ? `#${hash}` : ""}`;
+};
+const shortInUrl = () => window.location.search.slice(1).split("&").includes(shortPathQuery);
 
 function parsePlace(): Place {
   const path = window.location.pathname.replace(/\/$/, "");
@@ -42,7 +52,8 @@ function parsePlace(): Place {
   const slug = path.split("/")[2];
   if (slug && chapterSlugs.includes(slug)) return { closed: false, key: slug, local: 0 };
   if (slug === "start") return { closed: false, key: "start", local: 0 };
-  return { closed: false, key: window.location.hash === "#errata" ? "errata" : window.location.hash === "#estimates" ? "estimates" : "contents", local: 0 };
+  const back = window.location.hash.slice(1);
+  return { closed: false, key: backKeys.includes(back) ? back : "contents", local: 0 };
 }
 
 function deferred<T>() {
@@ -60,11 +71,11 @@ function Icon({ d }: { d: string }) {
 }
 
 function compose(raw: Record<string, Stop[]>) {
-  const keys = ["start", "contents", ...chapterSlugs.filter((s) => raw[s]), "estimates", "errata"];
+  const keys = ["start", "contents", ...chapterSlugs.filter((s) => raw[s]), ...backKeys];
   const stops: Stop[] = [];
   const meta: Meta[] = [];
   for (const key of keys) {
-    const slug = key === "start" || key === "contents" || key === "estimates" || key === "errata" ? undefined : key;
+    const slug = chapterSlugs.includes(key) ? key : undefined;
     raw[key].forEach((s, i) => {
       const folios = slug && i > 0 && s.page ? { page: { ...s.page, folio: String((chapterPage(key) ?? 0) + i) } } : {};
       meta.push({ key, local: slug ? i - 1 : i, slug, exhibit: slug ? s.exhibit : null });
@@ -74,7 +85,7 @@ function compose(raw: Record<string, Stop[]>) {
   return { stops, meta };
 }
 
-const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], estimates: estimateStops(0), errata: errataStops(0) };
+const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], beyond: beyondStops(0), estimates: estimateStops(0), errata: errataStops(0) };
 const initial = compose(base);
 
 export function EveryByte() {
@@ -111,6 +122,8 @@ export function EveryByte() {
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(false);
   const [total, setTotal] = useState(0);
+  const [short, setShort] = useState(false);
+  const shortRef = useRef(false);
 
   useEffect(() => void numberBook().then(setTotal), []);
 
@@ -126,6 +139,18 @@ export function EveryByte() {
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
+
+  const setMode = useCallback((on: boolean) => {
+    shortRef.current = on;
+    setShort(on);
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setMode(shortInUrl());
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, [setMode]);
 
   const attach = useCallback((slug: string) => {
     const c = defsRef.current[slug];
@@ -189,14 +214,14 @@ export function EveryByte() {
   const setUrl = useCallback((index: number, push: boolean) => {
     const key = book.current.meta[index]?.key;
     if (!key || !push) return;
-    const url = urlOf(key);
-    if (window.location.pathname + window.location.hash !== url) window.history.pushState(null, "", url);
+    const url = urlOf(key, shortRef.current);
+    if (window.location.pathname + window.location.search + window.location.hash !== url) window.history.pushState(null, "", url);
   }, []);
 
   const preload = useCallback(
     (index: number) => {
       const slug = book.current.meta[index]?.slug;
-      const at = slug ? chapterSlugs.indexOf(slug) : (book.current.meta[index]?.key === "estimates" || book.current.meta[index]?.key === "errata") ? chapterSlugs.length : -1;
+      const at = slug ? chapterSlugs.indexOf(slug) : backKeys.includes(book.current.meta[index]?.key ?? "") ? chapterSlugs.length : -1;
       for (const n of [chapterSlugs[at - 1], chapterSlugs[at + 1]]) if (n) void ensure(n);
     },
     [ensure],
@@ -248,10 +273,36 @@ export function EveryByte() {
     [],
   );
 
+  const goStop = useCallback(
+    async (key: string, local: number) => {
+      await Promise.all([ensure(key), numberBook()]);
+      const index = book.current.meta.findIndex((m) => m.key === key && m.local === local);
+      const from = book.current.meta[stopRef.current];
+      if (index >= 0) go(index, !from || Math.abs(routePage(key, local) - routePage(from.key, from.local)) > 1);
+    },
+    [ensure, go],
+  );
+
+  const enterShort = useCallback(() => {
+    setMode(true);
+    void goKey("start", true);
+  }, [setMode, goKey]);
+
+  const leaveShort = useCallback(() => {
+    setMode(false);
+    window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+  }, [setMode]);
+
   const step = useCallback(
     (delta: 1 | -1) => {
       const i = stopRef.current;
       const m = book.current.meta[i];
+      if (shortRef.current && bookRoute().order.length) {
+        const to = routeStep(m.key, m.local, delta);
+        if (to) void goStop(to.key, to.local);
+        else if (i === 0 && delta < 0) closeBook();
+        return;
+      }
       const edge = book.current.meta[i + delta]?.key !== m.key;
       if (edge) {
         const keys = sectionKeys;
@@ -264,13 +315,13 @@ export function EveryByte() {
       if (i === 0 && delta < 0) closeBook();
       else go(i + delta);
     },
-    [go, goKey, closeBook],
+    [go, goKey, goStop, closeBook],
   );
 
   const jump = useCallback(
     (delta: 1 | -1) => {
       const key = book.current.meta[stopRef.current]?.key ?? "contents";
-      const next = sectionKeys[sectionKeys.indexOf(key) + delta];
+      const next = routeSection(key, delta, shortRef.current);
       if (next) void goKey(next, true);
     },
     [goKey],
@@ -295,7 +346,9 @@ export function EveryByte() {
 
   const onLinkHref = useCallback(
     (href: string) => {
-      if (href === "#errata" || href === "#estimates") return void goKey(href.slice(1), true);
+      if (href === "#path") return enterShort();
+      const [back, n] = href.startsWith("#") ? href.slice(1).split(":") : [];
+      if (back && backKeys.includes(back)) return n ? go(firstOf(back) + (back === "beyond" ? beyondSpreadOf(Number(n)) : Number(n)), true) : void goKey(back, true);
       if (/^https?:\/\//.test(href)) return void window.open(href, "_blank", "noopener,noreferrer");
       const [path, at] = href.split("#");
       const slug = path.startsWith(`${BOOK}/`) ? path.slice(BOOK.length + 1) : "";
@@ -303,7 +356,7 @@ export function EveryByte() {
       if (chapterSlugs.includes(slug)) return void goKey(slug, true);
       router.push(href);
     },
-    [goKey, router, turnTo],
+    [enterShort, go, goKey, router, turnTo],
   );
 
   useEffect(() => {
@@ -466,6 +519,7 @@ export function EveryByte() {
   const title = stops[stop]?.page?.title ?? "";
   const caption = open ? (beats[beat]?.caption ?? title) : "Every Byte: click the cover to open the book";
   const spread = segment === "errata" && meta ? errataSpreads[meta.local] : null;
+  const beyond = segment === "beyond" && meta ? beyondSpreads[meta.local] : null;
   const problem = segment === "estimates" && meta ? estimates[meta.local - 1] : undefined;
   const chapterStep = def && meta ? def.steps[meta.local] : undefined;
   const bench = def && meta ? def.workbench[meta.local - def.steps.length] : undefined;
@@ -474,6 +528,16 @@ export function EveryByte() {
   const exercise = def && meta ? chapterExercises(def.slug)[reviewAt - reviewCount(def.slug)] : undefined;
   const exerciseNumpy = exercise ? numpyOf(exercise) : undefined;
   const otherHref = def ? `/kernels/${def.slug}` : "/kernels";
+  const route = bookRoute();
+  const routeAt = meta ? routeIndex(meta.key, meta.local) : -1;
+  const shortOn = short && open && total > 0 && route.order.length > 0;
+  const lastPage = shortOn && meta ? !routeStep(meta.key, meta.local, 1) : stop === stops.length - 1;
+  const hourButton = (
+    <button type="button" data-book-link="#path" onClick={enterShort} className="link-underline mt-2 block text-left text-text">
+      {`If you have an hour: read the ${shortPathName} →`}
+      <span className="block text-xs text-muted">{routeLine()}</span>
+    </button>
+  );
 
   if (failed) {
     return (
@@ -515,7 +579,7 @@ export function EveryByte() {
           className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 overflow-hidden rounded-full border border-white/30 bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
         >
           <div ref={barRef} className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 py-1 pl-1.5 pr-4">
-            <button type="button" aria-label="previous chapter" disabled={!open || sectionKeys.indexOf(segment) <= 0} onClick={() => jump(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <button type="button" aria-label="previous chapter" disabled={!open || !routeSection(segment, -1, shortOn)} onClick={() => jump(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
               <Icon d="M8 3 3 8l5 5M13 3 8 8l5 5" />
             </button>
             <button type="button" aria-label={stop === 0 ? "close the book" : "previous page"} disabled={!open} onClick={() => step(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
@@ -541,10 +605,10 @@ export function EveryByte() {
                   </button>
                 ))}
             </span>
-            <button type="button" aria-label={open ? "next page" : "open the book"} disabled={open && stop === stops.length - 1} onClick={() => (open ? step(1) : void goKey("start", false))} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <button type="button" aria-label={open ? "next page" : "open the book"} disabled={open && lastPage} onClick={() => (open ? step(1) : void goKey("start", false))} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
               <Icon d="M6 3l5 5-5 5" />
             </button>
-            <button type="button" aria-label="next chapter" disabled={!open || sectionKeys.indexOf(segment) >= sectionKeys.length - 1} onClick={() => jump(1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
+            <button type="button" aria-label="next chapter" disabled={!open || !routeSection(segment, 1, shortOn)} onClick={() => jump(1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
               <Icon d="M3 3l5 5-5 5M8 3l5 5-5 5" />
             </button>
             <Link href={otherHref} className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
@@ -552,8 +616,27 @@ export function EveryByte() {
             </Link>
           </div>
         </motion.nav>
+        <AnimatePresence>
+          {shortOn && (
+            <motion.div
+              data-short-path
+              aria-label={shortPathName}
+              initial={{ opacity: 0, y: reduced ? 0 : -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: reduced ? 0 : -10 }}
+              transition={{ duration: reduced ? 0 : 0.7, ease: "easeInOut" }}
+              className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-white/30 bg-surface/55 py-1 pl-4 pr-1.5 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
+            >
+              <span className="text-text">{shortPathName}</span>
+              <span>{routeAt >= 0 ? `${routeAt + 1} of ${route.order.length}` : "off the path, turn the page to rejoin"}</span>
+              <button type="button" onClick={leaveShort} className="pressable rounded-full border-l border-border px-2.5 py-0.5 hover:text-text">
+                leave
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {overlay && narrow && (
-          <div data-theme="light" className="book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]">
+          <div data-theme="light" className={clsx("book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]", shortOn && "pt-14")}>
             <div ref={setPageEl} />
           </div>
         )}
@@ -680,6 +763,7 @@ export function EveryByte() {
                     <li key={p}>{gloss(p)}</li>
                   ))}
                 </ul>
+                {route.order.length > 0 && hourButton}
               </>
             ) : meta.local === 1 ? (
               <>
@@ -750,6 +834,11 @@ export function EveryByte() {
                   <p className="mt-2 font-serif text-lg text-accent">{gloss(problem.answer)}</p>
                   <p className="mt-1 text-text">{gloss(problem.teaches)}</p>
                 </details>
+                {problem.beyond && (
+                  <button type="button" data-book-link={`#beyond:${beyondTopics.findIndex((t) => t.id === problem.beyond)}`} onClick={() => onLinkHref(`#beyond:${beyondTopics.findIndex((t) => t.id === problem.beyond)}`)} className="link-underline mt-2 block text-left text-text">
+                    {`Beyond this engine: ${problem.beyond} →`}
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -767,6 +856,50 @@ export function EveryByte() {
                 </ol>
               </>
             )
+          ) : beyond ? (
+            <>
+              {[beyond.left, beyond.right].map((p) =>
+                p.kind === "intro" ? (
+                  <section key="intro">
+                    <h1 className="font-serif text-2xl text-text">{beyondTitle}</h1>
+                    <div className="mt-2 space-y-2">
+                      {beyondIntro.map((text) => (
+                        <p key={text}>{gloss(text)}</p>
+                      ))}
+                    </div>
+                  </section>
+                ) : p.kind === "units" ? (
+                  <section key="units" className="mt-3">
+                    <h2 className="font-serif text-xl text-text">{beyondUnitsTitle}</h2>
+                    <ul className="mt-1">
+                      {beyondTopics.map((t) => (
+                        <li key={t.id}>
+                          <span className="text-text">{t.title}</span>
+                          {`: ${t.unit}`}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1 text-xs">{beyondUnitsNote}</p>
+                  </section>
+                ) : (
+                  <section key={p.topic.id} className="mt-3 space-y-2 first:mt-0">
+                    <h2 className="text-xs">{`${beyondTitle} · ${p.topic.unit}`}</h2>
+                    <h1 className="font-serif text-2xl text-text">{p.topic.title}</h1>
+                    {p.topic.paragraphs.map((text) => (
+                      <p key={text}>{gloss(text)}</p>
+                    ))}
+                    {estimateOf(p.topic) && (
+                      <button type="button" data-book-link={estimateOf(p.topic)?.href} onClick={() => onLinkHref(estimateOf(p.topic)?.href ?? "")} className="link-underline block text-left text-text">
+                        {estimateOf(p.topic)?.text}
+                      </button>
+                    )}
+                    <a href={p.topic.source.href} data-book-link={p.topic.source.href} target="_blank" rel="noreferrer" className="link-underline block text-xs text-text">
+                      {p.topic.source.label}
+                    </a>
+                  </section>
+                ),
+              )}
+            </>
           ) : spread ? (
             <>
               {!spread.left && (
@@ -806,12 +939,18 @@ export function EveryByte() {
                         <Link href={bookHref(slug)} data-book-link={bookHref(slug)} onClick={chapterSlugs.includes(slug) ? (e) => inBook(e, slug) : undefined} className="link-underline text-text">
                           {chapterTitle(slug)}
                         </Link>
+                        {route.chapters.includes(slug) && <span className="text-xs text-accent">{shortPathName}</span>}
                         <span className="ml-auto tabular-nums">{chapterPage(slug)}</span>
                       </li>
                     ))}
                   </ol>
                 </div>
               ))}
+              {route.order.length > 0 && hourButton}
+              <button type="button" data-book-link="#beyond" onClick={() => void goKey("beyond", true)} className="link-underline mt-2 flex w-full text-text">
+                Beyond this engine
+                <span className="ml-auto tabular-nums text-muted">{chapterPage("beyond")}</span>
+              </button>
               <button type="button" data-book-link="#estimates" onClick={() => void goKey("estimates", true)} className="link-underline mt-2 flex w-full text-text">
                 Estimate it yourself
                 <span className="ml-auto tabular-nums text-muted">{chapterPage("estimates")}</span>

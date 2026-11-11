@@ -1,8 +1,7 @@
-import { kvDemo, kvReplay } from "@/lib/data";
+import { kvReplay } from "@/lib/data";
 import type { KernelStory } from "./types";
 
 const replay = kvReplay();
-const demo = kvDemo();
 
 export const pagedKv: KernelStory = {
   slug: "paged-kv",
@@ -15,14 +14,6 @@ export const pagedKv: KernelStory = {
   headline: {
     value: `${replay.peak.blocks} / ${replay.meta.kv_blocks.toLocaleString("en-US")}`,
     label: `KV blocks held at the busiest step of a recorded ${replay.meta.num_requests}-request chat run, ${replay.peak.running} requests at once`,
-  },
-  prologue: {
-    title: "continuous batching",
-    intro: "Serving many requests from one pool needs a scheduler that decides, step by step, which requests run together. This is what it does that a fixed batch cannot. The request lengths in the diagrams are illustrative, not measured.",
-  },
-  lead: {
-    title: "allocate it yourself",
-    intro: `Three real chat requests, answered greedily by the engine on the ${demo.gpu.replace("NVIDIA GeForce ", "")} and recorded in results/kv_demo.json, served from a small block pool by the rules of the BlockManager and the scheduler: a request is admitted when blocks for its whole length are free, every decode step appends one slot, a full pool preempts the newest request. Add requests, then switch to contiguous to run the same arrivals with every request reserving its prompt plus the ${demo.max_new_tokens} tokens it may generate. Hover a block for its tokens and where it sits in memory.`,
   },
   sources: [
     { path: "src/kernels/write_kv.cu", label: "write_kv" },
@@ -42,16 +33,12 @@ export const pagedKv: KernelStory = {
     },
     { path: "tests/unit/test_block_manager.cpp", label: "BlockManager" },
     {
-      path: "tests/unit/test_scheduler.cpp",
-      label: "scheduler on a fake KV cache",
-    },
-    {
       path: "tests/gpu/test_serve.cpp",
       label: "16 concurrent against 16 solo, preemption",
     },
   ],
   testing:
-    "The 8 write_kv tests fill both caches and guard bytes around them with random values, run the kernel and compare every byte with a host reference: a 37-token sequence through a shuffled block table, padding rows that must write nothing, the slots at block boundaries and at both ends of the cache, block sizes 1, 3 and 5 with odd head layouts, a 2,048-token prefill over 128 random blocks, a 16-sequence decode batch, and 11 rejected arguments. They were checked against nine deliberately broken versions before Joe's kernel existed. The 15 BlockManager tests cover block counts at lengths 1 to 2,048, the null block never handed out, a new block only at a multiple of 16, rejected calls changing nothing, and 10,000 random operations that keep every invariant. The 21 scheduler tests run on a fake KV cache filled exactly where write_kv would write. On the real model, 16 concurrent greedy requests give the tokens of 16 solo runs, and a 56-block cache that forces 6 preemptions gives the same outputs as a roomy one. The page's replay of the recorded trace is a check of its own: the build fails unless the block manager's model leaves exactly the trace's free block count after each of its steps.",
+    "The 8 write_kv tests fill both caches and guard bytes around them with random values, run the kernel and compare every byte with a host reference: a 37-token sequence through a shuffled block table, padding rows that must write nothing, the slots at block boundaries and at both ends of the cache, block sizes 1, 3 and 5 with odd head layouts, a 2,048-token prefill over 128 random blocks, a 16-sequence decode batch, and 11 rejected arguments. They were checked against nine deliberately broken versions before Joe's kernel existed. The 15 BlockManager tests cover block counts at lengths 1 to 2,048, the null block never handed out, a new block only at a multiple of 16, rejected calls changing nothing, and 10,000 random operations that keep every invariant. On the real model, 16 concurrent greedy requests give the tokens of 16 solo runs, and a 56-block cache that forces 6 preemptions gives the same outputs as a roomy one. The page's replay of the recorded trace is a check of its own: the build fails unless the block manager's model leaves exactly the trace's free block count after each of its steps.",
   excerpts: [
     {
       file: "src/kernels/write_kv.cu",
@@ -124,15 +111,6 @@ export const pagedKv: KernelStory = {
       author: "both",
       title: "write_kv",
       text: "Joe's kernel: one thread per (token, KV head, dimension) element reads K and V from the end of the fused QKV row and writes them bit for bit into the slot's block, with every index 64-bit and a negative slot returning before any write. A test caught two spec slips, fixed with Claude: a QKV row with no query columns was accepted, and an empty batch returned before the argument checks ran.",
-    },
-    {
-      date: "Oct 14",
-      prs: [28, 33],
-      branch: "sched/scheduler-impl",
-      version: "impl",
-      author: "joe",
-      title: "Requests come and go",
-      text: "The scheduler (stub and 21 tests drafted by Claude, implementation Joe's) is what drives the block manager: a request is admitted when blocks for its whole length are free, each decode step appends one slot per running sequence, a finished request frees its blocks, and when the pool is full the newest request is preempted, its blocks freed and its tokens recomputed later.",
     },
     {
       date: "Oct 15",

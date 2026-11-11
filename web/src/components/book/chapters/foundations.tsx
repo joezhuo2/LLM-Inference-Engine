@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { embeddingNumbers, EmbeddingPanel } from "@/components/kernels/embedding-lookup";
 import { foundationsAbout, foundationsAboutCaption } from "@/components/kernels/foundations/about";
@@ -120,7 +121,7 @@ function FoundationsOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "foundations",
-  number: 1,
+  number: chapterNumber("foundations"),
   title: "foundations",
   formula: foundations.formula,
   steps: [...foundationsIdeas, ...foundationsSteps],

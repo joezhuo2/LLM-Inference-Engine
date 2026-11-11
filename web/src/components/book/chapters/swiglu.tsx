@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { swigluAbout, swigluAboutCaption } from "@/components/kernels/swiglu/about";
 import { swigluCaptions, swigluNumbers, swigluSteps, TokensPicker } from "@/components/kernels/swiglu/story";
@@ -21,12 +22,6 @@ const beats: Beat[][] = [
     close("From the side: after × up the two balls land one step apart", [0.5, 0.05, -0.06], 0.9, 0.4, 16, 38),
   ],
   [
-    overview("22 blocks per row, one row per blockIdx.y"),
-    close("Close up: the rows stop at gridDim.y's ceiling", [0.4, 0.03, -0.45], 0.76, 0.36, -20, 40),
-    close("From the side: the rows flatten into one 1D grid", [0.4, 0.03, -0.12], 0.76, 0.36, 22, 30),
-    close("The bars: naive against the draft at one token", [0.86, 0.08, -0.32], 0.34, 0.3, 24, 26),
-  ],
-  [
     overview("Eight 2-byte loads, or one 16-byte load"),
     close("Close up: the scalar lane makes 8 trips", [0.5, 0.04, -0.5], 0.86, 0.3, -18, 36),
     close("From the side: the vector bar reaches the peak plane", [0.5, 0.08, -0.06], 0.84, 0.36, 24, 18),
@@ -37,15 +32,21 @@ const beats: Beat[][] = [
     close("From the side: the scalar kernel spreads one chain over 22 SMs", [0.5, 0.05, -0.15], 0.9, 0.34, 22, 26),
     close("The rail: drag the token count past 4", [0.5, 0.03, 0.14], 0.9, 0.32, 0, 46),
   ],
+  [
+    overview("22 blocks per row, one row per blockIdx.y"),
+    close("Close up: the rows stop at gridDim.y's ceiling", [0.4, 0.03, -0.45], 0.76, 0.36, -20, 40),
+    close("From the side: the rows flatten into one 1D grid", [0.4, 0.03, -0.12], 0.76, 0.36, 22, 30),
+    close("The bars: naive against the draft at one token", [0.86, 0.08, -0.32], 0.34, 0.3, 24, 26),
+  ],
   [flat("Pick a token count")],
 ];
 
 const instructions = [
   "Drag the pink ball along the rail to change the gate.",
   "Watch the blue ball round twice and the pink one once.",
-  "Watch the rows hit the ceiling, then flatten into one grid.",
   "Watch the two lanes load, then the bars rise to the plane.",
   "Drag the pink ball to change the token count.",
+  "Watch the rows hit the ceiling, then flatten into one grid.",
 ];
 
 function SwigluOverlay({ kind, target, narrow }: OverlayProps) {
@@ -61,12 +62,12 @@ function SwigluOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "swiglu",
-  number: 9,
+  number: chapterNumber("swiglu"),
   title: "SwiGLU",
   formula: "outⱼ = silu(gateⱼ) · upⱼ,  silu(g) = g / (1 + e⁻ᵍ)",
   steps: swigluSteps,
   captions: swigluCaptions,
-  exhibits: [0, 1, 2, 3, 4, null],
+  exhibits: [0, 1, 3, 4, 2, null],
   overlays: [null, null, null, null, null, "tokens"],
   instructions,
   beats,

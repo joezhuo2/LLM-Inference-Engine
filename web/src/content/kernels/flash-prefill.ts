@@ -1,4 +1,4 @@
-import { flashKernel, modelShape, profilingTable } from "@/lib/data";
+import { ceilings, flashKernel, modelShape, onchip, profilingTable } from "@/lib/data";
 import { type KernelStory, measured } from "./types";
 
 const prefill = "prefill-against-prompt-length";
@@ -55,6 +55,7 @@ const profileRow = (kernel: string, budget: string) => {
 };
 const launchRow = (kernel: string) => ({
   registers: measured(chunksSection, { kernel }, "registers per thread", 1),
+  blocksPerSm: measured(chunksSection, { kernel }, "blocks per SM", 1),
   blocksAtOnce: measured(chunksSection, { kernel }, "blocks at once", 1),
 });
 const counters = (kernel: string, launch: string) => {
@@ -79,6 +80,48 @@ export const flashProfile = {
   plainAfter: plain("after"),
   neededMb: (flashTokens(flashLong) * shape.kv_heads * (shape.hidden / shape.heads) * 2 * 2) / 1e6,
 };
+
+const roof = ceilings();
+const headDim = shape.hidden / shape.heads;
+const group = shape.heads / shape.kv_heads;
+const tilePairs = (longTiles * (longTiles + 1)) / 2;
+const pairFlop = 2 * 2 * kernel.tile * kernel.tile * headDim;
+const pairBytes = 2 * kernel.tile * headDim * 2;
+const layerFlop = pairFlop * tilePairs * shape.heads;
+const loadedBytes = pairBytes * tilePairs * shape.heads;
+const promptFlop = layerFlop * shape.layers;
+const kernelMs = flashProfile.whole.attention;
+const floorMs = promptFlop / (roof.tflops * 1e9);
+const smRegisters = (onchip("register_file", "KB/SM").median * 1024) / 4;
+const sharedBlocksPerSm = Math.floor(smRegisters / (flashProfile.launchAfter.registers * 32 * group));
+
+export const flashRoofline = {
+  gbs: roof.gbs,
+  tflops: roof.tflops,
+  ridge: (roof.tflops * 1e3) / roof.gbs,
+  tilePairs,
+  pairFlop,
+  pairBytes,
+  now: pairFlop / pairBytes,
+  shared: (pairFlop / pairBytes) * group,
+  promptGflop: promptFlop / 1e9,
+  loadedMb: loadedBytes / 1e6,
+  sectorBytes: (32 * loadedBytes) / 1e6 / flashProfile.step.requestedMb,
+  layers: shape.layers,
+  kernelMs,
+  achieved: promptFlop / 1e9 / kernelMs,
+  dramRoofNow: ((pairFlop / pairBytes) * roof.gbs) / 1e3,
+  floorMs,
+  maxGain: kernelMs / floorMs,
+  maxSavedMs: kernelMs - floorMs,
+  maxSavedPct: ((kernelMs - floorMs) / flashProfile.whole.span) * 100,
+  smRegisters,
+  warpsNow: flashProfile.launchAfter.blocksPerSm * kernel.warps_per_block,
+  sharedBlocksPerSm,
+  warpsShared: sharedBlocksPerSm * group,
+};
+
+export const flashSweepsNote = "The load sweeps of the chunked prefill chapter were rerun with this kernel.";
 
 export const flashNumbers = {
   paged,
@@ -232,7 +275,7 @@ export const flashPrefill: KernelStory = {
       version: "measured",
       author: "claude",
       title: "The default, and ahead of llama.cpp",
-      text: `The tiled kernel becomes the default prefill attention and the prefill table is rerun with llama.cpp in the same session. Cost per prompt token stays between ${flashNumbers.perTokenLow} and ${flashNumbers.perTokenHigh} ms from ${flashShort} to ${flashLong} tokens. Not done: a rerun of the load sweeps. The Nsight Compute profile came afterwards and is in the last step of this page.`,
+      text: `The tiled kernel becomes the default prefill attention and the prefill table is rerun with llama.cpp in the same session. Cost per prompt token stays between ${flashNumbers.perTokenLow} and ${flashNumbers.perTokenHigh} ms from ${flashShort} to ${flashLong} tokens. ${flashSweepsNote} The Nsight Compute profile came afterwards and is in the step on registers and in the last one.`,
       metric: {
         kind: "bars",
         label: `TTFT of one ${flashLong}-token prompt, ms`,

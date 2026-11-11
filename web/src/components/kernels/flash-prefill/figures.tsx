@@ -497,7 +497,7 @@ export function TtftFigure({ lengths, series }: { lengths: number[]; series: Ttf
 
 type OpenParts = { attention: number; gemms: number; rest: number; span: number; blocks: number };
 
-export function OpenFigure({ whole, before, after, atOnce, step, last, budget, chunks, tokens, items }: { whole: OpenParts; before: OpenParts; after: OpenParts; atOnce: [number, number]; step: { tensor: number; occupancy: number; allowed: number; l1Hit: number }; last: [number, number]; budget: string; chunks: number; tokens: string; items: string[] }) {
+export function BlocksFigure({ whole, before, after, registers, atOnce, last, budget, chunks, tokens }: { whole: OpenParts; before: OpenParts; after: OpenParts; registers: [number, number]; atOnce: [number, number]; last: [number, number]; budget: string; chunks: number; tokens: string }) {
   const { on, grow } = useLoop(12);
   const px = 300 / before.span;
   const rows = [
@@ -505,8 +505,15 @@ export function OpenFigure({ whole, before, after, atOnce, step, last, budget, c
     { label: `${chunks} chunks, ${atOnce[0]} at once`, parts: before, tone: "warn" },
     { label: `${chunks} chunks, ${atOnce[1]} at once`, parts: after, tone: "accent" },
   ] as const;
+  const cols = 16;
+  const cell = 13;
+  const waiting = Math.max(0, after.blocks - atOnce[0]);
+  const grids = [
+    { x: 30, head: `${registers[0]} registers: ${atOnce[0]} blocks at once`, note: `${waiting} wait for a place`, fit: atOnce[0], tone: "warn" },
+    { x: 310, head: `${registers[1]} registers: ${atOnce[1]} blocks at once`, note: `all ${after.blocks} run together`, fit: atOnce[1], tone: "accent" },
+  ] as const;
   return (
-    <Frame label={`One ${tokens}-token prompt alone, kernel time from Nsight Systems: in one step ${whole.span} ms, of which attention ${whole.attention}; as ${chunks} chunks of ${budget} it was ${before.span} ms with attention ${before.attention} when ${atOnce[0]} thread blocks fit on the GPU at once, and is ${after.span} ms with attention ${after.attention} now that ${atOnce[1]} fit; a chunk launches ${after.blocks}. Nsight Compute, one step: tensor pipe ${step.tensor}%, occupancy ${step.occupancy}% of ${step.allowed}% allowed, ${step.l1Hit}% of sectors in L1. Still open: ${items.join("; ")}`}>
+    <Frame label={`One ${tokens}-token prompt alone, kernel time from Nsight Systems: in one step ${whole.span} ms, of which attention ${whole.attention}; as ${chunks} chunks of ${budget} it was ${before.span} ms with attention ${before.attention} when ${atOnce[0]} thread blocks fit on the GPU at once, and is ${after.span} ms with attention ${after.attention} now that ${atOnce[1]} fit; a chunk launches ${after.blocks}, so ${waiting} used to wait. Warp places filled in the last chunk: ${last[0]}% before, ${last[1]}% after`}>
       <Label x={20} y={24} className="fill-text">{`one ${tokens}-token prompt alone: where the ms go (measured, Nsight Systems)`}</Label>
       {rows.map((r, i) => (
         <g key={r.label}>
@@ -528,24 +535,64 @@ export function OpenFigure({ whole, before, after, atOnce, step, last, budget, c
         <tspan className="fill-warn">{before.attention.toFixed(1)}</tspan>
         {" and "}
         <tspan className="fill-accent">{after.attention.toFixed(1)}</tspan>
-        {` in chunks; a ${budget}-row chunk launches ${after.blocks} blocks`}
+        {" in chunks; the rest of each bar is GEMMs and gaps"}
       </Label>
-      <Label x={20} y={142}>{`warp places filled in the last chunk: ${last[0]}% → ${last[1]}% (Nsight Compute)`}</Label>
-      <Label x={20} y={160}>{`one step: tensor pipe ${step.tensor}% of peak · ${step.occupancy}% of places filled, ${step.allowed}% allowed · L1 hit ${step.l1Hit}%`}</Label>
-      <line x1={20} y1={176} x2={540} y2={176} className="stroke-border" />
-      <Label x={20} y={198} className="fill-text">
-        not done yet
-      </Label>
-      {items.map((item, i) => (
-        <motion.g key={item} {...on(0.3 + i * 0.12)}>
-          <rect x={22} y={214 + i * 50} width={12} height={12} rx={2} className="fill-none stroke-warn" />
-          {item.split("\n").map((line, k) => (
-            <Label key={line} x={46} y={224 + i * 50 + k * 16} className={k === 0 ? "fill-text" : "fill-muted"}>
-              {line}
-            </Label>
-          ))}
-        </motion.g>
+      <line x1={20} y1={142} x2={540} y2={142} className="stroke-border" />
+      <Label x={20} y={166} className="fill-text">{`one ${budget}-row chunk launches ${after.blocks} thread blocks`}</Label>
+      {grids.map((g, k) => (
+        <g key={g.head}>
+          <Label x={g.x} y={192} className={g.tone === "warn" ? "fill-warn" : "fill-accent"}>
+            {g.head}
+          </Label>
+          {Array.from({ length: after.blocks }, (_, i) => {
+            const fits = i < g.fit;
+            return (
+              <g key={i}>
+                <rect x={g.x + (i % cols) * cell} y={204 + Math.floor(i / cols) * cell} width={cell - 3} height={cell - 3} rx={1.5} className={fits ? "fill-surface stroke-border" : "fill-none stroke-warn"} />
+                <motion.rect x={g.x + (i % cols) * cell} y={204 + Math.floor(i / cols) * cell} width={cell - 3} height={cell - 3} rx={1.5} className={fits ? (g.tone === "warn" ? "fill-baseline" : "fill-accent") : "fill-warn"} {...on(fits ? 0.36 + k * 0.04 : 0.62, 0.96)} />
+              </g>
+            );
+          })}
+          <Label x={g.x} y={204 + Math.ceil(after.blocks / cols) * cell + 16} className={g.tone === "warn" ? "fill-warn" : "fill-accent"}>
+            {g.note}
+          </Label>
+        </g>
       ))}
+      <Label x={20} y={362}>{`warp places filled in the last chunk: ${last[0]}% → ${last[1]}% (measured, Nsight Compute)`}</Label>
+      <Label x={20} y={380}>which blocks wait is a sketch; the counts are measured</Label>
     </Frame>
+  );
+}
+
+export function RidgeAxis({ ridge, points, ask }: { ridge: number; points: { value: number; label: string; accent?: boolean }[]; ask: string }) {
+  const x = (v: number) => 24 + (Math.log10(v) / 3) * 480;
+  const ticks = [1, 10, 100, 1000];
+  return (
+    <svg viewBox="0 0 528 118" className="w-full shrink-0 tabular-nums" role="img" aria-label={`A roofline on a log axis of FLOP per byte of K and V loaded, from 1 to 1,000, with the ridge at ${ridge.toFixed(0)}: ${points.map((p) => `${p.label} at ${p.value}`).join(", ")}; where ${ask.replace(": ?", "")} lands is the question`}>
+      <polyline points={`${x(1)},58 ${x(ridge)},18 ${x(1000)},18`} className="fill-none stroke-muted" strokeWidth={1.5} />
+      <Label x={x(3)} y={30}>bandwidth side</Label>
+      <Label x={x(1000)} y={11} anchor="end">compute side</Label>
+      <line x1={x(ridge)} y1={18} x2={x(ridge)} y2={84} className="stroke-text" strokeDasharray="3 3" />
+      <Label x={x(ridge) + 6} y={42} className="fill-text">{`ridge ${ridge.toFixed(0)}`}</Label>
+      <line x1={x(1)} y1={84} x2={x(1000)} y2={84} className="stroke-border" />
+      {ticks.map((t) => (
+        <g key={t}>
+          <line x1={x(t)} y1={84} x2={x(t)} y2={88} className="stroke-border" />
+          <Label x={x(t)} y={100} anchor="middle">
+            {fmt(t)}
+          </Label>
+        </g>
+      ))}
+      {points.map((p) => (
+        <g key={p.label}>
+          <circle cx={x(p.value)} cy={84} r={4.5} className={p.accent ? "fill-accent" : "fill-baseline"} />
+          <Label x={x(p.value) + 8} y={76} className={p.accent ? "fill-accent" : undefined}>{`${p.label}: ${p.value}`}</Label>
+        </g>
+      ))}
+      <Label x={x(1000)} y={76} anchor="end" className="fill-warn">
+        {ask}
+      </Label>
+      <Label x={x(1)} y={114}>FLOP per byte of K and V loaded (calculated), log scale</Label>
+    </svg>
   );
 }

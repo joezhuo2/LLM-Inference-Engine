@@ -1,0 +1,714 @@
+{
+ "add-rmsnorm": {
+  "about": 215,
+  "steps": [
+   {
+    "id": "job",
+    "title": "every add is followed by a norm",
+    "words": 74
+   },
+   {
+    "id": "fusion",
+    "title": "fusion keeps the value on the chip",
+    "words": 173
+   },
+   {
+    "id": "round-trip",
+    "title": "the pair sends the sum out and back",
+    "words": 70
+   },
+   {
+    "id": "first",
+    "title": "fewer bytes did not buy time",
+    "words": 118
+   },
+   {
+    "id": "rounding",
+    "title": "round to BF16 where the pair rounds",
+    "group": "how it got built",
+    "words": 74
+   },
+   {
+    "id": "vectors",
+    "title": "16 bytes per load, not 2",
+    "group": "how it got built",
+    "words": 66
+   },
+   {
+    "id": "shuffles",
+    "title": "shuffles give every thread the total",
+    "group": "how it got built",
+    "words": 76
+   },
+   {
+    "id": "measured",
+    "title": "3.0x faster than the pair, one token",
+    "group": "measured",
+    "words": 69
+   }
+  ]
+ },
+ "attention-v2": {
+  "about": 253,
+  "steps": [
+   {
+    "id": "online",
+    "title": "one pass: a running max, sum and output",
+    "words": 83
+   },
+   {
+    "id": "lanes",
+    "title": "eight lanes share each key in one wide read",
+    "words": 74
+   },
+   {
+    "id": "profile",
+    "title": "faster from busier warps, not more bandwidth",
+    "words": 63
+   },
+   {
+    "id": "v1",
+    "title": "v1 kept every score and passed three times",
+    "group": "how it got built",
+    "words": 76
+   },
+   {
+    "id": "cap",
+    "title": "keeping every score capped the context",
+    "group": "how it got built",
+    "words": 88
+   },
+   {
+    "id": "step",
+    "title": "in the decode step, the gain grows with the batch",
+    "group": "measured",
+    "words": 45
+   },
+   {
+    "id": "compare",
+    "title": "faster at every size, least at the shortest",
+    "group": "measured",
+    "words": 69
+   }
+  ]
+ },
+ "chunked-prefill": {
+  "about": 252,
+  "steps": [
+   {
+    "id": "stall",
+    "title": "one prompt stops everyone",
+    "words": 94
+   },
+   {
+    "id": "budget",
+    "title": "a step is a token budget",
+    "words": 64
+   },
+   {
+    "id": "spread",
+    "title": "the budget trades the prompt's wait for everyone's",
+    "words": 108
+   },
+   {
+    "id": "preempt",
+    "title": "preemption takes the prompt first",
+    "words": 86
+   },
+   {
+    "id": "sampled",
+    "title": "only finished chunks get logits",
+    "group": "how it got built",
+    "words": 144
+   }
+  ]
+ },
+ "cuda-graphs": {
+  "about": 289,
+  "steps": [
+   {
+    "id": "launches",
+    "title": "the CPU keeps up, the GPU still idles",
+    "words": 96
+   },
+   {
+    "id": "gaps",
+    "title": "a gap before every kernel adds up",
+    "words": 108
+   },
+   {
+    "id": "capture",
+    "title": "record the step once, launch it as one",
+    "words": 118
+   },
+   {
+    "id": "stage",
+    "title": "same addresses, new values",
+    "words": 121
+   },
+   {
+    "id": "replay",
+    "title": "a replay cuts the gaps, not the kernels",
+    "words": 98
+   },
+   {
+    "id": "buckets",
+    "title": "finer buckets pad fewer rows",
+    "group": "how it got built",
+    "words": 126
+   },
+   {
+    "id": "splits",
+    "title": "the frozen grid froze the split count",
+    "group": "how it got built",
+    "words": 108
+   },
+   {
+    "id": "sweep",
+    "title": "past 64 rows, more rows buy little",
+    "group": "measured",
+    "words": 126
+   }
+  ]
+ },
+ "flash-prefill": {
+  "about": 224,
+  "steps": [
+   {
+    "id": "square",
+    "title": "prefill is a square of rows against keys",
+    "words": 145
+   },
+   {
+    "id": "tiles",
+    "title": "sixteen rows share each key tile",
+    "words": 126
+   },
+   {
+    "id": "mma",
+    "title": "a tile of scores is a small matrix multiply",
+    "words": 90
+   },
+   {
+    "id": "fragment",
+    "title": "a softmax per row keeps it all in registers",
+    "words": 158
+   },
+   {
+    "id": "spec",
+    "title": "tests pin what a faster kernel could break",
+    "group": "how it got built",
+    "words": 110
+   },
+   {
+    "id": "first",
+    "title": "a shorter path to each byte, the same walk",
+    "group": "how it got built",
+    "words": 107
+   },
+   {
+    "id": "registers",
+    "title": "a 16 by 16 tile is what a warp's registers hold",
+    "group": "how it got built",
+    "words": 118
+   },
+   {
+    "id": "blocks",
+    "title": "registers decide how many blocks run at once",
+    "group": "how it got built",
+    "words": 145
+   },
+   {
+    "id": "result",
+    "title": "the square stays, the cost per token goes flat",
+    "group": "measured",
+    "words": 86
+   },
+   {
+    "id": "lengths",
+    "title": "the gain is largest where the square was",
+    "group": "measured",
+    "words": 75
+   },
+   {
+    "id": "open",
+    "title": "your turn: 8 heads read the same keys",
+    "group": "measured",
+    "words": 302
+   }
+  ]
+ },
+ "foundations": {
+  "about": 288,
+  "steps": [
+   {
+    "id": "idea-memory",
+    "title": "decode waits on memory",
+    "words": 111
+   },
+   {
+    "id": "idea-cache",
+    "title": "the KV cache remembers",
+    "words": 136
+   },
+   {
+    "id": "idea-batch",
+    "title": "batching shares the read",
+    "words": 86
+   },
+   {
+    "id": "idea-budget",
+    "title": "memory is the budget",
+    "words": 81
+   },
+   {
+    "id": "idea-latency",
+    "title": "batching trades latency for throughput",
+    "words": 99
+   },
+   {
+    "id": "hierarchy",
+    "title": "threads in blocks, warps in lockstep",
+    "words": 116
+   },
+   {
+    "id": "memory",
+    "title": "the nearer the data, the faster",
+    "words": 157
+   },
+   {
+    "id": "bytes",
+    "title": "the slower of bytes and FLOPs wins",
+    "words": 108
+   },
+   {
+    "id": "roofline",
+    "title": "the ridge splits memory from compute",
+    "words": 99
+   },
+   {
+    "id": "measured",
+    "title": "decode sits on the slope",
+    "words": 93
+   },
+   {
+    "id": "fusion",
+    "title": "fused kernels skip a trip to memory",
+    "words": 140
+   },
+   {
+    "id": "lookup",
+    "title": "speed up only what the step waits on",
+    "words": 152
+   }
+  ]
+ },
+ "gemm": {
+  "about": 202,
+  "steps": [
+   {
+    "id": "job",
+    "title": "most of a layer is matrix products",
+    "words": 106
+   },
+   {
+    "id": "gemv",
+    "title": "one row uses each weight byte once",
+    "words": 95
+   },
+   {
+    "id": "roof",
+    "title": "cuBLAS already reads at the roof",
+    "words": 86
+   },
+   {
+    "id": "batch",
+    "title": "sixteen rows share one weight read",
+    "words": 98
+   },
+   {
+    "id": "prefill",
+    "title": "a long prompt crosses the ridge",
+    "words": 210
+   },
+   {
+    "id": "roofline",
+    "title": "no decode op gets near the ridge",
+    "words": 122
+   },
+   {
+    "id": "trick",
+    "title": "a row-major W is a free Wᵀ",
+    "group": "how it got built",
+    "words": 81
+   }
+  ]
+ },
+ "paged-attention": {
+  "about": 222,
+  "steps": [
+   {
+    "id": "basics-qkv",
+    "title": "three vectors per token",
+    "words": 87
+   },
+   {
+    "id": "basics-scores",
+    "title": "score, weigh, sum",
+    "words": 102
+   },
+   {
+    "id": "basics-past",
+    "title": "only the past",
+    "words": 91
+   },
+   {
+    "id": "basics-heads",
+    "title": "heads, and heads that share",
+    "words": 106
+   },
+   {
+    "id": "prefill",
+    "title": "prefill: the whole prompt at once",
+    "words": 74
+   },
+   {
+    "id": "decode",
+    "title": "decode: one token at a time",
+    "words": 71
+   },
+   {
+    "id": "cache",
+    "title": "why the cache exists",
+    "words": 69
+   },
+   {
+    "id": "home",
+    "title": "the cache has to live somewhere",
+    "words": 73
+   },
+   {
+    "id": "job",
+    "title": "one query against every cached key, every step",
+    "words": 50
+   },
+   {
+    "id": "blocks",
+    "title": "every key is found through the block table",
+    "words": 50
+   },
+   {
+    "id": "reads",
+    "title": "pages move the reads, not the math",
+    "words": 91
+   },
+   {
+    "id": "v2",
+    "title": "an online softmax removed v1's context cap",
+    "group": "how it got built",
+    "words": 77
+   },
+   {
+    "id": "split",
+    "title": "splitting the context filled an idle GPU",
+    "group": "how it got built",
+    "words": 78
+   }
+  ]
+ },
+ "paged-kv": {
+  "about": 247,
+  "steps": [
+   {
+    "id": "why",
+    "title": "nobody knows a request's length, so hold only the blocks it fills",
+    "words": 112
+   },
+   {
+    "id": "pool",
+    "title": "one pool, a table per request",
+    "words": 117
+   },
+   {
+    "id": "append",
+    "title": "a new block only every 16 tokens",
+    "words": 105
+   },
+   {
+    "id": "reuse",
+    "title": "freed blocks go out again first",
+    "words": 99
+   },
+   {
+    "id": "write",
+    "title": "write_kv is a pure copy, one thread per value",
+    "group": "how it got built",
+    "words": 185
+   },
+   {
+    "id": "replay",
+    "title": "a busy run held 66 of 12,915 blocks",
+    "group": "measured",
+    "words": 141
+   }
+  ]
+ },
+ "rope": {
+  "about": 240,
+  "steps": [
+   {
+    "id": "job",
+    "title": "a turn by position encodes the gap",
+    "words": 97
+   },
+   {
+    "id": "layout",
+    "title": "only Q and K turn, i with i + 32",
+    "words": 85
+   },
+   {
+    "id": "parallel",
+    "title": "pairs are independent, heads share a sine",
+    "words": 118
+   },
+   {
+    "id": "bits",
+    "title": "position multiplies a last-bit error",
+    "words": 99
+   },
+   {
+    "id": "serial",
+    "title": "one thread per head leaves most idle",
+    "group": "how it got built",
+    "words": 88
+   },
+   {
+    "id": "measured",
+    "title": "at small counts the launch sets the time",
+    "group": "measured",
+    "words": 95
+   }
+  ]
+ },
+ "sampling": {
+  "about": 206,
+  "steps": [
+   {
+    "id": "greedy",
+    "title": "greedy is an argmax over 32,000 logits",
+    "words": 61
+   },
+   {
+    "id": "gumbel",
+    "title": "sampling is an argmax too",
+    "words": 67
+   },
+   {
+    "id": "philox",
+    "title": "counter-based noise replays exactly",
+    "words": 76
+   },
+   {
+    "id": "topk",
+    "title": "top-k: search for the cut, no sort",
+    "words": 81
+   },
+   {
+    "id": "topp",
+    "title": "top-p: the same search, on mass",
+    "words": 62
+   },
+   {
+    "id": "cost",
+    "title": "top-k runs 2.1x faster than a bare sort",
+    "group": "measured",
+    "words": 43
+   },
+   {
+    "id": "fp64",
+    "title": "FP64 logs make temperature slowest",
+    "group": "measured",
+    "words": 80
+   },
+   {
+    "id": "rows",
+    "title": "rows run side by side, one block each",
+    "group": "measured",
+    "words": 46
+   }
+  ]
+ },
+ "serving": {
+  "about": 212,
+  "steps": [
+   {
+    "id": "budget",
+    "title": "every token costs 22,528 bytes of cache",
+    "words": 141
+   },
+   {
+    "id": "fit",
+    "title": "divide the pool by what requests hold",
+    "words": 150
+   },
+   {
+    "id": "max-batch",
+    "title": "the row limit filled first, never the pool",
+    "words": 203
+   },
+   {
+    "id": "admission",
+    "title": "first come, first served, nothing skips ahead",
+    "words": 178
+   },
+   {
+    "id": "preempt",
+    "title": "a full pool evicts the newest request",
+    "words": 279
+   },
+   {
+    "id": "static",
+    "title": "a static batch waits for its longest request",
+    "words": 84
+   },
+   {
+    "id": "continuous",
+    "title": "continuous batching refills a slot every step",
+    "words": 67
+   },
+   {
+    "id": "rules",
+    "title": "a tight pool costs recomputed steps",
+    "words": 94
+   },
+   {
+    "id": "load",
+    "title": "goodput peaks at an offered 5 requests a second",
+    "group": "measured",
+    "words": 184
+   },
+   {
+    "id": "vllm",
+    "title": "vLLM won on kernel speed, not scheduling",
+    "group": "measured",
+    "words": 247
+   }
+  ]
+ },
+ "split-attention": {
+  "about": 245,
+  "steps": [
+   {
+    "id": "few",
+    "title": "one block per head leaves most of the GPU idle",
+    "words": 77
+   },
+   {
+    "id": "cut",
+    "title": "cut each context into ranges, one block each",
+    "words": 53
+   },
+   {
+    "id": "scratch",
+    "title": "each split writes a partial m, l and sum",
+    "words": 65
+   },
+   {
+    "id": "merge",
+    "title": "rescaled to one maximum, the merge is exact",
+    "words": 112
+   },
+   {
+    "id": "graphs",
+    "title": "a CUDA graph replays the split count it captured",
+    "group": "how it got built",
+    "words": 70
+   },
+   {
+    "id": "waiting",
+    "title": "short of warps to switch to, not of bandwidth",
+    "group": "measured",
+    "words": 86
+   },
+   {
+    "id": "wave",
+    "title": "splits pay until the grid passes one wave",
+    "group": "measured",
+    "words": 62
+   },
+   {
+    "id": "choose",
+    "title": "many rows or a short context: splitting loses",
+    "group": "measured",
+    "words": 77
+   }
+  ]
+ },
+ "swiglu": {
+  "about": 272,
+  "steps": [
+   {
+    "id": "job",
+    "title": "each output is silu(gate) times up",
+    "words": 95
+   },
+   {
+    "id": "bits",
+    "title": "keep PyTorch's two roundings",
+    "words": 125
+   },
+   {
+    "id": "vector",
+    "title": "wide loads reach peak bandwidth",
+    "words": 157
+   },
+   {
+    "id": "small",
+    "title": "at one token, blocks beat wide loads",
+    "words": 102
+   },
+   {
+    "id": "draft",
+    "title": "a 2D grid stops at 65,535 rows",
+    "group": "how it got built",
+    "words": 107
+   },
+   {
+    "id": "measured",
+    "title": "1.6x to 2.1x, but 0.4% of a step",
+    "group": "measured",
+    "words": 121
+   }
+  ]
+ },
+ "where-the-time-went": {
+  "about": 230,
+  "steps": [
+   {
+    "id": "decode",
+    "title": "every kernel shrank its slice, and the GEMMs kept the step",
+    "words": 196
+   },
+   {
+    "id": "floor",
+    "title": "most of a token is the read of the weights",
+    "words": 141
+   },
+   {
+    "id": "prefill",
+    "title": "the first token of a long prompt was the slow part",
+    "words": 199
+   },
+   {
+    "id": "load",
+    "title": "under load, vLLM still serves more",
+    "words": 216
+   },
+   {
+    "id": "next",
+    "title": "three things to do next",
+    "words": 229
+   }
+  ]
+ }
+}

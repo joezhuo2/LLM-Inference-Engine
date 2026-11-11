@@ -11,11 +11,13 @@ import { review as sampling } from "./sampling";
 import { review as cudaGraphs } from "./cuda-graphs";
 import { review as chunkedPrefill } from "./chunked-prefill";
 import { review as flashPrefill } from "./flash-prefill";
+import { review as serving } from "./serving";
+import { review as whereTheTimeWent } from "./where-the-time-went";
 import { chapterNumber } from "../book-order";
 import { kernelStory } from "../kernels";
 import type { ChapterReview, ReviewQuestion } from "./types";
 
-const reviews: Record<string, ChapterReview> = { foundations, gemm, rope, "paged-kv": pagedKv, "paged-attention": pagedAttention, "attention-v2": attentionV2, "split-attention": splitAttention, "add-rmsnorm": addRmsnorm, swiglu, sampling, "cuda-graphs": cudaGraphs, "chunked-prefill": chunkedPrefill, "flash-prefill": flashPrefill };
+const reviews: Record<string, ChapterReview> = { foundations, gemm, rope, "paged-kv": pagedKv, "paged-attention": pagedAttention, "attention-v2": attentionV2, "split-attention": splitAttention, "add-rmsnorm": addRmsnorm, swiglu, sampling, "cuda-graphs": cudaGraphs, "chunked-prefill": chunkedPrefill, "flash-prefill": flashPrefill, serving, "where-the-time-went": whereTheTimeWent };
 
 export const chapterReview = (slug: string): ChapterReview | undefined => (reviews[slug]?.takeaways.length ? reviews[slug] : undefined);
 

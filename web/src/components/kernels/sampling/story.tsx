@@ -79,7 +79,7 @@ export function ModePicker() {
 const steps: StoryStep[] = [
   {
     id: "greedy",
-    title: "one id out of 32,000",
+    title: `greedy is an argmax over ${vocab} logits`,
     body: (
       <>
         <p>
@@ -113,7 +113,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "philox",
-    title: "noise you can replay",
+    title: "counter-based noise replays exactly",
     body: (
       <>
         <p>
@@ -130,7 +130,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "topk",
-    title: "top-k without a sort",
+    title: "top-k: search for the cut, no sort",
     body: (
       <>
         <p>
@@ -147,7 +147,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "topp",
-    title: "top-p: search the mass",
+    title: "top-p: the same search, on mass",
     body: (
       <>
         <p>
@@ -161,7 +161,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "cost",
-    title: "what it costs",
+    title: `top-k runs ${(one("full sort alone") / one("top-k 50")).toFixed(1)}x faster than a bare sort`,
+    group: "measured",
     body: (
       <>
         <p>
@@ -177,7 +178,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "fp64",
-    title: "the double-precision log",
+    title: "FP64 logs make temperature slowest",
+    group: "measured",
     body: (
       <>
         <p>
@@ -194,7 +196,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "rows",
-    title: "one block per row",
+    title: "rows run side by side, one block each",
+    group: "measured",
     body: (
       <>
         <p>

@@ -1,11 +1,13 @@
 import { bookOrder, bookParts, chapterNumber } from "@/content/book-order";
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
-import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
+import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, openTag, runsLabel } from "@/content/exercises";
+import { type BeyondTopic, beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
 import { type Estimate, estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { kernelStory, layerOps } from "@/content/kernels";
 import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
 import { measured } from "@/content/kernels/types";
 import { chapterReview, recallOf } from "@/content/reviews";
+import { roundMinutes, shortPathName, shortRoute } from "@/content/short-path";
 import type { ChapterReview, ReviewQuestion } from "@/content/reviews/types";
 import { loadSlo } from "@/lib/data";
 import { type LinkLine, PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
@@ -20,11 +22,13 @@ export const chapterTitle = (slug: string) => kernelStory(slug)?.title ?? slug;
 const firstPage: Record<string, number> = {};
 export const chapterPage = (key: string): number | undefined => firstPage[key];
 
+const sections = ["start", "contents", ...bookOrder, "beyond", "estimates", "errata"];
+
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
-  for (const key of ["start", "contents", ...bookOrder.filter((slug) => spreads[slug] !== undefined), "estimates", "errata"]) {
+  for (const key of sections.filter((k) => !bookOrder.includes(k) || spreads[k] !== undefined)) {
     firstPage[key] = page;
-    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
+    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
   }
   return page - 1;
 }
@@ -85,21 +89,53 @@ const under = (ctx: Ctx, text: string, x: number, y: number, size: number): Link
 const ROW = 92;
 const toBox = (x0: number, x1: number, y: number): [number, number, number, number] => [x0 / W, (y - 56) / H, x1 / W, (y + 36) / H];
 
+type RouteStop = { key: string; local: number };
+let route: { order: RouteStop[]; chapters: string[]; minutes: number } = { order: [], chapters: [], minutes: 0 };
+const routeLink = `Read the ${shortPathName} →`;
+export const startRouteLink = `The ${shortPathName} →`;
+export const bookRoute = () => route;
+export const routeLine = () => `${route.chapters.length} chapters, ${route.order.length} spreads, about ${roundMinutes(route.minutes)} minutes`;
+const rank = (key: string, local: number) => sections.indexOf(key) * 1000 + local + 1;
+export const routeIndex = (key: string, local: number) => route.order.findIndex((o) => o.key === key && o.local === local);
+export const routePage = (key: string, local: number) => (chapterPage(key) ?? 0) + local + (bookOrder.includes(key) ? 1 : 0);
+
+export function routeStep(key: string, local: number, delta: 1 | -1): RouteStop | undefined {
+  const here = rank(key, local);
+  const side = route.order.filter((o) => (delta > 0 ? rank(o.key, o.local) > here : rank(o.key, o.local) < here));
+  return delta > 0 ? side[0] : side[side.length - 1];
+}
+
+export function routeSection(key: string, delta: 1 | -1, short: boolean): string | undefined {
+  const here = sections.indexOf(key);
+  const side = sections.filter((k) => (delta > 0 ? sections.indexOf(k) > here : sections.indexOf(k) < here) && (bookOrder.includes(k) ? chapterPage(k) !== undefined : true) && (!short || k === "start" || route.chapters.includes(k)));
+  return delta > 0 ? side[0] : side[side.length - 1];
+}
+
+function routeDot(ctx: Ctx, x: number, y: number, palette: BookPalette) {
+  ctx.fillStyle = palette.blue;
+  ctx.beginPath();
+  ctx.arc(x, y, 7, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function contentsRows(parts: typeof bookParts, withErrata: boolean) {
-  const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string }[] = [];
+  const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string; slug?: string }[] = [];
   let y = 380;
+  const entries = parts.reduce((n, p) => n + p.slugs.length, 0);
+  const pitch = withErrata || entries < 2 ? ROW : Math.min(ROW, (H - 330 - 380 - 78 * parts.length - 40 * (parts.length - 1)) / (entries - 1));
   for (const part of parts) {
     rows.push({ kind: "part", y, text: `Part ${part.numeral} · ${part.title}` });
     y += 78;
     for (const slug of part.slugs) {
-      rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug) });
-      y += ROW;
+      rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug), slug });
+      y += pitch;
     }
     y += 40;
   }
   if (withErrata) {
-    rows.push({ kind: "entry", y: y + 20, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
-    rows.push({ kind: "entry", y: y + 20 + ROW, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+    rows.push({ kind: "entry", y: y + 20, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
+    rows.push({ kind: "entry", y: y + 20 + ROW, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
+    rows.push({ kind: "entry", y: y + 20 + 2 * ROW, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
   }
   return rows;
 }
@@ -110,6 +146,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
   const links: PageLink[] = contentsRows(parts, withErrata)
     .filter((r) => r.href)
     .map((r) => ({ side, box: toBox(x0, x1, r.y), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
+  if (side === "left") links.push({ side, box: [x0 / W, (H - 215) / H, x1 / W, (H - 145) / H], href: "#path", label: routeLink });
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
     if (side === "left") {
@@ -127,6 +164,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
         ctx.fillText(row.text, x0, row.y);
         continue;
       }
+      if (row.slug && route.chapters.includes(row.slug)) routeDot(ctx, x0 - 28, row.y - 13, palette);
       ctx.fillStyle = palette.faint;
       ctx.font = `40px ${fonts.serif}`;
       if (row.number) ctx.fillText(row.number, x0, row.y);
@@ -146,9 +184,20 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       for (let x = end; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
     }
     if (side === "right") {
+      const rows = contentsRows(parts, withErrata);
       ctx.fillStyle = palette.blue;
       ctx.font = `40px ${fonts.serif}`;
-      paragraph(ctx, "Click a chapter to open it.", x0, H - 250, x1 - x0, 48);
+      paragraph(ctx, "Click a chapter to open it.", x0, Math.max(H - 250, rows[rows.length - 1].y + 110), x1 - x0, 48);
+    }
+    if (side === "left" && route.chapters.length) {
+      routeDot(ctx, x0 + 8, H - 249, palette);
+      ctx.fillStyle = palette.faint;
+      ctx.font = `28px ${fonts.sans}`;
+      ctx.fillText(`on the ${shortPathName}: ${routeLine()}`, x0 + 30, H - 240);
+      ctx.fillStyle = palette.blue;
+      ctx.font = `40px ${fonts.serif}`;
+      ctx.fillText(routeLink, x0, H - 180);
+      links[links.length - 1].lines = [under(ctx, routeLink, x0, H - 180, 40)];
     }
     if (side === "left") folio(ctx, String(chapterPage("contents")), side, x0, x1, palette, fonts);
   };
@@ -276,6 +325,9 @@ function introRows(def: ChapterDef) {
   const reviewed = steps + def.workbench.length;
   const built = reviewed + reviewCount(def.slug);
   const starts: Record<number, string> = {};
+  def.steps.forEach((s, k) => {
+    if (s.group && s.group !== def.steps[k - 1]?.group) starts[k] = s.group;
+  });
   if (def.workbench.length > 0) starts[steps] = "try it yourself";
   if (built > reviewed) starts[reviewed] = "review";
   if (titles.length > built) starts[built] = "build it yourself";
@@ -383,7 +435,7 @@ type ExerciseStep = { title: string; text?: string; commands?: string[] };
 function exerciseSteps(e: Exercise): ExerciseStep[] {
   if (e.kind === "open") {
     return [
-      { title: "Write it from scratch", text: "A single .cu file built with nvcc is enough; nothing in the engine changes.", commands: ["nvcc -O3 -arch=native copy.cu -o copy && ./copy"] },
+      e.write ?? { title: "Write it from scratch", text: "A single .cu file built with nvcc is enough; nothing in the engine changes.", commands: ["nvcc -O3 -arch=native copy.cu -o copy && ./copy"] },
       { title: "Check it", text: e.check },
       { title: "Compare", text: e.compare.map((c) => `${c.path}: ${c.label}.`).join(" ") },
     ];
@@ -412,7 +464,7 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number, lin
     ctx.fillText(e.title, x0, 260);
     ctx.fillStyle = palette.faint;
     ctx.font = `28px ${fonts.sans}`;
-    const tags = [runsLabel[e.runs], e.kind === "stub" && e.model ? "some tests load TinyLlama" : e.kind === "open" ? "no tests, open ended" : ""].filter(Boolean);
+    const tags = [runsLabel[e.runs], e.kind === "stub" && e.model ? "some tests load TinyLlama" : e.kind === "open" ? openTag(e) : ""].filter(Boolean);
     ctx.fillText(tags.join(" · "), x0, 320);
     ctx.fillStyle = palette.ink;
     ctx.font = `36px ${fonts.sans}`;
@@ -814,6 +866,20 @@ function mapLinks(): PageLink[] {
     .map((r) => ({ side: "right" as const, box: [170 / W, (r.y - 46) / H, (W - 130) / W, (r.y + 16) / H] as [number, number, number, number], href: bookHref(r.slugs[0]), label: `${r.label}, chapter ${chapterNumber(r.slugs[0])}` }));
 }
 
+const startRight = (link: PageLink) => (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+  textPage("right", "Every Byte · start here", "what you need first", needFirst, () => undefined, 34)(canvas, palette, fonts);
+  if (!route.chapters.length) return;
+  const x0 = 170;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = palette.faint;
+  ctx.font = `28px ${fonts.sans}`;
+  ctx.fillText(`if you have an hour: ${routeLine()}`, x0, H - 262);
+  ctx.fillStyle = palette.blue;
+  ctx.font = `40px ${fonts.serif}`;
+  ctx.fillText(startRouteLink, x0, H - 200);
+  link.lines = [under(ctx, startRouteLink, x0, H - 200, 40)];
+};
+
 export const startText = { forWho, needFirst, tokenLife, serving, servingFigure, map: () => mapRows().rows };
 
 export function startStops(): Stop[] {
@@ -821,10 +887,12 @@ export function startStops(): Stop[] {
   const next = () => (chapterPage("start") ?? 0) + 1;
   const last = () => (chapterPage("start") ?? 0) + 2;
   const links = mapLinks();
+  const hour: PageLink = { side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: "#path", label: startRouteLink };
   return [
     {
       ...flatStop(0, "Start here: who this book is for", "start here", [...forWho, ...needFirst]),
-      paint: { left: textPage("left", "Every Byte", "start here", forWho, page, 36), right: textPage("right", "Every Byte · start here", "what you need first", needFirst, page, 34) },
+      paint: { left: textPage("left", "Every Byte", "start here", forWho, page, 36), right: startRight(hour) },
+      links: [hour],
     },
     {
       ...flatStop(1, "Start here: the life of a token", "the life of a token", tokenLife),
@@ -1102,7 +1170,9 @@ function estimateQuestion(e: Estimate, k: number) {
   };
 }
 
-function estimateWorking(e: Estimate, k: number) {
+const beyondLinkText = (e: Estimate) => `Beyond this engine: ${beyondTopics.find((t) => t.id === e.beyond)?.title ?? beyondTitle} →`;
+
+function estimateWorking(e: Estimate, k: number, link?: PageLink) {
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "right");
     const width = x1 - x0;
@@ -1132,7 +1202,13 @@ function estimateWorking(e: Estimate, k: number) {
       ctx.fillStyle = palette.ink;
       ctx.font = `${30 * scale}px ${fonts.sans}`;
       return paragraph(ctx, e.teaches, x0, y + 20 * scale, width, 44 * scale, draw);
-    }, H - 170);
+    }, link ? H - 270 : H - 170);
+    if (link) {
+      ctx.fillStyle = palette.blue;
+      ctx.font = `38px ${fonts.serif}`;
+      ctx.fillText(beyondLinkText(e), x0, H - 200);
+      link.lines = [under(ctx, beyondLinkText(e), x0, H - 200, 38)];
+    }
   };
 }
 
@@ -1143,9 +1219,131 @@ export function estimateStops(firstSpread: number): Stop[] {
   };
   return [
     intro,
-    ...estimates.map((e, k): Stop => ({
-      ...flatStop(firstSpread + 1 + k, `Estimate ${k + 1}: ${e.title}`, e.title, [e.question, e.first, ...e.steps, e.answer, e.teaches]),
-      paint: { left: estimateQuestion(e, k), right: estimateWorking(e, k) },
-    })),
+    ...estimates.map((e, k): Stop => {
+      const link: PageLink | undefined = e.beyond ? { side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: `#beyond:${beyondTopics.findIndex((t) => t.id === e.beyond)}`, label: beyondLinkText(e) } : undefined;
+      return {
+        ...flatStop(firstSpread + 1 + k, `Estimate ${k + 1}: ${e.title}`, e.title, [e.question, e.first, ...e.steps, e.answer, e.teaches]),
+        paint: { left: estimateQuestion(e, k), right: estimateWorking(e, k, link) },
+        links: link ? [link] : undefined,
+      };
+    }),
   ];
+}
+
+export type BeyondPage = { kind: "intro" } | { kind: "topic"; topic: BeyondTopic } | { kind: "units" };
+export type BeyondSpread = { left: BeyondPage; right: BeyondPage };
+
+const beyondPages: BeyondPage[] = [{ kind: "intro" }, ...beyondTopics.map((topic): BeyondPage => ({ kind: "topic", topic })), { kind: "units" }];
+
+export const beyondSpreads: BeyondSpread[] = Array.from({ length: Math.ceil(beyondPages.length / 2) }, (_, k) => ({ left: beyondPages[2 * k], right: beyondPages[2 * k + 1] ?? { kind: "units" } }));
+
+export const beyondSpreadOf = (topic: number) => Math.floor((topic + 1) / 2);
+
+export const beyondUnitsTitle = "in bytes per token";
+export const beyondUnitsNote = "None of the four is implemented or measured in this engine.";
+
+const beyondPageNumber = (k: number) => (chapterPage("beyond") ?? 0) + k;
+
+export const estimateOf = (topic: BeyondTopic) => {
+  const index = estimates.findIndex((e) => e.id === topic.estimate);
+  return index < 0 ? undefined : { index, href: `#estimates:${index + 1}`, text: `Estimate ${index + 1}: ${estimates[index].title} →` };
+};
+
+function beyondTopicPage(topic: BeyondTopic, side: Side, k: number) {
+  const left = side === "left" ? 130 : 170;
+  const right = side === "left" ? W - 170 : W - 130;
+  const estimate = estimateOf(topic);
+  const source: PageLink = { side, box: [left / W, (H - 300) / H, right / W, (H - 130) / H], href: topic.source.href, label: topic.source.label };
+  const inside: PageLink | undefined = estimate ? { side, box: [left / W, (H - 420) / H, right / W, (H - 350) / H], href: estimate.href, label: estimate.text } : undefined;
+  const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    const width = x1 - x0;
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`${beyondTitle} · ${topic.unit}`, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText(topic.title, x0, 260);
+    let px = 34;
+    const fit = (draw: boolean) => {
+      ctx.font = `${px}px ${fonts.sans}`;
+      let y = 360;
+      for (const text of topic.paragraphs) y = paragraph(ctx, text, x0, y, width, px * 1.5, draw) + px * 0.8;
+      return y - px * 2.3;
+    };
+    while (px > 24 && fit(false) > (inside ? H - 450 : H - 350)) px -= 1;
+    fit(true);
+    if (inside && estimate) {
+      ctx.fillStyle = palette.blue;
+      ctx.font = `38px ${fonts.serif}`;
+      ctx.fillText(estimate.text, x0, H - 370);
+      inside.lines = [under(ctx, estimate.text, x0, H - 370, 38)];
+    }
+    ctx.fillStyle = palette.faint;
+    ctx.font = `24px ${fonts.sans}`;
+    ctx.fillText("the source to read", x0, H - 290);
+    ctx.fillStyle = palette.blue;
+    ctx.font = `28px ${fonts.sans}`;
+    const sourceLines = lines(ctx, topic.source.label, width);
+    sourceLines.forEach((line, i) => ctx.fillText(line, x0, H - 244 + i * 40));
+    source.lines = sourceLines.map((line, i) => under(ctx, line, x0, H - 244 + i * 40, 28));
+    if (side === "left") folio(ctx, String(beyondPageNumber(k)), side, x0, x1, palette, fonts);
+  };
+  return { paint, links: inside ? [inside, source] : [source] };
+}
+
+function beyondUnitsPage(side: Side, k: number) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(beyondTitle, x0, 150);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `92px ${fonts.serif}`;
+    ctx.fillText(beyondUnitsTitle, x0, 260);
+    let y = 420;
+    for (const topic of beyondTopics) {
+      ctx.fillStyle = palette.ink;
+      ctx.font = `52px ${fonts.serif}`;
+      ctx.fillText(topic.title, x0, y);
+      ctx.fillStyle = palette.blue;
+      ctx.font = `34px ${fonts.sans}`;
+      y = paragraph(ctx, topic.unit, x0, y + 58, x1 - x0, 48) + 80;
+    }
+    ctx.fillStyle = palette.faint;
+    ctx.font = `30px ${fonts.sans}`;
+    paragraph(ctx, beyondUnitsNote, x0, y + 10, x1 - x0, 44);
+    if (side === "left") folio(ctx, String(beyondPageNumber(k)), side, x0, x1, palette, fonts);
+  };
+}
+
+export function beyondStops(firstSpread: number): Stop[] {
+  return beyondSpreads.map((spread, k) => {
+    const sides = (["left", "right"] as const).map((side) => {
+      const page = spread[side];
+      if (page.kind === "topic") return beyondTopicPage(page.topic, side, k);
+      if (page.kind === "units") return { paint: beyondUnitsPage(side, k), links: [] as PageLink[] };
+      return { paint: textPage(side, "Every Byte", beyondTitle, beyondIntro, () => beyondPageNumber(k), 36), links: [] as PageLink[] };
+    });
+    const topics = [spread.left, spread.right].flatMap((p) => (p.kind === "topic" ? [p.topic] : []));
+    const title = spread.left.kind === "topic" ? spread.left.topic.title : beyondTitle;
+    return {
+      ...flatStop(firstSpread + k, `Beyond this engine: ${topics.map((t) => t.title).join(" and ")}`, title, topics.flatMap((t) => t.paragraphs)),
+      paint: { left: sides[0].paint, right: sides[1].paint },
+      links: [...sides[0].links, ...sides[1].links],
+    };
+  });
+}
+
+const countWords = (texts: string[]) => texts.join(" ").split(/\s+/).filter(Boolean).length;
+export const startWords = countWords([...forWho, ...needFirst, ...tokenLife, ...serving, ...servingFigure]);
+export const startSpreadCount = startSpreads;
+
+export function setBookRoute(defs: ChapterDef[]) {
+  const found = shortRoute(defs.map((d) => ({ slug: d.slug, steps: d.steps.slice(d.lead ?? 0) })), startWords, startSpreads);
+  const chapterStopsOf = (c: { slug: string; picks: number[] }) => {
+    const lead = defs.find((d) => d.slug === c.slug)?.lead ?? 0;
+    return [-1, ...Array.from({ length: lead }, (_, i) => i), ...c.picks.map((i) => i + lead)].map((local) => ({ key: c.slug, local }));
+  };
+  route = { order: [...Array.from({ length: startSpreads }, (_, local) => ({ key: "start", local })), ...found.chapters.flatMap(chapterStopsOf)], chapters: found.chapters.map((c) => c.slug), minutes: found.minutes };
 }

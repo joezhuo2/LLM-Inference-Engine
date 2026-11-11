@@ -1,5 +1,6 @@
 import { kvReplay, modelShape } from "@/lib/data";
 import { repoUrl } from "./build-log";
+import { flashFmt, flashLong, flashProfile, flashRoofline, flashShape } from "./kernels/flash-prefill";
 import { type Author, authorLabel } from "./kernels/types";
 
 export type Runs = "cpu" | "gpu";
@@ -22,7 +23,11 @@ export type StubExercise = Base & {
   numpy?: Numpy;
 };
 
-export type OpenExercise = Base & { kind: "open"; runs: "gpu"; check: string; compare: { path: string; label: string }[] };
+export type OpenStart = { title: string; text: string; commands: string[] };
+
+export type OpenExercise = Base & { kind: "open"; runs: "gpu"; check: string; compare: { path: string; label: string }[]; write?: OpenStart; tag?: string };
+
+export const openTag = (e: OpenExercise) => e.tag ?? "no tests, open ended";
 
 export type Exercise = StubExercise | OpenExercise;
 
@@ -81,7 +86,7 @@ export const exercises: Exercise[] = [
   {
     kind: "stub",
     id: "scheduler",
-    chapter: "paged-kv",
+    chapter: "serving",
     title: "Scheduler",
     task: "Decide, step by step, which requests run together: admit waiting requests when their blocks fit, grow every running one by a token, free the finished ones and preempt the newest when the pool runs out.",
     nudge: "Keep a waiting queue and a running list and write admit, grow and finish as separate small steps. When a running sequence cannot grow, the newest running request gives back its blocks and goes to the front of the queue.",
@@ -245,6 +250,23 @@ export const exercises: Exercise[] = [
     implPrs: [134],
     end: "cbffd5b",
     author: "both",
+  },
+  {
+    kind: "open",
+    id: "flash-shared-kv",
+    chapter: "flash-prefill",
+    title: `one read of K and V for ${flashShape.group} query heads`,
+    task: `Change flash_attention_prefill so the ${flashShape.group} query heads that share a KV head load each key and value tile once, where today every warp loads it for itself. Predict from the roofline how far that moves the kernel, then measure it. Nobody has built this yet, so there is no solution to compare with and no measured speedup.`,
+    nudge: `Count first: ${flashRoofline.now} FLOP per byte of K and V loaded today, ${flashRoofline.shared} if ${flashShape.group} heads share (calculated), against a ridge of ${flashRoofline.ridge.toFixed(0)}. The ${flashShape.warps} warps of a thread block already hold ${flashShape.warps} query heads of one KV head, so staging a tile once per block shares it ${flashShape.warps} ways without a larger block. All ${flashShape.group} need ${flashShape.group} warps per block, and at ${flashProfile.launchAfter.registers} registers per thread only ${flashRoofline.sharedBlocksPerSm} of those fit on an SM (calculated). Staging in shared memory also brings back a barrier per tile, which the kernel has none of today.`,
+    runs: "gpu",
+    tag: "open ended, the kernel's tests still apply",
+    write: { title: "Change the kernel in place", text: "Start from main. The kernel is one file, and its tests are already part of the build.", commands: ["cmake --preset debug -DCMAKE_CUDA_ARCHITECTURES=native && cmake --build --preset debug", "ctest --preset debug -R 'Flash(AttentionPrefill|Layout)'"] },
+    check: `The ${flashShape.tests} tests of tests/gpu/test_flash_prefill.cpp must pass unchanged, the bit-for-bit ones included. Then profile one launch with the Nsight Compute command in docs/profiling.md and compare with today's kernel (measured): ${flashFmt(flashProfile.step.requestedMb)} MB requested, ${flashProfile.step.l1Hit}% of it in L1, tensor pipe at ${flashProfile.step.tensor}%, ${flashProfile.step.occupancy}% of warp places filled, ${flashProfile.step.ms} ms. The bound: at the measured GEMM peak the products of a whole ${flashLong}-token prefill would take ${flashRoofline.floorMs.toFixed(0)} ms of the ${flashRoofline.kernelMs} ms the kernel takes in Nsight Systems, so against that measured ceiling nothing gains more than ${flashRoofline.maxGain.toFixed(1)} times (calculated).`,
+    compare: [
+      { path: "src/kernels/flash_prefill.cu", label: "the kernel as it is today" },
+      { path: "tests/gpu/test_flash_prefill.cpp", label: "the tests it must still pass" },
+      { path: "docs/profiling.md", label: "the Nsight Compute numbers to start from, under FlashAttention prefill in chunks" },
+    ],
   },
 ];
 

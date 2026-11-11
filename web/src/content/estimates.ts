@@ -1,9 +1,10 @@
 import { measured } from "@/content/kernels/types";
 import { ceilings, hardware, modelShape } from "@/lib/data";
-import { chapterNumber } from "./book-order";
+import { beyondTitle, chapterNumber } from "./book-order";
 import { kernelStory } from "./kernels";
+import { flashLong, flashProfile, flashRoofline, flashShape } from "./kernels/flash-prefill";
 
-export type Estimate = { id: string; title: string; question: string; first: string; sources: string[]; steps: string[]; answer: string; teaches: string; chapters: string[] };
+export type Estimate = { id: string; title: string; question: string; first: string; sources: string[]; steps: string[]; answer: string; teaches: string; chapters: string[]; beyond?: string };
 
 const billions = (params: number) => `${Number((params / 1e9).toPrecision(3))} billion`;
 
@@ -90,6 +91,9 @@ const weightsAt = (bits: number) => {
 
 const pagedKv = kernelStory("paged-kv")?.title ?? "paged KV cache";
 
+const fs = flashShape;
+const fr = flashRoofline;
+
 const fromBook = {
   roofline: "measured in this book: the roofline tables in docs/results.md",
   config: "this book's model: TinyLlama config.json",
@@ -99,8 +103,22 @@ const fromBook = {
 
 export const estimatesTitle = "estimate it yourself";
 
+export const fitEstimate = {
+  id: "fit-this-gpu",
+  model: b.model,
+  bf16BytesPerWeight: setup.bytesPerWeight,
+  lowBits: setup.lowBits,
+  fewerBytes: n2((setup.bytesPerWeight * 8) / setup.lowBits),
+  bf16: gb(weights8),
+  vram: `${sig(hw.vram_gb)} GB`,
+  low: gb(lowBytes),
+  floorLow: ms(floorLow),
+  rateLow: sig(1 / floorLow),
+  bandwidth: `${peak.gbs} GB/s`,
+};
+
 export const estimatesIntro = [
-  "Back-of-envelope problems that use this book's formulas on models and GPUs the book did not run. Each needs a pencil and a calculator.",
+  "Back-of-envelope problems that use this book's formulas on models and GPUs the book did not run, and on one change to its own kernel that nobody has built. Each needs a pencil and a calculator.",
   "Try each one first, then open the working. Answers are rounded to 2 significant figures, and each working ends with what it teaches.",
   "Published specs are typed in by hand and labelled published spec, with the vendor and the model. Every other number is calculated from those and from this book's own measurements, and is marked calculated or measured.",
 ];
@@ -170,7 +188,7 @@ export const estimates: Estimate[] = [
     ],
     answer: `About ${Math.floor(fit7)} requests with ${a.kvHeads} KV heads and about ${Math.floor(fit8)} with ${b.kvHeads}, ${n2(Math.floor(fit8) / Math.floor(fit7))} times as many (calculated).`,
     teaches: "The KV cache, not the weights, decides how many requests share a GPU, which is why paged KV and GQA matter.",
-    chapters: ["paged-kv"],
+    chapters: ["paged-kv", "serving"],
   },
   {
     id: "prefill-time",
@@ -200,10 +218,30 @@ export const estimates: Estimate[] = [
       `Room for weights = ${sig(hw.vram_gb)} GB − ${spareGB} GB for the cache = ${gb(room)}.`,
       `Bytes per weight = ${gb(room)} ÷ ${billions(b.params)} = ${sig(bytesFit)} bytes, or ${sig(bytesFit * 8)} bits (calculated). ${weightsAt(setup.highBits)} ${weightsAt(setup.lowBits)}`,
       `Decode floor = weight bytes ÷ measured bandwidth. At the largest size that fits: ${gb(room)} ÷ ${peak.gbs} GB/s = ${ms(floorRoom)}. At ${setup.lowBits} bits: ${gb(lowBytes)} ÷ ${peak.gbs} GB/s = ${ms(floorLow)}, or ${sig(1 / floorLow)} tokens per second (calculated from the measured bandwidth).`,
-      `This book does not cover quantization yet. The estimate only counts bytes, and real ${setup.lowBits}-bit files also store scale factors, so they are a little larger.`,
+      `This engine does not implement quantization, so none of this was run. "${beyondTitle}", after the last chapter, says what it changes and what it costs. The estimate only counts bytes, and real ${setup.lowBits}-bit files also store scale factors, so they are a little larger.`,
     ],
     answer: `No: ${gb(weights8)} of BF16 weights against ${sig(hw.vram_gb)} GB. They must average under ${sig(bytesFit)} bytes (${sig(bytesFit * 8)} bits) per weight to leave ${spareGB} GB, so ${setup.highBits}-bit is too big and about ${setup.lowBits}-bit fits. At ${setup.lowBits} bits the floor is ${ms(floorLow)} per token, ${sig(1 / floorLow)} tokens per second (calculated).`,
     teaches: "Bytes against VRAM decide whether a model runs at all, and fewer bytes per weight lower the decode floor in the same proportion.",
     chapters: [],
+    beyond: "quantization",
+  },
+  {
+    id: "shared-kv",
+    title: `${fs.group} query heads, one read of the keys`,
+    question: `TinyLlama has ${fs.heads} query heads and ${fs.kvHeads} KV heads. This book's prefill kernel gives each query head its own warp, and each warp loads every tile of K and V for itself. How many FLOP does it do per byte of K and V it loads, what would that be if one thread block served the ${fs.group} query heads of a KV head and loaded each tile once, and where do both sit against this book's ridge?`,
+    first: `Work it out first: one tile pair is ${fs.tile} query rows against ${fs.tile} keys of one head. Count its FLOP in the two products, then the bytes of its K tile and V tile in BF16.`,
+    sources: [fromBook.config, fromBook.roofline, "this book's kernel: src/kernels/flash_prefill.cu", "measured in this book: Nsight Compute and Nsight Systems on that kernel, docs/profiling.md"],
+    steps: [
+      `FLOP per tile pair = 2 products (Q·K and P·V) × 2 FLOP × ${fs.tile} rows × ${fs.tile} keys × ${fs.headDim} dimensions = ${whole(fr.pairFlop)} (calculated).`,
+      `Bytes per tile pair = 2 (K and V) × ${fs.tile} keys × ${fs.headDim} values × ${setup.bytesPerWeight} bytes = ${whole(fr.pairBytes)}, so ${whole(fr.pairFlop)} ÷ ${whole(fr.pairBytes)} = ${fr.now} FLOP per byte (calculated). It is the ${fs.tile} rows of the tile: every row that shares a load adds 1 FLOP per byte.`,
+      `Check the count against the profiler: a ${flashLong}-token prompt has ${whole(fr.tilePairs)} tile pairs per head, × ${fs.heads} heads × ${whole(fr.pairBytes)} bytes = ${whole(fr.loadedMb)} MB per layer (calculated). Nsight Compute counts ${whole(flashProfile.step.requestedMb)} MB requested in 32-byte sectors (measured), so a thread uses about ${n2(fr.sectorBytes)} of the 32 bytes of each sector it asks for.`,
+      `Shared by ${fs.group} heads, the FLOP stay and the bytes fall ${fs.group} times: ${fr.now} × ${fs.group} = ${fr.shared} FLOP per byte (calculated). The ridge is ${peak.tflops} TFLOP/s ÷ ${peak.gbs} GB/s = ${whole(fr.ridge)} FLOP per byte (measured ceilings), so the point crosses it.`,
+      `What crossing buys: at ${fr.now} FLOP per byte DRAM could feed ${fr.now} × ${peak.gbs} GB/s = ${n2(fr.dramRoofNow)} TFLOP/s. The kernel already runs at ${fr.achieved.toFixed(1)} TFLOP/s (calculated: ${whole(fr.promptGflop)} GFLOP over ${fr.layers} layers in the measured ${fr.kernelMs} ms). It can because ${flashProfile.step.l1Hit}% of its loads are in L1 and DRAM runs at ${flashProfile.step.dram}% of its throughput (measured). The caches already serve the rereads, so DRAM bandwidth was not the limit. Whether the cache traffic is, the stall reasons would say, and they are not measured.`,
+      `The ceiling: ${whole(fr.promptGflop)} GFLOP ÷ ${peak.tflops} TFLOP/s = ${n2(fr.floorMs)} ms against ${fr.kernelMs} ms measured. Against that measured ceiling no change to this kernel gains more than ${n2(fr.maxGain)} times, ${n2(fr.maxSavedMs)} ms or ${n2(fr.maxSavedPct)}% of the ${flashProfile.whole.span} ms that one prefill spans in Nsight Systems (calculated bound). The tensor cores run at ${flashProfile.step.tensor}% of their peak rate (measured).`,
+      `Registers push the other way: ${fs.group} warps × 32 threads × ${flashProfile.launchAfter.registers} registers leave room for ${fr.sharedBlocksPerSm} blocks in the ${whole(fr.smRegisters)} registers of an SM, ${fr.warpsShared} warps where ${fr.warpsNow} run today (calculated, if the count stays at ${flashProfile.launchAfter.registers}).`,
+    ],
+    answer: `${fr.now} FLOP per byte loaded today and ${fr.shared} with one read for ${fs.group} heads, left and right of the ridge at ${whole(fr.ridge)} (calculated). The time it saves is not measured: nobody has built it, and the bound is ${n2(fr.maxGain)} times on the kernel.`,
+    teaches: "Arithmetic intensity counts the rows that share a read. Crossing the ridge pays only if the bytes were the limit, and here the profiler says DRAM was not; what the extra cache traffic costs is not measured.",
+    chapters: ["flash-prefill"],
   },
 ];

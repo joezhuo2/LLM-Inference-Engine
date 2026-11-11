@@ -181,7 +181,7 @@ export function RooflinePicker({ initial = "1" }: { initial?: string }) {
 const steps: StoryStep[] = [
   {
     id: "job",
-    title: "the job",
+    title: "most of a layer is matrix products",
     body: (
       <>
         <p>
@@ -198,26 +198,8 @@ const steps: StoryStep[] = [
     ),
   },
   {
-    id: "trick",
-    title: "the row-major trick",
-    body: (
-      <>
-        <p>
-          The model stores W as [out, in] in row-major order, one output row after the other. cuBLAS, which comes from
-          Fortran, reads every matrix column-major. Read column-major with a leading dimension of in, the same bytes are
-          [in, out]: Wᵀ, with no copy.
-        </p>
-        <p>
-          So the wrapper asks for the transposed problem. With the first operand transposed, cuBLAS computes W · Xᵀ, which
-          is Yᵀ, and Yᵀ written column-major is exactly Y in row-major memory. <span className="text-accent">One call</span>, BF16 inputs and output, FP32
-          accumulation.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "gemv",
-    title: "batch 1 is a GEMV",
+    title: "one row uses each weight byte once",
     body: (
       <>
         <p>
@@ -235,7 +217,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "roof",
-    title: "at the roof",
+    title: "cuBLAS already reads at the roof",
     body: (
       <>
         <p>
@@ -254,7 +236,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "batch",
-    title: "sixteen rows",
+    title: "sixteen rows share one weight read",
     body: (
       <>
         <p>
@@ -272,7 +254,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "prefill",
-    title: "prefill is the other side",
+    title: "a long prompt crosses the ridge",
     body: (
       <>
         <p>
@@ -293,7 +275,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "roofline",
-    title: "the roofline",
+    title: "no decode op gets near the ridge",
     body: (
       <>
         <p>
@@ -307,16 +289,35 @@ const steps: StoryStep[] = [
       </>
     ),
   },
+  {
+    id: "trick",
+    group: "how it got built",
+    title: "a row-major W is a free Wᵀ",
+    body: (
+      <>
+        <p>
+          The model stores W as [out, in] in row-major order, one output row after the other. cuBLAS, which comes from
+          Fortran, reads every matrix column-major. Read column-major with a leading dimension of in, the same bytes are
+          [in, out]: Wᵀ, with no copy.
+        </p>
+        <p>
+          So the wrapper asks for the transposed problem. With the first operand transposed, cuBLAS computes W · Xᵀ, which
+          is Yᵀ, and Yᵀ written column-major is exactly Y in row-major memory. <span className="text-accent">One call</span>, BF16 inputs and output, FP32
+          accumulation.
+        </p>
+      </>
+    ),
+  },
 ];
 
 const captions = [
   "bytes from the weight shapes in config.json; GPU time per op from the batch-1 Nsight Systems profile in results/decode_step.md",
-  "a 3 × 4 W drawn; the engine's real call has out = 2,560 to 32,000 and in = 2,048 or 5,632",
   `12 of 2,560 QKV rows drawn; the floor is ${(weightBytes / 1e9).toFixed(2)} GB ÷ the measured ${peak.gbs} GB/s, calculated, against a ridge of ${Math.round(ridge)} FLOP/byte; time per token from docs/results.md`,
   `GB/s from scripts/roofline.py over the batch-1 profile; the peak, ${peak.gbs} GB/s, from the bandwidth test in docs/results.md`,
   `16 rows meet each weight byte: 16 FLOP per byte against a ridge of ${Math.round(ridge)} (calculated); µs per step from the batch-1 profile (${Math.round(sum("1")).toLocaleString("en-US")} µs) and the batch-16 profile; TFLOP/s from scripts/roofline.py`,
   `results/decode_step_b16.md: ${prefillRows} rows are ${prefillRoof.maxBatch} prompts of ${prefillRoof.promptTokens} tokens, ${prefillTimes.toFixed(1)}x the ridge (FLOPs and bytes calculated from config.json); the ${prefillRoof.count} GEMMs took ${prefillRoof.ms} ms (measured). Per prompt token, docs/results.md: engine ${curve.engineShort} ms at ${curve.short} tokens and ${curve.engineLong} at ${curve.long} (${curve.perRowLong} with the per-row attention it replaced), llama.cpp ${curve.llamaLow} to ${curve.llamaHigh} (${curve.llamaTflops.toFixed(1)} TFLOP/s at ${curve.long}, calculated), decode ${(tpotGraphs / 1000).toFixed(2)} ms, ${Math.round(tpotGraphs / 1000 / curve.engineShort)}x the short-prompt cost`,
   "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU; the prefill point is the calculated and measured one from results/decode_step_b16.md",
+  "a 3 × 4 W drawn; the engine's real call has out = 2,560 to 32,000 and in = 2,048 or 5,632",
 ];
 
 const roofPoint = (rows: string) => ({
@@ -353,17 +354,17 @@ export function GemmStory() {
           case 0:
             return <ProjectionsFigure projections={projections} share={share} />;
           case 1:
-            return <TransposeFigure />;
-          case 2:
             return <GemvFigure weightBytes={weightBytes} peakGbs={peak.gbs} tpotUs={tpotGraphs} />;
-          case 3:
+          case 2:
             return <RoofBarsFigure rows={roofRows} peakGbs={peak.gbs} />;
-          case 4:
+          case 3:
             return <ReuseFigure us1={sum("1")} us16={sum("16")} tf1={roofline("gate_up", "1", "TFLOP/s")} tf16={roofline("gate_up", "16", "TFLOP/s")} />;
-          case 5:
+          case 4:
             return <RooflinePicker initial="prefill" />;
-          default:
+          case 5:
             return <RooflinePicker />;
+          default:
+            return <TransposeFigure />;
         }
       }}
     />

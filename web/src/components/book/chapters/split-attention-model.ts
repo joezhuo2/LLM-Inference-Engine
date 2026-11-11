@@ -5,7 +5,7 @@ import type { BookModel } from "../book-scene";
 import { createCard, type Kit, washPlane } from "../ink";
 import type { Fonts } from "../typeset";
 
-export const SPLIT_STOP = { few: 0, waiting: 1, cut: 2, wave: 3, scratch: 4, merge: 5, graphs: 6 };
+export const SPLIT_STOP = { few: 0, cut: 1, scratch: 2, merge: 3, graphs: 4, waiting: 5, wave: 6 };
 
 const placed = <T extends THREE.Object3D>(object: T, x: number, y: number, z: number): T => {
   object.position.set(x, y, z);

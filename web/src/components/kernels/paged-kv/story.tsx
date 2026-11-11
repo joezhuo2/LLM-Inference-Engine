@@ -6,7 +6,8 @@ import { kvReplay, modelShape } from "@/lib/data";
 import { SmoothRange } from "@/components/smooth-range";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { useLoop } from "../loop";
-import { AppendFigure, BatchingFigure, batchGrids, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, tightBlocks, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
+import { chapterNumber } from "@/content/book-order";
+import { AppendFigure, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
 
 const replay = kvReplay();
 const B = replay.meta.block_size;
@@ -166,7 +167,7 @@ const reqBlocks = first.blocks.length;
 export const pagedKvSteps: StoryStep[] = [
   {
     id: "why",
-    title: "memory for a context nobody knows yet",
+    title: "nobody knows a request's length, so hold only the blocks it fills",
     body: (
       <>
         <p>
@@ -198,25 +199,8 @@ export const pagedKvSteps: StoryStep[] = [
     ),
   },
   {
-    id: "write",
-    title: "write_kv",
-    body: (
-      <>
-        <p>
-          write_kv is the kernel that fills the slots. After the QKV projection and RoPE, each token&apos;s row holds its query heads and then its key heads and value heads. write_kv runs one
-          thread per (token, KV head, dimension), looks up the token&apos;s slot, and copies one key and one value bit for bit into the block and the row inside it that the slot names.
-        </p>
-        <p>
-          The cache is laid out by block, then KV head, then token, then dimension, so one head&apos;s keys in a block are one contiguous tile, which is what the attention kernel reads. Padding rows get
-          an empty slot and write nothing. It is a pure copy: <span className="text-accent">{`${fmt(writeUs, 1)} µs`}</span> per single-request decode step over one launch per layer, a small share of the kernel
-          time.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "append",
-    title: "one token at a time",
+    title: `a new block only every ${B} tokens`,
     body: (
       <>
         <p>
@@ -232,7 +216,7 @@ export const pagedKvSteps: StoryStep[] = [
   },
   {
     id: "reuse",
-    title: "giving blocks back",
+    title: "freed blocks go out again first",
     body: (
       <>
         <p>
@@ -241,15 +225,36 @@ export const pagedKvSteps: StoryStep[] = [
           <span className="text-accent">{replay.max_block}</span> blocks after the null block.
         </p>
         <p>
-          If the pool runs out, the scheduler preempts the newest request: its blocks are freed, it goes back to the front of the queue, and its prompt plus what it has written so far is recomputed
-          when there is room. A test squeezes many requests into a small pool, forcing several preemptions, and every output matches a run with room to spare.
+          If the pool does run out, the scheduler takes a running request&apos;s blocks back and recomputes its tokens later. Which request it picks, what that request loses and why its output does not change is chapter {chapterNumber("serving")}.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "write",
+    group: "how it got built",
+    title: "write_kv is a pure copy, one thread per value",
+    body: (
+      <>
+        <p>
+          write_kv is the kernel that fills the slots. After the QKV projection and RoPE, each token&apos;s row holds its query heads and then its key heads and value heads. write_kv runs one
+          thread per (token, KV head, dimension), looks up the token&apos;s slot, and copies one key and one value bit for bit into the block and the row inside it that the slot names.
+        </p>
+        <p>
+          The cache is laid out by block, then KV head, then token, then dimension, so one head&apos;s keys in a block are one contiguous tile, which is what the attention kernel reads. Padding rows get
+          an empty slot and write nothing. It is a pure copy: <span className="text-accent">{`${fmt(writeUs, 1)} µs`}</span> per single-request decode step over one launch per layer, a small share of the kernel
+          time.
+        </p>
+        <p>
+          The layout and the kernel&apos;s tests came before the kernel, and the tests were checked against nine deliberately broken kernels first. Joe&apos;s kernel then passed them, and one of them caught two slips in the spec: a QKV row with no query columns was accepted, and an empty batch returned before its arguments were checked.
         </p>
       </>
     ),
   },
   {
     id: "replay",
-    title: "the recorded run",
+    group: "measured",
+    title: `a busy run held ${replay.peak.blocks} of ${fmt(replay.meta.kv_blocks)} blocks`,
     body: (
       <>
         <p>
@@ -259,7 +264,7 @@ export const pagedKvSteps: StoryStep[] = [
         <p>
           At its busiest the run held <span className="text-accent">{replay.peak.blocks}</span> blocks, a tiny part of the pool. The pool is simply most of the memory left after
           the weights, so a run like this leaves almost all of it free, room for many more or much longer requests. Serving them side by side from one pool is what batching needs: a full batch serves
-          many times the tokens per second of a single request (CUDA Graphs on, both).
+          many times the tokens per second of a single request (CUDA Graphs on, both). How the scheduler decides which requests share a step, and how many fit, is chapter {chapterNumber("serving")}.
         </p>
       </>
     ),
@@ -269,9 +274,9 @@ export const pagedKvSteps: StoryStep[] = [
 export const pagedKvCaptions = [
   `the four requests' real lengths from ${replay.file}; blocks are ${B} tokens; ${layers} layers; an answer can stop after 9 tokens; reserving ${fmt(fullContext)} tokens each, the four would hold ${4 * (fullContext / B)} blocks`,
   `block table of request ${first.id} and the pool at that step, both from the build-time replay of ${replay.file}: position ${lookup.pos} is logical block ${lookup.logical}, physical block ${lookup.phys}, among the request's ${reqBlocks} blocks; the pool is ${fmt(poolGb, 1)} GB, ${fmt(blockBytes)} bytes and ${B} tokens a block, block 0 the null block`,
-  `TinyLlama: 32 query heads and 4 KV heads of 64 dims, laid out [block, KV head, ${B}, 64] per layer, a 2 KB tile per head and block; the slot picks row slot mod ${B} of block slot / ${B}, padding rows get slot -1; time from results/decode_step.md (GPU time per op), ${layers} launches, ${writeShare}% of the kernel time`,
   `request ${first.id}'s real prompt and blocks: its ${first.prompt} prompt tokens fill blocks ${first.blocks.slice(0, Math.ceil(first.prompt / B)).map((b) => b.id).join(", ")}, then ${first.final_length - first.prompt} decode steps; at most ${B - 1} slots stay empty; the slots filled over time are drawn, not timed`,
   `block reuse from the replay: request ${first.id}'s fourth block had served another request, and all ${replay.meta.num_requests} requests stayed within blocks 1 to ${replay.max_block}; the preemption test, ForcedPreemptionKeepsTheOutputsOfEveryRequest in tests/gpu/test_serve.cpp, puts 16 requests in 56 blocks and forces 6 preemptions`,
+  `TinyLlama: 32 query heads and 4 KV heads of 64 dims, laid out [block, KV head, ${B}, 64] per layer, a 2 KB tile per head and block; the slot picks row slot mod ${B} of block slot / ${B}, padding rows get slot -1; time from results/decode_step.md (GPU time per op), ${layers} launches, ${writeShare}% of the kernel time`,
   `${replay.file}, recorded ${replay.meta.date.slice(0, 10)} on the ${replay.meta.gpu.replace("NVIDIA GeForce ", "")}: ${replay.meta.num_requests} requests at ${replay.meta.request_rate} per second, peak ${replay.peak.blocks} of ${fmt(replay.meta.kv_blocks)} blocks, the pool 90% of the memory left after the weights; measured ${fmt(tput("16"))} tokens/s at batch 16 against ${fmt(tput("1"))} at batch 1; every step's free block count checked against the trace at build time`,
 ];
 
@@ -281,113 +286,21 @@ export function PagedKvStory() {
       steps={pagedKvSteps}
       caption={(i) => pagedKvCaptions[i]}
       figure={(i) => {
-        switch (i) {
-          case 0:
+        switch (pagedKvSteps[i].id) {
+          case "why":
             return <WhyBlocksFigure />;
-          case 1:
+          case "pool":
             return <TableFigure />;
-          case 2:
+          case "write":
             return <WriteKvFigure launchUs={writeUs} share={writeShare} />;
-          case 3:
+          case "append":
             return <AppendFigure />;
-          case 4:
+          case "reuse":
             return <ReuseFigure />;
           default:
             return <ReplayPlayer />;
         }
       }}
-    />
-  );
-}
-
-const gs = batchGrids.static;
-const gr = batchGrids.roomy;
-const gt = batchGrids.tight;
-const tightPreemptions = gt.evictions.reduce((n, e) => n + e, 0);
-const batchingSlots = gs.slots;
-
-export const batchingSteps: StoryStep[] = [
-  {
-    id: "static",
-    title: "static: wait for the longest",
-    body: (
-      <>
-        <p>
-          A static batch takes the first {batchingSlots} requests, runs them together, and takes the next group only when every one of them is done. A request that stops early
-          keeps its slot until the longest request in its batch finishes.
-        </p>
-        <p>
-          Here one request runs far longer than the rest of its batch, which is done early. The dashed cells are slots that go through every forward pass and produce nothing: the requests
-          waste <span className="text-warn">{gs.wasted}</span> slot-steps.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "continuous",
-    title: "continuous: look again every step",
-    body: (
-      <>
-        <p>
-          Continuous batching, also called iteration-level scheduling, runs the scheduler before every step instead of before every batch. A finished request leaves at once, and the request at the
-          front of the queue takes its slot on the next step.
-        </p>
-        <p>
-          Same queue, room for every request: the requests waste only <span className="text-accent">{gr.wasted}</span> slot-steps, all of them at the end, when the
-          queue is empty and the last requests drain.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "rules",
-    title: "the engine's two rules",
-    body: (
-      <>
-        <p>
-          The engine&apos;s scheduler (src/sched/scheduler.cpp) has two rules. Admission is first come first served: while a slot is free, the front of the queue joins if blocks for its whole length
-          are free, and nothing skips ahead of it. Preemption: when a running request needs a new block and none is free, the request at the back of the running list gives its blocks back and returns
-          to the front of the queue.
-        </p>
-        <p>
-          Here the pool is a few small blocks, each a couple of steps long where the engine&apos;s hold more tokens, and <span className="text-warn">{tightPreemptions}</span> preemptions follow:
-          the crossed cells are evictions and the shaded cells are steps recomputed after one. The run still wastes well under the slot-steps of static
-          batching.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "watch",
-    title: "watch it run",
-    body: (
-      <>
-        <p>
-          The visualizer runs the same two rules on a real block pool. Add requests and watch two numbers. <span className="text-accent">requests running</span> is how many requests the
-          scheduler steps together right now: it rises as requests are admitted and falls as they finish.
-        </p>
-        <p>
-          <span className="text-accent">preemptions</span> counts every time the pool ran out and the newest running request went back to the queue. Together they are the scheduler at
-          work: requests join and leave between steps, and a full pool pushes one back instead of stalling the batch.
-        </p>
-      </>
-    ),
-  },
-];
-
-export const batchingCaptions = [
-  `illustrative request lengths in steps, ${batchingSlots} slots; the same 10 requests in every figure; request 1 runs 9 steps, requests 0, 2 and 3 end by step 3; ${gs.steps} steps in all`,
-  `illustrative lengths; a pool that never runs out; a prefill and a decode step are drawn as one cell; ${gr.steps} steps against static batching's ${gs.steps}`,
-  `illustrative lengths; ${tightBlocks} blocks of 2 steps instead of 16 tokens; ${gt.steps} steps and ${gt.wasted} wasted slot-steps against static batching's ${gs.wasted}; rules from src/sched/scheduler.cpp: first come first served up to max_batch, preempt from the back of the running list`,
-  "the same run; the two highlighted counters are the visualizer's \"requests running\" and \"preemptions\"",
-];
-
-export function BatchingStory() {
-  return (
-    <StickyStory
-      steps={batchingSteps}
-      caption={(i) => batchingCaptions[i]}
-      figure={(i) => <BatchingFigure kind={(["static", "roomy", "tight", "tight"] as const)[i]} focus={i === 3} />}
     />
   );
 }

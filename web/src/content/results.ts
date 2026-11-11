@@ -291,6 +291,7 @@ function loadSeries(column: string): Series[] {
 }
 
 export const goodputSeries = loadSeries("goodput req/s");
+export const tpotLoadSeries = loadSeries("TPOT p50 ms");
 export const ttftTailSeries = loadSeries("TTFT p99 ms");
 
 export function loadValue(series: Series[], id: string, qps: number): number {

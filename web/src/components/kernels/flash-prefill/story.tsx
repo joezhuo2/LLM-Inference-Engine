@@ -1,14 +1,14 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
-import { useState } from "react";
-import { flashFmt, flashKeyRows, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashShape, flashShort, flashSystems, flashTokens, flashTtft } from "@/content/kernels/flash-prefill";
+import { type ReactNode, useState } from "react";
+import { flashFmt, flashKeyRows, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashRoofline, flashShape, flashShort, flashSweepsNote, flashSystems, flashTokens, flashTtft } from "@/content/kernels/flash-prefill";
 import { modelShape } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { expectAnswer, type Prediction, Predict } from "../predict";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
-import { FirstKernelFigure, FragmentFigure, MmaFigure, OpenFigure, RegistersFigure, type SpecGroup, SpecFigure, SquareFigure, TileSweepFigure, TtftFigure, type TtftSeries } from "./figures";
+import { BlocksFigure, FirstKernelFigure, FragmentFigure, MmaFigure, RegistersFigure, RidgeAxis, type SpecGroup, SpecFigure, SquareFigure, TileSweepFigure, TtftFigure, type TtftSeries } from "./figures";
 
 const n = flashNumbers;
 const pf = flashProfile;
@@ -22,6 +22,7 @@ const accs = (s.headDim / 8) * 4;
 const budget = /budget (\d+)/.exec(flashSystems.chunked)?.[1] ?? "";
 const chunks = longTokens / Number(budget);
 const pagedPathLong = flashPath(flashPaths.paged, flashLong);
+const tileWord = ({ 8: "eight", 16: "sixteen", 32: "thirty-two" } as Record<number, string>)[s.tile] ?? String(s.tile);
 
 const specGroups: SpecGroup[] = [
   { title: "matches the naive attention", lines: ["chunk lengths around the tile size", "prompts up to 8,192 tokens", "cached prefixes, 16 chunks in one call", `${s.layouts} head and block layouts`, `Hugging Face on all ${layers} layers`] },
@@ -37,11 +38,47 @@ const series: TtftSeries[] = [
   { label: "tiled kernel", values: flashLengths.map((p) => flashTtft(flashSystems.flash, p)), tone: "accent" },
 ];
 
-const openItems = [
-  `K and V are not shared between the ${s.group} query heads of a KV head\neach one reads the same keys and values again`,
-  `a chunk just over ${pf.launchAfter.blocksAtOnce} blocks still waits\nbudget ${pf.wide.budget}: ${pf.wide.blocks} blocks, ${pf.wide.attention} ms of attention`,
-  "the load sweeps were not rerun\nmeasured before this kernel, with per-row prefill",
+const rf = flashRoofline;
+const ridge = rf.ridge.toFixed(0);
+const turnPrediction: Prediction = expectAnswer({
+  question: `A warp does ${rf.now} FLOP per byte of K and V it loads. Let one thread block serve the ${s.group} query heads of a KV head and load each tile once. Where does that land against the ridge at ${ridge} FLOP per byte?`,
+  choices: ["still left of it", "on it, within 10%", "right of the ridge"],
+  answer: rf.shared > rf.ridge * 1.1 ? "right of the ridge" : rf.shared < rf.ridge / 1.1 ? "still left of it" : "on it, within 10%",
+  why: `${s.tile} rows × ${s.group} heads share each load at 1 FLOP per byte each: ${rf.shared} FLOP per byte, past the ridge (calculated). But that counts bytes loaded, and ${pf.step.l1Hit}% of today's loads are already in L1 (measured). At ${rf.now} FLOP per byte DRAM could feed ${rf.dramRoofNow.toFixed(1)} TFLOP/s, and the kernel already runs at ${rf.achieved.toFixed(1)} (calculated from the measured ${rf.kernelMs} ms), so DRAM was not the limit. Whether the traffic from the caches is, only the stall reasons would say, and they are not measured; neither is the time it saves.`,
+}, "right of the ridge");
+
+const startRows = [
+  { label: "tensor cores", value: `${pf.step.tensor}% of their peak rate`, tone: "text-warn" },
+  { label: "warp places filled", value: `${pf.step.occupancy}% of the ${pf.step.allowed}% that ${pf.launchAfter.registers} registers allow`, tone: "text-text" },
+  { label: "loads found in L1", value: `${pf.step.l1Hit}%, and DRAM at ${pf.step.dram}% of its throughput`, tone: "text-text" },
+  { label: "asked of the caches", value: `${flashFmt(Math.round(pf.step.requestedMb))} MB per layer, for ${pf.neededMb.toFixed(1)} MB of K and V`, tone: "text-text" },
 ];
+
+const alsoOpen = ["Not measured: the stall reasons per source line.", "Not measured: more or fewer warps per block.", flashSweepsNote];
+
+export function FlashTurn() {
+  return (
+    <div className="flex h-full flex-col gap-3 tabular-nums text-xs">
+      <Predict {...turnPrediction} />
+      <RidgeAxis ridge={rf.ridge} points={[{ value: rf.now / s.tile, label: "one walk per row" }, { value: rf.now, label: "tiled kernel today", accent: true }]} ask={`${s.group} heads, one read: ?`} />
+      <div className="space-y-1 border-t border-border pt-2 leading-relaxed">
+        <div className="text-muted">where it starts: one launch, the whole prompt (measured, Nsight Compute)</div>
+        {startRows.map((r) => (
+          <div key={r.label} className="grid grid-cols-[8.5rem_1fr] gap-2">
+            <span className="text-muted">{r.label}</span>
+            <span className={r.tone}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+      <ul className="space-y-1 border-t border-border pt-2 leading-relaxed text-muted">
+        <li className="text-text">also open</li>
+        {alsoOpen.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const shortTiled = flashTtft(flashSystems.flash, flashShort);
 const shortPaged = flashTtft(flashSystems.paged, flashShort);
@@ -96,66 +133,41 @@ export function LengthPicker() {
   );
 }
 
+const history = "how it got built";
+const results = "measured";
+
 const steps: StoryStep[] = [
   {
     id: "square",
-    title: "the square",
+    title: "prefill is a square of rows against keys",
     body: (
       <>
         <p>
-          Prefill used the decode attention: one row per prompt token, one thread block per row and query head, and row t walks its whole context of t + 1 keys and values alone. Twice the prompt is twice the rows, each walking twice as far, so the reads grow with the square of the length. None of that work uses the tensor cores.
+          Prefill attention scores every prompt token against every token before it: t query rows, each against up to t keys. Twice the prompt is twice the rows, each with twice the keys, so the products grow with the square of the length. The keys and values themselves are small, <span className="text-accent">{pf.neededMb.toFixed(1)} MB</span> per layer at {flashLong} tokens. Nearly all of the cost is arithmetic, and that belongs on the tensor cores.
         </p>
         <p>
-          It showed in the time to first token. At {flashLong} tokens the engine took <span className="text-warn">{n.behind.toFixed(1)} times</span> as long as llama.cpp, calculated from the two times measured in one session.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "spec",
-    title: "a spec and tests first",
-    body: (
-      <>
-        <p>
-          Before any kernel there was a written spec and <span className="text-accent">{s.tests} tests</span>. The spec fixes the interface: one call handles every prefill chunk of a step. chunk_starts says which rows belong to which chunk, cached_lens how many tokens of that sequence are already in the KV cache, and there is one block table row per chunk instead of one per token.
-        </p>
-        <p>
-          The tests pin what a faster kernel could break without anyone noticing. A row must not depend on the rows after it or on what else is in the call, bit for bit. And the kernel must not read cache slots outside its context, which the tests fill with NaN.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "first",
-    title: "the first kernel",
-    body: (
-      <>
-        <p>
-          The first kernel used what the interface offered: it read the chunk&apos;s own keys and values straight from the QKV buffer instead of going through the cache, and it kept an online softmax. It also kept the shape of the decode kernels: one thread block per row and head, one key at a time, two barriers per key. Every test passed.
-        </p>
-        <p>
-          Wired into the runner and measured, it was slower than the path it replaced: <span className="text-warn">{flashFmt(n.first)} ms</span> at {flashLong} tokens. Moving where the bytes come from saves nothing when every row still walks every key alone.
+          The engine first ran it as decode does: one row per prompt token, one thread block per row and query head, and row t walks its whole context of t + 1 keys and values alone. Every key is fetched again by every row after it, and none of that work uses the tensor cores. At {flashLong} tokens the engine took <span className="text-warn">{n.behind.toFixed(1)} times</span> as long as llama.cpp, calculated from the two times measured in one session.
         </p>
       </>
     ),
   },
   {
     id: "tiles",
-    title: "sixteen rows share a pass",
+    title: `${tileWord} rows share each key tile`,
     body: (
       <>
         <p>
-          The tiled kernel changes who walks. One warp owns <span className="text-accent">{s.tile}</span> query rows of one head and loads them once. The keys of the sequence then stream past in tiles of the same size, and every row of the query tile uses each key tile.
+          The way out is to change who walks. One warp owns <span className="text-accent">{s.tile}</span> query rows of one head and loads them once. The keys of the sequence then stream past in tiles of the same size, and every row of the query tile uses each key tile.
         </p>
         <p>
-          A row must still see only its own past. Keys after a query are masked, and keys past the last row of the tile load as zeros, so no row depends on what follows it. Keys the sequence already has in the KV cache come through the block table, and the chunk&apos;s own come from the QKV buffer.
+          A row must still see only its own past. Keys after a query are masked, and keys past the last row of the tile load as zeros, so no row depends on what follows it. Keys the sequence already has in the KV cache come through the block table, and the chunk&apos;s own come from the QKV buffer. A chunk is the run of prompt rows one step prefills: the whole prompt, unless the scheduler of Part IV splits it.
         </p>
       </>
     ),
   },
   {
     id: "mma",
-    title: "one mma call",
+    title: "a tile of scores is a small matrix multiply",
     body: (
       <>
         <p>
@@ -169,7 +181,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "fragment",
-    title: "nothing moves between lanes",
+    title: "a softmax per row keeps it all in registers",
     body: (
       <>
         <p>
@@ -178,16 +190,50 @@ const steps: StoryStep[] = [
         <p>
           In between sits the online softmax, once per row. Each score is rounded as in the other attention kernels and masked, then the row&apos;s maximum and sum are reduced over the <span className="text-accent">{s.lanesPerRow}</span> lanes that share the row, with two shuffles. The weights are rounded to BF16 and multiplied with the values through the same instruction.
         </p>
+        <p>
+          A row carries only its maximum, its sum and its weighted values from one key tile to the next, and the lanes that hold the row keep them in registers. The scores of a tile are used and dropped, so the kernel needs no shared memory and no barrier.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "spec",
+    group: history,
+    title: "tests pin what a faster kernel could break",
+    body: (
+      <>
+        <p>
+          Before any kernel there was a written spec and <span className="text-accent">{s.tests} tests</span>. The spec fixes the interface: one call handles every prefill chunk of a step. chunk_starts says which rows belong to which chunk, cached_lens how many tokens of that sequence are already in the KV cache, and there is one block table row per chunk instead of one per token.
+        </p>
+        <p>
+          The tests pin what a faster kernel could break without anyone noticing. A row must not depend on the rows after it or on what else is in the call, bit for bit. And the kernel must not read cache slots outside its context, which the tests fill with NaN.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "first",
+    group: history,
+    title: "a shorter path to each byte, the same walk",
+    body: (
+      <>
+        <p>
+          The first kernel used what the interface offered: it read the chunk&apos;s own keys and values straight from the QKV buffer instead of going through the cache, and it kept an online softmax. It also kept the shape of the decode kernels: one thread block per row and head, one key at a time, two barriers per key. Every test passed.
+        </p>
+        <p>
+          Wired into the runner and measured, it was slower than the path it replaced: <span className="text-warn">{flashFmt(n.first)} ms</span> at {flashLong} tokens. Moving where the bytes come from saves nothing when every row still walks every key alone. The tiled kernel came next and passed the same tests unchanged.
+        </p>
       </>
     ),
   },
   {
     id: "registers",
-    title: "all of it in registers",
+    group: history,
+    title: `a ${s.tile} by ${s.tile} tile is what a warp's registers hold`,
     body: (
       <>
         <p>
-          The weighted values add up in FP32 and are scaled down when a row&apos;s maximum rises. A lane keeps <span className="text-accent">{accs}</span> of those accumulators in registers, next to its piece of the query tile. There is no shared memory and no barrier, and warps share nothing.
+          The weighted values add up in FP32 and are scaled down when a row&apos;s maximum rises. A lane keeps <span className="text-accent">{accs}</span> of those accumulators in registers, next to its piece of the query tile. That sets the tile size: {s.tile} by {s.tile} is what one warp can hold in registers at a head of {s.headDim} dimensions, and what one mma shape gives without moving data between lanes. Warps share nothing.
         </p>
         <p>
           Two details keep it that way. The value columns are interleaved, so the values a lane needs from one key sit side by side and load as whole words. And the kernel is a template on the head size, so its loops unroll and its arrays stay in registers.
@@ -196,8 +242,24 @@ const steps: StoryStep[] = [
     ),
   },
   {
+    id: "blocks",
+    group: history,
+    title: "registers decide how many blocks run at once",
+    body: (
+      <>
+        <p>
+          The same registers limit how many thread blocks an SM can run. The kernel first needed {pf.launchBefore.registers} per thread, so {pf.launchBefore.blocksPerSm} blocks fit on an SM and <span className="text-warn">{pf.launchBefore.blocksAtOnce}</span> on the GPU. Under a token budget of {budget}, chunked prefill sends a prompt {budget} rows at a time, and a {budget}-row chunk launches {pf.after.blocks} blocks. The last {pf.after.blocks - pf.launchBefore.blocksAtOnce} waited and then ran on a nearly empty GPU. Chunking a lone {flashLong}-token prompt cost <span className="text-warn">{pf.plainBefore.cost}%</span>, most of it in this kernel.
+        </p>
+        <p>
+          Two divisions on the path that finds a cached key were done in 64 bits. In 32 bits the compiler needs {pf.launchAfter.registers} registers, <span className="text-accent">{pf.launchAfter.blocksAtOnce}</span> blocks fit and a chunk&apos;s {pf.after.blocks} run together. The split now costs <span className="text-accent">{pf.plainAfter.cost}%</span>. The step has moved, not gone: at a budget of {pf.wide.budget} a chunk launches {pf.wide.blocks} blocks, and they take {pf.wide.attention} ms of attention where {pf.after.blocks} take {pf.after.attention}.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "result",
-    title: "the result",
+    group: results,
+    title: "the square stays, the cost per token goes flat",
     body: (
       <>
         <p>
@@ -211,7 +273,8 @@ const steps: StoryStep[] = [
   },
   {
     id: "lengths",
-    title: "every length",
+    group: results,
+    title: "the gain is largest where the square was",
     body: (
       <>
         <p>
@@ -225,32 +288,42 @@ const steps: StoryStep[] = [
   },
   {
     id: "open",
-    title: "what is still open",
+    group: results,
+    title: `your turn: ${s.group} heads read the same keys`,
     body: (
       <>
         <p>
-          Nsight Compute says the tensor cores run at <span className="text-accent">{pf.step.tensor}%</span> of their peak rate and {pf.step.occupancy}% of the warp places are filled, nearly all that {pf.launchAfter.registers} registers per thread allow. The loads ask the caches for {flashFmt(Math.round(pf.step.requestedMb))} MB per layer to use {pf.neededMb.toFixed(1)} MB of keys and values; {pf.step.l1Hit}% of it is in L1 and DRAM is nearly idle. Staging the keys once in shared memory for the <span className="text-accent">{s.group}</span> query heads that share a KV head was not tried.
+          TinyLlama has {s.heads} query heads and {s.kvHeads} KV heads, so <span className="text-accent">{s.group}</span> query heads use the same keys and values. The kernel gives every query head its own warp, {s.warps} to a thread block, and each warp loads every key and value tile for itself. Nsight Compute counts the loads asking the caches for {flashFmt(Math.round(pf.step.requestedMb))} MB per layer, to use {pf.neededMb.toFixed(1)} MB of keys and values.
         </p>
         <p>
-          Chunking a lone prompt with a budget of {budget} cost <span className="text-warn">{pf.plainBefore.cost}%</span>, most of it in the attention kernel: with {pf.launchBefore.registers} registers only {pf.launchBefore.blocksAtOnce} thread blocks fit on the GPU at once, and a {budget}-row chunk launches {pf.after.blocks}. Two divisions done in 32 bits brought it to {pf.launchAfter.registers} registers and {pf.launchAfter.blocksAtOnce} blocks, and the cost to <span className="text-accent">{pf.plainAfter.cost}%</span>. The load sweeps of the chunked prefill chapter have not been rerun.
+          Count it the way the roofline does. A value is 2 bytes, and every query row that uses it does one multiply and one add, so a load is worth 1 FLOP per byte for each row that shares it: <span className="text-accent">{rf.now} FLOP per byte</span> with {s.tile} rows to a warp. Now let one thread block serve all {s.group} query heads of a KV head and load each tile once. Where does the kernel land against the ridge, {ridge} FLOP per byte on this GPU? Commit to an answer on the right, then work it out.
         </p>
+        <p>
+          Know what the answer can say. It counts bytes loaded, not bytes from DRAM: {pf.step.l1Hit}% of today&apos;s loads are already in L1, and DRAM runs at {pf.step.dram}% of its throughput. The tensor cores run at <span className="text-warn">{pf.step.tensor}%</span> of their peak rate, and what holds them is registers: {pf.launchAfter.registers} per thread fill {pf.step.occupancy}% of the warp places, and at that count a block of {s.group} warps would fit {rf.sharedBlocksPerSm} to an SM, {rf.warpsShared} warps where {rf.warpsNow} run today (calculated). The loads that sharing removes are cache traffic, and whether that traffic holds the kernel back is not measured. Nobody has built it, so the time it saves is not measured either. That is the exercise.
+        </p>
+        <p>Also not measured: the stall reasons per source line, and more or fewer warps per block. {flashSweepsNote}</p>
       </>
     ),
   },
 ];
 
-const captions = [
-  `key rows read per head for one ${flashLong}-token prompt, calculated from the prompt length and the tile size: ${flashFmt(keyRows.perRow)} with one walk per row, ${flashFmt(keyRows.tiled)} with one pass per ${s.tile} rows; measured, docs/results.md: ${flashFmt(n.paged)} ms to the first token against llama.cpp's ${flashFmt(n.llama)} ms`,
-  `tests/gpu/test_flash_prefill.cpp: ${s.tests} tests, counting one test over ${s.layouts} head and block layouts ${s.layouts} times; the same file passes against both kernels`,
-  `docs/results.md, FlashAttention prefill kernels: one request per run, median of 5, same session; ${flashFmt(n.first)} against ${flashFmt(pagedPathLong)} ms at ${flashLong} tokens, and ${flashPath(flashPaths.first, flashShort)} against ${flashPath(flashPaths.paged, flashShort)} ms at ${flashShort}; the row of keys is a sketch`,
-  `a ${8 * s.tile}-token prompt drawn as 8 by 8 tiles of ${s.tile}; the grid of thread blocks is tiles of ${s.tile} rows by groups of ${s.warps} heads, from src/kernels/flash_prefill.cu`,
-  `the fragment layout of mma.sync.aligned.m16n8k16 as the kernel uses it (src/kernels/flash_prefill.cu); 4 of the 32 lanes shown in turn; ${calls} calls per half calculated from the ${s.headDim}-dimension heads in config.json`,
-  `from src/kernels/flash_prefill.cu: 4 of the 32 lanes shown in turn above, the ${s.lanesPerRow} lanes of query row 0 below; the weights are not yet divided by the sum, that happens once at the end`,
-  `calculated from the kernel's fragment sizes at head_dim ${s.headDim}: ${qWords} words of Q and ${accs} accumulators per lane; a head of up to ${s.maxHeadDim} dimensions in steps of ${s.tile} is accepted`,
-  `docs/results.md, Prefill against prompt length: one request per run, median of 5 runs, RTX 5060 Laptop GPU; per prompt token the tiled kernel stays between ${n.perTokenLow} and ${n.perTokenHigh} ms while the per-row path climbs from ${n.pagedPerTokenShort} to ${n.pagedPerTokenLong} ms; llama.cpp with -ub 512`,
-  `the same medians; ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms at ${flashLong} tokens is ${n.ratio.toFixed(1)} times less, and ${n.ahead.toFixed(0)}% less than llama.cpp's ${flashFmt(n.llama)} ms (calculated); the first kernel was measured at its own commit in the same session`,
-  `docs/profiling.md, FlashAttention prefill in chunks: kernel time from Nsight Systems, median of 3 captures, with the kernel before and after the 32-bit divisions in one session; counters from Nsight Compute on one launch; ${pf.plainBefore.cost}% and ${pf.plainAfter.cost}% are ${pf.plainBefore.chunked} against ${pf.plainBefore.whole} ms and ${pf.plainAfter.chunked} against ${pf.plainAfter.whole} ms with no profiler, median of 5; ${pf.neededMb.toFixed(1)} MB and blocks at once are calculated`,
-];
+const profileSource = `docs/profiling.md, FlashAttention prefill in chunks: counters from Nsight Compute on one launch of layer 0, the whole ${flashLong}-token prompt in one step`;
+
+const captionOf: Record<string, string> = {
+  square: `key rows read per head for one ${flashLong}-token prompt, calculated from the prompt length and the tile size: ${flashFmt(keyRows.perRow)} with one walk per row, ${flashFmt(keyRows.tiled)} with one pass per ${s.tile} rows; ${pf.neededMb.toFixed(1)} MB is ${flashLong} keys × ${s.kvHeads} KV heads × ${s.headDim * 2} bytes, for K and for V (calculated); measured, docs/results.md: ${flashFmt(n.paged)} ms to the first token against llama.cpp's ${flashFmt(n.llama)} ms`,
+  tiles: `a ${8 * s.tile}-token prompt drawn as 8 by 8 tiles of ${s.tile}; the grid of thread blocks is tiles of ${s.tile} rows by groups of ${s.warps} heads, from src/kernels/flash_prefill.cu`,
+  mma: `the fragment layout of mma.sync.aligned.m16n8k16 as the kernel uses it (src/kernels/flash_prefill.cu); 4 of the 32 lanes shown in turn; ${calls} calls per half calculated from the ${s.headDim}-dimension heads in config.json`,
+  fragment: `from src/kernels/flash_prefill.cu: 4 of the 32 lanes shown in turn above, the ${s.lanesPerRow} lanes of query row 0 below; the weights are not yet divided by the sum, that happens once at the end`,
+  spec: `tests/gpu/test_flash_prefill.cpp: ${s.tests} tests, counting one test over ${s.layouts} head and block layouts ${s.layouts} times; the same file passes against both kernels`,
+  first: `docs/results.md, FlashAttention prefill kernels: one request per run, median of 5, same session; ${flashFmt(n.first)} against ${flashFmt(pagedPathLong)} ms at ${flashLong} tokens, and ${flashPath(flashPaths.first, flashShort)} against ${flashPath(flashPaths.paged, flashShort)} ms at ${flashShort}; the row of keys is a sketch`,
+  registers: `calculated from the kernel's fragment sizes at head_dim ${s.headDim}: ${qWords} words of Q and ${accs} accumulators per lane; a head of up to ${s.maxHeadDim} dimensions in steps of ${s.tile} is accepted`,
+  blocks: `docs/profiling.md, FlashAttention prefill in chunks: kernel time from Nsight Systems, median of 3 captures, with the kernel before and after the 32-bit divisions in one session; registers and blocks per SM from Nsight Compute's launch statistics, blocks at once calculated for ${pf.launchAfter.blocksAtOnce / pf.launchAfter.blocksPerSm} SMs; ${pf.plainBefore.cost}% and ${pf.plainAfter.cost}% are ${pf.plainBefore.chunked} against ${pf.plainBefore.whole} ms and ${pf.plainAfter.chunked} against ${pf.plainAfter.whole} ms with no profiler, median of 5`,
+  result: `docs/results.md, Prefill against prompt length: one request per run, median of 5 runs, RTX 5060 Laptop GPU; per prompt token the tiled kernel stays between ${n.perTokenLow} and ${n.perTokenHigh} ms while the per-row path climbs from ${n.pagedPerTokenShort} to ${n.pagedPerTokenLong} ms; llama.cpp with -ub 512`,
+  lengths: `the same medians; ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms at ${flashLong} tokens is ${n.ratio.toFixed(1)} times less, and ${n.ahead.toFixed(0)}% less than llama.cpp's ${flashFmt(n.llama)} ms (calculated); the first kernel was measured at its own commit in the same session`,
+  open: `${profileSource}; calculated from src/kernels/flash_prefill.cu and config.json: one tile pair is ${flashFmt(rf.pairFlop)} FLOP (2 products × 2 FLOP × ${s.tile} rows × ${s.tile} keys × ${s.headDim} dimensions) against ${flashFmt(rf.pairBytes)} bytes of K and V in BF16, counted as each warp loads them, not as DRAM delivers them as in the decode roofline; the ridge is the measured ceilings of docs/results.md, ${rf.tflops} TFLOP/s over ${rf.gbs} GB/s; ${flashFmt(rf.smRegisters)} registers per SM from results/onchip; no speedup here is measured`,
+};
+
+const captions = steps.map((step) => captionOf[step.id]);
 
 export const flashPrefillSteps = steps;
 export const flashPrefillCaptions = captions;
@@ -287,11 +360,11 @@ export function FlashTtft() {
   return <TtftFigure lengths={flashLengths.map(flashTokens)} series={series} />;
 }
 
-export function FlashOpen() {
-  return <OpenFigure whole={pf.whole} before={pf.before} after={pf.after} atOnce={[pf.launchBefore.blocksAtOnce, pf.launchAfter.blocksAtOnce]} step={pf.step} last={[pf.lastBefore.occupancy, pf.lastAfter.occupancy]} budget={budget} chunks={chunks} tokens={flashLong} items={openItems} />;
+export function FlashBlocks() {
+  return <BlocksFigure whole={pf.whole} before={pf.before} after={pf.after} registers={[pf.launchBefore.registers, pf.launchAfter.registers]} atOnce={[pf.launchBefore.blocksAtOnce, pf.launchAfter.blocksAtOnce]} last={[pf.lastBefore.occupancy, pf.lastAfter.occupancy]} budget={budget} chunks={chunks} tokens={flashLong} />;
 }
 
-const figures = [FlashSquare, FlashSpec, FlashFirst, FlashTiles, FlashMma, FlashFragment, FlashRegisters, FlashTtft, LengthPicker, FlashOpen];
+const figureOf: Record<string, () => ReactNode> = { square: FlashSquare, tiles: FlashTiles, mma: FlashMma, fragment: FlashFragment, spec: FlashSpec, first: FlashFirst, registers: FlashRegisters, blocks: FlashBlocks, result: FlashTtft, lengths: LengthPicker, open: FlashTurn };
 
 export function FlashPrefillStory() {
   return (
@@ -299,7 +372,7 @@ export function FlashPrefillStory() {
       steps={steps}
       caption={(i) => captions[i]}
       figure={(i) => {
-        const Figure = figures[i] ?? FlashOpen;
+        const Figure = figureOf[steps[i]?.id] ?? FlashTurn;
         return <Figure />;
       }}
     />

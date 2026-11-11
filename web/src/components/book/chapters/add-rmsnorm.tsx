@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { addRmsnormAbout, addRmsnormAboutCaption } from "@/components/kernels/add-rmsnorm/about";
 import { addRmsnormCaptions, addRmsnormNumbers, addRmsnormSteps, TokensPicker } from "@/components/kernels/add-rmsnorm/story";
@@ -17,7 +18,7 @@ const beats: Beat[][] = [
     close("From the side: the squares grow with the scale, the norm does not", [0.55, 0.08, 0.02], 0.84, 0.4, 30, 26),
     close("The slider: scale x and r together", [0.55, 0.03, 0.27], 0.9, 0.3, 0, 44),
   ],
-  [flat("Fusion, the pattern: a round trip and a launch removed")],
+  [flat("Fusion: a round trip and a launch removed")],
   [
     overview("Two kernels and a round trip, or one kernel"),
     close("Close up: the sum goes out to DRAM and comes back twice", [0.35, 0.05, -0.42], 0.75, 0.42, -20, 42),
@@ -79,7 +80,7 @@ function AddRmsnormOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "add-rmsnorm",
-  number: 8,
+  number: chapterNumber("add-rmsnorm"),
   title: "fused add + RMSNorm",
   formula: "sum = x + r,  norm = w · sum / √(mean(sum²) + ε)",
   steps: addRmsnormSteps,

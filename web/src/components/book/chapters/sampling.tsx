@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { samplingAbout, samplingAboutCaption } from "@/components/kernels/sampling/about";
 import { SamplingSandbox } from "@/components/kernels/sampling/sandbox";
@@ -106,7 +107,7 @@ function SamplingOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "sampling",
-  number: 10,
+  number: chapterNumber("sampling"),
   title: "sampling",
   formula: "id = argmax(logits / T + g),  g = −log(−log u)",
   steps: samplingSteps,

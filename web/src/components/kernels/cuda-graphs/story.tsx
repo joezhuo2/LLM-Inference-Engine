@@ -165,7 +165,7 @@ const list = (values: (number | string)[]) => values.join(", ");
 const steps: StoryStep[] = [
   {
     id: "launches",
-    title: "one launch per kernel",
+    title: "the CPU keeps up, the GPU still idles",
     body: (
       <>
         <p>
@@ -183,7 +183,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "gaps",
-    title: "the gap between kernels",
+    title: "a gap before every kernel adds up",
     body: (
       <>
         <p>
@@ -203,7 +203,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "capture",
-    title: "record once",
+    title: "record the step once, launch it as one",
     body: (
       <>
         <p>
@@ -240,47 +240,8 @@ const steps: StoryStep[] = [
     ),
   },
   {
-    id: "buckets",
-    title: "two buckets per power of two",
-    body: (
-      <>
-        <p>
-          A padded row writes nothing, but it is not free: every kernel in the graph runs at the bucket&apos;s row count,
-          padding included. With one bucket per power of two, a batch of {padding.rows} rows replays the{" "}
-          {padding.coarseBucket}-row graph, and{" "}
-          <span className="text-warn">{`${padding.coarseBucket - padding.rows}`}</span> of the rows it pays for are padding.
-        </p>
-        <p>
-          So decode_graph_buckets adds sizes in between: it walks from each power of two to the next in equal steps, {padding.steps}{" "}
-          of them by default, and ends at the max batch. The same batch now replays the {padding.fineBucket}-row graph.
-          Padding it to {padding.coarseBucket} rows instead costs{" "}
-          <span className="text-accent">{`${padding.costPct}%`}</span> more time per token (calculated from the two
-          measured runs). Finer steps gained nothing more, so the default stays at {padding.steps}.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "splits",
-    title: "one graph per split count",
-    body: (
-      <>
-        <p>
-          The frozen grid caught up with the engine once. Split attention cuts a long context across several thread blocks
-          per head, and the split count is part of the attention kernel&apos;s grid. The graphs were captured on an empty
-          dummy batch, so every replay ran the one-split kernel: at a long prompt eager became faster than the graphs.
-        </p>
-        <p>
-          Now the constructor walks the contexts up to the longest it serves and captures again whenever a bucket&apos;s split count
-          changes, so there are more graphs. A replay picks its graph from the batch&apos;s longest context, and at a long
-          prompt the time per token falls to <span className="text-accent">{`${longRun.after.toFixed(1)} ms`}</span>.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "replay",
-    title: "the replay",
+    title: "a replay cuts the gaps, not the kernels",
     body: (
       <>
         <p>
@@ -299,8 +260,50 @@ const steps: StoryStep[] = [
     ),
   },
   {
+    id: "buckets",
+    title: "finer buckets pad fewer rows",
+    group: "how it got built",
+    body: (
+      <>
+        <p>
+          The padded rows that let a batch replay a bucket&apos;s graph write nothing, but they are not free: every kernel in the graph runs at the bucket&apos;s row count,
+          padding included. With one bucket per power of two, a batch of {padding.rows} rows replays the{" "}
+          {padding.coarseBucket}-row graph, and{" "}
+          <span className="text-warn">{`${padding.coarseBucket - padding.rows}`}</span> of the rows it pays for are padding.
+        </p>
+        <p>
+          So decode_graph_buckets adds sizes in between: it walks from each power of two to the next in equal steps, {padding.steps}{" "}
+          of them by default, and ends at the max batch. The same batch now replays the {padding.fineBucket}-row graph.
+          Padding it to {padding.coarseBucket} rows instead costs{" "}
+          <span className="text-accent">{`${padding.costPct}%`}</span> more time per token (calculated from the two
+          measured runs). Finer steps gained nothing more, so the default stays at {padding.steps}.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "splits",
+    title: "the frozen grid froze the split count",
+    group: "how it got built",
+    body: (
+      <>
+        <p>
+          The frozen grid caught up with the engine once. Split attention cuts a long context across several thread blocks
+          per head, and the split count is part of the attention kernel&apos;s grid. The graphs were captured on an empty
+          dummy batch, so every replay ran the one-split kernel: at a long prompt eager became faster than the graphs.
+        </p>
+        <p>
+          Now the constructor walks the contexts up to the longest it serves and captures again whenever a bucket&apos;s split count
+          changes, so there are more graphs. A replay picks its graph from the batch&apos;s longest context, and at a long
+          prompt the time per token falls to <span className="text-accent">{`${longRun.after.toFixed(1)} ms`}</span>.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "sweep",
-    title: `past ${graphMaxBatch} rows`,
+    title: `past ${sweepKnee} rows, more rows buy little`,
+    group: "measured",
     body: (
       <>
         <p>
@@ -326,9 +329,9 @@ const captions = [
   `gap = start of a kernel minus the end of the one before it, over every decode step of both profiles (web/scripts/step-timeline.py); the gate/up GEMV runs ${fmt(gateUpUs)} µs, a step has ${eager.kernels - 1} boundaries, and ${shortKernels} of the ${eagerLayer.length} kernels in a layer run under 3 µs`,
   "one layer of the 224 nodes drawn; the code is capture() in src/runtime/decode_graphs.cpp",
   `the token ids, positions and slots are made up; ${stageRequests} requests pad to ${stageRows.length} rows because the buckets at max batch ${graphMaxBatch} are ${list(buckets)} (calculated from the bucket rule); the layout is PagedRunner::stage's`,
+  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in docs/results.md (TPOT p50, 3 runs), measured with one bucket per power of two; the saving is ${savedShare}% of a batch-1 token (calculated)`,
   `graph sizes calculated with the rule of decode_graph_buckets in src/sched/graph_buckets.cpp, ${padding.steps} per power of two by default; ${padding.rows} requests at max batch ${padding.maxBatch}, 256 output tokens, TPOT p50, median of 5 short and noisy runs, from docs/results.md, Batch size past 16: ${list(padding.runs.map((r) => r.tpot.toFixed(2)))} ms with ${list(padding.runs.map((r) => r.steps))} sizes per power of two; why 8 was slower was not profiled; the capture time and memory of the extra graphs were not measured`,
   `graph count calculated from the bucket rule and the split rule of attention_splits in src/sched/paged_batch.cpp: ${graphCount} graphs at max batch ${graphMaxBatch}, split counts ${list(splitCounts)}, contexts walked up to ${fmt(walkedTo)} tokens; ${longRun.before.toFixed(1)} ms per token before and ${longRun.after.toFixed(1)} after at the ${longPrompt.prompt}-token prompt, from docs/profiling.md, Split attention in CUDA Graphs (engine bench at max batch 1, where there is one bucket, mean of two runs)`,
-  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in docs/results.md (TPOT p50, 3 runs), measured with one bucket per power of two; the saving is ${savedShare}% of a batch-1 token (calculated)`,
   `engine bench with twice as many requests as the max batch, all submitted at once (an offline workload, not a serving result), 64 prompt and 64 output tokens, median of 3 runs, from docs/results.md, Batch size past 16, measured with one bucket per power of two; ${sweepKnee} to ${lastPoint.batch} rows add ${afterKnee}% (calculated); step shares are medians per op from eager Nsight Systems profiles, so attention and the GEMMs can add up to slightly more than the step; one workload shape on one GPU`,
 ];
 
@@ -365,11 +368,11 @@ export function CudaGraphsStory() {
           case 3:
             return <StageFigure />;
           case 4:
-            return <BucketFigure rows={padding.rows} maxBatch={padding.maxBatch} coarse={padding.coarse} fine={padding.fine} steps={padding.steps} runs={padding.runs} costPct={padding.costPct} />;
-          case 5:
-            return <GraphGridFigure {...longRun} />;
-          case 6:
             return <ReplayPicker />;
+          case 5:
+            return <BucketFigure rows={padding.rows} maxBatch={padding.maxBatch} coarse={padding.coarse} fine={padding.fine} steps={padding.steps} runs={padding.runs} costPct={padding.costPct} />;
+          case 6:
+            return <GraphGridFigure {...longRun} />;
           default:
             return <SweepFigure points={sweepPoints} ops={sweepOps} knee={sweepKnee} />;
         }
