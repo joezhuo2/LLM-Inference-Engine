@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/token-journey
 
+- Part A: a new first chapter, one token, end to end. It follows the token "Ott" of a recorded answer from the question's text to its ID: the tokenizer on the host, the embedding, one layer operation by operation, the LM head and the sampler, each with its measured time, and then the whole token on one bar. The book has a lead-in spread with seven stations and two exhibits to drag; the start page now points at foundations by its number.
+- Part A: `book/chapters/segments.ts` is a shared exhibit for the book: a bar of segments to scale, a rail that picks one, and a card that reads it out.
 - Part A: `scripts/tokenizer_bench.cpp` times the two host stages of a request on the CPU alone: the chat template, `Tokenizer::encode` and `TextStream::push`. `docs/profiling.md` records the run (Tokenizer on the host): 16.9 us to encode the 22-token capital prompt, 15.9 us to turn its 8-token answer back into text.
 
 ## web/idea-first

@@ -2183,3 +2183,7 @@
 - **the median and percentiles of many short calls** => 
 - **a sink value that keeps the optimizer from deleting a timed call** => 
 - **a cost paid once per request against a cost paid once per token** => 
+- **a decode step as one token in and one token out** => 
+- **the chat template as text around the user's text** => 
+- **a share of a whole against an absolute time** => 
+- **one exhibit function shared by several chapters** => 
