@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/token-journey
+
+- Part A: `scripts/tokenizer_bench.cpp` times the two host stages of a request on the CPU alone: the chat template, `Tokenizer::encode` and `TextStream::push`. `docs/profiling.md` records the run (Tokenizer on the host): 16.9 us to encode the 22-token capital prompt, 15.9 us to turn its 8-token answer back into text.
+
 ## web/idea-first
 
 - Part A: a story step can carry a `group` ("how it got built"). The scroll page shows it in the step's kicker, the book shows it in the page kicker, and the chapter's "in this chapter" list starts the group with a heading, so a chapter can put its idea first and its build history after.

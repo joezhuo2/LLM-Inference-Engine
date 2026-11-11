@@ -2176,3 +2176,10 @@
 - **waiting for the remaining time of a tween against a whole new one** => 
 - **text that branches on the date of its data** => 
 - **a number and the kernel it was measured with** => 
+
+## One token end to end, and the memory budget (Branch 148)
+
+- **a warm-up loop before a timed loop** => 
+- **the median and percentiles of many short calls** => 
+- **a sink value that keeps the optimizer from deleting a timed call** => 
+- **a cost paid once per request against a cost paid once per token** => 
