@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -22,6 +23,13 @@ public:
     const std::vector<int>& table(SeqId seq) const;
     int length(SeqId seq) const;
     int num_free() const;
+
+    int match_prefix(std::span<const int32_t> tokens) const;
+    bool can_allocate_tokens(std::span<const int32_t> tokens) const;
+    int allocate_tokens(SeqId seq, std::span<const int32_t> tokens);
+    void publish(SeqId seq, std::span<const int32_t> tokens);
+    int ref_count(int block) const;
+    int num_cached() const;
 
 private:
     struct Sequence {
