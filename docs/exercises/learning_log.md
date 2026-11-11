@@ -2130,6 +2130,14 @@
 
 ## Load sweep with flash prefill (Branch 146)
 
+- **goodput at an SLO** => 
+- **measuring two systems in the same boot** => 
+- **median of repeats against a single run** => 
+- **longest gap between two tokens against TPOT p99** => 
+- **where the time of a loaded run goes, by step kind** => 
+- **the 99th percentile when the slow events are under 1% of the samples** => 
+- **prose that a script parses** => 
+
 ## Idea first, history after (Branch 147)
 
 - **the idea of a chapter against the history of how it was built** => 
@@ -2168,11 +2176,3 @@
 - **waiting for the remaining time of a tween against a whole new one** => 
 - **text that branches on the date of its data** => 
 - **a number and the kernel it was measured with** => 
-
-- **goodput at an SLO** => 
-- **measuring two systems in the same boot** => 
-- **median of repeats against a single run** => 
-- **longest gap between two tokens against TPOT p99** => 
-- **where the time of a loaded run goes, by step kind** => 
-- **the 99th percentile when the slow events are under 1% of the samples** => 
-- **prose that a script parses** => 
