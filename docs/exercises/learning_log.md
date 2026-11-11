@@ -2187,3 +2187,8 @@
 - **the chat template as text around the user's text** => 
 - **a share of a whole against an absolute time** => 
 - **one exhibit function shared by several chapters** => 
+- **a fixed cost against a cost that grows with load** => 
+- **bytes per cached token from the model's shape** => 
+- **batch size and context length as one budget** => 
+- **a pool sized once at start from the free memory** => 
+- **bits per weight and what fits** => 
