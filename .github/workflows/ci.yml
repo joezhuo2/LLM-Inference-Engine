@@ -32,14 +32,18 @@ jobs:
   cuda-compile:
     name: CUDA compile check (no GPU)
     runs-on: ubuntu-24.04
-    container: nvcr.io/nvidia/cuda:13.3.1-devel-ubuntu24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Install build tools
-        run: find /etc/apt -name '*.list' -o -name '*.sources' | xargs sed -i 's#http://\(archive\|security\).ubuntu.com#http://azure.archive.ubuntu.com#g' && apt-get $APT_OPTS update && apt-get $APT_OPTS install -y cmake ninja-build git pkg-config libgtest-dev nlohmann-json3-dev libcli11-dev libsentencepiece-dev
-      - run: cmake --preset release -DCMAKE_CUDA_ARCHITECTURES="120;89;75"
-      - run: cmake --build --preset release
+      - name: Install build tools and compile in the CUDA image, on the host's network
+        run: |
+          docker run --rm --network host -e APT_OPTS -e DEBIAN_FRONTEND=noninteractive -v "$PWD":/src -w /src nvcr.io/nvidia/cuda:13.3.1-devel-ubuntu24.04 bash -euc '
+            find /etc/apt -name "*.list" -o -name "*.sources" | xargs sed -i "s#http://\(archive\|security\).ubuntu.com#http://azure.archive.ubuntu.com#g"
+            apt-get $APT_OPTS update
+            apt-get $APT_OPTS install -y cmake ninja-build git pkg-config libgtest-dev nlohmann-json3-dev libcli11-dev libsentencepiece-dev
+            git config --global --add safe.directory "*"
+            cmake --preset release -DCMAKE_CUDA_ARCHITECTURES="120;89;75"
+            cmake --build --preset release'
 
   format:
     name: clang-format check

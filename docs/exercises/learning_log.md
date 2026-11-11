@@ -2193,3 +2193,4 @@
 - **a pool sized once at start from the free memory** => 
 - **bits per weight and what fits** => 
 - **a package mirror near the CI runner** => 
+- **a container on the host's network against a bridge network** => 
