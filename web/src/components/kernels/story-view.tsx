@@ -20,6 +20,10 @@ import { GemmAboutStory } from "./gemm/about";
 import { TilingSandbox as GemmSandbox } from "./gemm/sandbox";
 import { GemmStory } from "./gemm/story";
 import { GemmStream } from "./gemm/stream";
+import { MemoryAboutStory } from "./memory-budget/about";
+import { MemoryStory } from "./memory-budget/story";
+import { OneTokenAboutStory } from "./one-token/about";
+import { OneTokenStory } from "./one-token/story";
 import { FoundationsAboutStory } from "./foundations/about";
 import { FoundationsIdeasStory } from "./foundations/ideas";
 import { FoundationsSandbox } from "./foundations/sandbox";
@@ -74,6 +78,10 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <ServingStory />;
     case "where-the-time-went":
       return <TimeStory />;
+    case "one-token":
+      return <OneTokenStory />;
+    case "memory-budget":
+      return <MemoryStory />;
     default:
       return null;
   }
@@ -122,6 +130,10 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <ServingAboutStory />;
     case "where-the-time-went":
       return <TimeAboutStory />;
+    case "one-token":
+      return <OneTokenAboutStory />;
+    case "memory-budget":
+      return <MemoryAboutStory />;
     default:
       return null;
   }

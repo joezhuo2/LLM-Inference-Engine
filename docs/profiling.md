@@ -407,3 +407,18 @@ Keys from the cache cost more than keys from qkv, a little. At the same occupanc
 Still not measured: the stall reasons per source line, K and V staged in shared memory for the 8 query heads of a KV head, and more or fewer warps per block. The load sweeps of `docs/results.md` were rerun with the kernel on 2026-11-11.
 
 To reproduce the timeline: `scripts/profile.sh nsys flash_b256 --max-batch 1 --num-requests 1 --prompt-len 2048 --output-len 1 --warmup 1 --seed 1 --graphs --token-budget 256` (leave the budget out for one step), then read `CUPTI_ACTIVITY_KIND_KERNEL` in `results/profile/flash_b256.sqlite`: `gridX` and `gridY` of the attention launches and `end - start` summed by kernel name (every kernel outside `engine::` is cuBLAS). Nsight Compute: `ncu --profile-from-start off --kernel-name regex:flash_attention_prefill --launch-skip 154 --launch-count 1 --metrics gpu__time_duration.sum,launch__registers_per_thread,launch__occupancy_limit_registers,launch__waves_per_multiprocessor,sm__maximum_warps_per_active_cycle_pct,sm__warps_active.avg.pct_of_peak_sustained_active,sm__inst_executed_pipe_tensor.avg.pct_of_peak_sustained_active,sm__inst_executed.sum,l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum,l1tex__t_sector_hit_rate.pct,lts__t_bytes.sum,lts__t_sector_hit_rate.pct,dram__throughput.avg.pct_of_peak_sustained_elapsed build/release/bin/engine bench` with the same bench options and `--profile --token-budget 256`. `ncu` needs the Windows driver setting that allows GPU performance counters for all users; with it off it stops with `ERR_NVGPUCTRPERM`, as it did earlier the same day.
+
+## Tokenizer on the host (Branch 148)
+
+The two host stages at the ends of a request, timed on the CPU alone: AMD Ryzen AI 9 HX 370 under WSL2, `g++ -O3`, commit abef434, 2026-11-11. The prompt is the chat prompt of `scripts/prompts.json` named capital, "What is the capital of Canada?", which the chat template turns into 22 tokens; the answer is the engine's greedy answer to it, "The capital of Canada is Ottawa.", 8 tokens. Each row is a loop of 2,001 calls after 200 warm-up calls (`scripts/tokenizer_bench.cpp`), timed with `std::chrono::steady_clock`.
+
+| stage | tokens | median us | 5th to 95th percentile |
+| --- | --- | --- | --- |
+| chat template | 22 | 0.16 | 0.15 to 0.24 |
+| encode | 22 | 16.89 | 16.44 to 33.48 |
+| decode, whole answer | 8 | 15.91 | 15.72 to 30.47 |
+| decode, last token of the answer | 1 | 6.49 | 5.62 to 6.73 |
+
+Reading it. Encoding the prompt happens once per request and costs about 17 us, two thousandths of one decoded token (8.85 ms at batch 1 in `docs/results.md`). Turning a sampled ID back into text costs a few microseconds per token: `TextStream::push` decodes every ID of the answer so far and emits the new bytes, so the cost grows with the answer, and the 8 pushes of this answer take 16 us together. Two more runs in the same session gave 17.2 and 17.4 us for encode and 15.4 and 15.5 us for the whole answer; the single-push row is the least steady (3.0 to 6.5 us across the three runs) because it also copies the stream. The bench prints the IDs too: the answer is 450 7483 310 7400 338 13476 10011 29889, so the fifth token, `▁is`, is 338 and the sixth, `▁Ott`, is 13476.
+
+To reproduce: `g++ -std=c++20 -O3 -Iinclude -Ibuild/release/_deps/sentencepiece-src/src scripts/tokenizer_bench.cpp src/tokenizer/*.cpp build/release/_deps/sentencepiece-build/src/libsentencepiece.a -lpthread -o /tmp/tokenizer_bench && /tmp/tokenizer_bench models/tinyllama` (arguments: model directory, user message, answer).

@@ -5,6 +5,8 @@ import { cudaGraphs } from "./cuda-graphs";
 import { flashPrefill } from "./flash-prefill";
 import { foundations } from "./foundations";
 import { gemm } from "./gemm";
+import { memoryBudget } from "./memory-budget";
+import { oneToken } from "./one-token";
 import { pagedAttention } from "./paged-attention";
 import { pagedKv } from "./paged-kv";
 import { rope } from "./rope";
@@ -17,7 +19,7 @@ import { deadEnds } from "../dead-ends";
 import { beyondTitle } from "../book-order";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, serving, whereTheTimeWent];
+export const kernelStories: KernelStory[] = [oneToken, foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, memoryBudget, serving, whereTheTimeWent];
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);

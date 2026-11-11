@@ -13,11 +13,13 @@ import { review as chunkedPrefill } from "./chunked-prefill";
 import { review as flashPrefill } from "./flash-prefill";
 import { review as serving } from "./serving";
 import { review as whereTheTimeWent } from "./where-the-time-went";
+import { review as oneToken } from "./one-token";
+import { review as memoryBudget } from "./memory-budget";
 import { chapterNumber } from "../book-order";
 import { kernelStory } from "../kernels";
 import type { ChapterReview, ReviewQuestion } from "./types";
 
-const reviews: Record<string, ChapterReview> = { foundations, gemm, rope, "paged-kv": pagedKv, "paged-attention": pagedAttention, "attention-v2": attentionV2, "split-attention": splitAttention, "add-rmsnorm": addRmsnorm, swiglu, sampling, "cuda-graphs": cudaGraphs, "chunked-prefill": chunkedPrefill, "flash-prefill": flashPrefill, serving, "where-the-time-went": whereTheTimeWent };
+const reviews: Record<string, ChapterReview> = { foundations, gemm, rope, "paged-kv": pagedKv, "paged-attention": pagedAttention, "attention-v2": attentionV2, "split-attention": splitAttention, "add-rmsnorm": addRmsnorm, swiglu, sampling, "cuda-graphs": cudaGraphs, "chunked-prefill": chunkedPrefill, "flash-prefill": flashPrefill, serving, "where-the-time-went": whereTheTimeWent, "one-token": oneToken, "memory-budget": memoryBudget };
 
 export const chapterReview = (slug: string): ChapterReview | undefined => (reviews[slug]?.takeaways.length ? reviews[slug] : undefined);
 

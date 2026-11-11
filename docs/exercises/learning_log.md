@@ -2176,3 +2176,21 @@
 - **waiting for the remaining time of a tween against a whole new one** => 
 - **text that branches on the date of its data** => 
 - **a number and the kernel it was measured with** => 
+
+## One token end to end, and the memory budget (Branch 148)
+
+- **a warm-up loop before a timed loop** => 
+- **the median and percentiles of many short calls** => 
+- **a sink value that keeps the optimizer from deleting a timed call** => 
+- **a cost paid once per request against a cost paid once per token** => 
+- **a decode step as one token in and one token out** => 
+- **the chat template as text around the user's text** => 
+- **a share of a whole against an absolute time** => 
+- **one exhibit function shared by several chapters** => 
+- **a fixed cost against a cost that grows with load** => 
+- **bytes per cached token from the model's shape** => 
+- **batch size and context length as one budget** => 
+- **a pool sized once at start from the free memory** => 
+- **bits per weight and what fits** => 
+- **a package mirror near the CI runner** => 
+- **a container on the host's network against a bridge network** => 
