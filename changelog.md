@@ -6,6 +6,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 - Part A: Rerun the load sweep (`results/load/`: 84 engine runs, 21 vLLM runs, the long-prompt probe, four plots) on 2026-11-11 at 1feaba9, the first sweep with the FlashAttention prefill kernel and two graph buckets per power of two as defaults. The engine and vLLM were measured in one boot; an engine pass from an earlier boot of the same evening was about 8% faster and was discarded.
 - Part A: `docs/results.md`, "Under load" and "A long prompt among running requests", is rewritten for the new sweep: the longest stalls are about half as long (86 to 120 ms with whole-prompt steps, 41 to 47 ms at a budget of 256), goodput did not move (peak 4.45 to 4.54 requests per second against vLLM's 7.49, about 1.65x), and the traces put the remaining gap in the decode step at a batch of 16 (11.9 ms against vLLM's 9.2 ms TPOT), since prefill is 3.4 of 19.6 seconds at 8 QPS. A 1,917-token prompt now stalls 15 decoding requests for 241 ms, or 38 ms at a budget of 256. `docs/baselines.md` has vLLM's table for the same boot, and the README and `docs/profiling.md` no longer describe the old sweep.
+- Part A: The trace sentence of "Under load" keeps the wording `web/scripts/sync-data.mjs` reads its numbers from.
 
 ## kernel/flash-prefill-div32
 
