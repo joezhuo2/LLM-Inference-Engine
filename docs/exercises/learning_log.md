@@ -2108,3 +2108,12 @@
 - **LRU eviction over blocks nobody holds** => 
 - **why the last prompt token is always computed (logits for the first new token)** => 
 - **copy on write and why sharing only full blocks avoids it** => 
+
+## Speculative decoding (Branch 144)
+
+- **speculative decoding: guess k tokens, verify them in one forward pass** => 
+- **prompt lookup decoding (n-gram match against the context, no draft model)** => 
+- **why the accepted tokens are exactly what plain decoding would sample** => 
+- **acceptance rate and tokens per step** => 
+- **why k + 1 rows of one sequence cost little more than one row at batch 1** => 
+- **rolling back the KV cache after a rejected guess** => 
