@@ -11,6 +11,7 @@ add_library(engine_core
   loader/checksum.cpp
   loader/mapped_file.cpp
   loader/safetensors.cpp
+  loader/tensor_parallel.cpp
   loader/weight_layout.cpp
   model/config.cpp
   model/weights.cpp

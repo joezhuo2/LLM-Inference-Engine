@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## loader/tensor-parallel-stub
+
+- Add the tensor parallelism Part C stub for #202 with its TODO(JOE) spec (`include/engine/loader/tensor_parallel.h`, `src/loader/tensor_parallel.cpp`): `plan_shard_layout(config, header, rank, num_ranks)` gives the weight layout of one rank in the form of `plan_weight_layout`, so `upload_weights` and `bind_weights` work on a shard unchanged. A rank owns a contiguous set of attention heads (rows of q, k and v, columns of o_proj) and of MLP units (rows of gate and up, columns of down_proj) and holds the embedding, the norms and the LM head whole; the spec explains why the partial outputs of the ranks sum to the full layer. 15 todo_joe tests in `tests/todo/unit/test_tensor_parallel.cpp`, checked against a throwaway implementation and nine mutants. The function throws std::logic_error. Not stubbed: the config of a shard, a runner and KV cache per rank and the all-reduce; with one GPU the ranks can only be simulated on one device. (Part C stub)
+
 ## sched/speculative-stub
 
 - Add the speculative decoding Part C stub for #102 with its TODO(JOE) spec (`include/engine/sched/speculative.h`, `src/sched/speculative.cpp`, `BlockManager::truncate` in `include/engine/kv/block_manager.h`): `propose_prompt_lookup` guesses the next tokens by finding where the last few tokens appeared before in the context (longest pattern first, latest match), `count_accepted` counts how many guesses the model agreed with, and `truncate` gives back the cache slots of the rows computed from a wrong guess. The spec describes the step they serve (k + 1 rows of one sequence, a + 1 tokens emitted, the same tokens as plain decode). 24 todo_joe tests in `tests/todo/unit/test_speculative.cpp`, checked against a throwaway implementation and eight mutants. The three functions throw std::logic_error; the scheduler and runner side is not stubbed yet. (Part C stub)
