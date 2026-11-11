@@ -25,8 +25,9 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: Every Byte gets a serving chapter, "how many requests fit", at the start of Part IV: the KV budget, how many requests fit, admission, preemption, static against continuous batching and what it bought under load; the scheduler story and the KV visualizer move into it from paged KV.
 - Part A: Paged KV puts its idea first: the memory steps with lesson titles, write_kv under how it got built, the recorded run as measured.
 - Part A: Chunked prefill puts its idea first: a lesson title for the budget trade-off, and the sampled list with its build history under how it got built.
-- Part A: FlashAttention prefill moves to Part II, after split attention, since it is a compute chapter; every chapter takes its number from `book-order.ts`, and sentences that named a neighbour by position name it by title or part.
+- Part A: FlashAttention prefill moves to Part II, after split attention, since it is a compute chapter; every chapter takes its number from `book-order.ts`, and sentences that named a neighbour by position name it by title or part. The closing chapter's last sentence links to "beyond this engine".
 - Part A: The flash prefill review no longer says registers are the kernel's limit: they cap the warps on an SM (measured), and whether that holds the tensor cores back was not measured.
+- Part A: The one-hour path is recounted from the built pages with every chapter's idea steps, the serving chapter and the closing chapter.
 
 ## kernel/flash-prefill-div32
 
