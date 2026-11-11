@@ -6,14 +6,15 @@ import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 
 const ease = [0.65, 0, 0.35, 1] as const;
 
-export function Disclosure({ summary, children }: { summary: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+export function Disclosure({ summary, children, open: held, onToggle }: { summary: string; children: ReactNode; open?: boolean; onToggle?: () => void }) {
+  const [own, setOwn] = useState(false);
+  const open = held ?? own;
   const reduced = usePrefersReducedMotion();
   const id = useId();
   const duration = reduced ? 0 : 0.6;
   return (
     <div className="text-sm">
-      <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-left text-muted transition-colors duration-200 hover:text-text">
+      <button type="button" aria-expanded={open} aria-controls={id} onClick={onToggle ?? (() => setOwn((o) => !o))} className="flex items-center gap-1.5 text-left text-muted transition-colors duration-200 hover:text-text">
         <motion.svg viewBox="0 0 10 10" className="size-2.5 shrink-0 fill-current" initial={false} animate={{ rotate: open ? 90 : 0 }} transition={{ duration: reduced ? 0 : 0.4, ease }} aria-hidden>
           <path d="M3 1.5 7.5 5 3 8.5z" />
         </motion.svg>

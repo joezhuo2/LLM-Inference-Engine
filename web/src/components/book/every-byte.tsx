@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Group, Object3D } from "three";
 import { GlossProvider, type PointTerm, PointGloss } from "@/components/gloss";
 import { gloss } from "@/components/glossed";
@@ -14,14 +15,15 @@ import { beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
 import { kindLabel } from "@/content/dead-ends";
 import { estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { chapterExercises, numpyCommand, numpyOf, numpyUrl, runsLabel } from "@/content/exercises";
-import { chapterReview, recallOf } from "@/content/reviews";
+import { chapterReview } from "@/content/reviews";
 import { shortPathName, shortPathQuery } from "@/content/short-path";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
+import { ReviewPage } from "./review-page";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, routePage, routeSection, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
+import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
@@ -648,6 +650,7 @@ export function EveryByte() {
         {Object.values(defs).map(
           (c) => c.Overlay && <c.Overlay key={c.slug} kind={c.slug === def?.slug ? (overlay?.kind ?? null) : null} target={c.slug === def?.slug && overlay ? pageEl : null} narrow={narrow} />,
         )}
+        {def && review && overlay?.kind === reviewOverlay && pageEl && createPortal(<ReviewPage key={def.slug} number={def.number} review={review} />, pageEl)}
       </div>
       <div className="relative border-border bg-surface max-[720px]:border-t">
         <GlossProvider key={stop} off={!narrow}>
@@ -694,42 +697,17 @@ export function EveryByte() {
               </div>
             </>
           ) : review ? (
-            reviewAt === 0 ? (
-              <>
-                <h2 className="text-xs">review</h2>
-                <h1 className="font-serif text-2xl text-text">what to remember</h1>
-                <p className="mt-2 font-serif text-lg text-accent">{review.lesson}</p>
-                <p className="mt-2 text-text">{gloss(review.why)}</p>
-                <ol className="mt-2 list-decimal space-y-1 pl-4">
-                  {review.takeaways.map((t) => (
-                    <li key={t}>{gloss(t)}</li>
-                  ))}
-                </ol>
-                <h2 className="mt-3 font-serif text-xl text-text">check yourself</h2>
-                <ol className="mt-1 list-decimal space-y-1 pl-4">
-                  {review.questions.map((q) => (
-                    <li key={q.question}>
-                      {gloss(q.question)}
-                      {recallOf(q) && <span className="block text-xs">{recallOf(q)?.line}</span>}
-                    </li>
-                  ))}
-                </ol>
-                <p className="mt-1 text-xs">Decide your answers, then turn the page.</p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-xs">review</h2>
-                <h1 className="font-serif text-2xl text-text">answers</h1>
-                {review.questions.map((q, i) => (
-                  <section key={q.question} className="mt-2 space-y-1">
-                    <p className="text-xs">{`${i + 1}. ${q.question}`}</p>
-                    {recallOf(q) && <p className="text-xs">{recallOf(q)?.line}</p>}
-                    <p className="text-text">{gloss(q.answer)}</p>
-                    <p>{gloss(q.why)}</p>
-                  </section>
+            <>
+              <h2 className="text-xs">review</h2>
+              <h1 className="font-serif text-2xl text-text">what to remember</h1>
+              <p className="mt-2 font-serif text-lg text-accent">{review.lesson}</p>
+              <p className="mt-2 text-text">{gloss(review.why)}</p>
+              <ol className="mt-2 list-decimal space-y-1 pl-4">
+                {review.takeaways.map((t) => (
+                  <li key={t}>{gloss(t)}</li>
                 ))}
-              </>
-            )
+              </ol>
+            </>
           ) : exercise ? (
             <>
               <h2 className="text-xs">build it yourself</h2>

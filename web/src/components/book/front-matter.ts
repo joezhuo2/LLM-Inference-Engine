@@ -6,9 +6,9 @@ import { type Estimate, estimates, estimatesIntro, estimatesTitle } from "@/cont
 import { kernelStory, layerOps } from "@/content/kernels";
 import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
 import { measured } from "@/content/kernels/types";
-import { chapterReview, recallOf } from "@/content/reviews";
+import { chapterReview } from "@/content/reviews";
 import { roundMinutes, shortPathName, shortRoute } from "@/content/short-path";
-import type { ChapterReview, ReviewQuestion } from "@/content/reviews/types";
+import type { ChapterReview } from "@/content/reviews/types";
 import { loadSlo } from "@/lib/data";
 import { type LinkLine, PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
@@ -313,7 +313,8 @@ export function errataStops(firstSpread: number): Stop[] {
   });
 }
 
-export const reviewTitles = ["what to remember", "answers"];
+export const reviewTitles = ["what to remember"];
+export const reviewOverlay = "review";
 
 export const reviewCount = (slug: string) => (chapterReview(slug) ? reviewTitles.length : 0);
 
@@ -959,129 +960,6 @@ function reviewLeft(def: ChapterDef, r: ChapterReview, page: () => number) {
   };
 }
 
-function reviewRight(def: ChapterDef, r: ChapterReview) {
-  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
-    const { ctx, x0, x1 } = begin(canvas, "right");
-    const width = x1 - x0;
-    ctx.fillStyle = palette.faint;
-    ctx.font = `26px ${fonts.sans}`;
-    ctx.fillText(`chapter ${def.number} · review`, x0, 150);
-    ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.fillText("check yourself", x0, 260);
-    fitLayout((scale, draw) => {
-      let y = 360;
-      r.questions.forEach((q, i) => {
-        ctx.fillStyle = palette.blue;
-        ctx.font = `${44 * scale}px ${fonts.serif}`;
-        if (draw) ctx.fillText(String(i + 1), x0, y);
-        ctx.fillStyle = palette.ink;
-        ctx.font = `${34 * scale}px ${fonts.sans}`;
-        y = paragraph(ctx, q.question, x0 + 56, y, width - 56, 50 * scale, draw);
-        const recall = recallOf(q);
-        if (recall) {
-          ctx.fillStyle = palette.faint;
-          ctx.font = `${26 * scale}px ${fonts.sans}`;
-          y = paragraph(ctx, recall.line, x0 + 56, y + 2 * scale, width - 56, 36 * scale, draw);
-        }
-        y += 60 * scale;
-      });
-      return y;
-    }, H - 320);
-    ctx.fillStyle = palette.blue;
-    ctx.font = `40px ${fonts.serif}`;
-    paragraph(ctx, "Decide your answers, then turn the page.", x0, H - 250, width, 48);
-  };
-}
-
-function answerPage(def: ChapterDef, r: ChapterReview, k: number, side: Side, page: () => number) {
-  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
-    const { ctx, x0, x1 } = begin(canvas, side);
-    const width = x1 - x0;
-    const q = r.questions[k];
-    ctx.fillStyle = palette.faint;
-    ctx.font = `26px ${fonts.sans}`;
-    ctx.fillText(`chapter ${def.number} · review · answers`, x0, 150);
-    ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.fillText(`answer ${k + 1}`, x0, 260);
-    if (q) {
-      fitLayout((scale, draw) => {
-        ctx.fillStyle = palette.faint;
-        ctx.font = `${30 * scale}px ${fonts.sans}`;
-        let y = paragraph(ctx, q.question, x0, 350, width, 44 * scale, draw);
-        const recall = recallOf(q);
-        if (recall) {
-          ctx.font = `${26 * scale}px ${fonts.sans}`;
-          y = paragraph(ctx, recall.line, x0, y + 2 * scale, width, 36 * scale, draw);
-        }
-        y += 50 * scale;
-        ctx.fillStyle = palette.blue;
-        ctx.font = `${50 * scale}px ${fonts.serif}`;
-        y = paragraph(ctx, q.answer, x0, y + 20 * scale, width, 62 * scale, draw) + 30 * scale;
-        ctx.fillStyle = palette.ink;
-        ctx.font = `${32 * scale}px ${fonts.sans}`;
-        return paragraph(ctx, q.why, x0, y, width, 48 * scale, draw);
-      }, H - 170);
-    }
-    if (side === "left") folio(ctx, String(page()), side, x0, x1, palette, fonts);
-  };
-}
-
-const answersOnLeft = 2;
-const answersTop = 350;
-
-function answerBlock(ctx: Ctx, palette: BookPalette, fonts: Fonts, q: ReviewQuestion, n: number, x0: number, width: number, top: number, scale: number, draw: boolean) {
-  const text = x0 + 56;
-  const room = width - 56;
-  if (draw) {
-    ctx.fillStyle = palette.blue;
-    ctx.font = `${44 * scale}px ${fonts.serif}`;
-    ctx.fillText(String(n), x0, top + 30 * scale);
-  }
-  ctx.fillStyle = palette.faint;
-  ctx.font = `${28 * scale}px ${fonts.sans}`;
-  let y = paragraph(ctx, q.question, text, top + 26 * scale, room, 40 * scale, draw);
-  const recall = recallOf(q);
-  if (recall) {
-    ctx.font = `${24 * scale}px ${fonts.sans}`;
-    y = paragraph(ctx, recall.line, text, y + 2 * scale, room, 34 * scale, draw);
-  }
-  ctx.fillStyle = palette.blue;
-  ctx.font = `${42 * scale}px ${fonts.serif}`;
-  y = paragraph(ctx, q.answer, text, y + 24 * scale, room, 52 * scale, draw);
-  ctx.fillStyle = palette.ink;
-  ctx.font = `${29 * scale}px ${fonts.sans}`;
-  return paragraph(ctx, q.why, text, y + 6 * scale, room, 42 * scale, draw);
-}
-
-const answersOn = (r: ChapterReview, side: Side) => (side === "left" ? [0, Math.min(answersOnLeft, r.questions.length)] : [answersOnLeft, r.questions.length]);
-
-function answerStack(ctx: Ctx, palette: BookPalette, fonts: Fonts, r: ChapterReview, side: Side, x0: number, width: number, scale: number, draw: boolean) {
-  const [from, to] = answersOn(r, side);
-  let y = answersTop;
-  for (let k = from; k < to; k++) y = answerBlock(ctx, palette, fonts, r.questions[k], k + 1, x0, width, k > from ? y + 50 * scale : y, scale, draw);
-  return y;
-}
-
-function answersPage(def: ChapterDef, r: ChapterReview, side: Side, page: () => number) {
-  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
-    const { ctx, x0, x1 } = begin(canvas, side);
-    const width = x1 - x0;
-    const [from, to] = answersOn(r, side);
-    let scale = 1;
-    while (scale > 0.55 && (["left", "right"] as const).some((s) => answerStack(ctx, palette, fonts, r, s, x0, width, scale, false) > H - 170)) scale -= 0.02;
-    ctx.fillStyle = palette.faint;
-    ctx.font = `26px ${fonts.sans}`;
-    ctx.fillText(`chapter ${def.number} · review · answers`, x0, 150);
-    ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.fillText(to - from === 1 ? `answer ${from + 1}` : to - from === 2 ? `answers ${from + 1} and ${to}` : `answers ${from + 1} to ${to}`, x0, 260);
-    answerStack(ctx, palette, fonts, r, side, x0, width, scale, true);
-    if (side === "left") folio(ctx, String(page()), side, x0, x1, palette, fonts);
-  };
-}
-
 export function reviewStops(def: ChapterDef): Stop[] {
   const r = chapterReview(def.slug);
   if (!r) return [];
@@ -1097,10 +975,7 @@ export function reviewStops(def: ChapterDef): Stop[] {
     overlay: null,
     beats: [flat(caption)],
   });
-  return [
-    { ...base(first, reviewTitles[0], "Review: what to remember, then check yourself", [r.lesson, r.why, ...r.takeaways]), paint: { left: reviewLeft(def, r, page(first)), right: reviewRight(def, r) } },
-    { ...base(first + 1, reviewTitles[1], "Review: the answers", r.questions.map((q) => `${q.answer} ${q.why}`)), paint: r.questions.length > answersOnLeft ? { left: answersPage(def, r, "left", page(first + 1)), right: answersPage(def, r, "right", page(first + 1)) } : { left: answerPage(def, r, 0, "left", page(first + 1)), right: answerPage(def, r, 1, "right", page(first + 1)) } },
-  ];
+  return [{ ...base(first, reviewTitles[0], "Review: what to remember, then open each answer", [r.lesson, r.why, ...r.takeaways]), overlay: reviewOverlay, paint: { left: reviewLeft(def, r, page(first)) } }];
 }
 
 export const estimateSpreads = 1 + estimates.length;

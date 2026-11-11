@@ -2199,3 +2199,6 @@
 
 - **a glossary alias matched by exact spelling** => 
 - **the first use of a term on a page gets the card** => 
+- **a controlled component against one that owns its state** => 
+- **an accordion: opening one item closes the other** => 
+- **animating height to auto** => 
