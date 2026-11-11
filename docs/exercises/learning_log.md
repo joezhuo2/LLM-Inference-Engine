@@ -2099,7 +2099,38 @@
 - **tensor pipe utilization** => 
 - **bytes requested from L1 in 32-byte sectors against the bytes a thread uses** => 
 
-## Idea first, history after (Branch 143)
+## Prefix caching (Branch 143)
+
+- **prefix caching: why the keys and values of a token depend only on the tokens before it** => 
+- **hashing a block by (hash of the previous block, its token ids)** => 
+- **hash collisions and why a hit still compares the tokens** => 
+- **reference counting shared blocks** => 
+- **LRU eviction over blocks nobody holds** => 
+- **why the last prompt token is always computed (logits for the first new token)** => 
+- **copy on write and why sharing only full blocks avoids it** => 
+
+## Speculative decoding (Branch 144)
+
+- **speculative decoding: guess k tokens, verify them in one forward pass** => 
+- **prompt lookup decoding (n-gram match against the context, no draft model)** => 
+- **why the accepted tokens are exactly what plain decoding would sample** => 
+- **acceptance rate and tokens per step** => 
+- **why k + 1 rows of one sequence cost little more than one row at batch 1** => 
+- **rolling back the KV cache after a rejected guess** => 
+
+## Tensor parallelism (Branch 145)
+
+- **tensor parallelism: splitting each layer's weights across GPUs (ranks)** => 
+- **why attention heads can be split: heads only meet at o_proj, and o_proj is linear** => 
+- **why MLP units can be split: rows of gate and up, columns of down** => 
+- **all-reduce: summing the partial outputs of the ranks, twice per layer** => 
+- **row slices against column slices of a row-major matrix** => 
+- **tensor parallelism against pipeline parallelism and data parallelism** => 
+- **why one GPU can check tensor parallelism but not speed it up** => 
+
+## Load sweep with flash prefill (Branch 146)
+
+## Idea first, history after (Branch 147)
 
 - **the idea of a chapter against the history of how it was built** => 
 - **block table** => 
@@ -2137,8 +2168,6 @@
 - **waiting for the remaining time of a tween against a whole new one** => 
 - **text that branches on the date of its data** => 
 - **a number and the kernel it was measured with** => 
-
-## Load sweep with flash prefill (Branch 144)
 
 - **goodput at an SLO** => 
 - **measuring two systems in the same boot** => 

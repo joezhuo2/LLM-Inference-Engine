@@ -11,6 +11,7 @@ add_library(engine_core
   loader/checksum.cpp
   loader/mapped_file.cpp
   loader/safetensors.cpp
+  loader/tensor_parallel.cpp
   loader/weight_layout.cpp
   model/config.cpp
   model/weights.cpp
@@ -19,6 +20,7 @@ add_library(engine_core
   sched/paged_batch.cpp
   sched/request.cpp
   sched/scheduler.cpp
+  sched/speculative.cpp
   tokenizer/chat.cpp
   tokenizer/text_stream.cpp
   tokenizer/tokenizer.cpp
