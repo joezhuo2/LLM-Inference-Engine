@@ -175,6 +175,8 @@ export class BookScene {
   private cam = { x: 0, y: 0, z: 0, az: 0, el: 60, dist: 6 };
   private camGoal = { x: 0, y: 0, z: 0, az: 0, el: 60, dist: 6 };
   private camStartTime = -1;
+  private turning = false;
+  private lastPointer: PointerEvent | null = null;
   private camFrom = { ...this.cam };
   private camDuration = 1.8;
   private applied = { stop: -1, beat: 0 };
@@ -374,6 +376,7 @@ export class BookScene {
         if (this.drag.moved >= 6) this.underline.set(null, this.options.reduced);
         return;
       }
+      this.lastPointer = event;
       const handle = this.pickHandle(event);
       const term = handle ? null : this.termAt(event);
       const link = handle || term ? null : this.linkAt(event);
@@ -478,7 +481,7 @@ export class BookScene {
 
   private linkAt(event: PointerEvent): PageLink | null {
     const links = this.options.stops[this.applied.stop]?.links;
-    if (!links?.length || !this.opened || this.running || this.leaf.front.visible) return null;
+    if (!links?.length || !this.opened || this.turning || this.leaf.front.visible) return null;
     this.setPointer(event);
     const hit = this.raycaster.intersectObjects([this.leftPlane, this.rightPlane], false)[0];
     if (!hit?.uv) return null;
@@ -489,7 +492,7 @@ export class BookScene {
   }
 
   focusLink(href: string | null, label?: string): void {
-    const links = this.opened && !this.running && !this.leaf.front.visible ? this.options.stops[this.applied.stop]?.links : undefined;
+    const links = this.opened && !this.turning && !this.leaf.front.visible ? this.options.stops[this.applied.stop]?.links : undefined;
     this.underline.set((href && links?.find((l) => l.href === href && (!label || l.label.startsWith(label)))) || null, this.options.reduced);
     this.showLens(this.lens);
   }
@@ -762,12 +765,14 @@ export class BookScene {
 
   private waitForCamera(): Promise<void> {
     if (this.camStartTime < 0) return Promise.resolve();
-    return this.tween(this.camDuration, () => undefined);
+    const left = this.camStartTime + this.camDuration - this.time;
+    return left > 0 ? this.tween(left, () => undefined) : Promise.resolve();
   }
 
   private async moveToStop(stop: number, beat: number): Promise<void> {
     const from = this.options.stops[this.applied.stop];
     const to = this.options.stops[stop];
+    this.turning = true;
     this.overlayKey = "";
     this.frozen = false;
     this.frozenSoon = false;
@@ -792,6 +797,8 @@ export class BookScene {
     if (fold) await fold;
     this.applied.stop = stop;
     this.applied.beat = beat;
+    this.turning = false;
+    if (this.lastPointer && this.lastPointer.pointerType !== "touch" && !this.drag) this.underline.set(this.linkAt(this.lastPointer), this.options.reduced);
     this.model.enter?.(stop);
     if (this.moved(stop, beat)) return;
     if (exhibitChanges && to.exhibit !== null) await this.popUp(to.exhibit, 0.05);
