@@ -2099,3 +2099,8 @@
 - **tensor pipe utilization** => 
 - **bytes requested from L1 in 32-byte sectors against the bytes a thread uses** => 
 
+## Load sweep with flash prefill (Branch 144)
+
+- **goodput at an SLO** => 
+- **measuring two systems in the same boot** => 
+- **median of repeats against a single run** => 

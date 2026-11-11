@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/load-sweep-flash
+
+- Part A: Rerun the load sweep (`results/load/`: 84 engine runs, 21 vLLM runs, the long-prompt probe, four plots) on 2026-11-11 at 1feaba9, the first sweep with the FlashAttention prefill kernel and two graph buckets per power of two as defaults. The engine and vLLM were measured in one boot; an engine pass from an earlier boot of the same evening was about 8% faster and was discarded.
+
 ## kernel/flash-prefill-div32
 
 - Do the two divisions of `flash_attention_prefill`'s cache path (`key / block_size`, `key % block_size`) in 32 bits instead of 64. The compiler then needs 96 registers per thread instead of 115, so 5 thread blocks fit on an SM instead of 4 and 130 on the GPU instead of 104, and the 128 blocks of a 256-row chunk run in one wave. A key index on that path is below the chunk's `cached_lens` entry, an `int32_t`, so nothing is cut off. Measured (release, RTX 5060 Laptop GPU, 2026-11-10, both kernels in one session): Nsight Compute, last 256-row chunk of a 2,048-token prompt 0.924 to 0.578 ms per launch and 24.7% to 39.4% of the warp places filled; Nsight Systems, attention of that prompt as 8 chunks 73.0 to 50.5 ms and in one step 37.8 to 36.1 ms; with no profiler, chunking it with a budget of 256 costs 14% instead of 24% (228.1 against 199.3 ms, median of 5). Budgets whose chunks are just over 130 blocks or exactly 104 are slower than before (272: 66.8 to 70.5 ms of attention, 208: 57.6 to 61.7). The 24 kernel tests and the paged runner tests pass unchanged. (Part C, written by Claude at Joe's request)
