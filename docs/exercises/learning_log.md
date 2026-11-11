@@ -2099,3 +2099,12 @@
 - **tensor pipe utilization** => 
 - **bytes requested from L1 in 32-byte sectors against the bytes a thread uses** => 
 
+## Prefix caching (Branch 143)
+
+- **prefix caching: why the keys and values of a token depend only on the tokens before it** => 
+- **hashing a block by (hash of the previous block, its token ids)** => 
+- **hash collisions and why a hit still compares the tokens** => 
+- **reference counting shared blocks** => 
+- **LRU eviction over blocks nobody holds** => 
+- **why the last prompt token is always computed (logits for the first new token)** => 
+- **copy on write and why sharing only full blocks avoids it** => 
