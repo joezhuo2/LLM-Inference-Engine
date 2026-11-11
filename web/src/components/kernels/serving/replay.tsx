@@ -74,12 +74,12 @@ export function ServingReplay({ pages }: { pages?: { replay: HTMLElement | null 
             </span>
           }
         >
-          <div className={pages ? "h-52" : "h-72"}>
+          <div className={pages ? "h-40" : "h-72"}>
             <Timeline feed={feed} maxBatch={maxBatch} />
           </div>
         </Panel>
         <Panel title="KV block pool" legend={<span className="text-muted">a color per request</span>}>
-          <div className={pages ? "h-60" : "h-72"}>
+          <div className={pages ? undefined : "h-72"}>
             <KvPool feed={feed} minWindow={poolWindow(player?.highWater ?? 0)} />
           </div>
         </Panel>

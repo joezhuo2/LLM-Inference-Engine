@@ -30,6 +30,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: The one-hour path is recounted from the built pages with every chapter's idea steps, the serving chapter and the closing chapter.
 - Part A: Links in Every Byte work as soon as a turned page lands. The scene waited a second full camera move (1.9 s) after every turn before links, overlays and the next turn were released, and links were off for that whole wait; it now waits only what is left of the camera move, links follow the leaf, and the link under a resting pointer is underlined when the page lands.
 - Part A: The contents page spaces its left rows to end above the one-hour path note; with FlashAttention prefill in Part II the tenth row ran into it.
+- Part A: The replay spread of the serving chapter lets its KV pool panel take its own height, so its notes stay clear of the controls.
 
 ## kernel/flash-prefill-div32
 
