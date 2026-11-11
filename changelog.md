@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/token-journey
 
+- Part A: the CUDA compile job in CI reads Ubuntu packages from the Azure mirror, the one the hosted runners use. `archive.ubuntu.com` did not resolve from the job's container twice in a row on 2026-11-11, so `apt-get` found no packages and the job failed before compiling.
 - Part A: a new chapter, the memory budget, opens Part IV. The GPU's 8.52 GB split into weights, the KV pool, the tenth kept free and everything else; what one cached token costs; batch times context against the pool; and four models in the same memory (TinyLlama measured, Llama 3 8B and Llama 2 7B calculated). Two exhibits to drag in the book: the budget line with a slab under it, and the memory refilled per model. The published model shapes move to `web/src/content/published.ts` so the chapter and the estimates share them.
 - Part A: a new first chapter, one token, end to end. It follows the token "Ott" of a recorded answer from the question's text to its ID: the tokenizer on the host, the embedding, one layer operation by operation, the LM head and the sampler, each with its measured time, and then the whole token on one bar. The book has a lead-in spread with seven stations and two exhibits to drag; the start page now points at foundations by its number.
 - Part A: `book/chapters/segments.ts` is a shared exhibit for the book: a bar of segments to scale, a rail that picks one, and a card that reads it out.

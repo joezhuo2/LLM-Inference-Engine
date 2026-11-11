@@ -2192,3 +2192,4 @@
 - **batch size and context length as one budget** => 
 - **a pool sized once at start from the free memory** => 
 - **bits per weight and what fits** => 
+- **a package mirror near the CI runner** => 
