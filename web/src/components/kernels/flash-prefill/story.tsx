@@ -160,7 +160,7 @@ const steps: StoryStep[] = [
           The way out is to change who walks. One warp owns <span className="text-accent">{s.tile}</span> query rows of one head and loads them once. The keys of the sequence then stream past in tiles of the same size, and every row of the query tile uses each key tile.
         </p>
         <p>
-          A row must still see only its own past. Keys after a query are masked, and keys past the last row of the tile load as zeros, so no row depends on what follows it. Keys the sequence already has in the KV cache come through the block table, and the chunk&apos;s own come from the QKV buffer.
+          A row must still see only its own past. Keys after a query are masked, and keys past the last row of the tile load as zeros, so no row depends on what follows it. Keys the sequence already has in the KV cache come through the block table, and the chunk&apos;s own come from the QKV buffer. A chunk is the run of prompt rows one step prefills: the whole prompt, unless the scheduler of Part IV splits it.
         </p>
       </>
     ),

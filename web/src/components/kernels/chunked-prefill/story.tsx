@@ -55,7 +55,7 @@ const steps: StoryStep[] = [
           median gap.
         </p>
         <p>
-          Every load number in this chapter was measured before the FlashAttention prefill kernel of the next chapter, which shortens the long step itself. They have not been rerun with it.
+          Every load number in this chapter was measured before the FlashAttention prefill kernel of Part II, which shortens the long step itself. They have not been rerun with it.
         </p>
       </>
     ),

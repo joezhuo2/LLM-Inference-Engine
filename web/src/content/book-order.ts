@@ -1,8 +1,8 @@
 export const bookParts = [
   { numeral: "I", title: "the machine", slugs: ["foundations"] },
-  { numeral: "II", title: "one layer", slugs: ["gemm", "rope", "paged-kv", "paged-attention", "attention-v2", "split-attention", "add-rmsnorm", "swiglu"] },
+  { numeral: "II", title: "one layer", slugs: ["gemm", "rope", "paged-kv", "paged-attention", "attention-v2", "split-attention", "flash-prefill", "add-rmsnorm", "swiglu"] },
   { numeral: "III", title: "one step", slugs: ["sampling", "cuda-graphs"] },
-  { numeral: "IV", title: "many requests", slugs: ["serving", "chunked-prefill", "flash-prefill"] },
+  { numeral: "IV", title: "many requests", slugs: ["serving", "chunked-prefill"] },
   { numeral: "V", title: "the whole picture", slugs: ["where-the-time-went"] },
 ];
 

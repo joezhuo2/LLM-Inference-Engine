@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { ropeAbout, ropeAboutCaption } from "@/components/kernels/rope/about";
 import { RopeSandbox } from "@/components/kernels/rope/sandbox";
@@ -84,7 +85,7 @@ function RopeOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "rope",
-  number: 3,
+  number: chapterNumber("rope"),
   title: "RoPE",
   formula: "x′ᵢ = xᵢ cos pθᵢ − xᵢ₊d/₂ sin pθᵢ,   θᵢ = 10000^(−2i/d)",
   steps: ropeSteps,

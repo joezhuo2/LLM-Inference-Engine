@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { TilingSandbox } from "@/components/kernels/gemm/sandbox";
 import { gemmCaptions, gemmNumbers, gemmSteps, RooflinePicker } from "@/components/kernels/gemm/story";
@@ -130,7 +131,7 @@ function GemmOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "gemm",
-  number: 2,
+  number: chapterNumber("gemm"),
   title: "GEMM",
   formula: gemm.formula,
   steps: gemmSteps,

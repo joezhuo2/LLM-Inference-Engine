@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { modelShape } from "@/lib/data";
 import { pagedAttentionAbout, pagedAttentionAboutCaption } from "@/components/kernels/attention/about";
@@ -139,7 +140,7 @@ const ownExhibits = [0, 1, 2, 3, 4, 5, 5, 6, 7];
 
 const chapter: ChapterDef = {
   slug: "paged-attention",
-  number: 5,
+  number: chapterNumber("paged-attention"),
   title: "paged attention",
   formula: "out = softmax(q · Kᵀ / √d) · V",
   steps: [...attentionBasics, ...prologueSteps, ...attentionSteps],

@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { addRmsnormAbout, addRmsnormAboutCaption } from "@/components/kernels/add-rmsnorm/about";
 import { addRmsnormCaptions, addRmsnormNumbers, addRmsnormSteps, TokensPicker } from "@/components/kernels/add-rmsnorm/story";
@@ -79,7 +80,7 @@ function AddRmsnormOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "add-rmsnorm",
-  number: 8,
+  number: chapterNumber("add-rmsnorm"),
   title: "fused add + RMSNorm",
   formula: "sum = x + r,  norm = w · sum / √(mean(sum²) + ε)",
   steps: addRmsnormSteps,

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { throughput, valueAt } from "@/content/results";
 import { flashShape } from "@/content/kernels/flash-prefill";
 import { eagerStage, firstStage, load, loadTitle, loadVerdict, next, noisy, nowStage, prefill, smallOf, stageById, stepStages, timeFmt, token } from "@/content/kernels/where-the-time-went";
@@ -21,7 +22,7 @@ const sentence =(text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const upTo = (rate: number | undefined) => (rate === undefined ? "at no rate offered" : `up to an offered ${rate}`);
 const whole = load.gaps.find((g) => g.id === "engine");
 const chunkedGap = load.gaps.find((g) => g.id === "chunked");
-const flashClause = load.hasFlash === null ? "" : load.hasFlash ? ", with the tiled prefill kernel of the chapter before this one" : ", before the tiled prefill kernel became the default, so its prompts still ran through the decode attention";
+const flashClause = load.hasFlash === null ? "" : load.hasFlash ? ", with the tiled prefill kernel of the FlashAttention prefill chapter" : ", before the tiled prefill kernel became the default, so its prompts still ran through the decode attention";
 
 const steps: StoryStep[] = [
   {
@@ -122,7 +123,11 @@ const steps: StoryStep[] = [
           Third, prepare the next step while this one runs. {fmt(next.hostMs, 2)} ms of every batch-1 token, <span className="text-accent">{fmt(next.hostPct)}%</span>, pass between two steps. Without them a token would sit at {fmt(next.roofWithout)}% of the bandwidth roof where it sits at {fmt(next.roofNow)}% (calculated).
         </p>
         <p>
-          Two smaller ones were left out: a token budget of {next.chunkBudget} still costs a lone long prompt {next.chunkCostPct}%, and float Gumbel noise would cut a sampled draw from {fmt(next.gumbelUs)} µs to under {fmt(next.gumbelFloatHigh)} µs but changes the tokens of a fixed seed. None of the three reads fewer bytes. That is the other way past the floor, and the spread &quot;beyond this engine&quot; is about it.
+          Two smaller ones were left out: a token budget of {next.chunkBudget} still costs a lone long prompt {next.chunkCostPct}%, and float Gumbel noise would cut a sampled draw from {fmt(next.gumbelUs)} µs to under {fmt(next.gumbelFloatHigh)} µs but changes the tokens of a fixed seed. None of the three reads fewer bytes. That is the other way past the floor, and{" "}
+          <Link href="/kernels/beyond" className="link-underline text-accent">
+            beyond this engine
+          </Link>{" "}
+          is about it.
         </p>
       </>
     ),

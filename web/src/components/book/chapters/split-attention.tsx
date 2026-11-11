@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { splitAbout, splitAboutCaption } from "@/components/kernels/split-attention/about";
 import { SplitPicker, splitCaptions, splitNumbers, splitSteps } from "@/components/kernels/split-attention/story";
@@ -80,7 +81,7 @@ function SplitOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "split-attention",
-  number: 7,
+  number: chapterNumber("split-attention"),
   title: "split attention",
   formula: "out = Σ eᵐⁱ⁻ᴹ accᵢ / Σ eᵐⁱ⁻ᴹ lᵢ",
   steps: splitSteps,

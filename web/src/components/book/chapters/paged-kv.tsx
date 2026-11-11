@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { pagedKvAbout, pagedKvAboutCaption } from "@/components/kernels/paged-kv/about";
 import { first, fullContext, lookup } from "@/components/kernels/paged-kv/figures";
 import { pagedKvCaptions, pagedKvSteps } from "@/components/kernels/paged-kv/story";
@@ -57,7 +58,7 @@ const instructions = [
 
 const chapter: ChapterDef = {
   slug: "paged-kv",
-  number: 4,
+  number: chapterNumber("paged-kv"),
   title: "paged KV cache",
   formula: pagedKv.formula,
   steps: pagedKvSteps,

@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { attentionV2About, attentionV2AboutCaption, onlineScores, onlineStates } from "@/components/kernels/attention-v2/about";
 import { chunkScores } from "@/components/kernels/attention-v2/figures";
@@ -64,7 +65,7 @@ function AttentionV2Overlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "attention-v2",
-  number: 6,
+  number: chapterNumber("attention-v2"),
   title: "attention v2",
   formula: attentionV2.formula,
   steps: attentionV2Steps,

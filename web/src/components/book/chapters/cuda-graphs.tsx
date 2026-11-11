@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { BucketFigure, graphCount, graphMaxBatch, SweepFigure } from "@/components/kernels/cuda-graphs/figures";
 import { cudaGraphsCaptions, cudaGraphsNumbers, cudaGraphsSteps, ReplayPicker } from "@/components/kernels/cuda-graphs/story";
@@ -68,7 +69,7 @@ function CudaGraphsOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "cuda-graphs",
-  number: 11,
+  number: chapterNumber("cuda-graphs"),
   title: "CUDA Graphs",
   formula: cudaGraphs.formula,
   steps: cudaGraphsSteps,

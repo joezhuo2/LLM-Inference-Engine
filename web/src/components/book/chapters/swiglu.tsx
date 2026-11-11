@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { swigluAbout, swigluAboutCaption } from "@/components/kernels/swiglu/about";
 import { swigluCaptions, swigluNumbers, swigluSteps, TokensPicker } from "@/components/kernels/swiglu/story";
@@ -61,7 +62,7 @@ function SwigluOverlay({ kind, target, narrow }: OverlayProps) {
 
 const chapter: ChapterDef = {
   slug: "swiglu",
-  number: 9,
+  number: chapterNumber("swiglu"),
   title: "SwiGLU",
   formula: "outⱼ = silu(gateⱼ) · upⱼ,  silu(g) = g / (1 + e⁻ᵍ)",
   steps: swigluSteps,
