@@ -1,0 +1,32 @@
+#include "engine/loader/tensor_parallel.h"
+
+#include <stdexcept>
+
+namespace engine {
+
+/*
+TODO(JOE): plan_shard_layout
+
+Purpose. Issue #202. Tensor parallelism runs one model on N GPUs by cutting every layer's weights into N shards along the dimension that the layer's hidden work happens in, so each GPU (a rank) holds about 1 / N of the layer weights and does 1 / N of the GEMM and attention work on the same tokens. A rank owns a contiguous set of attention heads and a contiguous set of MLP units. It computes its heads' attention and its units' MLP alone, and its output projection gives a partial result of full width; the partial results of all ranks are summed (an all-reduce) twice per layer, after o_proj and after down_proj, and that sum is exactly what the unsharded layer computes. This function is the first step and the only one that decides the split: the weight layout of one rank, in the same form plan_weight_layout gives for the whole model, so upload_weights and bind_weights work on a shard unchanged.
+
+Why the split is exact. Attention heads do not interact until o_proj, and o_proj is linear: attn W_o^T = sum over ranks of attn_r W_o,r^T, where attn_r is the rank's heads and W_o,r the matching columns of W_o. In the MLP, unit j is silu(x . gate_j) * (x . up_j) and does not interact with other units until down_proj, which is linear again: the sum over ranks of (the rank's units) W_down,r^T is the full output. The residual stream, the norms, the embedding and the LM head are not split: every rank holds them whole.
+
+Interface. Declared in include/engine/loader/tensor_parallel.h. plan_shard_layout(config, header, rank, num_ranks) returns the WeightLayout of rank rank out of num_ranks. With N = num_ranks, h = config.heads / N, k = config.kv_heads / N, f = config.intermediate / N, d = config.hidden and hd = config.head_dim, rank r owns query heads r * h to (r + 1) * h - 1, kv heads r * k to (r + 1) * k - 1 and MLP units r * f to (r + 1) * f - 1. Because N divides kv_heads, a rank's query heads are exactly the groups of its kv heads, and its local query head j reads its local kv head j / group_size as before. The regions come in the order of plan_weight_layout, each aligned to kWeightAlignment, with these shapes and contents: embed [vocab, d], whole; per layer ln1 [d], whole; wqkv [(h + 2 * k) * hd, d], the rank's rows of q_proj (rows r * h * hd on), then its rows of k_proj (rows r * k * hd on), then its rows of v_proj; wo [d, h * hd], columns r * h * hd to (r + 1) * h * hd - 1 of o_proj; ln2 [d], whole; wgu [2 * f, d], rows r * f on of gate_proj, then the same rows of up_proj; wdown [d, f], columns r * f to (r + 1) * f - 1 of down_proj; then final_norm [d] and lm_head [vocab, d], whole. total_bytes is the end of the last region.
+
+Copies. copies lists what to copy from the file: each CopyOp moves bytes contiguous bytes from file offset src to offset dst of the shard's buffer, name is the tensor it reads from, and shape is the shape of the piece it moves (the tensor's own shape when it moves a whole tensor). Sorted by src, as plan_weight_layout does. Every byte of every region is written exactly once and nothing is written outside the regions. A slice of rows is one contiguous piece. A slice of columns is not: the matrices are stored row by row, so wo and wdown need one copy per row, 2 * d small copies per layer (90,112 for TinyLlama per rank). That is allowed here. Time the load before inventing a strided copy; if it is slow, that is a separate change to CopyOp and upload_weights.
+
+Errors. Throw std::invalid_argument with a message naming plan_shard_layout when num_ranks < 1, rank < 0, rank >= num_ranks, config.kv_heads is not a multiple of num_ranks, or config.intermediate is not a multiple of num_ranks (TinyLlama, with 4 kv heads and 5,632 units, allows 1, 2 and 4). Everything plan_weight_layout rejects is rejected the same way, with its std::runtime_error and message: tied embeddings, a missing tensor, a wrong shape, a tensor that is not BF16, an unexpected tensor. The header is the full checkpoint's; every rank reads the same file.
+
+Edge cases. num_ranks = 1 gives the regions of plan_weight_layout and the same bytes. A rank with one kv head. The first and the last rank (off by one in the last column or row shows up there).
+
+What to compare against. The tests build a fake checkpoint, apply the copies of plan_weight_layout and of every rank's plan to host buffers, and compare element by element; one test computes o_proj and the MLP from the shards and from the full weights and checks that the partial results add up.
+
+What is not here, and what one GPU can show. This laptop has one GPU, so the ranks can only be run as N streams on the same device. That proves the split and the sums are right; it cannot be faster than the unsharded model, because the same GPU does the same work plus the sums. Still to design, each its own branch: a config for a shard (ModelConfig uses hidden both as the residual width and as heads * head_dim, and in a shard they differ); one runner and one paged KV cache per rank, with k kv heads each and the same block tables; the all-reduce (on one device it is the add kernel over the ranks' partial results, summed in rank order so the result does not depend on timing; across devices it needs peer copies or NCCL and cannot be tested here); which rank embeds and samples; and a flag on engine generate and engine bench. The comparison to record in docs/results.md once it runs: logits of the sharded forward against the unsharded one (BF16 rounding of the partial sums makes them close, not bit-identical), and the per-rank memory against the full model.
+
+Tests that prove it. tests/todo/unit/test_tensor_parallel.cpp (target todo_unit_tests, label todo_joe), 15 tests checked against a throwaway implementation and nine mutants of it: one rank equal to the full layout, region shapes and alignment, every region byte written once, each sharded matrix element by element for 2 and 4 ranks, the unsplit tensors, the partial outputs adding up, TinyLlama shapes, and every rejected argument. Run them with ctest --preset cpu -L todo_joe. When they pass, move the file to tests/unit/, add it to unit_tests and take it out of todo_unit_tests.
+*/
+WeightLayout plan_shard_layout(const ModelConfig&, const SafetensorsHeader&, int, int) {
+    throw std::logic_error("unimplemented: plan_shard_layout");
+}
+
+}  // namespace engine

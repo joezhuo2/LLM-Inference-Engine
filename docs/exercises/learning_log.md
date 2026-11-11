@@ -2117,3 +2117,13 @@
 - **acceptance rate and tokens per step** => 
 - **why k + 1 rows of one sequence cost little more than one row at batch 1** => 
 - **rolling back the KV cache after a rejected guess** => 
+
+## Tensor parallelism (Branch 145)
+
+- **tensor parallelism: splitting each layer's weights across GPUs (ranks)** => 
+- **why attention heads can be split: heads only meet at o_proj, and o_proj is linear** => 
+- **why MLP units can be split: rows of gate and up, columns of down** => 
+- **all-reduce: summing the partial outputs of the ranks, twice per layer** => 
+- **row slices against column slices of a row-major matrix** => 
+- **tensor parallelism against pipeline parallelism and data parallelism** => 
+- **why one GPU can check tensor parallelism but not speed it up** => 
