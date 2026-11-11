@@ -121,12 +121,14 @@ function routeDot(ctx: Ctx, x: number, y: number, palette: BookPalette) {
 function contentsRows(parts: typeof bookParts, withErrata: boolean) {
   const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string; slug?: string }[] = [];
   let y = 380;
+  const entries = parts.reduce((n, p) => n + p.slugs.length, 0);
+  const pitch = withErrata || entries < 2 ? ROW : Math.min(ROW, (H - 330 - 380 - 78 * parts.length - 40 * (parts.length - 1)) / (entries - 1));
   for (const part of parts) {
     rows.push({ kind: "part", y, text: `Part ${part.numeral} · ${part.title}` });
     y += 78;
     for (const slug of part.slugs) {
       rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug), slug });
-      y += ROW;
+      y += pitch;
     }
     y += 40;
   }
