@@ -455,7 +455,7 @@ export function queueExhibit(kit: Kit, fonts: Fonts, lead: boolean) {
   });
   note.group.position.set(0.52, 0, 0.05);
   const knob = rail(kit, 0.24);
-  const railCard = textCard(kit, fonts, 0.86, 0.04, () => [{ text: `illustrative: blocks of ${queueConfig.blockSize} tokens and max_batch ${queueConfig.maxBatch}, run through a port of Scheduler::schedule(); a request's height is its tokens`, y: 0.7, size: 0.4, color: kit.palette.faint }]);
+  const railCard = textCard(kit, fonts, 0.86, 0.04, () => [{ text: `illustrative: blocks of ${queueConfig.blockSize} tokens and max_batch ${queueConfig.maxBatch}, a port of Scheduler::schedule(); height is tokens`, y: 0.7, size: 0.4, color: kit.palette.faint }]);
   railCard.group.position.set(0.52, 0, 0.3);
   root.add(note.group, knob.group, railCard.group);
 
