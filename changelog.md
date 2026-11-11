@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## bench/load-sweep-flash
+
+- Part A: Rerun the load sweep (`results/load/`: 84 engine runs, 21 vLLM runs, the long-prompt probe, four plots) on 2026-11-11 at 1feaba9, the first sweep with the FlashAttention prefill kernel and two graph buckets per power of two as defaults. The engine and vLLM were measured in one boot; an engine pass from an earlier boot of the same evening was about 8% faster and was discarded.
+- Part A: `docs/results.md`, "Under load" and "A long prompt among running requests", is rewritten for the new sweep: the longest stalls are about half as long (86 to 120 ms with whole-prompt steps, 41 to 47 ms at a budget of 256), goodput did not move (peak 4.45 to 4.54 requests per second against vLLM's 7.49, about 1.65x), and the traces put the remaining gap in the decode step at a batch of 16 (11.9 ms against vLLM's 9.2 ms TPOT), since prefill is 3.4 of 19.6 seconds at 8 QPS. A 1,917-token prompt now stalls 15 decoding requests for 241 ms, or 38 ms at a budget of 256. `docs/baselines.md` has vLLM's table for the same boot, and the README and `docs/profiling.md` no longer describe the old sweep.
+- Part A: The trace sentence of "Under load" keeps the wording `web/scripts/sync-data.mjs` reads its numbers from.
+
 ## loader/tensor-parallel-stub
 
 - Add the tensor parallelism Part C stub for #202 with its TODO(JOE) spec (`include/engine/loader/tensor_parallel.h`, `src/loader/tensor_parallel.cpp`): `plan_shard_layout(config, header, rank, num_ranks)` gives the weight layout of one rank in the form of `plan_weight_layout`, so `upload_weights` and `bind_weights` work on a shard unchanged. A rank owns a contiguous set of attention heads (rows of q, k and v, columns of o_proj) and of MLP units (rows of gate and up, columns of down_proj) and holds the embedding, the norms and the LM head whole; the spec explains why the partial outputs of the ranks sum to the full layer. 15 todo_joe tests in `tests/todo/unit/test_tensor_parallel.cpp`, checked against a throwaway implementation and nine mutants. The function throws std::logic_error. Not stubbed: the config of a shard, a runner and KV cache per rank and the all-reduce; with one GPU the ranks can only be simulated on one device. (Part C stub)

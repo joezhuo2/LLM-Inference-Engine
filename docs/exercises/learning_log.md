@@ -2127,3 +2127,13 @@
 - **row slices against column slices of a row-major matrix** => 
 - **tensor parallelism against pipeline parallelism and data parallelism** => 
 - **why one GPU can check tensor parallelism but not speed it up** => 
+
+## Load sweep with flash prefill (Branch 146)
+
+- **goodput at an SLO** => 
+- **measuring two systems in the same boot** => 
+- **median of repeats against a single run** => 
+- **longest gap between two tokens against TPOT p99** => 
+- **where the time of a loaded run goes, by step kind** => 
+- **the 99th percentile when the slow events are under 1% of the samples** => 
+- **prose that a script parses** => 

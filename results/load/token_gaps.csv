@@ -1,85 +1,85 @@
 system,rate,run,gaps,gap_ms_p50,gap_ms_p99,gap_ms_max
-"engine + graphs, budget 2048",1,1,17536,8.006,10.653,96.171
-"engine + graphs, budget 2048",1,2,17536,8.067,13.029,96.932
-"engine + graphs, budget 2048",1,3,17536,8.075,10.897,96.409
-"engine + graphs, budget 2048",2,1,17536,8.509,44.238,96.976
-"engine + graphs, budget 2048",2,2,17536,8.576,44.929,105.621
-"engine + graphs, budget 2048",2,3,17536,8.536,45.058,100.281
-"engine + graphs, budget 2048",3,1,17536,9.001,68.816,100.581
-"engine + graphs, budget 2048",3,2,17536,9.139,69.632,111.853
-"engine + graphs, budget 2048",3,3,17536,9.133,67.324,101.689
-"engine + graphs, budget 2048",4,1,17536,9.862,76.653,113.308
-"engine + graphs, budget 2048",4,2,17536,9.951,81.726,133.267
-"engine + graphs, budget 2048",4,3,17536,9.824,78.396,116.087
-"engine + graphs, budget 2048",5,1,17536,10.862,85.618,163.364
-"engine + graphs, budget 2048",5,2,17536,10.993,85.934,175.225
-"engine + graphs, budget 2048",5,3,17536,10.944,83.513,124.303
-"engine + graphs, budget 2048",6,1,17536,11.458,91.098,164.814
-"engine + graphs, budget 2048",6,2,17536,11.392,94.782,157.655
-"engine + graphs, budget 2048",6,3,17536,11.369,87.276,127.601
-"engine + graphs, budget 2048",8,1,17536,11.407,90.838,159.843
-"engine + graphs, budget 2048",8,2,17536,11.537,96.136,168.835
-"engine + graphs, budget 2048",8,3,17536,11.479,92.510,158.998
-"engine + graphs, budget 256",1,1,17536,7.896,25.097,64.849
-"engine + graphs, budget 256",1,2,17536,8.058,27.271,65.388
-"engine + graphs, budget 256",1,3,17536,8.040,26.393,65.572
-"engine + graphs, budget 256",2,1,17536,8.373,35.806,64.245
-"engine + graphs, budget 256",2,2,17536,8.534,36.614,66.862
-"engine + graphs, budget 256",2,3,17536,8.527,36.374,65.460
-"engine + graphs, budget 256",3,1,17536,8.885,40.276,64.913
-"engine + graphs, budget 256",3,2,17536,9.122,39.819,65.572
-"engine + graphs, budget 256",3,3,17536,9.086,38.949,65.507
-"engine + graphs, budget 256",4,1,17536,9.757,44.747,66.909
-"engine + graphs, budget 256",4,2,17536,9.816,45.523,69.556
-"engine + graphs, budget 256",4,3,17536,9.815,44.855,66.138
-"engine + graphs, budget 256",5,1,17536,10.755,49.859,67.916
-"engine + graphs, budget 256",5,2,17536,10.960,52.260,69.557
-"engine + graphs, budget 256",5,3,17536,10.848,48.070,66.163
-"engine + graphs, budget 256",6,1,17536,11.079,52.274,70.065
-"engine + graphs, budget 256",6,2,17536,11.368,54.354,73.313
-"engine + graphs, budget 256",6,3,17536,11.342,54.835,68.953
-"engine + graphs, budget 256",8,1,17536,11.273,57.489,70.959
-"engine + graphs, budget 256",8,2,17536,11.518,61.353,72.692
-"engine + graphs, budget 256",8,3,17536,11.554,58.988,68.025
-"engine + graphs, budget 512",1,1,17536,7.962,12.014,94.115
-"engine + graphs, budget 512",1,2,17536,8.050,10.767,96.865
-"engine + graphs, budget 512",1,3,17536,8.046,10.752,97.125
-"engine + graphs, budget 512",2,1,17536,8.412,44.694,96.944
-"engine + graphs, budget 512",2,2,17536,8.547,44.511,98.071
-"engine + graphs, budget 512",2,3,17536,8.531,44.662,97.716
-"engine + graphs, budget 512",3,1,17536,9.052,68.949,97.220
-"engine + graphs, budget 512",3,2,17536,9.092,67.788,97.981
-"engine + graphs, budget 512",3,3,17536,9.096,67.574,97.880
-"engine + graphs, budget 512",4,1,17536,9.567,74.679,101.298
-"engine + graphs, budget 512",4,2,17536,9.853,76.835,100.051
-"engine + graphs, budget 512",4,3,17536,9.823,77.033,98.237
-"engine + graphs, budget 512",5,1,17536,10.798,82.166,102.254
-"engine + graphs, budget 512",5,2,17536,10.931,81.788,105.054
-"engine + graphs, budget 512",5,3,17536,10.938,79.458,102.625
-"engine + graphs, budget 512",6,1,17536,11.125,82.319,103.611
-"engine + graphs, budget 512",6,2,17536,11.451,86.961,107.087
-"engine + graphs, budget 512",6,3,17536,11.377,84.808,104.927
-"engine + graphs, budget 512",8,1,17536,11.367,84.919,105.088
-"engine + graphs, budget 512",8,2,17536,11.526,91.545,106.474
-"engine + graphs, budget 512",8,3,17536,11.516,86.858,108.542
-engine + graphs,1,1,17536,7.938,9.437,154.909
-engine + graphs,1,2,17536,8.032,9.785,157.986
-engine + graphs,1,3,17536,8.082,9.628,159.013
-engine + graphs,2,1,17536,8.371,50.507,157.238
-engine + graphs,2,2,17536,8.513,51.077,160.763
-engine + graphs,2,3,17536,8.544,51.380,162.463
-engine + graphs,3,1,17536,8.916,75.428,154.401
-engine + graphs,3,2,17536,9.111,79.109,178.073
-engine + graphs,3,3,17536,9.144,75.835,179.847
-engine + graphs,4,1,17536,9.670,82.575,195.760
-engine + graphs,4,2,17536,10.042,88.854,200.643
-engine + graphs,4,3,17536,9.927,86.796,216.793
-engine + graphs,5,1,17536,10.679,90.157,207.617
-engine + graphs,5,2,17536,11.056,96.515,223.749
-engine + graphs,5,3,17536,11.015,101.391,212.239
-engine + graphs,6,1,17536,11.065,97.296,181.507
-engine + graphs,6,2,17536,11.397,99.298,184.262
-engine + graphs,6,3,17536,11.408,102.209,179.263
-engine + graphs,8,1,17536,11.351,99.218,172.589
-engine + graphs,8,2,17536,11.560,102.884,190.796
-engine + graphs,8,3,17536,11.518,101.738,141.116
+"engine + graphs, budget 2048",1,1,17536,9.003,13.169,53.814
+"engine + graphs, budget 2048",1,2,17536,8.987,13.052,53.708
+"engine + graphs, budget 2048",1,3,17536,9.141,12.458,58.500
+"engine + graphs, budget 2048",2,1,17536,9.339,34.072,66.639
+"engine + graphs, budget 2048",2,2,17536,9.338,34.238,65.875
+"engine + graphs, budget 2048",2,3,17536,9.374,34.116,55.152
+"engine + graphs, budget 2048",3,1,17536,10.060,41.538,67.970
+"engine + graphs, budget 2048",3,2,17536,10.502,41.427,80.387
+"engine + graphs, budget 2048",3,3,17536,10.085,42.140,67.939
+"engine + graphs, budget 2048",4,1,17536,11.096,44.877,64.741
+"engine + graphs, budget 2048",4,2,17536,11.066,46.183,67.133
+"engine + graphs, budget 2048",4,3,17536,11.104,46.129,64.782
+"engine + graphs, budget 2048",5,1,17536,12.047,49.023,72.189
+"engine + graphs, budget 2048",5,2,17536,12.077,48.260,72.297
+"engine + graphs, budget 2048",5,3,17536,12.099,48.242,73.547
+"engine + graphs, budget 2048",6,1,17536,12.719,48.512,72.697
+"engine + graphs, budget 2048",6,2,17536,12.707,48.864,72.755
+"engine + graphs, budget 2048",6,3,17536,12.737,49.959,73.564
+"engine + graphs, budget 2048",8,1,17536,13.043,51.219,77.184
+"engine + graphs, budget 2048",8,2,17536,12.894,51.410,76.451
+"engine + graphs, budget 2048",8,3,17536,13.032,51.419,77.447
+"engine + graphs, budget 256",1,1,17536,8.975,21.881,95.063
+"engine + graphs, budget 256",1,2,17536,8.991,21.279,40.368
+"engine + graphs, budget 256",1,3,17536,9.200,21.365,41.157
+"engine + graphs, budget 256",2,1,17536,9.375,25.709,41.713
+"engine + graphs, budget 256",2,2,17536,9.342,25.993,40.678
+"engine + graphs, budget 256",2,3,17536,9.756,26.085,41.825
+"engine + graphs, budget 256",3,1,17536,10.114,28.837,40.232
+"engine + graphs, budget 256",3,2,17536,10.122,29.115,41.016
+"engine + graphs, budget 256",3,3,17536,10.053,29.243,41.356
+"engine + graphs, budget 256",4,1,17536,11.133,30.226,39.826
+"engine + graphs, budget 256",4,2,17536,11.143,30.726,40.618
+"engine + graphs, budget 256",4,3,17536,11.161,30.835,40.600
+"engine + graphs, budget 256",5,1,17536,12.108,31.171,39.994
+"engine + graphs, budget 256",5,2,17536,12.117,31.514,41.298
+"engine + graphs, budget 256",5,3,17536,12.142,31.170,42.314
+"engine + graphs, budget 256",6,1,17536,12.698,31.584,46.776
+"engine + graphs, budget 256",6,2,17536,12.719,32.073,47.220
+"engine + graphs, budget 256",6,3,17536,12.750,32.326,42.064
+"engine + graphs, budget 256",8,1,17536,12.980,32.583,41.701
+"engine + graphs, budget 256",8,2,17536,12.956,32.867,41.033
+"engine + graphs, budget 256",8,3,17536,12.968,32.740,41.875
+"engine + graphs, budget 512",1,1,17536,9.055,14.219,53.383
+"engine + graphs, budget 512",1,2,17536,8.987,12.228,66.825
+"engine + graphs, budget 512",1,3,17536,9.139,13.845,100.060
+"engine + graphs, budget 512",2,1,17536,9.861,35.507,67.431
+"engine + graphs, budget 512",2,2,17536,9.509,34.198,52.714
+"engine + graphs, budget 512",2,3,17536,9.365,33.697,53.357
+"engine + graphs, budget 512",3,1,17536,10.029,41.666,65.494
+"engine + graphs, budget 512",3,2,17536,10.113,41.911,53.953
+"engine + graphs, budget 512",3,3,17536,10.109,41.930,53.877
+"engine + graphs, budget 512",4,1,17536,10.935,45.812,55.642
+"engine + graphs, budget 512",4,2,17536,10.865,45.801,56.142
+"engine + graphs, budget 512",4,3,17536,10.880,46.265,55.550
+"engine + graphs, budget 512",5,1,17536,12.113,47.530,62.892
+"engine + graphs, budget 512",5,2,17536,12.095,48.278,64.368
+"engine + graphs, budget 512",5,3,17536,12.068,47.864,62.325
+"engine + graphs, budget 512",6,1,17536,12.699,48.518,69.978
+"engine + graphs, budget 512",6,2,17536,12.746,50.430,57.802
+"engine + graphs, budget 512",6,3,17536,12.732,47.693,58.831
+"engine + graphs, budget 512",8,1,17536,12.993,50.300,59.593
+"engine + graphs, budget 512",8,2,17536,12.983,50.920,54.544
+"engine + graphs, budget 512",8,3,17536,13.062,51.600,58.227
+engine + graphs,1,1,17536,9.155,19.233,110.717
+engine + graphs,1,2,17536,9.057,18.625,107.427
+engine + graphs,1,3,17536,9.108,18.707,110.296
+engine + graphs,2,1,17536,9.398,39.308,92.355
+engine + graphs,2,2,17536,9.533,39.409,92.523
+engine + graphs,2,3,17536,9.533,39.881,92.581
+engine + graphs,3,1,17536,10.186,50.371,100.071
+engine + graphs,3,2,17536,10.401,49.786,107.353
+engine + graphs,3,3,17536,10.152,50.081,100.760
+engine + graphs,4,1,17536,11.002,54.914,108.198
+engine + graphs,4,2,17536,11.286,54.567,108.010
+engine + graphs,4,3,17536,10.966,55.019,109.763
+engine + graphs,5,1,17536,12.397,55.782,132.795
+engine + graphs,5,2,17536,12.388,55.822,113.300
+engine + graphs,5,3,17536,12.404,56.427,112.663
+engine + graphs,6,1,17536,12.812,57.225,120.276
+engine + graphs,6,2,17536,12.739,57.925,118.153
+engine + graphs,6,3,17536,12.811,58.820,126.176
+engine + graphs,8,1,17536,12.912,59.582,97.536
+engine + graphs,8,2,17536,12.926,59.458,84.560
+engine + graphs,8,3,17536,12.934,59.731,85.992
