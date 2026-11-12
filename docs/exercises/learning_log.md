@@ -2222,3 +2222,4 @@
 - **a build that throws when the text no longer matches the measured data** => 
 - **a list key by position when an id can repeat** => 
 - **a per-sequence draft limit that halves on a rejection and doubles on a full accept** => 
+- **a number derived from list position instead of kept by hand** => 
