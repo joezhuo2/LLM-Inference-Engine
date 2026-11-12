@@ -54,6 +54,7 @@ struct Options {
     bool graphs = false;
     int graph_steps = 2;
     int token_budget = 0;
+    int speculate = 0;
     std::string prefill_attention = "flash";
     int warmup = 3;
     uint64_t seed = 0;
@@ -158,6 +159,8 @@ void run(const Options& o) {
         throw std::invalid_argument("--token-budget needs --max-batch of at least 1");
     if (o.token_budget > 0 && o.token_budget < o.max_batch)
         throw std::invalid_argument("--token-budget must be at least --max-batch");
+    if (o.speculate > 0 && !batched)
+        throw std::invalid_argument("--speculate needs --max-batch of at least 1");
     if (o.prefill_attention != "flash" && !batched)
         throw std::invalid_argument("--prefill-attention needs --max-batch of at least 1");
     if (o.graph_steps < 1 || (o.graph_steps & (o.graph_steps - 1)) != 0)
@@ -180,7 +183,8 @@ void run(const Options& o) {
               .max_batch = o.max_batch,
               .max_prefill_tokens = int(max_prefill),
               .max_context = int(context),
-              .eos_id = eos_id};
+              .eos_id = eos_id,
+              .max_draft = o.speculate};
         if (o.graphs) owned_stream.emplace();
         cache.emplace(w.config, num_blocks, kKvBlockSize);
         paged_runner.emplace(w.config, w.weights, *cache,
@@ -266,6 +270,9 @@ void run(const Options& o) {
         fields.emplace_back("token_budget", std::to_string(o.token_budget));
         fields.emplace_back("graph_steps", std::to_string(o.graphs ? o.graph_steps : 0));
         fields.emplace_back("prefill_attention", o.prefill_attention);
+        fields.emplace_back("speculate", std::to_string(o.speculate));
+        fields.emplace_back("drafted", std::to_string(stats.drafted));
+        fields.emplace_back("draft_accepted", std::to_string(stats.accepted));
     } else {
         fields.emplace_back("decode_weight_bytes", std::to_string(weight_bytes));
         fields.emplace_back("bandwidth_gb_s", csv_number(bandwidth));
@@ -284,6 +291,7 @@ void run(const Options& o) {
         meta["graphs"] = o.graphs;
         meta["graph_steps"] = o.graphs ? o.graph_steps : 0;
         meta["token_budget"] = o.token_budget;
+        meta["speculate"] = o.speculate;
         meta["kv_blocks"] = num_blocks;
         meta["block_size"] = kKvBlockSize;
         meta["num_requests"] = o.num_requests;
@@ -318,8 +326,14 @@ void run(const Options& o) {
         std::fprintf(stderr, "peak KV blocks %d of %d, %lld preemptions\n",
                      num_blocks - stats.min_free_blocks, num_blocks,
                      static_cast<long long>(preemptions));
-    else
-        std::fprintf(stderr, "%.1f GB/s of weights\n", bandwidth);
+    if (batched && o.speculate > 0)
+        std::fprintf(
+            stderr, "%d steps; %lld draft tokens, %lld accepted (%.1f%%); %.2f tokens per step\n",
+            stats.steps, static_cast<long long>(stats.drafted),
+            static_cast<long long>(stats.accepted),
+            stats.drafted > 0 ? 100.0 * double(stats.accepted) / double(stats.drafted) : 0.0,
+            double(s.output_tokens) / double(stats.steps));
+    if (!batched) std::fprintf(stderr, "%.1f GB/s of weights\n", bandwidth);
     std::fprintf(stderr, "wrote %s and %s\n", o.out.c_str(), summary_path.c_str());
     if (!o.trace.empty())
         std::fprintf(stderr, "wrote %zu steps to %s\n", steps.size(), o.trace.c_str());
@@ -357,6 +371,13 @@ void add_bench_command(CLI::App& app) {
                     "Chunked prefill: at most this many tokens per step, decode rows first and "
                     "prompts split across steps; at least --max-batch; 0 keeps whole-prompt "
                     "prefill steps")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
+    cmd->add_option("--speculate", opts->speculate,
+                    "Speculative decoding by prompt lookup: guess up to this many next tokens per "
+                    "sequence from an earlier place in its context and check them in the same "
+                    "step, using only batch rows no sequence needs; the output does not change; "
+                    "0 is off; needs --max-batch")
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
     cmd->add_option("--prefill-attention", opts->prefill_attention,

@@ -38,20 +38,23 @@ struct OwnedStream {
     OwnedStream& operator=(const OwnedStream&) = delete;
 };
 
-SchedulerConfig scheduler_config(const ModelConfig& config, int num_blocks, int max_batch) {
+SchedulerConfig scheduler_config(const ModelConfig& config, int num_blocks, int max_batch,
+                                 int max_draft) {
     return {.num_blocks = num_blocks,
             .block_size = kKvBlockSize,
             .max_batch = max_batch,
             .max_prefill_tokens = std::max(kMaxPrefillTokens, int(config.max_positions)),
             .max_context = int(config.max_positions),
-            .eos_id = config.eos_id};
+            .eos_id = config.eos_id,
+            .max_draft = max_draft};
 }
 
 class GpuBackend final : public Backend {
 public:
     GpuBackend(const DeviceWeights& w, const GpuBackendOptions& o)
-        : config_(scheduler_config(
-              w.config, kv_cache_blocks(w.config, kKvBlockSize, device_free_bytes()), o.max_batch)),
+        : config_(scheduler_config(w.config,
+                                   kv_cache_blocks(w.config, kKvBlockSize, device_free_bytes()),
+                                   o.max_batch, o.speculate)),
           scheduler_(config_),
           stream_(o.graphs),
           cache_(w.config, config_.num_blocks, kKvBlockSize),
@@ -96,6 +99,7 @@ std::unique_ptr<Backend> make_gpu_backend(const DeviceWeights& weights,
         throw std::invalid_argument("serve: --token-budget must be at least --max-batch");
     if (options.graph_steps < 1 || (options.graph_steps & (options.graph_steps - 1)) != 0)
         throw std::invalid_argument("serve: --graph-steps must be a power of two");
+    if (options.speculate < 0) throw std::invalid_argument("serve: --speculate must be at least 0");
     return std::make_unique<GpuBackend>(weights, options);
 }
 

@@ -34,6 +34,7 @@ struct Options {
     bool graphs = false;
     int graph_steps = 2;
     int token_budget = 0;
+    int speculate = 0;
     std::vector<std::string> cors_origins = server::kDefaultCorsOrigins;
     std::vector<std::string> allow_hosts;
     server::SamplingDefaults defaults{};
@@ -69,7 +70,8 @@ server::HttpOptions http_options(const Options& o, const ModelConfig& config) {
                                    {"max_batch", o.max_batch},
                                    {"graphs", o.graphs},
                                    {"graph_steps", o.graphs ? o.graph_steps : 0},
-                                   {"token_budget", o.token_budget}};
+                                   {"token_budget", o.token_budget},
+                                   {"speculate", o.speculate}};
     return {.cors_origins = o.cors_origins,
             .allowed_hosts = allowed_hosts(o),
             .defaults = o.defaults,
@@ -92,7 +94,8 @@ void run(const Options& o) {
     const auto backend = server::make_gpu_backend(w, {.max_batch = o.max_batch,
                                                       .graphs = o.graphs,
                                                       .graph_steps = o.graph_steps,
-                                                      .token_budget = o.token_budget});
+                                                      .token_budget = o.token_budget,
+                                                      .speculate = o.speculate});
     server::ServingLoop loop(
         *backend, [&](std::span<const int32_t> ids) { return tokenizer.decode(ids); },
         w.config.eos_id);
@@ -156,6 +159,13 @@ void add_serve_command(CLI::App& app) {
                     "Chunked prefill: at most this many tokens per step, decode rows first and "
                     "prompts split across steps; at least --max-batch; 0 keeps whole-prompt "
                     "prefill steps")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
+    cmd->add_option("--speculate", opts->speculate,
+                    "Speculative decoding by prompt lookup: guess up to this many next tokens per "
+                    "sequence from an earlier place in its context and check them in the same "
+                    "step, using only batch rows no sequence needs; the output does not change; "
+                    "0 is off")
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
     cmd->add_option("--cors-origin", opts->cors_origins,

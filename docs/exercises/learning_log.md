@@ -2213,3 +2213,5 @@
 - **a sampler keyed by seed and token position keeps speculation exact** => 
 - **giving cache slots back after a rejected draft** => 
 - **a host model that reads its context through the slot mapping** => 
+- **a counter of proposed and accepted draft tokens as the acceptance rate** => 
+- **a stream event per token when one step writes several** => 

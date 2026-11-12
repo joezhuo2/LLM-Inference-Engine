@@ -71,6 +71,45 @@ TEST(ServingLoop, StreamsEachTokenWithItsStepAndEndsWithLength) {
     EXPECT_TRUE(t.events->closed());
 }
 
+TEST(ServingLoop, ASpeculativeStepStreamsEveryTokenItWroteInOrder) {
+    ScriptedBackend backend(
+        [](const Request& r) { return int32_t(100 + (r.prompt.size() + r.output.size()) % 4); }, 64,
+        16, 256, milliseconds(0), 4);
+    ServingLoop loop(backend, word_decode, kEos);
+    const Ticket t = loop.submit(
+        Submission{.prompt = {100, 101, 102, 103, 100, 101, 102, 103}, .max_tokens = 9});
+    run_until_idle(loop);
+    const auto events = drain(t);
+    ASSERT_EQ(events.size(), 10u);
+    EXPECT_EQ(text_of(events), " w100 w101 w102 w103 w100 w101 w102 w103 w100");
+    const int steps[9] = {0, 1, 1, 1, 1, 1, 2, 2, 2};
+    for (int i = 0; i < 9; ++i) EXPECT_EQ(events[size_t(i)].step, steps[i]) << "token " << i;
+    EXPECT_EQ(events[9].finish, FinishReason::Length);
+    EXPECT_EQ(events[9].completion_tokens, 9);
+    const auto m = loop.metrics();
+    EXPECT_EQ(m.counters.steps_total, 3);
+    EXPECT_EQ(m.counters.output_total, 9);
+    EXPECT_EQ(m.counters.drafted_total, 6);
+    EXPECT_EQ(m.counters.draft_accepted_total, 6);
+    EXPECT_EQ(m.counters.finished_total, 1);
+}
+
+TEST(ServingLoop, AStopStringInsideASpeculativeStepEndsTheAnswerThere) {
+    ScriptedBackend backend(
+        [](const Request& r) { return int32_t(100 + (r.prompt.size() + r.output.size()) % 4); }, 64,
+        16, 256, milliseconds(0), 4);
+    ServingLoop loop(backend, word_decode, kEos);
+    const Ticket t = loop.submit(Submission{
+        .prompt = {100, 101, 102, 103, 100, 101, 102, 103}, .max_tokens = 9, .stop = {" w102"}});
+    run_until_idle(loop);
+    const auto events = drain(t);
+    EXPECT_EQ(text_of(events), " w100 w101");
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(events.back().finish, FinishReason::Stop);
+    EXPECT_EQ(backend.scheduler().num_running(), 0);
+    EXPECT_EQ(backend.scheduler().blocks().num_free(), backend.num_blocks() - 1);
+}
+
 TEST(ServingLoop, EosEndsWithStopAndAddsNoText) {
     ScriptedBackend backend([](const Request& r) { return r.output.size() == 1 ? kEos : 12; });
     ServingLoop loop(backend, word_decode, kEos);
