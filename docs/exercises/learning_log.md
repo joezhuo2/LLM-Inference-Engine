@@ -2215,3 +2215,6 @@
 - **a host model that reads its context through the slot mapping** => 
 - **a counter of proposed and accepted draft tokens as the acceptance rate** => 
 - **a stream event per token when one step writes several** => 
+- **a near tie in BF16 logits and why the row count can flip it** => 
+- **break-even acceptance: the cost of extra rows against the tokens they yield** => 
+- **an independent reimplementation as a check on recorded counts** => 
