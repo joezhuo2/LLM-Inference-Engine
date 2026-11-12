@@ -31,6 +31,7 @@ add_executable(unit_tests
   unit/test_scheduler.cpp
   unit/test_scheduler_cancel.cpp
   unit/test_scheduler_chunked.cpp
+  unit/test_scheduler_speculative.cpp
   unit/test_serving_loop.cpp
   unit/test_speculative.cpp
   unit/test_stop_matcher.cpp

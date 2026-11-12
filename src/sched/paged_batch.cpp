@@ -15,19 +15,26 @@ void require(bool ok, const std::string& what) {
     if (!ok) throw std::invalid_argument("[build_paged_batch] " + what);
 }
 
-bool append_rows(PagedBatch& batch, const Scheduler& scheduler, SeqId id, int first, int count) {
+std::span<const int32_t> draft_of(std::span<const std::vector<int32_t>> drafts, size_t i) {
+    return i < drafts.size() ? std::span<const int32_t>(drafts[i]) : std::span<const int32_t>();
+}
+
+bool append_rows(PagedBatch& batch, const Scheduler& scheduler, SeqId id, int first, int count,
+                 std::span<const int32_t> draft = {}) {
     const BlockManager& blocks = scheduler.blocks();
     const Request& request = scheduler.request(id);
     const int length = blocks.length(id);
     const std::string name = "sequence " + std::to_string(id);
     require(request.state == RequestState::Running, name + " is not running");
-    require(length == request.length(), name + " holds a different number of slots than tokens");
+    const int64_t known = request.length();
+    require(length == known + int64_t(draft.size()),
+            name + " holds a different number of slots than tokens");
     const std::vector<int>& table = blocks.table(id);
     require(int64_t(table.size()) <= batch.max_blocks, name + " needs more blocks than max_blocks");
     require(first >= 0 && count > 0 && first + count <= length, name + " has rows past its tokens");
 
     for (int pos = first; pos < first + count; ++pos) {
-        batch.token_ids.push_back(request.token(pos));
+        batch.token_ids.push_back(pos < known ? request.token(pos) : draft[size_t(pos - known)]);
         batch.positions.push_back(pos);
         batch.slot_mapping.push_back(blocks.slot(id, pos));
         batch.context_lens.push_back(pos + 1);
@@ -36,7 +43,11 @@ bool append_rows(PagedBatch& batch, const Scheduler& scheduler, SeqId id, int fi
         std::copy(table.begin(), table.end(), batch.block_tables.begin() + int64_t(row));
     }
     const bool last = first + count == length;
-    if (last) batch.logit_rows.push_back(int32_t(batch.token_ids.size() - 1));
+    if (last) {
+        const size_t rows = batch.token_ids.size();
+        for (size_t row = rows - 1 - draft.size(); row < rows; ++row)
+            batch.logit_rows.push_back(int32_t(row));
+    }
     return last;
 }
 
@@ -50,16 +61,21 @@ PagedBatch build_paged_batch(const Step& step, const Scheduler& scheduler, int m
     batch.prefill = step.prefill;
     batch.num_seqs = int64_t(step.seqs.size());
     batch.max_blocks = max_blocks;
-    for (const SeqId id : step.seqs) {
+    require(step.drafts.empty() || (!step.prefill && step.drafts.size() == step.seqs.size()),
+            "drafts must be empty or hold one entry per decode sequence");
+    for (size_t i = 0; i < step.seqs.size(); ++i) {
+        const SeqId id = step.seqs[i];
+        const std::span<const int32_t> draft = draft_of(step.drafts, i);
         const int length = scheduler.blocks().length(id);
-        const int first = step.prefill ? 0 : length - 1;
+        const int first = step.prefill ? 0 : length - 1 - int(draft.size());
         if (step.prefill) {
             batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
             batch.cached_lens.push_back(0);
         }
-        append_rows(batch, scheduler, id, first, length - first);
+        append_rows(batch, scheduler, id, first, length - first, draft);
     }
     if (step.prefill) batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
+    batch.num_seqs = int64_t(batch.logit_rows.size());
     return batch;
 }
 
@@ -72,10 +88,16 @@ PagedBatch build_chunked_batch(const ChunkedStep& step, const Scheduler& schedul
     batch.prefill = !step.prefill.empty();
     batch.num_seqs = int64_t(step.sampled.size());
     batch.max_blocks = max_blocks;
+    require(step.drafts.empty() || step.drafts.size() == step.decode.size(),
+            "drafts must be empty or hold one entry per decode sequence");
     std::vector<SeqId> ends;
-    for (const SeqId id : step.decode)
-        if (append_rows(batch, scheduler, id, scheduler.blocks().length(id) - 1, 1))
+    for (size_t i = 0; i < step.decode.size(); ++i) {
+        const SeqId id = step.decode[i];
+        const std::span<const int32_t> draft = draft_of(step.drafts, i);
+        const int rows = 1 + int(draft.size());
+        if (append_rows(batch, scheduler, id, scheduler.blocks().length(id) - rows, rows, draft))
             ends.push_back(id);
+    }
     for (const PrefillChunk& chunk : step.prefill) {
         batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
         batch.cached_lens.push_back(chunk.first);
@@ -85,6 +107,7 @@ PagedBatch build_chunked_batch(const ChunkedStep& step, const Scheduler& schedul
     if (batch.prefill) batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
     require(ends == step.sampled,
             "sampled must list the sequences whose rows reach their last token, in row order");
+    batch.num_seqs = int64_t(batch.logit_rows.size());
     return batch;
 }
 
@@ -128,12 +151,15 @@ int64_t attention_splits(int64_t rows, int64_t heads, int64_t longest_context) {
     return splits;
 }
 
-std::vector<SampleRow> sample_rows(std::span<const SeqId> seqs, const Scheduler& scheduler) {
+std::vector<SampleRow> sample_rows(std::span<const SeqId> seqs, const Scheduler& scheduler,
+                                   std::span<const std::vector<int32_t>> drafts) {
     std::vector<SampleRow> rows;
     rows.reserve(seqs.size());
-    for (const SeqId id : seqs) {
-        const Request& request = scheduler.request(id);
-        rows.push_back(SampleRow{request.params, uint64_t(request.output.size())});
+    for (size_t i = 0; i < seqs.size(); ++i) {
+        const Request& request = scheduler.request(seqs[i]);
+        const uint64_t step = request.output.size();
+        for (uint64_t j = 0; j <= draft_of(drafts, i).size(); ++j)
+            rows.push_back(SampleRow{request.params, step + j});
     }
     return rows;
 }

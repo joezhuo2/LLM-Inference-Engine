@@ -41,6 +41,7 @@ PagedBatch pad_decode_batch(const PagedBatch& batch, int64_t rows);
 
 int64_t attention_splits(int64_t rows, int64_t heads, int64_t longest_context);
 
-std::vector<SampleRow> sample_rows(std::span<const SeqId> seqs, const Scheduler& scheduler);
+std::vector<SampleRow> sample_rows(std::span<const SeqId> seqs, const Scheduler& scheduler,
+                                   std::span<const std::vector<int32_t>> drafts = {});
 
 }  // namespace engine

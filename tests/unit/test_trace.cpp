@@ -55,6 +55,8 @@ TEST(TraceJson, StepsCarryRelativeTimesKindsAndAlignedTokens) {
     steps[1].waiting = 3;
     steps[1].running = 1;
     steps[1].free_blocks = 99;
+    steps[1].drafted = 6;
+    steps[1].accepted = 2;
     const auto j = trace_json({}, {}, steps, kStart, echo);
 
     ASSERT_EQ(j["steps"].size(), 2u);
@@ -66,6 +68,8 @@ TEST(TraceJson, StepsCarryRelativeTimesKindsAndAlignedTokens) {
     EXPECT_EQ(first["seqs"], (std::vector<SeqId>{4, 7}));
     EXPECT_EQ(first["tokens"][1]["id"], 12);
     EXPECT_EQ(first["tokens"][1]["text"], "7:12");
+    EXPECT_EQ(first["drafted"], 0);
+    EXPECT_EQ(first["accepted"], 0);
 
     const auto& second = j["steps"][1];
     EXPECT_EQ(second["index"], 1);
@@ -74,6 +78,8 @@ TEST(TraceJson, StepsCarryRelativeTimesKindsAndAlignedTokens) {
     EXPECT_EQ(second["waiting"], 3);
     EXPECT_EQ(second["running"], 1);
     EXPECT_EQ(second["free_blocks"], 99);
+    EXPECT_EQ(second["drafted"], 6);
+    EXPECT_EQ(second["accepted"], 2);
 }
 
 TEST(TraceJson, AsksForTheTextOfEveryTokenInStepOrder) {

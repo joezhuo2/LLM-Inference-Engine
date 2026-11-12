@@ -2206,3 +2206,10 @@
 ## Speculative decoding wired into the step (Branch 150)
 
 - **a test that moves out of the todo target once the implementation passes** => 
+- **several rows of one sequence in a single decode step** => 
+- **a draft row attends to the draft rows before it** => 
+- **the first disagreement ends the accepted run** => 
+- **spare batch rows as the budget for guesses** => 
+- **a sampler keyed by seed and token position keeps speculation exact** => 
+- **giving cache slots back after a rejected draft** => 
+- **a host model that reads its context through the slot mapping** => 
