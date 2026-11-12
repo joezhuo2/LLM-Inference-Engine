@@ -55,6 +55,7 @@ struct Options {
     int graph_steps = 2;
     int token_budget = 0;
     int speculate = 0;
+    bool speculate_adaptive = false;
     std::string prefill_attention = "flash";
     int warmup = 3;
     uint64_t seed = 0;
@@ -184,7 +185,8 @@ void run(const Options& o) {
               .max_prefill_tokens = int(max_prefill),
               .max_context = int(context),
               .eos_id = eos_id,
-              .max_draft = o.speculate};
+              .max_draft = o.speculate,
+              .adaptive_draft = o.speculate_adaptive};
         if (o.graphs) owned_stream.emplace();
         cache.emplace(w.config, num_blocks, kKvBlockSize);
         paged_runner.emplace(w.config, w.weights, *cache,
@@ -271,6 +273,7 @@ void run(const Options& o) {
         fields.emplace_back("graph_steps", std::to_string(o.graphs ? o.graph_steps : 0));
         fields.emplace_back("prefill_attention", o.prefill_attention);
         fields.emplace_back("speculate", std::to_string(o.speculate));
+        fields.emplace_back("speculate_adaptive", o.speculate_adaptive ? "1" : "0");
         fields.emplace_back("drafted", std::to_string(stats.drafted));
         fields.emplace_back("draft_accepted", std::to_string(stats.accepted));
     } else {
@@ -292,6 +295,7 @@ void run(const Options& o) {
         meta["graph_steps"] = o.graphs ? o.graph_steps : 0;
         meta["token_budget"] = o.token_budget;
         meta["speculate"] = o.speculate;
+        meta["speculate_adaptive"] = o.speculate_adaptive;
         meta["kv_blocks"] = num_blocks;
         meta["block_size"] = kKvBlockSize;
         meta["num_requests"] = o.num_requests;
@@ -380,6 +384,10 @@ void add_bench_command(CLI::App& app) {
                     "0 is off; needs --max-batch")
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
+    cmd->add_flag("--speculate-adaptive", opts->speculate_adaptive,
+                  "With --speculate: each sequence starts at that many draft tokens, halves its "
+                  "limit after a step that rejects one and doubles it back after a step that "
+                  "accepts them all");
     cmd->add_option("--prefill-attention", opts->prefill_attention,
                     "Attention kernel for prefill rows: flash runs them through "
                     "flash_attention_prefill, paged through the per-row decode kernels as before "

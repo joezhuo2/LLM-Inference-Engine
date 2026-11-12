@@ -21,6 +21,7 @@ struct SchedulerConfig {
     int32_t eos_id = -1;
     int max_draft = 0;
     int max_ngram = 3;
+    bool adaptive_draft = false;
 };
 
 struct Step {
@@ -86,6 +87,7 @@ private:
     std::unordered_map<SeqId, int> prefill_progress_;
     std::vector<SeqId> pending_sampled_seqs_;
     std::vector<std::vector<int32_t>> pending_drafts_;
+    std::unordered_map<SeqId, int> draft_limit_;
     DraftCounts draft_counts_;
 };
 

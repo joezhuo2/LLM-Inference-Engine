@@ -410,6 +410,43 @@ TEST(SchedulerSpeculative, AcceptedDraftsSaveSteps) {
     EXPECT_GT(speculative.drafts.accepted, 0);
 }
 
+TEST(SchedulerSpeculative, AdaptiveLimitHalvesOnARejectionAndDoublesBack) {
+    SchedulerConfig c = config(40, 16, 8);
+    c.adaptive_draft = true;
+    Scheduler s(c);
+    s.submit(make(1, repeating(30), 100));
+    s.schedule();
+    s.update(Tokens{11});
+
+    Tokens draft = s.schedule().drafts.at(0);
+    ASSERT_EQ(draft.size(), 8u);
+    Tokens reply = draft;
+    reply.back() = 11;
+    reply.push_back(0);
+    s.update(reply);
+
+    draft = s.schedule().drafts.at(0);
+    ASSERT_EQ(draft.size(), 4u);
+    reply = draft;
+    reply.push_back(16);
+    s.update(reply);
+
+    EXPECT_EQ(s.schedule().drafts.at(0).size(), 8u);
+}
+
+TEST(SchedulerSpeculative, FixedLimitStaysAfterARejection) {
+    Scheduler s(config(40, 16, 8));
+    s.submit(make(1, repeating(30), 100));
+    s.schedule();
+    s.update(Tokens{11});
+    Tokens reply = s.schedule().drafts.at(0);
+    ASSERT_EQ(reply.size(), 8u);
+    reply.back() = 11;
+    reply.push_back(0);
+    s.update(reply);
+    EXPECT_EQ(s.schedule().drafts.at(0).size(), 8u);
+}
+
 TEST(SchedulerSpeculative, RandomRunsWithPreemptionMatchPlainDecoding) {
     int preempted = 0;
     int64_t accepted = 0;
@@ -420,6 +457,7 @@ TEST(SchedulerSpeculative, RandomRunsWithPreemptionMatchPlainDecoding) {
         };
         SchedulerConfig c = config(pick(18, 50), pick(1, 8), pick(1, 12), kEos);
         c.max_ngram = pick(1, 4);
+        c.adaptive_draft = seed % 2 == 1;
         const int budget = pick(0, 1) == 0 ? 0 : c.max_batch + pick(0, 64);
         std::vector<Request> requests;
         for (int i = 0; i < 16; ++i) {
