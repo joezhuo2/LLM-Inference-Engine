@@ -282,3 +282,24 @@ Branch `web/token-journey` in the worktree `~/code/llm-inference-engine-journey`
 - Helpers: engine gate copy `~/.cache/llmie-journey/verify.sh`, registry split script `~/.cache/llmie-journey/registries.py`, screenshots `~/.cache/llmie-web/journey/`.
 
 2026-11-11 (end): #208 merged at Joe's request (merge commit, main d6f7c6c). CI's CUDA compile job failed three times in its apt step: the job container could not resolve `archive.ubuntu.com`, then could not reach the Azure mirror on port 80, while the runner around it could. It now runs the CUDA image itself with `docker run --network host` and the Azure mirror (`.github/workflows/ci.yml`). Auto-merge was set but did not fire with every check green, so the PR was merged with `gh pr merge --merge`. The worktree `~/code/llm-inference-engine-journey` was removed at Joe's request (clean, merged); the local branch `web/token-journey` is kept.
+
+## Snapshot 2026-11-12 (speculative decoding wired, measured, and a chapter)
+
+Branch `sched/speculative-wire` in the worktree `~/code/llm-inference-engine-spec`, stacked on Joe's local branch `sched/speculative-impl` (his three commits: the lookup, the accept count, truncate), local and unpushed, Branch 150 in the learning log. Five commits, each gated.
+
+- 233c78c: Joe's 24 tests moved from `tests/todo/unit/` into `unit_tests`.
+- 621ad6e: the wiring, Part C written by Claude at Joe's request (`docs/ownership.md` has the row). `SchedulerConfig::max_draft` and `max_ngram`; `Scheduler::reserve_drafts`; `Step::drafts` and `ChunkedStep::drafts`; `update` takes one token per sampled row. Drafts take only rows no sequence needs (sampled rows never pass `max_batch`), only budget prefill left over, never a preemption, never past `max_new_tokens`. The runner did not change: draft rows are decode rows with their own context length, and a decode step with drafts replays the CUDA Graph of its row count.
+- 2209da5: `--speculate N` on `engine bench` and `engine serve`, summary and `/metrics` fields, docs.
+- 306d959: the sweep (`scripts/speculative_sweep.sh`, `_report.py`, `_ties.py`, `_example.py`, `scripts/prompts_repeat.json`) and `docs/results.md`, "Speculative decoding". One request at a time, up to 8 drafts: repeat prompts 7.90 to 4.12 ms per token (1.92x), chat prompts 7.71 to 6.01 ms (1.28x).
+- b680ca2: the book chapter `speculative-decoding` (chapter 14, end of Part III), four 3D exhibits, three glossary terms, the "beyond" page reworded, the dashboard's step tokens keyed by row.
+
+Things to know:
+
+- The output is not always token for token the plain output. 4 of 10 prompts differ, each first at a token whose two best BF16 logits are 0 or 1 BF16 steps apart (checked against HuggingFace by `scripts/speculative_ties.py`). The cause is the row count of the step, the same as a change of batch size; the GPU tests compare up to ties. The chapter and `docs/results.md` say so.
+- The Python scripts that need transformers run with `~/code/llm-inference-engine/.venv/bin/python`. `bench` counts BOS in the prompt tokens; `apply_chat_template` does not add it.
+- A step's trace lists a sequence once per token it wrote. `StepTrace` has `drafted` and `accepted`.
+- Once prefix caching (#99) lands, `BlockManager::truncate` must lower block counts through the same path as `free`, not call `free_block` directly.
+
+Not done: no measurement between 2 and 15 running sequences or under load; greedy only in the sweep; no adaptive draft length; no draft model; `engine generate` has no flag (it does not use the scheduler). The chapter has no sandbox, prediction or exercise and is not on the one-hour path. Web checked in headless Chrome only (dark, light for two spreads, 390 px for two spreads, one real-mouse drag); motion timing was not measured.
+
+Helpers: engine gate `~/.cache/llmie-spec/verify.sh`, web gate `~/.cache/llmie-spec/verify-web.sh`, screenshots `~/.cache/llmie-spec/shots/`, the near-tie check of one prompt `~/.cache/llmie-spec/tie/`.
