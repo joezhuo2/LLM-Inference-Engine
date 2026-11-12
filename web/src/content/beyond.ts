@@ -14,7 +14,7 @@ export { beyondTitle };
 export const beyondIntro = [
   `This book's argument fits in one sentence. At batch 1 a decode step reads every weight once, so tokens per second can be no higher than the memory bandwidth divided by the bytes read per token. Chapter ${chapterNumber("foundations")}, ${title("foundations")}, sets up that bound, and chapter ${chapterNumber("gemm")}, ${title("gemm")}, measures the projections against it.`,
   "The engine in this book stops at one model in BF16 on one GPU. Real engines go further in four ways, and each one changes the bytes read per token.",
-  "None of the four is implemented or measured in this engine. What follows says what each one does to the book's unit and what it costs, with one source to read for each.",
+  `Quantization, prefix caching and multiple GPUs are not implemented or measured in this engine. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model is not. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
 ];
 
 export const beyondTopics: BeyondTopic[] = [
@@ -32,9 +32,10 @@ export const beyondTopics: BeyondTopic[] = [
   },
   {
     id: "speculative-decoding",
-    title: "speculative decoding",
+    title: "speculative decoding with a draft model",
     unit: "the large model's bytes shared by several tokens",
     paragraphs: [
+      `Chapter ${chapterNumber("speculative-decoding")} guesses the next tokens by copying them from earlier in the context, which works when the answer repeats its prompt and not otherwise. A draft model can guess anywhere.`,
       "A small draft model writes a few tokens ahead, one decode step each. The large model then scores all of them in one pass, which reads its weights once, the same way prefill handles many prompt tokens with one read. A round reads the draft's weights once per drafted token and the large model's weights once, and it yields the accepted tokens plus one more from the large model. So the large model's bytes are divided over the tokens of the round, where plain decoding pays all of them for every token.",
       "A drafted token is kept with a probability set by how the two models rated it, and a rejected one is replaced by a draw from a corrected distribution. With that rule the output has exactly the distribution of the large model alone. The gain depends on how often the draft is accepted: a draft that is usually wrong makes each kept token cost more bytes than plain decoding does, because the draft's reads are wasted.",
     ],

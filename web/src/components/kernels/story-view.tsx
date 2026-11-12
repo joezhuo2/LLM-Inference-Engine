@@ -22,6 +22,8 @@ import { GemmStory } from "./gemm/story";
 import { GemmStream } from "./gemm/stream";
 import { MemoryAboutStory } from "./memory-budget/about";
 import { MemoryStory } from "./memory-budget/story";
+import { SpeculativeAboutStory } from "./speculative-decoding/about";
+import { SpeculativeStory } from "./speculative-decoding/story";
 import { OneTokenAboutStory } from "./one-token/about";
 import { OneTokenStory } from "./one-token/story";
 import { FoundationsAboutStory } from "./foundations/about";
@@ -82,6 +84,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <OneTokenStory />;
     case "memory-budget":
       return <MemoryStory />;
+    case "speculative-decoding":
+      return <SpeculativeStory />;
     default:
       return null;
   }
@@ -134,6 +138,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <OneTokenAboutStory />;
     case "memory-budget":
       return <MemoryAboutStory />;
+    case "speculative-decoding":
+      return <SpeculativeAboutStory />;
     default:
       return null;
   }

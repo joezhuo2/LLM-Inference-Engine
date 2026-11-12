@@ -2218,3 +2218,6 @@
 - **a near tie in BF16 logits and why the row count can flip it** => 
 - **break-even acceptance: the cost of extra rows against the tokens they yield** => 
 - **an independent reimplementation as a check on recorded counts** => 
+- **a figure rebuilt from recorded steps and checked against the recorder's counts** => 
+- **a build that throws when the text no longer matches the measured data** => 
+- **a list key by position when an id can repeat** => 

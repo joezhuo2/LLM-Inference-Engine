@@ -204,4 +204,7 @@ writeFileSync(join(dataDir, "kv_demo.json"), JSON.stringify(kvDemo));
 const samplingLogitsFile = join(results, "sampling_logits.json");
 const samplingLogits = existsSync(samplingLogitsFile) ? JSON.parse(readFileSync(samplingLogitsFile, "utf8")) : {};
 writeFileSync(join(dataDir, "sampling_logits.json"), JSON.stringify(samplingLogits));
+const speculativeFile = join(results, "speculative_example.json");
+const speculativeExample = existsSync(speculativeFile) ? JSON.parse(readFileSync(speculativeFile, "utf8")) : {};
+writeFileSync(join(dataDir, "speculative_example.json"), JSON.stringify(speculativeExample));
 console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, sampling logits ${samplingLogits.contexts?.length ?? 0} contexts, ${onchip.length} on-chip rows, environment ${environment.commit ?? "missing"}`);

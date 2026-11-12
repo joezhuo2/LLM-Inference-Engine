@@ -12,6 +12,7 @@ import prefillStepJson from "@/data/prefill_step.json";
 import profilingJson from "@/data/profiling.json";
 import resultsDocJson from "@/data/results_doc.json";
 import samplingLogitsJson from "@/data/sampling_logits.json";
+import speculativeExampleJson from "@/data/speculative_example.json";
 import summariesJson from "@/data/summaries.json";
 import tracesJson from "@/data/traces.json";
 
@@ -129,6 +130,16 @@ export type LoadTrace = { qps: number; prefill_steps: number; prefill_s: number;
 export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null; slo: { ttft_ms: number; tpot_ms: number } | null; load_trace?: LoadTrace | null };
 
 export const loadTrace = (): LoadTrace | null => resultsDoc.load_trace ?? null;
+
+export type SpeculativeStep = { index: number; at: number; ngram: number; match: number; draft: string[]; kept: number; ms: number };
+
+export type SpeculativeExample = { date: string; gpu: string; commit: string; name: string; max_draft: number; max_ngram: number; max_batch: number; prompt: string; prompt_tokens: string[]; output_tokens: string[]; steps: SpeculativeStep[] };
+
+export function speculativeExample(): SpeculativeExample {
+  const example = speculativeExampleJson as unknown as Partial<SpeculativeExample>;
+  if (!example.steps) throw new Error("results/speculative_example.json is missing, so the speculative decoding chapter has no recorded steps (scripts/speculative_example.py writes it)");
+  return example as SpeculativeExample;
+}
 
 export type Doc = "profiling" | "results";
 
