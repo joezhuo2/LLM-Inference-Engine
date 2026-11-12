@@ -224,6 +224,58 @@ Padding 17 rows to 32 costs about 1.7 ms per step (14%) against 24 or 20. These 
 
 Limits. One workload shape (64 and 64 tokens, offline), one GPU, outside CPU load during the runs, and no profile with graphs at these sizes (the nsys spans above are eager and include launch gaps of 14% to 37%).
 
+## Speculative decoding
+
+From `scripts/speculative_sweep.sh` and `scripts/speculative_report.py` (#102): `engine bench --max-batch 16 --graphs --num-requests 1 --stop-at-eos --speculate K`, one request at a time, so the other 15 rows of a step are free for guesses, greedy, to the end of the answer or 256 tokens, 3 runs per prompt and draft length. "repeat" is the four prompts of `scripts/prompts_repeat.json`, whose answers repeat their prompt (fix the spelling of a paragraph, repeat a paragraph, add a docstring to a function, rename a variable in it); "chat" is the first six prompts of `scripts/prompts.json`. The guess is prompt lookup with patterns of up to 3 tokens. Measured on 2026-11-12 on the RTX 5060 Laptop GPU, release build, at commit 2209da5; the 1-minute load average was 1.1 at the end. `results/speculative/` holds the CSVs; the traces of the first runs are not committed.
+
+Draft tokens are the guessed tokens the steps carried as extra rows, accepted the ones that became output. ms per token is the time per output token after the first, summed over the prompts of the set, median of the 3 runs. "same output" counts the prompts whose first run wrote exactly the tokens of the run without drafts.
+
+| prompts | max draft | output tokens | steps | draft tokens | accepted | accepted % | tokens per step | ms per token | speedup | same output | runs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| repeat | 0 | 441 | 441 | 0 | 0 | 0.0 | 1.00 | 7.90 | 1.00 | 4 of 4 | 3 |
+| repeat | 2 | 431 | 264 | 362 | 167 | 46.1 | 1.63 | 4.81 | 1.64 | 2 of 4 | 3 |
+| repeat | 4 | 431 | 233 | 592 | 198 | 33.4 | 1.85 | 4.39 | 1.80 | 2 of 4 | 3 |
+| repeat | 8 | 431 | 212 | 985 | 219 | 22.2 | 2.03 | 4.12 | 1.92 | 2 of 4 | 3 |
+| repeat | 15 | 431 | 204 | 1622 | 227 | 14.0 | 2.11 | 4.14 | 1.91 | 2 of 4 | 3 |
+| chat | 0 | 966 | 966 | 0 | 0 | 0.0 | 1.00 | 7.71 | 1.00 | 6 of 6 | 3 |
+| chat | 2 | 899 | 690 | 752 | 209 | 27.8 | 1.30 | 6.03 | 1.28 | 4 of 6 | 3 |
+| chat | 4 | 899 | 661 | 1367 | 238 | 17.4 | 1.36 | 5.93 | 1.30 | 4 of 6 | 3 |
+| chat | 8 | 899 | 650 | 2481 | 249 | 10.0 | 1.38 | 6.01 | 1.28 | 4 of 6 | 3 |
+| chat | 15 | 899 | 645 | 4163 | 254 | 6.1 | 1.39 | 6.22 | 1.24 | 4 of 6 | 3 |
+
+Every prompt with up to 8 draft tokens per step:
+
+| prompts | prompt | output tokens | steps | draft tokens | accepted | ms per token, no drafts | ms per token, up to 8 | speedup |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| repeat | add_docstring | 122 | 70 | 308 | 52 | 7.57 | 5.00 | 1.51 |
+| repeat | fix_typos | 76 | 26 | 117 | 50 | 8.36 | 2.68 | 3.12 |
+| repeat | rename_variable | 163 | 107 | 496 | 56 | 7.72 | 5.47 | 1.41 |
+| repeat | repeat_paragraph | 70 | 9 | 64 | 61 | 8.44 | 0.97 | 8.72 |
+| chat | arithmetic | 166 | 103 | 414 | 63 | 7.79 | 5.14 | 1.52 |
+| chat | capital | 9 | 7 | 16 | 2 | 7.13 | 5.45 | 1.31 |
+| chat | fibonacci | 185 | 118 | 416 | 67 | 7.66 | 5.13 | 1.49 |
+| chat | haiku | 27 | 24 | 46 | 3 | 7.20 | 6.47 | 1.11 |
+| chat | kv_cache | 256 | 187 | 779 | 69 | 7.70 | 6.16 | 1.25 |
+| chat | photosynthesis | 256 | 211 | 810 | 45 | 7.74 | 7.01 | 1.10 |
+
+What a step costs by its rows, from the 4,916 decode steps of the traced runs (wall time of the step, scheduling and sampling included; a step with drafts replays the graph of the next bucket, so 9 rows run the 12-row graph):
+
+| rows in the step | steps | median ms |
+|---:|---:|---:|
+| 1 | 2933 | 7.60 |
+| 3 | 569 | 7.84 |
+| 5 | 516 | 8.31 |
+| 9 | 402 | 8.74 |
+| 16 | 320 | 9.57 |
+
+Reading it. On the repeat prompts a step writes 2.03 tokens with up to 8 drafts and the time per token falls from 7.90 to 4.12 ms, 1.92x. Fifteen drafts are no better (4.14 ms): they add 637 draft tokens and 8 accepted ones, and a 16-row step costs 0.8 ms more than a 9-row one. Two drafts already give 1.64x, because the first guesses after a match are the ones most often right (46% accepted, against 22% at 8). The prompts differ widely: repeating a paragraph takes 9 steps for 70 tokens (61 of 64 guesses accepted, 8.7x), fixing its spelling 3.1x, and the two code edits 1.4x and 1.5x, because the model wraps the function in new text and adds an example that is not in the prompt.
+
+The chat prompts gain too, 1.28x to 1.30x with 2 to 8 drafts, although only 10% of the guesses are accepted at 8. Chat answers repeat themselves (list items, code, words of the question), and a wrong guess is cheap: 8 extra rows add 1.1 ms to a 7.6 ms step, so a step with 8 drafts pays for itself when it keeps 0.15 guesses on average, about one in fifty. With 15 drafts the gain shrinks to 1.24x. The answers without repetition gain least (photosynthesis 1.10x, the haiku 1.11x). No prompt got slower at 8.
+
+The output. A kept token is the one the model sampled for that position from the right context, and the sampler is keyed by seed and position, so speculation does not change what is sampled from given logits. The logits themselves come from a step with more rows, and BF16 rounding depends slightly on the row count, as it does when the batch size changes. 6 of the 10 prompts wrote identical tokens with and without drafts at every draft length. The other 4 (rename_variable, add_docstring, arithmetic, haiku) differ from the same token on at every draft length, and `scripts/speculative_ties.py` shows a near tie at each of those tokens: HuggingFace's BF16 logits of the two candidates are 0 or 1 BF16 steps apart (output token 16 of rename_variable: 14.75 against 14.8125), and its FP32 logits 0.09 to 1.38 steps. After such a token the two runs write different, equally likely answers, which is why the token counts of the rows with drafts differ from the rows without (431 against 441, 899 against 966). The GPU tests compare the two up to such ties (`tests/gpu/test_serve.cpp`).
+
+Limits. One request at a time: with 16 sequences decoding there is no spare row and a step carries no drafts (by construction and unit tested, not measured here), and what happens between 2 and 15 sequences was not measured. Greedy only. Ten prompts, one model, one GPU. The draft length is fixed per run, not adapted to how often the guesses are accepted, and there is no draft model, so a prompt with nothing to copy gets no guess at all.
+
 ## Batch-1 decode bandwidth
 
 ![Weights read per decode token against the measured peak](../results/plots/batch1_bandwidth.png)

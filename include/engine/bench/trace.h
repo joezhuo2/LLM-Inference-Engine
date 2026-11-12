@@ -20,6 +20,8 @@ struct StepTrace {
     int waiting = 0;
     int running = 0;
     int free_blocks = 0;
+    int drafted = 0;
+    int accepted = 0;
 };
 
 using TokenText = std::function<std::string(SeqId seq, int32_t token)>;

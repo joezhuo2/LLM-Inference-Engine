@@ -192,6 +192,8 @@ void ServingLoop::record_step(const StepTrace& trace, int preemptions) {
     ++counters_.steps_total;
     counters_.output_total += int64_t(trace.seqs.size());
     counters_.preemptions_total += preemptions;
+    counters_.drafted_total += trace.drafted;
+    counters_.draft_accepted_total += trace.accepted;
     window_.add_tokens(seconds(trace.end), int64_t(trace.seqs.size()));
 }
 

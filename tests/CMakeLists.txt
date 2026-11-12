@@ -31,7 +31,9 @@ add_executable(unit_tests
   unit/test_scheduler.cpp
   unit/test_scheduler_cancel.cpp
   unit/test_scheduler_chunked.cpp
+  unit/test_scheduler_speculative.cpp
   unit/test_serving_loop.cpp
+  unit/test_speculative.cpp
   unit/test_stop_matcher.cpp
   unit/test_sampling_params.cpp
   unit/test_tensor.cpp
@@ -99,7 +101,6 @@ endif()
 
 add_executable(todo_unit_tests
   todo/unit/test_prefix_cache.cpp
-  todo/unit/test_speculative.cpp
   todo/unit/test_tensor_parallel.cpp
 )
 target_include_directories(todo_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

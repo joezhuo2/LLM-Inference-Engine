@@ -31,7 +31,9 @@ nlohmann::ordered_json step_json(const StepTrace& step, size_t index, Clock::tim
             {"finished", step.finished},
             {"waiting", step.waiting},
             {"running", step.running},
-            {"free_blocks", step.free_blocks}};
+            {"free_blocks", step.free_blocks},
+            {"drafted", step.drafted},
+            {"accepted", step.accepted}};
 }
 
 nlohmann::ordered_json trace_json(nlohmann::ordered_json meta, std::span<const Request> requests,

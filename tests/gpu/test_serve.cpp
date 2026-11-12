@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <map>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "engine/runtime/decode_graphs.h"
@@ -71,14 +72,16 @@ protected:
     std::map<int64_t, std::vector<int32_t>> run(const std::vector<Request>& reqs, int num_blocks,
                                                 int max_batch, int context = kContext,
                                                 int* preemptions = nullptr, bool graphs = false,
-                                                int token_budget = 0) {
+                                                int token_budget = 0, int max_draft = 0,
+                                                engine::DraftCounts* drafts = nullptr) {
         KvCache cache(w().config, num_blocks, kBlockSize);
         PagedRunner runner(w().config, w().weights, cache, context, max_batch, context, stream);
         Scheduler scheduler(SchedulerConfig{.num_blocks = num_blocks,
                                             .block_size = kBlockSize,
                                             .max_batch = max_batch,
                                             .max_prefill_tokens = context,
-                                            .max_context = context});
+                                            .max_context = context,
+                                            .max_draft = max_draft});
         Sampler sampler(max_batch);
         for (const Request& r : reqs) scheduler.submit(r);
         std::map<int64_t, std::vector<int32_t>> out;
@@ -90,6 +93,7 @@ protected:
             out[r.id] = r.output;
             if (preemptions) *preemptions += r.preemptions;
         }
+        if (drafts) *drafts = scheduler.draft_counts();
         return out;
     }
 
@@ -290,4 +294,110 @@ TEST_F(ServeTest, TokenBudgetsKeepTheOutputsThroughForcedPreemptionAndGraphsUpTo
                         graphs ? " with graphs" : "", preemptions, identical, kRequests);
         }
     }
+}
+
+TEST_F(ServeTest, SpeculationKeepsTheGreedyOutputsOfEveryRequestUpToTies) {
+    constexpr int kSpeculating = 4;
+    constexpr int kMaxDraft = 8;
+    std::vector<Request> reqs = requests(SamplingParams{0.0f, 0});
+    reqs.resize(kSpeculating);
+    for (Request& r : reqs) {
+        const auto half = long(r.prompt.size() / 2);
+        r.prompt.insert(r.prompt.end(), r.prompt.begin() + 1, r.prompt.begin() + 1 + half);
+    }
+    const auto plain = run(reqs, 1024, kRequests);
+    struct Case {
+        bool graphs;
+        int token_budget;
+    };
+    for (const Case c : {Case{false, 0}, Case{true, 0}, Case{false, 40}, Case{true, 40}}) {
+        SCOPED_TRACE(std::string(c.graphs ? "graphs" : "eager") + ", token budget " +
+                     std::to_string(c.token_budget));
+        engine::DraftCounts drafts;
+        const auto speculative = run(reqs, 1024, kRequests, kContext, nullptr, c.graphs,
+                                     c.token_budget, kMaxDraft, &drafts);
+        ASSERT_EQ(speculative.size(), reqs.size());
+        size_t identical = 0;
+        for (const Request& r : reqs) {
+            SCOPED_TRACE("request " + std::to_string(r.id));
+            identical += speculative.at(r.id) == plain.at(r.id);
+            expect_equal_up_to_a_tie(r, speculative.at(r.id), plain.at(r.id));
+        }
+        std::printf(
+            "%s, token budget %d: %lld of %lld draft tokens accepted, %zu of %d identical\n",
+            c.graphs ? "graphs" : "eager", c.token_budget, static_cast<long long>(drafts.accepted),
+            static_cast<long long>(drafts.proposed), identical, kSpeculating);
+        EXPECT_GT(drafts.proposed, 0);
+        EXPECT_GT(drafts.accepted, 0);
+    }
+}
+
+TEST_F(ServeTest, SpeculationKeepsSampledOutputsUntilNearTies) {
+    constexpr int kSpeculating = 4;
+    std::vector<Request> reqs = requests(SamplingParams{0.8f, 4321, 40, 0.9f});
+    reqs.resize(kSpeculating);
+    for (Request& r : reqs) {
+        const auto half = long(r.prompt.size() / 2);
+        r.prompt.insert(r.prompt.end(), r.prompt.begin() + 1, r.prompt.begin() + 1 + half);
+    }
+    const auto plain = run(reqs, 1024, kRequests);
+    engine::DraftCounts drafts;
+    const auto speculative = run(reqs, 1024, kRequests, kContext, nullptr, false, 0, 8, &drafts);
+    size_t identical = 0;
+    for (const Request& r : reqs) identical += speculative.at(r.id) == plain.at(r.id);
+    std::printf("sampled: %lld of %lld draft tokens accepted, %zu of %d identical\n",
+                static_cast<long long>(drafts.accepted), static_cast<long long>(drafts.proposed),
+                identical, kSpeculating);
+    EXPECT_GT(drafts.proposed, 0);
+    EXPECT_GE(identical, size_t(kSpeculating - 1));
+}
+
+TEST_F(ServeTest, ASpeculativeStepTraceListsEveryKeptToken) {
+    constexpr int kTraceContext = 512;
+    KvCache cache(w().config, 256, kBlockSize);
+    PagedRunner runner(w().config, w().weights, cache, kTraceContext, kRequests, kTraceContext,
+                       stream);
+    Scheduler scheduler(SchedulerConfig{.num_blocks = 256,
+                                        .block_size = kBlockSize,
+                                        .max_batch = kRequests,
+                                        .max_prefill_tokens = kTraceContext,
+                                        .max_context = kTraceContext,
+                                        .max_draft = 8});
+    Sampler sampler(kRequests);
+    std::vector<Request> reqs = requests(SamplingParams{0.0f, 0});
+    reqs.resize(2);
+    for (Request& r : reqs) {
+        const auto half = long(r.prompt.size() / 2);
+        r.prompt.insert(r.prompt.end(), r.prompt.begin() + 1, r.prompt.begin() + 1 + half);
+        scheduler.submit(r);
+    }
+    engine::DeviceBuffer next(size_t(kRequests) * sizeof(int32_t));
+    std::vector<engine::StepTrace> trace;
+    engine::ServeStats stats;
+    std::map<int64_t, std::vector<int32_t>> outputs;
+    while (scheduler.num_waiting() + scheduler.num_running() > 0) {
+        for (const Request& r :
+             engine::serve_step(scheduler, runner, sampler, next, &stats, nullptr, &trace))
+            outputs[r.id] = r.output;
+    }
+
+    std::map<int64_t, std::vector<int32_t>> rebuilt;
+    int64_t drafted = 0, accepted = 0, longest = 0;
+    for (const engine::StepTrace& s : trace) {
+        ASSERT_EQ(s.tokens.size(), s.seqs.size());
+        for (size_t j = 0; j < s.seqs.size(); ++j) rebuilt[s.seqs[j]].push_back(s.tokens[j]);
+        EXPECT_LE(s.accepted, s.drafted);
+        EXPECT_LE(s.drafted, kRequests - 1);
+        drafted += s.drafted;
+        accepted += s.accepted;
+        longest = std::max<int64_t>(longest, int64_t(s.seqs.size()));
+    }
+    EXPECT_EQ(rebuilt, outputs);
+    EXPECT_EQ(drafted, scheduler.draft_counts().proposed);
+    EXPECT_EQ(accepted, scheduler.draft_counts().accepted);
+    EXPECT_EQ(stats.drafted, drafted);
+    EXPECT_EQ(stats.accepted, accepted);
+    EXPECT_GT(accepted, 0);
+    EXPECT_GT(longest, 2);
+    EXPECT_LT(stats.steps, 1 + kNewTokens);
 }

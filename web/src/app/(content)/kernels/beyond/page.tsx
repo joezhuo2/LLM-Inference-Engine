@@ -8,7 +8,7 @@ import { bookHref } from "@/components/book/paths";
 import { beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
 import { estimates } from "@/content/estimates";
 
-const description = "What this engine leaves out, in the book's own unit of bytes per token: quantization, speculative decoding, prefix caching and multiple GPUs. None of them is implemented or measured here.";
+const description = "What this engine leaves out, in the book's own unit of bytes per token: quantization, a draft model for speculative decoding, prefix caching and multiple GPUs. None of them is implemented or measured here.";
 
 export const metadata: Metadata = { title: beyondTitle, description };
 

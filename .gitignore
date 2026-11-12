@@ -21,3 +21,4 @@ model_dir/
 .cache/
 src/practice/bandwith_test
 results/profile/
+results/speculative/traces/

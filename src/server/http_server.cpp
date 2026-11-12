@@ -89,7 +89,11 @@ Json metrics_json(const MetricsSnapshot& m, const Json& meta, int block_size) {
              {{"blocks_total", m.blocks_total},
               {"blocks_free", c.blocks_free},
               {"block_size", block_size}}},
-            {"tokens", {{"output_total", c.output_total}, {"output_per_s", m.output_per_s}}},
+            {"tokens",
+             {{"output_total", c.output_total},
+              {"output_per_s", m.output_per_s},
+              {"drafted_total", c.drafted_total},
+              {"draft_accepted_total", c.draft_accepted_total}}},
             {"latency", {{"ttft_s", latency_json(m.ttft_s)}, {"tpot_s", latency_json(m.tpot_s)}}},
             {"steps_total", c.steps_total}};
 }

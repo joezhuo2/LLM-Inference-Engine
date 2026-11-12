@@ -13,6 +13,7 @@ struct GpuBackendOptions {
     bool graphs = false;
     int graph_steps = 2;
     int token_budget = 0;
+    int speculate = 0;
 };
 
 std::unique_ptr<Backend> make_gpu_backend(const DeviceWeights& weights,

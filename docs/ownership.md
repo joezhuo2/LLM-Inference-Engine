@@ -48,3 +48,5 @@ For Part C, Claude never writes any of the implementation. It writes a stub that
 | Benchmark harness, CSV metrics, plots | M3 to M5 | A |
 | HTTP server plumbing, chat API, CORS, SSE, metrics windows (`src/server/`, `engine serve`) | Part 2 | A, with the wiring into the runner (`src/server/gpu_backend.cpp`, `serving_loop.cpp`) B |
 | `Scheduler::cancel` | Part 2 | C, written by Claude at Joe's request |
+| Speculative decoding by prompt lookup: `propose_prompt_lookup`, `count_accepted`, `BlockManager::truncate` (`src/sched/speculative.cpp`) | Part 2 | C, written by Joe from Claude's stub, spec and tests |
+| Speculative decoding in the scheduler (`Scheduler::reserve_drafts`, the draft rows of `schedule`, `schedule_chunked` and `update`) | Part 2 | C, written by Claude at Joe's request |

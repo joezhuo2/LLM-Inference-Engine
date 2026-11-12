@@ -2202,3 +2202,22 @@
 - **a controlled component against one that owns its state** => 
 - **an accordion: opening one item closes the other** => 
 - **animating height to auto** => 
+
+## Speculative decoding wired into the step (Branch 150)
+
+- **a test that moves out of the todo target once the implementation passes** => 
+- **several rows of one sequence in a single decode step** => 
+- **a draft row attends to the draft rows before it** => 
+- **the first disagreement ends the accepted run** => 
+- **spare batch rows as the budget for guesses** => 
+- **a sampler keyed by seed and token position keeps speculation exact** => 
+- **giving cache slots back after a rejected draft** => 
+- **a host model that reads its context through the slot mapping** => 
+- **a counter of proposed and accepted draft tokens as the acceptance rate** => 
+- **a stream event per token when one step writes several** => 
+- **a near tie in BF16 logits and why the row count can flip it** => 
+- **break-even acceptance: the cost of extra rows against the tokens they yield** => 
+- **an independent reimplementation as a check on recorded counts** => 
+- **a figure rebuilt from recorded steps and checked against the recorder's counts** => 
+- **a build that throws when the text no longer matches the measured data** => 
+- **a list key by position when an id can repeat** => 

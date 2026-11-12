@@ -125,6 +125,8 @@ TEST_F(HttpServerTest, MetricsHaveTheContractFieldsAndNullLatencyAtFirst) {
     EXPECT_EQ(j["kv"]["blocks_free"], 63);
     EXPECT_EQ(j["kv"]["block_size"], 16);
     EXPECT_EQ(j["tokens"]["output_total"], 0);
+    EXPECT_EQ(j["tokens"]["drafted_total"], 0);
+    EXPECT_EQ(j["tokens"]["draft_accepted_total"], 0);
     EXPECT_TRUE(j["latency"]["ttft_s"].is_null());
     EXPECT_TRUE(j["latency"]["tpot_s"].is_null());
     EXPECT_EQ(j["steps_total"], 0);

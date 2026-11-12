@@ -49,6 +49,8 @@ struct Counters {
     int64_t preemptions_total = 0;
     int64_t output_total = 0;
     int64_t steps_total = 0;
+    int64_t drafted_total = 0;
+    int64_t draft_accepted_total = 0;
 };
 
 struct MetricsSnapshot {

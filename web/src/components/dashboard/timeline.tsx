@@ -221,7 +221,7 @@ function StepDetails({ step, feed }: { step: TraceStep; feed: Feed }) {
           const slot = feed.model.slotsOf(step.index)?.[i] ?? -1;
           const done = step.finished.includes(id);
           return (
-            <span key={id} className="flex items-center gap-1 rounded border border-border px-1 py-px">
+            <span key={i} className="flex items-center gap-1 rounded border border-border px-1 py-px">
               <span aria-hidden className="size-2 rounded-sm" style={{ background: slotColor(slot) }} />
               <span className="text-muted">{`#${id}`}</span>
               <span className="whitespace-pre text-text">{piece(step.tokens[i]?.text ?? "")}</span>

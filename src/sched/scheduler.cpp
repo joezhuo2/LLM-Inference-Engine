@@ -8,6 +8,7 @@
 
 #include "engine/kv/block_manager.h"
 #include "engine/sched/request.h"
+#include "engine/sched/speculative.h"
 
 namespace engine {
 
@@ -19,6 +20,10 @@ Scheduler::Scheduler(const SchedulerConfig& config)
 
     if (config.max_context < 1) {
         throw std::invalid_argument("[SchedulerConfig] max_context must be >= 1");
+    }
+
+    if (config.max_draft < 0 || config.max_ngram < 1) {
+        throw std::invalid_argument("[SchedulerConfig] max_draft must be >= 0 and max_ngram >= 1");
     }
 
     if (config.max_prefill_tokens < config.max_context) {
@@ -84,7 +89,7 @@ Step Scheduler::schedule() {
 
     if (!admitted_seqs.empty()) {
         running_list_.insert(running_list_.end(), admitted_seqs.begin(), admitted_seqs.end());
-        Step step{true, admitted_seqs};
+        Step step{true, admitted_seqs, {}};
         pending_step_ = true;
         pending_step_obj_ = step;
         pending_sampled_seqs_ = admitted_seqs;
@@ -92,7 +97,7 @@ Step Scheduler::schedule() {
     }
 
     if (running_list_.empty()) {
-        return Step{false, {}};
+        return Step{};
     }
 
     std::vector<SeqId> decode_seqs;
@@ -141,11 +146,49 @@ Step Scheduler::schedule() {
         }
     }
 
-    Step step{false, decode_seqs};
+    Step step{false, decode_seqs, {}};
+    step.drafts = reserve_drafts(decode_seqs, config_.max_batch - int(decode_seqs.size()));
     pending_step_ = true;
     pending_step_obj_ = step;
     pending_sampled_seqs_ = decode_seqs;
+    pending_drafts_ = step.drafts;
     return step;
+}
+
+std::vector<std::vector<int32_t>> Scheduler::reserve_drafts(std::span<const SeqId> decode,
+                                                            int spare_rows) {
+    if (config_.max_draft < 1) {
+        return {};
+    }
+
+    std::vector<std::vector<int32_t>> drafts(decode.size());
+
+    for (size_t i = 0; i < decode.size() && spare_rows > 0; ++i) {
+        const SeqId s = decode[i];
+        const Request& req = requests_.at(s);
+
+        const int left = req.max_new_tokens - int(req.output.size()) - 1;
+        const int want = std::min({config_.max_draft, spare_rows, left});
+        if (want < 1) {
+            continue;
+        }
+
+        std::vector<int32_t> context = req.prompt;
+        context.insert(context.end(), req.output.begin(), req.output.end());
+        std::vector<int32_t> draft = propose_prompt_lookup(context, config_.max_ngram, want);
+
+        size_t kept = 0;
+        while (kept < draft.size() && block_manager_.can_append(s)) {
+            block_manager_.append_slot(s);
+            ++kept;
+        }
+        draft.resize(kept);
+
+        spare_rows -= int(kept);
+        drafts[i] = std::move(draft);
+    }
+
+    return drafts;
 }
 
 ChunkedStep Scheduler::schedule_chunked(int token_budget) {
@@ -259,14 +302,18 @@ ChunkedStep Scheduler::schedule_chunked(int token_budget) {
         }
     }
 
-    ChunkedStep step{decode_seqs, prefill_chunks, sampled_seqs};
+    ChunkedStep step{decode_seqs, prefill_chunks, sampled_seqs, {}};
 
     if (decode_seqs.empty() && prefill_chunks.empty()) {
         return step;
     }
 
+    const int spare_rows = std::min(budget_remaining, config_.max_batch - int(sampled_seqs.size()));
+    step.drafts = reserve_drafts(decode_seqs, spare_rows);
+
     pending_step_ = true;
     pending_sampled_seqs_ = sampled_seqs;
+    pending_drafts_ = step.drafts;
     return step;
 }
 
@@ -275,29 +322,57 @@ void Scheduler::update(std::span<const int32_t> tokens) {
         throw std::invalid_argument("[Scheduler] no pending step");
     }
 
-    if (tokens.size() != pending_sampled_seqs_.size()) {
-        throw std::invalid_argument(
-            "[Scheduler] tokens size does not match pending step sequences size");
+    size_t expected = pending_sampled_seqs_.size();
+    for (const std::vector<int32_t>& draft : pending_drafts_) {
+        expected += draft.size();
     }
 
+    if (tokens.size() != expected) {
+        throw std::invalid_argument(
+            "[Scheduler] tokens size does not match the rows sampled by the pending step");
+    }
+
+    size_t row = 0;
     for (size_t i = 0; i < pending_sampled_seqs_.size(); ++i) {
         SeqId s_id = pending_sampled_seqs_[i];
-        int32_t token_val = tokens[i];
 
         auto it = requests_.find(s_id);
         if (it == requests_.end()) {
             throw std::invalid_argument("[Scheduler] sequence id not found");
         }
 
-        Request& req = it->second;
-        req.output.push_back(token_val);
+        const std::span<const int32_t> draft = i < pending_drafts_.size()
+                                                   ? std::span<const int32_t>(pending_drafts_[i])
+                                                   : std::span<const int32_t>();
+        const std::span<const int32_t> sampled = tokens.subspan(row, draft.size() + 1);
+        row += sampled.size();
 
-        if (req.output.size() == 1 && req.first_token == Clock::time_point{}) {
-            req.first_token = Clock::now();
+        const int agreed = count_accepted(draft, sampled);
+
+        Request& req = it->second;
+        bool finished = false;
+        int emitted = 0;
+
+        while (emitted <= agreed && !finished) {
+            const int32_t token_val = sampled[size_t(emitted)];
+            req.output.push_back(token_val);
+            ++emitted;
+
+            if (req.output.size() == 1 && req.first_token == Clock::time_point{}) {
+                req.first_token = Clock::now();
+            }
+
+            finished = (config_.eos_id != -1 && token_val == config_.eos_id) ||
+                       (req.output.size() >= size_t(req.max_new_tokens));
         }
 
-        bool finished = (config_.eos_id != -1 && token_val == config_.eos_id) ||
-                        (req.output.size() >= size_t(req.max_new_tokens));
+        draft_counts_.proposed += int64_t(draft.size());
+        draft_counts_.accepted += emitted - 1;
+
+        if (!finished && size_t(agreed) < draft.size()) {
+            const int wasted = int(draft.size()) - agreed;
+            block_manager_.truncate(s_id, block_manager_.length(s_id) - wasted);
+        }
 
         if (finished) {
             block_manager_.free(s_id);
@@ -317,6 +392,7 @@ void Scheduler::update(std::span<const int32_t> tokens) {
     pending_step_ = false;
     pending_step_obj_ = Step{};
     pending_sampled_seqs_.clear();
+    pending_drafts_.clear();
 }
 
 std::vector<Request> Scheduler::take_finished() {
@@ -350,6 +426,10 @@ int Scheduler::num_waiting() const {
 
 int Scheduler::num_running() const {
     return static_cast<int>(running_list_.size());
+}
+
+const DraftCounts& Scheduler::draft_counts() const {
+    return draft_counts_;
 }
 
 void Scheduler::cancel(SeqId id) {

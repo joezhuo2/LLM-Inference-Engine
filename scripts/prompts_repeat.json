@@ -1,0 +1,40 @@
+{
+  "prompts": [
+    {
+      "name": "fix_typos",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Fix the spelling mistakes in this paragraph and write the corrected paragraph:\n\nThe KV cashe stores the keys and values of every token a request has seen, in every layer. A decode step reeds them back so that the new token can look at the old ones without runing the model on them again. The cache is handed out in blocks of sixteen tokens, and a reqest holds only the blocks it has filled."
+        }
+      ]
+    },
+    {
+      "name": "repeat_paragraph",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Repeat this paragraph:\n\nThe KV cache stores the keys and values of every token a request has seen, in every layer. A decode step reads them back so that the new token can look at the old ones without running the model on them again. The cache is handed out in blocks of sixteen tokens, and a request holds only the blocks it has filled."
+        }
+      ]
+    },
+    {
+      "name": "add_docstring",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Add a docstring to this Python function and return the full function:\n\n```python\ndef mean(values):\n    total = 0\n    for value in values:\n        total += value\n    return total / len(values)\n```"
+        }
+      ]
+    },
+    {
+      "name": "rename_variable",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Rename the variable total to running_sum in this Python function and return the full function:\n\n```python\ndef mean(values):\n    total = 0\n    for value in values:\n        total += value\n    return total / len(values)\n```"
+        }
+      ]
+    }
+  ]
+}
