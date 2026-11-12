@@ -43,8 +43,15 @@ std::vector<int32_t> propose_prompt_lookup(std::span<const int32_t> context, int
     return {};
 }
 
-int count_accepted(std::span<const int32_t>, std::span<const int32_t>) {
-    throw std::logic_error("unimplemented: count_accepted");
+int count_accepted(std::span<const int32_t> draft, std::span<const int32_t> sampled) {
+    const size_t limit = std::min(draft.size(), sampled.size());
+
+    size_t accepted = 0;
+    while (accepted < limit && draft[accepted] == sampled[accepted]) {
+        ++accepted;
+    }
+
+    return static_cast<int>(accepted);
 }
 
 void BlockManager::truncate(SeqId, int) {
