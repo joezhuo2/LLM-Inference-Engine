@@ -102,6 +102,10 @@ export const speculativeDecoding: KernelStory = {
     value: `${specFmt(spec.best.speedup, 2)}×`,
     label: `tokens per second on answers that repeat their prompt, with up to ${spec.best.k} guessed tokens per step (measured, one request at a time)`,
   },
+  sandbox: {
+    title: "change how much it guesses",
+    intro: "A TypeScript port of propose_prompt_lookup() in src/sched/speculative.cpp and of the draft limit in src/sched/scheduler.cpp replays the recorded answer of this chapter under your settings: how many tokens a step may guess, how long a run of tokens it tries to match, and whether a sequence halves its limit after a wrong guess (--speculate-adaptive). The answer itself is the recorded one, so the model counts steps and rows; the time is an estimate from the measured time of a step by its row count.",
+  },
   sources: [
     { path: "src/sched/speculative.cpp", label: "the guess, the count of agreed guesses, giving cache slots back" },
     { path: "src/sched/scheduler.cpp", label: "which rows get guesses, what a step keeps" },

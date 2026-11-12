@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { piece, spec, specFmt } from "@/content/kernels/speculative-decoding";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { CheckFigure, GuessFigure, PayoffFigure, RowsFigure, TruncateFigure } from "./figures";
 
@@ -15,6 +16,13 @@ const best = spec.bestStep;
 const miss = spec.missStep;
 const chat = spec.chatAt(spec.best.k) ?? spec.chatWorst;
 const quote = (tokens: string[]) => tokens.map(piece).join("").trim();
+
+const prediction: Prediction = expectAnswer({
+  question: `A chat answer rarely repeats its prompt. With up to ${spec.best.k} guesses per step, is a chat answer faster, slower or the same as plain decoding?`,
+  choices: ["faster", "slower", "the same"],
+  answer: chat.ms < spec.chatPlain.ms ? "faster" : chat.ms > spec.chatPlain.ms ? "slower" : "the same",
+  why: `${fmt(chat.ms, 2)} ms per token against ${fmt(spec.chatPlain.ms, 2)} ms (measured). Only ${fmt(chat.acceptedPct)}% of the guesses were kept, but a wrong guess costs a row of a step that was running anyway, and a kept one saves a whole step.`,
+}, "faster");
 
 const steps: StoryStep[] = [
   {
@@ -91,6 +99,7 @@ const steps: StoryStep[] = [
     title: "it pays when the answer repeats the prompt",
     body: (
       <>
+        <Predict {...prediction} />
         <p>
           On four prompts whose answers repeat them (repeat a paragraph, fix its spelling, add a docstring to a function, rename a variable in it), with up to {spec.best.k} guesses per step, the model agreed with {fmt(spec.best.acceptedPct)}% of the guessed tokens. A step wrote {fmt(spec.best.tokensPerStep, 2)} tokens on average, and the time per token fell from {fmt(spec.plain.ms, 2)} to <span className="text-accent">{fmt(spec.best.ms, 2)} ms per token</span> (measured, one request at a time). That is {fmt(spec.best.speedup, 2)} times the tokens per second.
         </p>

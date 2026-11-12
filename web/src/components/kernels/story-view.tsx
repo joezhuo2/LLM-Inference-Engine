@@ -40,6 +40,7 @@ import { SamplingSandbox } from "./sampling/sandbox";
 import { SamplingStory } from "./sampling/story";
 import { ServingAboutStory } from "./serving/about";
 import { ServingSandbox } from "./serving/sandbox";
+import { SpeculativeSandbox } from "./speculative-decoding/sandbox";
 import { ServingStory } from "./serving/story";
 import { SplitAboutStory } from "./split-attention/about";
 import { SplitAttentionStory } from "./split-attention/story";
@@ -179,6 +180,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <SamplingSandbox />;
     case "serving":
       return <ServingSandbox />;
+    case "speculative-decoding":
+      return <SpeculativeSandbox />;
     default:
       return null;
   }
