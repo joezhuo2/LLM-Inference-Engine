@@ -54,8 +54,31 @@ int count_accepted(std::span<const int32_t> draft, std::span<const int32_t> samp
     return static_cast<int>(accepted);
 }
 
-void BlockManager::truncate(SeqId, int) {
-    throw std::logic_error("unimplemented: BlockManager::truncate");
+void BlockManager::truncate(SeqId seq, int length) {
+    auto it = sequences_.find(seq);
+
+    if (it == sequences_.end()) {
+        throw std::invalid_argument("[BlockManager] sequence not registered: " +
+                                    std::to_string(seq));
+    }
+
+    Sequence& s = it->second;
+
+    if (length < 1 || length > s.length) {
+        throw std::invalid_argument("[BlockManager] invalid truncate length: " +
+                                    std::to_string(length));
+    }
+
+    if (length == s.length) return;
+
+    const size_t needed_blocks = static_cast<size_t>((length + block_size_ - 1) / block_size_);
+
+    while (s.table.size() > needed_blocks) {
+        free_block(s.table.back());
+        s.table.pop_back();
+    }
+
+    s.length = length;
 }
 
 }  // namespace engine
