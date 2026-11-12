@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## sched/speculative-wire
+
+- Part C: `propose_prompt_lookup`, `count_accepted` and `BlockManager::truncate` are Joe's (branch `sched/speculative-impl`). Their 24 tests pass, so `test_speculative.cpp` moves from `tests/todo/unit/` into `tests/unit/` and runs with every gate; the includes of `src/sched/speculative.cpp` are put in the formatter's order.
+
 ## web/book-trim
 
 - Part A: a chapter's review is one spread in the book, not two. The right page lists the questions, and each has a dropdown that opens its answer with an eased expand and collapse; opening one closes the other. The separate answers spread is gone, which takes 17 spreads out of the book (248 to 231). `Disclosure` can now be opened and closed by its parent.

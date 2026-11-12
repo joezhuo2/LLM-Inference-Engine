@@ -1,10 +1,10 @@
 #include "engine/sched/speculative.h"
 
 #include <algorithm>
-#include <string>
 #include <cstdint>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "engine/kv/block_manager.h"

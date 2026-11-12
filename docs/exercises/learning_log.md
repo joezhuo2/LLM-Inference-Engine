@@ -2202,3 +2202,7 @@
 - **a controlled component against one that owns its state** => 
 - **an accordion: opening one item closes the other** => 
 - **animating height to auto** => 
+
+## Speculative decoding wired into the step (Branch 150)
+
+- **a test that moves out of the todo target once the implementation passes** => 
