@@ -2224,3 +2224,7 @@
 - **a per-sequence draft limit that halves on a rejection and doubles on a full accept** => 
 - **a replay of a recorded answer under other settings, and what it cannot tell (the time)** => 
 - **a number derived from list position instead of kept by hand** => 
+- **a draft model: a small model proposes, the large one checks in one step** => 
+- **rolling a KV cache back to the longest prefix two token lists share** => 
+- **a function hook as the seam between a scheduler and a second model** => 
+- **why a draft model must be many times faster than the model it drafts for** => 

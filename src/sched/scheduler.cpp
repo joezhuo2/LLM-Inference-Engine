@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "engine/kv/block_manager.h"
@@ -178,7 +179,12 @@ std::vector<std::vector<int32_t>> Scheduler::reserve_drafts(std::span<const SeqI
 
         std::vector<int32_t> context = req.prompt;
         context.insert(context.end(), req.output.begin(), req.output.end());
-        std::vector<int32_t> draft = propose_prompt_lookup(context, config_.max_ngram, want);
+        std::vector<int32_t> draft = draft_source_
+                                         ? draft_source_(s, context, want)
+                                         : propose_prompt_lookup(context, config_.max_ngram, want);
+        if (draft.size() > size_t(want)) {
+            draft.resize(size_t(want));
+        }
 
         size_t kept = 0;
         while (kept < draft.size() && block_manager_.can_append(s)) {
@@ -436,6 +442,10 @@ int Scheduler::num_waiting() const {
 
 int Scheduler::num_running() const {
     return static_cast<int>(running_list_.size());
+}
+
+void Scheduler::set_draft_source(DraftSource source) {
+    draft_source_ = std::move(source);
 }
 
 const DraftCounts& Scheduler::draft_counts() const {

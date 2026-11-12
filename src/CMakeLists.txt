@@ -76,6 +76,7 @@ if(ENGINE_CUDA)
     runtime/checksum.cpp
     runtime/decode_graphs.cpp
     runtime/device_buffer.cpp
+    runtime/draft_model.cpp
     runtime/generate.cpp
     runtime/kv_cache.cpp
     runtime/model_runner.cpp
