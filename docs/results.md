@@ -274,7 +274,100 @@ The chat prompts gain too, 1.28x to 1.30x with 2 to 8 drafts, although only 10% 
 
 The output. A kept token is the one the model sampled for that position from the right context, and the sampler is keyed by seed and position, so speculation does not change what is sampled from given logits. The logits themselves come from a step with more rows, and BF16 rounding depends slightly on the row count, as it does when the batch size changes. 6 of the 10 prompts wrote identical tokens with and without drafts at every draft length. The other 4 (rename_variable, add_docstring, arithmetic, haiku) differ from the same token on at every draft length, and `scripts/speculative_ties.py` shows a near tie at each of those tokens: HuggingFace's BF16 logits of the two candidates are 0 or 1 BF16 steps apart (output token 16 of rename_variable: 14.75 against 14.8125), and its FP32 logits 0.09 to 1.38 steps. After such a token the two runs write different, equally likely answers, which is why the token counts of the rows with drafts differ from the rows without (431 against 441, 899 against 966). The GPU tests compare the two up to such ties (`tests/gpu/test_serve.cpp`).
 
-Limits. One request at a time: with 16 sequences decoding there is no spare row and a step carries no drafts (by construction and unit tested, not measured here), and what happens between 2 and 15 sequences was not measured. Greedy only. Ten prompts, one model, one GPU. The draft length is fixed per run, not adapted to how often the guesses are accepted, and there is no draft model, so a prompt with nothing to copy gets no guess at all.
+Limits of the tables above. One request at a time, greedy, a fixed draft length, and prompt lookup only. The tables below measure the other cases.
+
+More cases, from `scripts/speculative_more.sh` and `scripts/speculative_more_report.py`: the same `engine bench --max-batch 16 --graphs --stop-at-eos` runs, with no guesses, with up to 8 guesses per step ("fixed") and with `--speculate-adaptive` ("adaptive": a sequence starts at 8 guesses, halves its limit when a guess is rejected and doubles it back, up to 8, when a whole draft is accepted). 3 runs each, medians. Measured on 2026-11-12 on the RTX 5060 Laptop GPU, release build, at commit 19e069b; the 1-minute load average was 1.1 at the end. WSL was restarted during the third round of runs and the sweep picked up at the run it had reached; one run before that (12 repeat requests, fixed) never ended and was killed, and the same command then ended 60 times out of 60. `results/speculative_more/` holds the CSVs.
+
+Several requests decoding at once. N requests arrive together and share the 16 rows of a step, so each sequence gets fewer rows for guesses as N grows; the requests cycle through the prompts of the set. tokens/s is all output tokens over the wall time of the run.
+
+| prompts | requests | guesses | output tokens | steps | draft tokens | accepted | accepted % | tokens/s | against none | runs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| repeat | 1 | none | 76 | 76 | 0 | 0 | 0.0 | 117 | 1.00 | 3 |
+| repeat | 1 | fixed | 76 | 26 | 117 | 50 | 42.7 | 356 | 3.04 | 3 |
+| repeat | 1 | adaptive | 76 | 34 | 82 | 42 | 51.2 | 283 | 2.41 | 3 |
+| repeat | 2 | none | 146 | 76 | 0 | 0 | 0.0 | 231 | 1.00 | 3 |
+| repeat | 2 | fixed | 146 | 26 | 181 | 110 | 60.8 | 630 | 2.72 | 3 |
+| repeat | 2 | adaptive | 146 | 34 | 150 | 102 | 68.0 | 509 | 2.20 | 3 |
+| repeat | 4 | none | 441 | 175 | 0 | 0 | 0.0 | 306 | 1.00 | 3 |
+| repeat | 4 | fixed | 441 | 80 | 737 | 258 | 35.0 | 571 | 1.87 | 3 |
+| repeat | 4 | adaptive | 441 | 91 | 416 | 237 | 57.0 | 539 | 1.76 | 3 |
+| repeat | 8 | none | 882 | 175 | 0 | 0 | 0.0 | 582 | 1.00 | 3 |
+| repeat | 8 | fixed | 882 | 106 | 1029 | 398 | 38.7 | 814 | 1.40 | 3 |
+| repeat | 8 | adaptive | 882 | 96 | 723 | 422 | 58.4 | 920 | 1.58 | 3 |
+| repeat | 12 | none | 1323 | 175 | 0 | 0 | 0.0 | 819 | 1.00 | 3 |
+| repeat | 12 | fixed | 1323 | 125 | 929 | 364 | 39.2 | 1015 | 1.24 | 3 |
+| repeat | 12 | adaptive | 1323 | 122 | 755 | 446 | 59.1 | 1061 | 1.30 | 3 |
+| repeat | 16 | none | 1764 | 175 | 0 | 0 | 0.0 | 1028 | 1.00 | 3 |
+| repeat | 16 | fixed | 1764 | 141 | 634 | 229 | 36.1 | 1178 | 1.15 | 3 |
+| repeat | 16 | adaptive | 1764 | 134 | 490 | 266 | 54.3 | 1238 | 1.20 | 3 |
+| chat | 1 | none | 256 | 256 | 0 | 0 | 0.0 | 130 | 1.00 | 3 |
+| chat | 1 | fixed | 256 | 187 | 779 | 69 | 8.9 | 162 | 1.25 | 3 |
+| chat | 1 | adaptive | 256 | 200 | 184 | 56 | 30.4 | 161 | 1.24 | 3 |
+| chat | 2 | none | 235 | 226 | 0 | 0 | 0.0 | 136 | 1.00 | 3 |
+| chat | 2 | fixed | 265 | 187 | 791 | 71 | 9.0 | 166 | 1.22 | 3 |
+| chat | 2 | adaptive | 265 | 200 | 194 | 58 | 29.9 | 165 | 1.22 | 3 |
+| chat | 4 | none | 476 | 256 | 0 | 0 | 0.0 | 238 | 1.00 | 3 |
+| chat | 4 | fixed | 476 | 187 | 1210 | 139 | 11.5 | 287 | 1.21 | 3 |
+| chat | 4 | adaptive | 476 | 200 | 355 | 115 | 32.4 | 292 | 1.23 | 3 |
+| chat | 8 | none | 1222 | 256 | 0 | 0 | 0.0 | 575 | 1.00 | 3 |
+| chat | 8 | fixed | 1222 | 220 | 2218 | 311 | 14.0 | 565 | 0.98 | 3 |
+| chat | 8 | adaptive | 1222 | 219 | 897 | 296 | 33.0 | 628 | 1.09 | 3 |
+| chat | 12 | none | 2010 | 256 | 0 | 0 | 0.0 | 877 | 1.00 | 3 |
+| chat | 12 | fixed | 2010 | 245 | 2021 | 315 | 15.6 | 807 | 0.92 | 3 |
+| chat | 12 | adaptive | 2010 | 232 | 1327 | 463 | 34.9 | 902 | 1.03 | 3 |
+| chat | 16 | none | 2503 | 256 | 0 | 0 | 0.0 | 1053 | 1.00 | 3 |
+| chat | 16 | fixed | 2503 | 249 | 1625 | 271 | 16.7 | 986 | 0.94 | 3 |
+| chat | 16 | adaptive | 2503 | 237 | 1259 | 446 | 35.4 | 1065 | 1.01 | 3 |
+
+Sampled instead of greedy (`--temperature 0.7 --top-p 0.9`), one request at a time. A guess is kept when it equals the token the sampler draws for that position, so the output keeps the distribution of plain sampling.
+
+| prompts | guesses | output tokens | steps | draft tokens | accepted | accepted % | ms per token | speedup | runs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| repeat | none | 546 | 546 | 0 | 0 | 0.0 | 8.00 | 1.00 | 3 |
+| repeat | fixed | 547 | 369 | 1390 | 178 | 12.8 | 5.79 | 1.38 | 3 |
+| repeat | adaptive | 547 | 394 | 441 | 153 | 34.7 | 5.90 | 1.36 | 3 |
+| chat | none | 956 | 956 | 0 | 0 | 0.0 | 7.80 | 1.00 | 3 |
+| chat | fixed | 956 | 698 | 2698 | 258 | 9.6 | 6.21 | 1.26 | 3 |
+| chat | adaptive | 956 | 756 | 708 | 200 | 28.2 | 6.38 | 1.22 | 3 |
+
+A draft model in place of prompt lookup (`--draft-model`), one request at a time, greedy. The draft model is `nickypro/tinyllama-110M` (TinyStories, 110M parameters, the same 32,000-token vocabulary), which writes each guess with one decode step of its own before the step of the large model. The "none" and "prompt lookup" rows are the ones of the first table.
+
+| prompts | guesses | output tokens | steps | draft tokens | accepted | accepted % | ms per token | speedup | runs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| repeat | none | 441 | 441 | 0 | 0 | 0.0 | 7.90 | 1.00 | 3 |
+| repeat | prompt lookup, up to 8 | 431 | 212 | 985 | 219 | 22.2 | 4.12 | 1.92 | 3 |
+| repeat | draft model, up to 2 | 441 | 334 | 660 | 107 | 16.2 | 9.85 | 0.80 | 3 |
+| repeat | draft model, up to 4 | 441 | 327 | 1292 | 114 | 8.8 | 13.82 | 0.57 | 3 |
+| repeat | draft model, up to 8 | 441 | 325 | 2568 | 116 | 4.5 | 22.37 | 0.35 | 3 |
+| chat | none | 966 | 966 | 0 | 0 | 0.0 | 7.71 | 1.00 | 3 |
+| chat | prompt lookup, up to 8 | 899 | 650 | 2481 | 249 | 10.0 | 6.01 | 1.28 | 3 |
+| chat | draft model, up to 2 | 966 | 717 | 1416 | 249 | 17.6 | 9.72 | 0.79 | 3 |
+| chat | draft model, up to 4 | 966 | 703 | 2772 | 263 | 9.5 | 13.99 | 0.55 | 3 |
+| chat | draft model, up to 8 | 966 | 697 | 5475 | 269 | 4.9 | 22.99 | 0.34 | 3 |
+
+Under load: 64 chat requests arriving at 2, 4 and 8 per second (Poisson).
+
+| requests/s | guesses | requests | steps | draft tokens | accepted | TTFT p50 ms | TPOT p50 ms | TPOT p99 ms | latency p50 ms | runs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2 | none | 64 | 3724 | 0 | 0 | 13.7 | 8.5 | 9.5 | 1634.1 | 3 |
+| 2 | fixed | 64 | 3006 | 22524 | 2979 | 15.0 | 7.5 | 10.6 | 1191.0 | 3 |
+| 2 | adaptive | 64 | 3289 | 7811 | 2632 | 13.9 | 6.9 | 8.2 | 1160.1 | 3 |
+| 4 | none | 64 | 1914 | 0 | 0 | 14.2 | 8.9 | 10.6 | 1710.6 | 3 |
+| 4 | fixed | 64 | 1648 | 15525 | 2306 | 15.2 | 8.5 | 12.3 | 1496.0 | 3 |
+| 4 | adaptive | 64 | 1790 | 7593 | 2591 | 14.4 | 7.3 | 10.2 | 1229.9 | 3 |
+| 8 | none | 64 | 1033 | 0 | 0 | 13.5 | 9.9 | 12.1 | 1935.0 | 3 |
+| 8 | fixed | 64 | 950 | 4613 | 870 | 14.9 | 10.2 | 12.5 | 1984.3 | 3 |
+| 8 | adaptive | 64 | 961 | 4356 | 1610 | 14.4 | 9.1 | 12.5 | 1701.3 | 3 |
+
+Reading the new tables. Guessing keeps paying while rows are shared, less and less: on the repeat prompts the gain of the fixed limit falls from 3.04x with one request to 1.87x with 4, 1.40x with 8 and 1.15x with 16 (16 requests finish at different times, so rows free up before the end). On the chat prompts the fixed limit turns into a loss from 8 requests on (0.98x, 0.92x, 0.94x): the steps grow to 16 rows for guesses that are mostly dropped. The adaptive limit never loses there (1.09x, 1.03x, 1.01x) and is ahead of the fixed one from 8 requests on in both sets, because it spends a third to a half of the rows and has more than twice the share accepted. With one or two requests the fixed limit is ahead on the repeat prompts (3.04x against 2.41x): the adaptive limit shrinks after a rejection and then needs steps to grow back.
+
+Sampling at temperature 0.7 keeps the gain on chat (1.26x fixed, 1.22x adaptive) and lowers it on the repeat prompts (1.38x, against 1.92x greedy over all four prompts), because a sampled answer leaves the text it copies sooner.
+
+The draft model makes decoding slower at every length: 0.80x with 2 guesses, 0.57x with 4, 0.35x with 8, on both sets. Its guesses are right about as often as prompt lookup's on chat (17.6% at 2, 4.9% at 8), but each one costs a decode step of the draft model, and that model runs 187 tokens/s alone against 117 to 130 for TinyLlama, so a guess costs about 5 ms where a guess by lookup costs nothing before the step. TinyStories-110M is also trained on children's stories, not on chat. A useful draft model has to be several times cheaper per token than this one, or agree far more often.
+
+Under load the median time per output token falls with the adaptive limit at every rate (8.5 to 6.9 ms at 2 requests/s, 8.9 to 7.3 at 4, 9.9 to 9.1 at 8) and the median latency of a request with it (1,634 to 1,160 ms, 1,711 to 1,230, 1,935 to 1,701). The fixed limit helps at 2 and 4 requests/s and is level or slightly worse at 8 (TPOT 10.2 against 9.9 ms), and its p99 TPOT is the highest at 2 and 4. The time to the first token is 0.2 to 1.5 ms longer with guesses.
+
+Limits. Ten prompts, one model, one GPU, one draft model. The draft model guesses greedily and one sequence at a time, and its guesses were not measured with sampling, with several requests or under load; `engine serve` has no `--draft-model`. With sampling a guess is kept only when it equals the sampled token; the rule that keeps a guess with a probability set by both models is not implemented. Whether the outputs with the adaptive limit match the plain ones token for token was not counted here (the tests compare them up to near ties). 64 requests per rate.
 
 ## Batch-1 decode bandwidth
 

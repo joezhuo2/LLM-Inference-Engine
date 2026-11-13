@@ -2228,3 +2228,6 @@
 - **rolling a KV cache back to the longest prefix two token lists share** => 
 - **a function hook as the seam between a scheduler and a second model** => 
 - **why a draft model must be many times faster than the model it drafts for** => 
+- **why guessing pays less as more requests share the rows of a step** => 
+- **accepted share against rows spent: what an adaptive draft limit trades** => 
+- **Poisson arrivals and reading TPOT p50 against p99 under load** => 

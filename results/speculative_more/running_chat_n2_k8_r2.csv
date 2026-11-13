@@ -1,0 +1,3 @@
+id,prompt_tokens,output_tokens,preemptions,arrival_s,ttft_s,tpot_s,latency_s
+0,36,256,0,0,0.012221772,0.00617945963,1.58798398
+1,23,9,0,0,0.012222586,0.00565272062,0.057444351
