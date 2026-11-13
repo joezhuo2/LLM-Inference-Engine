@@ -73,6 +73,20 @@ void push_whole_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const std:
                               .shape = info.shape});
 }
 
+void push_row_slice_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const std::string& name,
+                         const TensorEntry& info, uint64_t dst_os, int64_t start, int64_t count) {
+    constexpr uint64_t bf16_elem_bytes = dtype_size(DType::BF16);
+    const int64_t cols = info.shape[1];
+    const uint64_t row_bytes = static_cast<uint64_t>(cols) * bf16_elem_bytes;
+
+    copy_ops.push_back(
+        CopyOp{.name = name,
+               .src = data_os + info.offset + static_cast<uint64_t>(start) * row_bytes,
+               .dst = dst_os,
+               .bytes = static_cast<uint64_t>(count) * row_bytes,
+               .shape = {count, cols}});
+}
+
 }  // namespace
 
 WeightLayout plan_shard_layout(const ModelConfig&, const SafetensorsHeader&, int, int) {
