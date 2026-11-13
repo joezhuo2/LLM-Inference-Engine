@@ -6,7 +6,6 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "engine/core/tensor.h"
 
 namespace engine {
 
@@ -51,7 +50,21 @@ const TensorEntry& require_bf16_tensor(const SafetensorsHeader& header, const st
     return info;
 }
 
-} // namespace
+Region allocate_region(uint64_t& buffer_cursor, const std::vector<int64_t>& region_shape) {
+    buffer_cursor = align_up(buffer_cursor, kWeightAlignment);
+    uint64_t region_bytes = dtype_size(DType::BF16);
+
+    for (int64_t dim_size : region_shape) {
+        region_bytes *= static_cast<uint64_t>(dim_size);
+    }
+
+    Region region{buffer_cursor, region_bytes, region_shape};
+    buffer_cursor += region_bytes;
+
+    return region;
+}
+
+}  // namespace
 
 WeightLayout plan_shard_layout(const ModelConfig&, const SafetensorsHeader&, int, int) {
     throw std::logic_error("unimplemented: plan_shard_layout");
