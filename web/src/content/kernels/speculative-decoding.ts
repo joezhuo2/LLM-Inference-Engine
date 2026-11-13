@@ -90,6 +90,29 @@ export const spec = {
 const chatAtBest = spec.chatAt(spec.best.k);
 if (!chatAtBest || chatAtBest.ms >= spec.chatPlain.ms) throw new Error("docs/results.md Speculative decoding: the chapter says chat prompts gain at the best draft length of the repeat prompts; rewrite its last step");
 
+const pick = (index: number, where: Record<string, string>, name: string) => {
+  const t = profilingTable(section, index, "results");
+  const row = t.rows.find((r) => Object.entries(where).every(([k, v]) => r[t.header.indexOf(k)] === v));
+  const v = row ? Number.parseFloat(row[t.header.indexOf(name)]) : Number.NaN;
+  if (Number.isNaN(v)) throw new Error(`docs/results.md Speculative decoding: table ${index + 1} has no "${name}" for ${JSON.stringify(where)}`);
+  return v;
+};
+const shared = (guesses: string) => pick(3, { prompts: "chat", requests: String(example.max_batch), guesses }, "against none");
+const drafted2 = { prompts: "chat", guesses: "draft model, up to 2" };
+
+export const more = {
+  sharedFixed: shared("fixed"),
+  sharedAdaptive: shared("adaptive"),
+  sampledChat: pick(4, { prompts: "chat", guesses: "fixed" }, "speedup"),
+  draftSpeedup: pick(5, drafted2, "speedup"),
+  draftAcceptedPct: pick(5, drafted2, "accepted %"),
+  draftMs: pick(5, drafted2, "ms per token"),
+  loadPlainMs: pick(6, { "requests/s": "4", guesses: "none" }, "TPOT p50 ms"),
+  loadAdaptiveMs: pick(6, { "requests/s": "4", guesses: "adaptive" }, "TPOT p50 ms"),
+};
+if (more.sharedFixed >= 1 || more.sharedAdaptive < more.sharedFixed || more.draftSpeedup >= 1 || more.loadAdaptiveMs >= more.loadPlainMs)
+  throw new Error("docs/results.md Speculative decoding: the chapter says a full batch loses with the fixed limit, the adaptive limit does better, the draft model is slower and load gains; rewrite the last step and Beyond");
+
 export const speculativeDecoding: KernelStory = {
   slug: "speculative-decoding",
   index: 17,
