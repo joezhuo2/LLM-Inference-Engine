@@ -2221,3 +2221,14 @@
 - **a figure rebuilt from recorded steps and checked against the recorder's counts** => 
 - **a build that throws when the text no longer matches the measured data** => 
 - **a list key by position when an id can repeat** => 
+- **a per-sequence draft limit that halves on a rejection and doubles on a full accept** => 
+- **a replay of a recorded answer under other settings, and what it cannot tell (the time)** => 
+- **a number derived from list position instead of kept by hand** => 
+- **a draft model: a small model proposes, the large one checks in one step** => 
+- **rolling a KV cache back to the longest prefix two token lists share** => 
+- **a function hook as the seam between a scheduler and a second model** => 
+- **why a draft model must be many times faster than the model it drafts for** => 
+- **why guessing pays less as more requests share the rows of a step** => 
+- **accepted share against rows spent: what an adaptive draft limit trades** => 
+- **Poisson arrivals and reading TPOT p50 against p99 under load** => 
+- **a build that fails when a sentence stops matching its table** => 

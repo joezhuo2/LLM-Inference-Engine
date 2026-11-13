@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -21,6 +22,7 @@ struct SchedulerConfig {
     int32_t eos_id = -1;
     int max_draft = 0;
     int max_ngram = 3;
+    bool adaptive_draft = false;
 };
 
 struct Step {
@@ -50,6 +52,9 @@ struct ChunkedStep {
     }
 };
 
+using DraftSource =
+    std::function<std::vector<int32_t>(SeqId id, std::span<const int32_t> context, int want)>;
+
 struct DraftCounts {
     int64_t proposed = 0;
     int64_t accepted = 0;
@@ -71,6 +76,7 @@ public:
     int num_waiting() const;
     int num_running() const;
     const DraftCounts& draft_counts() const;
+    void set_draft_source(DraftSource source);
 
 private:
     std::vector<std::vector<int32_t>> reserve_drafts(std::span<const SeqId> decode, int spare_rows);
@@ -86,7 +92,9 @@ private:
     std::unordered_map<SeqId, int> prefill_progress_;
     std::vector<SeqId> pending_sampled_seqs_;
     std::vector<std::vector<int32_t>> pending_drafts_;
+    std::unordered_map<SeqId, int> draft_limit_;
     DraftCounts draft_counts_;
+    DraftSource draft_source_;
 };
 
 }  // namespace engine

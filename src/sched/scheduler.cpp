@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "engine/kv/block_manager.h"
@@ -168,14 +169,22 @@ std::vector<std::vector<int32_t>> Scheduler::reserve_drafts(std::span<const SeqI
         const Request& req = requests_.at(s);
 
         const int left = req.max_new_tokens - int(req.output.size()) - 1;
-        const int want = std::min({config_.max_draft, spare_rows, left});
+        const int limit = config_.adaptive_draft
+                              ? draft_limit_.try_emplace(s, config_.max_draft).first->second
+                              : config_.max_draft;
+        const int want = std::min({limit, spare_rows, left});
         if (want < 1) {
             continue;
         }
 
         std::vector<int32_t> context = req.prompt;
         context.insert(context.end(), req.output.begin(), req.output.end());
-        std::vector<int32_t> draft = propose_prompt_lookup(context, config_.max_ngram, want);
+        std::vector<int32_t> draft = draft_source_
+                                         ? draft_source_(s, context, want)
+                                         : propose_prompt_lookup(context, config_.max_ngram, want);
+        if (draft.size() > size_t(want)) {
+            draft.resize(size_t(want));
+        }
 
         size_t kept = 0;
         while (kept < draft.size() && block_manager_.can_append(s)) {
@@ -369,6 +378,12 @@ void Scheduler::update(std::span<const int32_t> tokens) {
         draft_counts_.proposed += int64_t(draft.size());
         draft_counts_.accepted += emitted - 1;
 
+        if (config_.adaptive_draft && !draft.empty()) {
+            int& limit = draft_limit_[s_id];
+            limit = size_t(agreed) == draft.size() ? std::min(config_.max_draft, limit * 2)
+                                                   : std::max(1, limit / 2);
+        }
+
         if (!finished && size_t(agreed) < draft.size()) {
             const int wasted = int(draft.size()) - agreed;
             block_manager_.truncate(s_id, block_manager_.length(s_id) - wasted);
@@ -377,6 +392,7 @@ void Scheduler::update(std::span<const int32_t> tokens) {
         if (finished) {
             block_manager_.free(s_id);
             prefill_progress_.erase(s_id);
+            draft_limit_.erase(s_id);
             req.state = RequestState::Finished;
             req.finished = Clock::now();
 
@@ -428,6 +444,10 @@ int Scheduler::num_running() const {
     return static_cast<int>(running_list_.size());
 }
 
+void Scheduler::set_draft_source(DraftSource source) {
+    draft_source_ = std::move(source);
+}
+
 const DraftCounts& Scheduler::draft_counts() const {
     return draft_counts_;
 }
@@ -458,6 +478,7 @@ void Scheduler::cancel(SeqId id) {
 
     requests_.erase(it);
     prefill_progress_.erase(id);
+    draft_limit_.erase(id);
 }
 
 }  // namespace engine

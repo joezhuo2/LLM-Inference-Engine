@@ -4,12 +4,14 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { speculativeAbout, speculativeAboutCaption } from "@/components/kernels/speculative-decoding/about";
 import { RowsFigure, TruncateFigure } from "@/components/kernels/speculative-decoding/figures";
+import { replay, totals } from "@/components/kernels/speculative-decoding/lookup";
+import { SpeculativeSandbox } from "@/components/kernels/speculative-decoding/sandbox";
 import { speculativeCaptions, speculativeSteps } from "@/components/kernels/speculative-decoding/story";
 import { chapterNumber } from "@/content/book-order";
 import { piece, repeatRows, spec, specFmt, speculativeDecoding } from "@/content/kernels/speculative-decoding";
 import type { SpeculativeStep } from "@/lib/data";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { joinParts } from "./segments";
 import { createSpeculativeModel, type SpecNumbers, type SpecStop, stepsExhibit } from "./speculative-decoding-model";
 
@@ -109,6 +111,23 @@ const instructions = [
   "Drag the pink ball to allow more guesses per step: the blue bars are tokens per step.",
 ];
 
+const recordedKnobs = { maxDraft: spec.maxDraft, maxNgram: spec.maxNgram };
+if (totals(replay({ ...recordedKnobs, adaptive: true })).msPerToken <= totals(replay({ ...recordedKnobs, adaptive: false })).msPerToken) throw new Error("speculative sandbox: the adaptive limit now beats the fixed one on the recorded answer; rewrite the last paragraph of the workbench page");
+
+const workbench: WorkbenchPage[] = [
+  {
+    title: "change how much it guesses",
+    overlay: "sandbox",
+    caption: "Try it yourself: replay the recorded answer with your own draft length",
+    paragraphs: [
+      `The recorded answer of this chapter took ${spec.decodeSteps} decode steps with up to ${spec.maxDraft} guesses per step. The sandbox replays the same answer with a TypeScript port of propose_prompt_lookup() from src/sched/speculative.cpp, under the settings you pick.`,
+      "Each column is one step and each cell one row. The bottom cell is the row every step has. A filled cell above it is a guess the model agreed with, and an outlined cell is a guess that was dropped.",
+      "Lower the guesses to 1 and count the steps, then raise them to 15. More guesses save steps only while the model keeps agreeing; after that every extra row is dropped, and a taller step costs more time.",
+      "Switch the limit to adaptive. A sequence then halves its limit after a wrong guess and doubles it after a step that keeps every guess. Fewer rows are dropped, and the answer takes more steps. On a quiet server the dropped rows are cheap, so the fixed limit wins here; the adaptive one matters when other requests want those rows.",
+    ],
+  },
+];
+
 const figures: Record<string, () => ReactNode> = {
   rows: () => <RowsFigure />,
   truncate: () => <TruncateFigure />,
@@ -116,6 +135,7 @@ const figures: Record<string, () => ReactNode> = {
 
 function SpeculativeOverlay({ kind, target, narrow }: OverlayProps) {
   if (!target || !kind) return null;
+  if (kind === "sandbox") return createPortal(<SpeculativeSandbox />, target);
   const figure = figures[kind];
   if (!figure) return null;
   return createPortal(<div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>{figure()}</div>, target);
@@ -132,7 +152,7 @@ const chapter: ChapterDef = {
   overlays: ["rows", null, null, "truncate", null],
   instructions,
   beats,
-  workbench: [],
+  workbench,
   buildModel: (kit, fonts) => createSpeculativeModel(kit, fonts, numbers),
   Overlay: SpeculativeOverlay,
 };

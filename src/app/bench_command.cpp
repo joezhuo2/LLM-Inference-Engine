@@ -31,6 +31,7 @@
 
 #include "engine/runtime/bench.h"
 #include "engine/runtime/decode_graphs.h"
+#include "engine/runtime/draft_model.h"
 #include "engine/runtime/kv_cache.h"
 #include "engine/runtime/model_runner.h"
 #include "engine/runtime/paged_runner.h"
@@ -55,6 +56,8 @@ struct Options {
     int graph_steps = 2;
     int token_budget = 0;
     int speculate = 0;
+    bool speculate_adaptive = false;
+    std::filesystem::path draft_model;
     std::string prefill_attention = "flash";
     int warmup = 3;
     uint64_t seed = 0;
@@ -161,6 +164,8 @@ void run(const Options& o) {
         throw std::invalid_argument("--token-budget must be at least --max-batch");
     if (o.speculate > 0 && !batched)
         throw std::invalid_argument("--speculate needs --max-batch of at least 1");
+    if (!o.draft_model.empty() && o.speculate < 1)
+        throw std::invalid_argument("--draft-model needs --speculate of at least 1");
     if (o.prefill_attention != "flash" && !batched)
         throw std::invalid_argument("--prefill-attention needs --max-batch of at least 1");
     if (o.graph_steps < 1 || (o.graph_steps & (o.graph_steps - 1)) != 0)
@@ -175,6 +180,14 @@ void run(const Options& o) {
     std::optional<Sampler> sampler;
     std::optional<DecodeGraphs> graphs;
     SchedulerConfig sc;
+    std::optional<DeviceWeights> draft_weights;
+    std::optional<DraftModel> draft;
+    if (!o.draft_model.empty()) {
+        draft_weights.emplace(load_weights(o.draft_model, nullptr));
+        if (draft_weights->config.vocab != w.config.vocab)
+            throw std::invalid_argument("--draft-model must have the vocabulary of --model");
+        draft.emplace(*draft_weights, int(context), o.max_batch, nullptr);
+    }
     if (batched) {
         num_blocks = kv_cache_blocks(w.config, kKvBlockSize, device_free_bytes());
         const int64_t max_prefill = std::max<int64_t>(wc.prompt_len.max, 2048);
@@ -184,7 +197,8 @@ void run(const Options& o) {
               .max_prefill_tokens = int(max_prefill),
               .max_context = int(context),
               .eos_id = eos_id,
-              .max_draft = o.speculate};
+              .max_draft = o.speculate,
+              .adaptive_draft = o.speculate_adaptive};
         if (o.graphs) owned_stream.emplace();
         cache.emplace(w.config, num_blocks, kKvBlockSize);
         paged_runner.emplace(w.config, w.weights, *cache,
@@ -204,6 +218,10 @@ void run(const Options& o) {
             return ServeStats{};
         }
         Scheduler scheduler(sc);
+        if (draft)
+            scheduler.set_draft_source([&](SeqId id, std::span<const int32_t> tokens, int want) {
+                return draft->propose(id, tokens, want);
+            });
         return run_batched(scheduler, *paged_runner, *sampler, load, start,
                            graphs ? &*graphs : nullptr,
                            timed && !o.trace.empty() ? &steps : nullptr, o.token_budget);
@@ -271,6 +289,8 @@ void run(const Options& o) {
         fields.emplace_back("graph_steps", std::to_string(o.graphs ? o.graph_steps : 0));
         fields.emplace_back("prefill_attention", o.prefill_attention);
         fields.emplace_back("speculate", std::to_string(o.speculate));
+        fields.emplace_back("speculate_adaptive", o.speculate_adaptive ? "1" : "0");
+        fields.emplace_back("draft_model", o.draft_model.filename().string());
         fields.emplace_back("drafted", std::to_string(stats.drafted));
         fields.emplace_back("draft_accepted", std::to_string(stats.accepted));
     } else {
@@ -292,6 +312,8 @@ void run(const Options& o) {
         meta["graph_steps"] = o.graphs ? o.graph_steps : 0;
         meta["token_budget"] = o.token_budget;
         meta["speculate"] = o.speculate;
+        meta["speculate_adaptive"] = o.speculate_adaptive;
+        meta["draft_model"] = o.draft_model.filename().string();
         meta["kv_blocks"] = num_blocks;
         meta["block_size"] = kKvBlockSize;
         meta["num_requests"] = o.num_requests;
@@ -380,6 +402,14 @@ void add_bench_command(CLI::App& app) {
                     "0 is off; needs --max-batch")
         ->capture_default_str()
         ->check(CLI::NonNegativeNumber);
+    cmd->add_option("--draft-model", opts->draft_model,
+                    "With --speculate: take the guesses from this smaller model with the same "
+                    "vocabulary (a model directory) instead of from the context")
+        ->check(CLI::ExistingDirectory);
+    cmd->add_flag("--speculate-adaptive", opts->speculate_adaptive,
+                  "With --speculate: each sequence starts at that many draft tokens, halves its "
+                  "limit after a step that rejects one and doubles it back after a step that "
+                  "accepts them all");
     cmd->add_option("--prefill-attention", opts->prefill_attention,
                     "Attention kernel for prefill rows: flash runs them through "
                     "flash_attention_prefill, paged through the per-row decode kernels as before "

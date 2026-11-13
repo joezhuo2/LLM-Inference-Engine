@@ -303,3 +303,25 @@ Things to know:
 Not done: no measurement between 2 and 15 running sequences or under load; greedy only in the sweep; no adaptive draft length; no draft model; `engine generate` has no flag (it does not use the scheduler). The chapter has no sandbox, prediction or exercise and is not on the one-hour path. Web checked in headless Chrome only (dark, light for two spreads, 390 px for two spreads, one real-mouse drag); motion timing was not measured.
 
 Helpers: engine gate `~/.cache/llmie-spec/verify.sh`, web gate `~/.cache/llmie-spec/verify-web.sh`, screenshots `~/.cache/llmie-spec/shots/`, the near-tie check of one prompt `~/.cache/llmie-spec/tie/`.
+
+## Snapshot 2026-11-12 (later: the "not done" list of speculative decoding, done)
+
+Same branch and worktree (`sched/speculative-wire`, `~/code/llm-inference-engine-spec`), nothing pushed. Commits after the first snapshot, each gated:
+
+- 44e7f39: `SchedulerConfig::adaptive_draft` and `--speculate-adaptive` on bench and serve (halve the limit after a rejection, double after a full accept). Gated without the GPU, which was down.
+- 28140d6: kernel cards numbered by list position (00 bottom to 19 top).
+- 0eb169d: the chapter's sandbox (`speculative-decoding/sandbox.tsx`, `lookup.ts`), a prediction in the last step, the open exercise "find where guessing stops paying", a workbench page in the book. Motion measured over CDP (column 0.7 s, prediction 0.5 s).
+- 19e069b: `engine generate --speculate N [--speculate-adaptive] [--draft-model DIR]`; a draft model (`include/engine/runtime/draft_model.h`, `Scheduler::set_draft_source`, `--draft-model` on bench and generate, not on serve). Full gate with the GPU: debug 812 of 812, cpu 374 of 374.
+- Then two commits (see `git log`): the extra sweep with its results and `docs/results.md` tables, and the site text that follows from them (last step of the chapter, the Beyond page, `more` in `web/src/content/kernels/speculative-decoding.ts`, which reads tables 4 to 7 of the section and throws when a claim stops holding).
+
+Draft model: `~/models/stories110m` (nickypro/tinyllama-110M, MIT, TinyStories, same 32,000 vocabulary, converted to BF16 safetensors; `~/models/stories110m-src` is the download; `models/stories110m` in the worktree points at it). The loader refuses tied embeddings, so the file carries `lm_head.weight` as a copy and its config says untied.
+
+What the sweep found (`docs/results.md`, "Speculative decoding"): the fixed limit falls from 3.04x with one repeat request to 1.15x with 16 and loses on chat from 8 requests on; the adaptive limit never loses and helps under load at every rate; sampling keeps the gain on chat; the draft model makes decoding slower (0.80x with 2 guesses).
+
+Open:
+
+- One sweep run (12 repeat requests, `--speculate 8`, round 3) spun on the CPU for 81 minutes with the GPU idle and was killed. The same command then ended 60 times out of 60 under gdb (`~/.cache/llmie-spec/hang/try.sh`). No stack was taken (ptrace_scope 1). The journal showed "Time jumped backwards" lines around it, and WSL restarted by itself later in the sweep. `run_batched` (`src/runtime/bench.cpp`) reads `arrival(submitted)` past the end if a request is ever lost, which would spin just like this; not shown to be the cause.
+- `--draft-model` is not on `engine serve`; the draft model was not measured with sampling, several requests or load; the keep-with-probability rule of the paper is not implemented.
+- The chapter is not on the one-hour path. The new site text was built and checked in headless Chrome only.
+
+Helpers: `~/.cache/llmie-spec/static.mjs` (static server for `web/out` on 4317), `cdp-motion.mjs` (samples a value per frame after a trigger), `verify.sh` and `verify-web.sh` (the gates).

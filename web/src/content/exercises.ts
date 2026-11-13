@@ -268,6 +268,20 @@ export const exercises: Exercise[] = [
       { path: "docs/profiling.md", label: "the Nsight Compute numbers to start from, under FlashAttention prefill in chunks" },
     ],
   },
+  {
+    kind: "open",
+    id: "speculative-break-even",
+    chapter: "speculative-decoding",
+    title: "find where guessing stops paying",
+    task: "Write three prompts of your own: one whose answer copies most of the prompt, one that copies a little, and one that copies nothing. Run each with 0, 2, 4, 8 and 15 guesses per step and find the draft length where the time per token stops falling.",
+    nudge: "Run engine bench with --max-batch 16 --graphs --num-requests 1 --stop-at-eos --prompts your.json --speculate K, and read the steps, the draft tokens and the accepted ones it prints. Then add --speculate-adaptive and compare the dropped rows.",
+    runs: "gpu",
+    check: "There are no tests: for each prompt, the tokens per step times the time of a step should give the time per token you measured. The prompt that copies nothing should cost about the same as plain decoding, never clearly less.",
+    compare: [
+      { path: "scripts/speculative_sweep.sh", label: "the sweep this chapter's table comes from" },
+      { path: "scripts/prompts_repeat.json", label: "the four prompts whose answers repeat them" },
+    ],
+  },
 ];
 
 export const chapterExercises = (slug: string): Exercise[] => exercises.filter((e) => e.chapter === slug);

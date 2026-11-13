@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { piece, spec, specFmt } from "@/content/kernels/speculative-decoding";
+import { more, piece, spec, specFmt } from "@/content/kernels/speculative-decoding";
+import { expectAnswer, type Prediction, Predict } from "../predict";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { CheckFigure, GuessFigure, PayoffFigure, RowsFigure, TruncateFigure } from "./figures";
 
@@ -15,6 +16,13 @@ const best = spec.bestStep;
 const miss = spec.missStep;
 const chat = spec.chatAt(spec.best.k) ?? spec.chatWorst;
 const quote = (tokens: string[]) => tokens.map(piece).join("").trim();
+
+const prediction: Prediction = expectAnswer({
+  question: `A chat answer rarely repeats its prompt. With up to ${spec.best.k} guesses per step, is a chat answer faster, slower or the same as plain decoding?`,
+  choices: ["faster", "slower", "the same"],
+  answer: chat.ms < spec.chatPlain.ms ? "faster" : chat.ms > spec.chatPlain.ms ? "slower" : "the same",
+  why: `${fmt(chat.ms, 2)} ms per token against ${fmt(spec.chatPlain.ms, 2)} ms (measured). Only ${fmt(chat.acceptedPct)}% of the guesses were kept, but a wrong guess costs a row of a step that was running anyway, and a kept one saves a whole step.`,
+}, "faster");
 
 const steps: StoryStep[] = [
   {
@@ -91,6 +99,7 @@ const steps: StoryStep[] = [
     title: "it pays when the answer repeats the prompt",
     body: (
       <>
+        <Predict {...prediction} />
         <p>
           On four prompts whose answers repeat them (repeat a paragraph, fix its spelling, add a docstring to a function, rename a variable in it), with up to {spec.best.k} guesses per step, the model agreed with {fmt(spec.best.acceptedPct)}% of the guessed tokens. A step wrote {fmt(spec.best.tokensPerStep, 2)} tokens on average, and the time per token fell from {fmt(spec.plain.ms, 2)} to <span className="text-accent">{fmt(spec.best.ms, 2)} ms per token</span> (measured, one request at a time). That is {fmt(spec.best.speedup, 2)} times the tokens per second.
         </p>
@@ -98,7 +107,10 @@ const steps: StoryStep[] = [
           Ordinary chat answers have less to copy: there the model agreed with {fmt(chat.acceptedPct)}% of the guesses. The time per token still fell, from {fmt(spec.chatPlain.ms, 2)} to {fmt(chat.ms, 2)} ms. A wrong guess only costs a row, and a row is cheap; and chat answers repeat themselves more than one would think.
         </p>
         <p>
-          {spec.best.k < spec.most.k ? `More guesses are not always better: with up to ${spec.most.k} the time per token was ${fmt(spec.most.ms, 2)} ms, because the extra rows cost more than the few extra tokens they bring. ` : ""}This is also a gain for a quiet server. Under load the rows are full of other requests, which is the better use of them. {chapter("beyond", "Beyond this engine")} describes the version with a small draft model, which can guess where there is nothing to copy.
+          {spec.best.k < spec.most.k ? `More guesses are not always better: with up to ${spec.most.k} the time per token was ${fmt(spec.most.ms, 2)} ms, because the extra rows cost more than the few extra tokens they bring. ` : ""}The spare rows shrink as requests share the step. With {spec.maxBatch} chat requests decoding at once, up to {spec.best.k} guesses each ran at {fmt(more.sharedFixed, 2)} times the tokens per second of plain decoding: slower. A limit that halves after a wrong guess and doubles back after a right one ran at {fmt(more.sharedAdaptive, 2)} times. With requests arriving at 4 per second that limit took the median time per token from {fmt(more.loadPlainMs, 1)} to {fmt(more.loadAdaptiveMs, 1)} ms, and sampling at temperature 0.7 kept the gain on chat ({fmt(more.sampledChat, 2)} times, all measured).
+        </p>
+        <p>
+          A small draft model can guess where there is nothing to copy. The engine can run one, and with the one tried it lost: {fmt(more.draftSpeedup, 2)} times the tokens per second with 2 guesses per step (measured). {chapter("beyond", "Beyond this engine")} says why.
         </p>
       </>
     ),

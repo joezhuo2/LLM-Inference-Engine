@@ -66,6 +66,7 @@ Written by `engine bench --trace out.json` (batched mode only, the timed run onl
     "graph_steps": 1,
     "token_budget": 0,
     "speculate": 0,
+    "speculate_adaptive": false,
     "kv_blocks": 12915,
     "block_size": 16,
     "num_requests": 24,
@@ -102,7 +103,7 @@ build/release/bin/engine bench --model models/tinyllama --prompts scripts/prompt
 build/release/bin/engine serve --model models/tinyllama --graphs
 ```
 
-Listens on `127.0.0.1:8000` once the model is loaded (`--host`, `--port`); `--max-batch` (default 16), `--graphs`, `--graph-steps`, `--token-budget` and `--speculate` are those of `bench`, and `--temperature`, `--top-k`, `--top-p` and `--max-tokens` set what a request gets when it does not say. One engine thread runs the scheduler; HTTP worker threads hand it requests and read tokens through queues, so requests join the batch between steps.
+Listens on `127.0.0.1:8000` once the model is loaded (`--host`, `--port`); `--max-batch` (default 16), `--graphs`, `--graph-steps`, `--token-budget`, `--speculate` and `--speculate-adaptive` are those of `bench`, and `--temperature`, `--top-k`, `--top-p` and `--max-tokens` set what a request gets when it does not say. One engine thread runs the scheduler; HTTP worker threads hand it requests and read tokens through queues, so requests join the batch between steps.
 
 ### `GET /health`
 
@@ -116,7 +117,7 @@ A snapshot; the dashboard polls it about once a second.
 {
   "version": 1,
   "time_s": 512.3,
-  "meta": {"engine_version": "0.1.0", "gpu": "...", "model": "tinyllama", "max_batch": 16, "graphs": true, "graph_steps": 1, "token_budget": 0, "speculate": 0},
+  "meta": {"engine_version": "0.1.0", "gpu": "...", "model": "tinyllama", "max_batch": 16, "graphs": true, "graph_steps": 1, "token_budget": 0, "speculate": 0, "speculate_adaptive": false},
   "requests": {"waiting": 2, "running": 9, "finished_total": 341, "preemptions_total": 3},
   "kv": {"blocks_total": 12915, "blocks_free": 11020, "block_size": 16},
   "tokens": {"output_total": 48211, "output_per_s": 812.4, "drafted_total": 0, "draft_accepted_total": 0},

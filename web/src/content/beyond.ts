@@ -1,6 +1,7 @@
 import { beyondTitle, chapterNumber } from "./book-order";
 import { estimates, fitEstimate } from "./estimates";
 import { kernelStory } from "./kernels";
+import { more, spec, specFmt as fmt } from "./kernels/speculative-decoding";
 
 export type BeyondSource = { label: string; href: string };
 export type BeyondTopic = { id: string; title: string; unit: string; paragraphs: string[]; source: BeyondSource; estimate?: string };
@@ -14,7 +15,7 @@ export { beyondTitle };
 export const beyondIntro = [
   `This book's argument fits in one sentence. At batch 1 a decode step reads every weight once, so tokens per second can be no higher than the memory bandwidth divided by the bytes read per token. Chapter ${chapterNumber("foundations")}, ${title("foundations")}, sets up that bound, and chapter ${chapterNumber("gemm")}, ${title("gemm")}, measures the projections against it.`,
   "The engine in this book stops at one model in BF16 on one GPU. Real engines go further in four ways, and each one changes the bytes read per token.",
-  `Quantization, prefix caching and multiple GPUs are not implemented or measured in this engine. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model is not. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
+  `Quantization, prefix caching and multiple GPUs are not implemented or measured in this engine. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model runs too, with a draft model that turned out too slow to pay. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
 ];
 
 export const beyondTopics: BeyondTopic[] = [
@@ -38,6 +39,7 @@ export const beyondTopics: BeyondTopic[] = [
       `Chapter ${chapterNumber("speculative-decoding")} guesses the next tokens by copying them from earlier in the context, which works when the answer repeats its prompt and not otherwise. A draft model can guess anywhere.`,
       "A small draft model writes a few tokens ahead, one decode step each. The large model then scores all of them in one pass, which reads its weights once, the same way prefill handles many prompt tokens with one read. A round reads the draft's weights once per drafted token and the large model's weights once, and it yields the accepted tokens plus one more from the large model. So the large model's bytes are divided over the tokens of the round, where plain decoding pays all of them for every token.",
       "A drafted token is kept with a probability set by how the two models rated it, and a rejected one is replaced by a draw from a corrected distribution. With that rule the output has exactly the distribution of the large model alone. The gain depends on how often the draft is accepted: a draft that is usually wrong makes each kept token cost more bytes than plain decoding does, because the draft's reads are wasted.",
+      `This engine can take its guesses from a draft model (measured, with TinyStories-110M drafting for TinyLlama): the large model agreed with ${fmt(more.draftAcceptedPct, 1)}% of 2 guesses per step, and the time per token rose from ${fmt(spec.chatPlain.ms, 2)} to ${fmt(more.draftMs, 2)} ms, ${fmt(more.draftSpeedup, 2)} times the tokens per second. That draft is a tenth of the large model's size but decodes only about 1.5 times as fast here (187 against about 125 tokens per second), so a guess costs most of a step. It also guesses greedily and is checked against the token the large model picks, not with the rule above.`,
     ],
     source: { label: "Fast Inference from Transformers via Speculative Decoding (Leviathan et al., 2022)", href: "https://arxiv.org/abs/2211.17192" },
   },

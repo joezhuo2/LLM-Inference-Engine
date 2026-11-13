@@ -121,9 +121,10 @@ struct Served {
     engine::DraftCounts drafts{};
 };
 
-void serve(const SchedulerConfig& c, const std::vector<Request>& requests, int budget,
-           Served& out) {
+void serve(const SchedulerConfig& c, const std::vector<Request>& requests, int budget, Served& out,
+           engine::DraftSource source = {}) {
     Scheduler s(c);
+    s.set_draft_source(std::move(source));
     HostModel model(c);
     for (const Request& r : requests) s.submit(r);
     while (s.num_waiting() + s.num_running() > 0) {
@@ -410,6 +411,86 @@ TEST(SchedulerSpeculative, AcceptedDraftsSaveSteps) {
     EXPECT_GT(speculative.drafts.accepted, 0);
 }
 
+TEST(SchedulerSpeculative, AdaptiveLimitHalvesOnARejectionAndDoublesBack) {
+    SchedulerConfig c = config(40, 16, 8);
+    c.adaptive_draft = true;
+    Scheduler s(c);
+    s.submit(make(1, repeating(30), 100));
+    s.schedule();
+    s.update(Tokens{11});
+
+    Tokens draft = s.schedule().drafts.at(0);
+    ASSERT_EQ(draft.size(), 8u);
+    Tokens reply = draft;
+    reply.back() = 11;
+    reply.push_back(0);
+    s.update(reply);
+
+    draft = s.schedule().drafts.at(0);
+    ASSERT_EQ(draft.size(), 4u);
+    reply = draft;
+    reply.push_back(16);
+    s.update(reply);
+
+    EXPECT_EQ(s.schedule().drafts.at(0).size(), 8u);
+}
+
+TEST(SchedulerSpeculative, FixedLimitStaysAfterARejection) {
+    Scheduler s(config(40, 16, 8));
+    s.submit(make(1, repeating(30), 100));
+    s.schedule();
+    s.update(Tokens{11});
+    Tokens reply = s.schedule().drafts.at(0);
+    ASSERT_EQ(reply.size(), 8u);
+    reply.back() = 11;
+    reply.push_back(0);
+    s.update(reply);
+    EXPECT_EQ(s.schedule().drafts.at(0).size(), 8u);
+}
+
+TEST(SchedulerSpeculative, ADraftSourceReplacesTheLookupAndIsCutToTheRowsLeft) {
+    Scheduler s(config(40, 16, 4));
+    int asked = 0;
+    s.set_draft_source([&asked](SeqId id, std::span<const int32_t> context, int want) {
+        EXPECT_EQ(id, 1);
+        EXPECT_EQ(context.size(), 31u);
+        asked = want;
+        return Tokens(9, 7);
+    });
+    s.submit(make(1, repeating(30), 100));
+    s.schedule();
+    s.update(Tokens{11});
+    EXPECT_EQ(s.schedule().drafts.at(0), Tokens(4, 7));
+    EXPECT_EQ(asked, 4);
+}
+
+TEST(SchedulerSpeculative, AnswersMatchPlainDecodingWithAnyDraftSource) {
+    std::mt19937 rng(11);
+    std::vector<Request> requests;
+    for (int i = 0; i < 12; ++i) {
+        const int prompt = std::uniform_int_distribution<int>(1, 120)(rng);
+        const int fresh = std::uniform_int_distribution<int>(1, kContext - prompt)(rng);
+        requests.push_back(make(i, random_prompt(rng, prompt), fresh, uint64_t(i % 4)));
+    }
+    int64_t accepted = 0;
+    for (const int budget : {0, 8, 32}) {
+        Served out;
+        serve(config(400, 8, 5, kEos), requests, budget, out,
+              [&rng](SeqId, std::span<const int32_t>, int want) {
+                  Tokens guess;
+                  for (int i = 0; i < want; ++i)
+                      guess.push_back(3 + int32_t(std::uniform_int_distribution<int>(0, 11)(rng)));
+                  return guess;
+              });
+        if (HasFatalFailure()) return;
+        ASSERT_EQ(out.done.size(), requests.size());
+        for (const Request& r : requests) EXPECT_EQ(out.done.at(r.id), solo(r, kEos));
+        EXPECT_GT(out.drafts.proposed, 0);
+        accepted += out.drafts.accepted;
+    }
+    EXPECT_GT(accepted, 0);
+}
+
 TEST(SchedulerSpeculative, RandomRunsWithPreemptionMatchPlainDecoding) {
     int preempted = 0;
     int64_t accepted = 0;
@@ -420,6 +501,7 @@ TEST(SchedulerSpeculative, RandomRunsWithPreemptionMatchPlainDecoding) {
         };
         SchedulerConfig c = config(pick(18, 50), pick(1, 8), pick(1, 12), kEos);
         c.max_ngram = pick(1, 4);
+        c.adaptive_draft = seed % 2 == 1;
         const int budget = pick(0, 1) == 0 ? 0 : c.max_batch + pick(0, 64);
         std::vector<Request> requests;
         for (int i = 0; i < 16; ++i) {

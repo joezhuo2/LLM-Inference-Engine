@@ -11,6 +11,7 @@
 
 #include "engine/runtime/decode_graphs.h"
 #include "engine/runtime/device_buffer.h"
+#include "engine/runtime/draft_model.h"
 #include "engine/runtime/generate.h"
 #include "engine/runtime/kv_cache.h"
 #include "engine/runtime/model_runner.h"
@@ -73,7 +74,8 @@ protected:
                                                 int max_batch, int context = kContext,
                                                 int* preemptions = nullptr, bool graphs = false,
                                                 int token_budget = 0, int max_draft = 0,
-                                                engine::DraftCounts* drafts = nullptr) {
+                                                engine::DraftCounts* drafts = nullptr,
+                                                engine::DraftModel* draft_model = nullptr) {
         KvCache cache(w().config, num_blocks, kBlockSize);
         PagedRunner runner(w().config, w().weights, cache, context, max_batch, context, stream);
         Scheduler scheduler(SchedulerConfig{.num_blocks = num_blocks,
@@ -82,6 +84,11 @@ protected:
                                             .max_prefill_tokens = context,
                                             .max_context = context,
                                             .max_draft = max_draft});
+        if (draft_model)
+            scheduler.set_draft_source(
+                [draft_model](engine::SeqId id, std::span<const int32_t> context, int want) {
+                    return draft_model->propose(id, context, want);
+                });
         Sampler sampler(max_batch);
         for (const Request& r : reqs) scheduler.submit(r);
         std::map<int64_t, std::vector<int32_t>> out;
@@ -329,6 +336,32 @@ TEST_F(ServeTest, SpeculationKeepsTheGreedyOutputsOfEveryRequestUpToTies) {
             static_cast<long long>(drafts.proposed), identical, kSpeculating);
         EXPECT_GT(drafts.proposed, 0);
         EXPECT_GT(drafts.accepted, 0);
+    }
+}
+
+TEST_F(ServeTest, TheModelAsItsOwnDraftModelAgreesWithItselfAndKeepsTheOutputs) {
+    constexpr int kSpeculating = 4;
+    constexpr int kMaxDraft = 4;
+    std::vector<Request> reqs = requests(SamplingParams{0.0f, 0});
+    reqs.resize(kSpeculating);
+    const auto plain = run(reqs, 1024, kRequests);
+    for (const int token_budget : {0, 40}) {
+        SCOPED_TRACE("token budget " + std::to_string(token_budget));
+        engine::DraftModel draft_model(w(), kContext, kSpeculating, stream);
+        engine::DraftCounts drafts;
+        const auto speculative = run(reqs, 1024, kRequests, kContext, nullptr, false, token_budget,
+                                     kMaxDraft, &drafts, &draft_model);
+        ASSERT_EQ(speculative.size(), reqs.size());
+        for (const Request& r : reqs) {
+            SCOPED_TRACE("request " + std::to_string(r.id));
+            expect_equal_up_to_a_tie(r, speculative.at(r.id), plain.at(r.id));
+        }
+        std::printf("token budget %d: %lld of %lld draft tokens accepted, %lld draft forwards\n",
+                    token_budget, static_cast<long long>(drafts.accepted),
+                    static_cast<long long>(drafts.proposed),
+                    static_cast<long long>(draft_model.forwards()));
+        EXPECT_GT(drafts.proposed, 0);
+        EXPECT_GT(drafts.accepted * 10, drafts.proposed * 8);
     }
 }
 
