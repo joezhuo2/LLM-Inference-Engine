@@ -10,6 +10,8 @@
 
 namespace engine {
 
+namespace {
+
 constexpr uint64_t align_up(uint64_t byte_os, uint64_t alignment) {
     return (byte_os + alignment - 1) & ~(alignment - 1);
 }
@@ -48,6 +50,8 @@ const TensorEntry& require_bf16_tensor(const SafetensorsHeader& header, const st
 
     return info;
 }
+
+} // namespace
 
 WeightLayout plan_shard_layout(const ModelConfig&, const SafetensorsHeader&, int, int) {
     throw std::logic_error("unimplemented: plan_shard_layout");
