@@ -64,6 +64,15 @@ Region allocate_region(uint64_t& buffer_cursor, const std::vector<int64_t>& regi
     return region;
 }
 
+void push_whole_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const std::string& name,
+                     const TensorEntry& info, const Region& dst_region) {
+    copy_ops.push_back(CopyOp{.name = name,
+                              .src = data_os + info.offset,
+                              .dst = dst_region.offset,
+                              .bytes = info.bytes,
+                              .shape = info.shape});
+}
+
 }  // namespace
 
 WeightLayout plan_shard_layout(const ModelConfig&, const SafetensorsHeader&, int, int) {
