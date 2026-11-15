@@ -6,6 +6,8 @@
 
 namespace engine {
 
+ModelConfig shard_config(const ModelConfig& config, int num_ranks);
+
 WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeader& header, int rank,
                                int num_ranks);
 

@@ -2245,3 +2245,9 @@
 - **gathering scattered source pieces into one staging buffer when their destinations are contiguous** => 
 - **an A/B in one session: why two numbers from different hours cannot be compared on this GPU** => 
 - **one process per measurement when the tenth call behaves unlike the first** => 
+
+## Tensor parallelism: a forward pass on the shards (Branch 152)
+
+- **the config of a shard: a smaller model with the same hidden size** => 
+- **the width of the query heads against the hidden size** => 
+- **a reference to the result of a function that took a temporary, and why GCC warns about it** => 
