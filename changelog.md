@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## runtime/tensor-parallel-forward
 
+- Part A: the timeline entry of the forward pass links its pull request, #213.
+
 - Part A: `docs/claude/status.md` has a snapshot of what joined the branch: the late uploads, the chapter, the timeline and Beyond.
 
 - Part A: the Beyond page and spread say the split of the weights now runs, every share taking turns on the one GPU, with the logit difference and the time per token read from `docs/results.md`.

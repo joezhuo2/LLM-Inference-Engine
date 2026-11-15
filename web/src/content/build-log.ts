@@ -536,7 +536,7 @@ export const milestones: Milestone[] = [
       },
       {
         date: "Nov 14",
-        prs: [],
+        prs: [213],
         branch: "runtime/tensor-parallel-forward",
         title: "Every rank runs, and the sums give the model back",
         text: `ShardedRunner runs the forward pass on the shards. Every rank has its own weights, K/V cache and scratch buffers, and each layer adds the partial results of the ranks into the residual stream twice. This laptop has one GPU, so the ranks take turns on it: it checks that the split computes the model, and it cannot be faster. One rank gives the whole model's logits bit for bit. With 2 and 4 ranks the logits come within ${forward.maxLogitDiff} and every greedy token is the same (measured). A token takes ${forward.msPerToken[1].toFixed(2)} ms with 2 ranks and ${forward.msPerToken[2].toFixed(2)} with 4, against ${forward.wholeMsPerToken.toFixed(2)} for the whole model. The late upload calls that took 130 to 180 ms more are explained too: when a process mostly waits on pinned memory, the driver lowers the GPU's clocks after some seconds. A real load uploads once, before that. What a second GPU would gain is still not measured.`,
