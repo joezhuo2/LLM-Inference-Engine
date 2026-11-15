@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## runtime/tensor-parallel-forward
 
+- Part A: the Beyond page and spread say the split of the weights now runs, every share taking turns on the one GPU, with the logit difference and the time per token read from `docs/results.md`.
+
 - Part A: the main timeline has three more entries: speculative decoding (#210, #211), the layout of one rank (#212) and the forward pass on the shards with the explanation of the late upload calls.
 
 - Part A: the tensor parallelism chapter states the measured forward pass: `shardedForward()` reads the new table of `docs/results.md` and fails the build when one rank stops matching bit for bit, a greedy token differs or the ranks on one GPU stop being slower.

@@ -2,6 +2,7 @@ import { beyondTitle, chapterNumber } from "./book-order";
 import { estimates, fitEstimate } from "./estimates";
 import { kernelStory } from "./kernels";
 import { profilingTable } from "@/lib/data";
+import { shardedForward } from "./kernels/tensor-parallelism";
 import { more, spec, specFmt as fmt } from "./kernels/speculative-decoding";
 
 export type BeyondSource = { label: string; href: string };
@@ -11,6 +12,7 @@ const f = fitEstimate;
 const estimateNumber = estimates.findIndex((e) => e.id === f.id) + 1;
 const title = (slug: string) => kernelStory(slug)?.title ?? slug;
 
+const forward = shardedForward();
 const shardTable = profilingTable("tensor-parallelism-the-weights-of-one-rank", 0, "results");
 const shardCell = (layout: string, name: string) => {
   const row = shardTable.rows.find((r) => r[0] === layout);
@@ -30,7 +32,7 @@ export { beyondTitle };
 export const beyondIntro = [
   `This book's argument fits in one sentence. At batch 1 a decode step reads every weight once, so tokens per second can be no higher than the memory bandwidth divided by the bytes read per token. Chapter ${chapterNumber("foundations")}, ${title("foundations")}, sets up that bound, and chapter ${chapterNumber("gemm")}, ${title("gemm")}, measures the projections against it.`,
   "The engine in this book stops at one model in BF16 on one GPU. Real engines go further in four ways, and each one changes the bytes read per token.",
-  `Quantization and prefix caching are not implemented or measured in this engine, and of multiple GPUs only the split of the weights is. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model runs too, with a draft model that turned out too slow to pay. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
+  `Quantization and prefix caching are not implemented or measured in this engine, and of multiple GPUs the engine has the split, checked on one GPU: chapter ${chapterNumber("tensor-parallelism")}, ${title("tensor-parallelism")}. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model runs too, with a draft model that turned out too slow to pay. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
 ];
 
 export const beyondTopics: BeyondTopic[] = [
@@ -75,7 +77,7 @@ export const beyondTopics: BeyondTopic[] = [
     paragraphs: [
       "Tensor parallelism splits every layer's weight matrices across the GPUs. Each GPU reads only its share of the bytes for a token, and together the GPUs have several times the memory bandwidth. The price is communication: the partial results have to be combined inside every layer, on every step, over a link that is far slower than a GPU's own memory. It is also the way to run a model whose weights do not fit in one GPU.",
       "Pipeline parallelism puts different layers on different GPUs, and replicas put a whole copy of the model on each. In both, one token still has all of the weights read for it, one GPU at a time, so they raise the number of requests served and not the speed of one stream. The Megatron-LM paper describes the tensor split. It was written for training, and inference uses the same split of the forward pass.",
-      `This engine has the first step only: it cuts TinyLlama's weights for 2 or 4 GPUs and loads one share. A share of 2 is ${shard.pct}% of the model and not half, since every GPU keeps the embedding and the LM head whole, and it loads in ${shard.loadMs.toFixed(0)} ms against ${shard.fullMs.toFixed(0)} for the whole model. No forward pass runs on the shares yet.`,
+      `This engine cuts TinyLlama's weights for 2 or 4 GPUs and runs the forward pass on the shares, all of them taking turns on its one GPU (chapter ${chapterNumber("tensor-parallelism")}). A share of 2 is ${shard.pct}% of the model and not half, since every GPU keeps the embedding and the LM head whole, and it loads in ${shard.loadMs.toFixed(0)} ms against ${shard.fullMs.toFixed(0)} for the whole model. The shares give the whole model's tokens, and the logits come within ${forward.maxLogitDiff} (measured). On one GPU that is slower, ${forward.msPerToken[1].toFixed(2)} ms a token with 2 shares against ${forward.wholeMsPerToken.toFixed(2)}, so it checks the split and no more. The engine has no second GPU and no link between GPUs, and the cost of that link is the part that decides the gain.`,
     ],
     source: { label: "Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism (Shoeybi et al., 2019)", href: "https://arxiv.org/abs/1909.08053" },
   },
