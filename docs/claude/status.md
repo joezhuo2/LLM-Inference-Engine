@@ -373,3 +373,20 @@ Open:
 - Not wired: `bench --tensor-parallel`, `serve`, sampling with a temperature through the sharded runner (only greedy is tested), dropping the embedding and the LM head from ranks other than 0, and anything between two devices.
 
 Helpers: `~/.cache/llmie-tp/verify.sh` (the gate), `gate_fwd_1.log` to `gate_fwd_6.log`, `sharded_forward_bench` (the built bench), `fwd_run1.md` to `fwd_run3.md`, `final/code.tar` (the code as finished before it was split into commits).
+
+## Snapshot 2026-11-15 (tensor parallelism: late uploads explained, a chapter, the timeline and Beyond)
+
+Branch `runtime/tensor-parallel-forward` now also carries, cherry-picked on top of f21833b, the work of two subagents and the web follow-up. Local only, not pushed.
+
+- Late upload calls (from `loader/upload-late-calls`, worktree `~/code/llm-inference-engine-tpup`, Branch 154, docs only): the cause is the GPU lowering its clocks (P5) when a process mostly waits on `cudaMallocHost` and `cudaFreeHost` (about 265 ms per call) for 6 to 10 s; H2D falls from 14.5 to 3.7 GB/s. No engine change. `docs/results.md` "Late uploads in one process: the GPU lowers its clocks". Side finding, not changed: the time `upload_weights` reports starts after the pinned staging is allocated, so the published load times leave out about 265 ms per call. Programs and logs in `~/.cache/llmie-tpup`.
+- The chapter `tensor-parallelism` (from `web/tensor-parallel-chapter-b153`, worktree `~/code/llm-inference-engine-tpweb`, Branch 153): chapter 15, after speculative decoding; scroll page, every byte spreads, sandbox, review, exercise, five glossary terms. Its forward pass numbers read the new results table (`shardedForward()` in `web/src/content/kernels/tensor-parallelism.ts`, throws when the claims stop holding).
+- The main timeline (`web/src/content/build-log.ts`) has speculative decoding (#210, #211), the layout of one rank (#212) and the forward pass with the upload finding (no PR number yet: `prs: []`, fill it in once the PR exists). Beyond says the split runs on one GPU.
+
+Gates: the six engine commits each passed the full gate with the GPU; the three chapter commits each passed the web gate in their own worktree; the tip passed the web gate after the merge. The cherry-picked commits were not gated one by one here.
+
+Open:
+
+- Not looked at in the chapter: close-up camera views, phone width, light theme for spreads 3 to 7, the review and exercise pages, motion timing, a settled 3D view at deviceScaleFactor 2.
+- The staging allocation left out of the reported upload time; whether native Linux lowers the clocks the same way.
+- A stray worktree `~/code/llm-inference-engine-beyond` holds the branch name `web/tensor-parallel-chapter` with broken metadata; not touched.
+- Everything listed as not wired in the snapshot above.
