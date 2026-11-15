@@ -351,3 +351,25 @@ Open:
 - The book spread was checked in headless Chrome only (light theme, 1600 by 1000).
 
 Helpers: `~/.cache/llmie-tp/verify.sh` and `verify-web.sh` (the gates), `shard_load_bench` (the built bench), `bench_run1.md` to `bench_run3.md`.
+
+## Snapshot 2026-11-14 (tensor parallelism: a forward pass on the shards, built, tested and measured)
+
+Branch `runtime/tensor-parallel-forward` (Branch 152, worktree `~/code/llm-inference-engine-tp`), on origin/main b6f2480. Local only, not pushed. An earlier session had written the code uncommitted and never built it; this one built it, reviewed it, tested it and measured it. Five commits, each through the full gate with the GPU:
+
+- b6be02d: `shard_config` and `ModelConfig::q_dim()`, two unit tests; the three whole tensors of `plan_shard_layout` held by value, which ends three GCC `-Wdangling-reference` warnings in the cpu preset. Gate: debug 817 of 817, cpu 391 of 391.
+- 1f5fbba: `all_reduce_add` (`src/kernels/all_reduce.cu`) and `tests/gpu/test_all_reduce.cpp`, bit for bit against a host sum. Gate: debug 819, cpu 391.
+- f8e3526: `load_shard_weights`, `ShardedRunner` and `sharded_layer`, `generate` for a `ShardedRunner`, `tests/gpu/test_sharded_runner.cpp` (1, 2 and 4 ranks against `ModelRunner`, rejections). Gate: debug 826, cpu 391.
+- 284c886: `generate --tensor-parallel N`, rejected with `--speculate` before anything loads; `tests/gpu/test_generate_command.cpp` runs the built `engine` (new: `ENGINE_BINARY` and `add_dependencies(gpu_tests engine)`). Gate: debug 828, cpu 391.
+- 321ebdb: `scripts/sharded_forward_bench.cu`, `docs/results.md` "Tensor parallelism: a forward pass on the shards", `results/tensor_parallel/sharded_forward.md`. Gate: debug 828, cpu 391.
+
+What review found in the inherited code: the shapes, the layout and the two reductions per layer were right; one rank gives the logits of `ModelRunner` bit for bit. Fixed: the `--speculate` rejection ran after the tokenizer loaded (moved to the start of `run`); an unused include. Not changed: rank 0 alone embeds and makes the logits, yet every rank still holds the embedding and the LM head.
+
+Measured (release, RTX 5060 Laptop GPU, commit 284c886, three runs): largest logit difference against the whole model 0 for one rank, 0.75 for 2 and 0.64 for 4 over three prompts and 64 decode steps each; greedy tokens 192 of 192 for every rank count; device memory of all ranks 2,222, 2,474 and 2,978 MiB against 2,222 for `ModelRunner`; ms per decode step 8.34, 11.21 and 17.89 against 8.27 (run medians within 0.5 ms). The ranks run one after another on one GPU, so this is a check, not a speedup. The GPU test allows 1.0 and sees 0, 0.25 and 0.64.
+
+Open:
+
+- The Beyond page (`web/src/content/beyond.ts`, line 78) still says no forward pass runs on the shares; web/ was not touched on this branch.
+- `all_reduce_add` and `ShardedRunner` are Part B drafts for Joe to read.
+- Not wired: `bench --tensor-parallel`, `serve`, sampling with a temperature through the sharded runner (only greedy is tested), dropping the embedding and the LM head from ranks other than 0, and anything between two devices.
+
+Helpers: `~/.cache/llmie-tp/verify.sh` (the gate), `gate_fwd_1.log` to `gate_fwd_6.log`, `sharded_forward_bench` (the built bench), `fwd_run1.md` to `fwd_run3.md`, `final/code.tar` (the code as finished before it was split into commits).

@@ -2262,3 +2262,4 @@
 - **a test that runs the built program and reads its output** => 
 - **extra memory of a split on one GPU: the tables every rank copies** => 
 - **why N ranks on one GPU are slower than the whole model: more launches on narrower matrices** => 
+- **reviewing code written by someone else before building on it** => 

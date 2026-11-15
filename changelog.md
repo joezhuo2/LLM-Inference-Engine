@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## runtime/tensor-parallel-forward
 
+- Part A: `docs/claude/status.md` has a snapshot of the branch: the five commits and their gates, what review of the inherited code found, the numbers, and what is open (the Beyond page still says no forward pass runs on the shares).
+
 - Part A: the forward pass on the shards, measured. `scripts/sharded_forward_bench.cu` runs `ModelRunner` on the whole model and `ShardedRunner` with 1, 2 and 4 ranks, one per process; `docs/results.md` has the new section "Tensor parallelism: a forward pass on the shards" and `results/tensor_parallel/sharded_forward.md` the three runs. One rank gives the logits of the whole model bit for bit; 2 and 4 ranks differ by at most 0.75 and 0.64 over three prompts and 64 decode steps each, and every greedy token is the same (192 of 192). All ranks together take 2,474 and 2,978 MiB against 2,222, the extra copies of the embedding and the LM head. A decode step takes 8.34, 11.21 and 17.89 ms against 8.27 for `ModelRunner`, since the ranks run one after another on the one GPU: a check of the split, not a speedup. The section above no longer says no forward pass runs on the shards.
 
 - Part A: `engine generate --tensor-parallel N` loads N shards and answers through `ShardedRunner`; 0, the default, is off. It is rejected together with `--speculate`, before anything loads. `tests/gpu/test_generate_command.cpp` runs the built `engine`: with `--tensor-parallel 2` the greedy text is the same as without, and with `--speculate` it exits with the message. `gpu_tests` now depends on `engine` and knows its path as `ENGINE_BINARY`.
