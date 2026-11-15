@@ -2263,3 +2263,12 @@
 - **extra memory of a split on one GPU: the tables every rank copies** => 
 - **why N ranks on one GPU are slower than the whole model: more launches on narrower matrices** => 
 - **reviewing code written by someone else before building on it** => 
+## Late upload calls (Branch 154)
+
+- **GPU performance states (P0, P2, P5) and the clocks each one allows** => 
+- **dynamic clock lowering when the GPU is busy only a small part of the time** => 
+- **why a host-to-device copy slows down with the memory clock** => 
+- **the cost of cudaMallocHost and cudaFreeHost against the copy they serve** => 
+- **changing one variable at a time: keeping the buffers against adding the same idle time as a sleep** => 
+- **sampling nvidia-smi next to per-call timestamps to line up a slowdown with a state change** => 
+- **minor and major page faults read with getrusage** => 
