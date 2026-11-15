@@ -1115,7 +1115,7 @@ export const beyondSpreads: BeyondSpread[] = Array.from({ length: Math.ceil(beyo
 export const beyondSpreadOf = (topic: number) => Math.floor((topic + 1) / 2);
 
 export const beyondUnitsTitle = "in bytes per token";
-export const beyondUnitsNote = "None of the four is implemented or measured in this engine.";
+export const beyondUnitsNote = "None of the four is measured in bytes per token in this engine.";
 
 const beyondPageNumber = (k: number) => (chapterPage("beyond") ?? 0) + k;
 
