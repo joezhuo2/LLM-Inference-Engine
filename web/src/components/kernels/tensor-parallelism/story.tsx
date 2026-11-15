@@ -103,7 +103,7 @@ const steps: StoryStep[] = [
         <p>
           The layer matrices do divide by N. The embedding and the LM head are each {fmt(s.vocab)} rows of {fmt(s.hidden)} numbers, {mib(rankShare(1).embed)}, and every rank holds both whole, so {mib(2 * rankShare(1).embed)} never shrinks. {two.n} ranks together hold {fmt(two.calc.together, 2)} times the model and {last.n} ranks {fmt(last.calc.together, 2)} times.
         </p>
-        <p>Counting the bytes of every tensor from the shapes gives the same MiB the engine allocated. Which rank embeds and samples is not designed yet; if only one does, the others can drop both tables.</p>
+        <p>Counting the bytes of every tensor from the shapes gives the same MiB the engine allocated. In the forward pass here only rank 0 embeds and makes the logits, so the other ranks could drop both tables. They still load them.</p>
         <Predict {...prediction} />
       </>
     ),

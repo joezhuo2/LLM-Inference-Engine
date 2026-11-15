@@ -1,17 +1,36 @@
 import { cellNumber, modelShape, profilingTable } from "@/lib/data";
 import type { KernelStory } from "./types";
 
-// TODO(lead): wire this to the measured run of the sharded forward pass in docs/results.md; while it returns null, every sentence that needs one of its numbers is left out of the chapter
-export type ShardedForward = { date: string; commit: string; ranks: number[]; msPerToken: number[]; wholeMsPerToken: number; maxLogitDiff: number; sameTokens: boolean };
-export function shardedForward(): ShardedForward | null {
-  return null;
+const forwardRows = profilingTable("tensor-parallelism-a-forward-pass-on-the-shards", 0, "results");
+function forwardCell(layout: string, column: string) {
+  const cell = forwardRows.rows.find((r) => r[0] === layout)?.[forwardRows.header.indexOf(column)];
+  if (cell === undefined) throw new Error(`docs/results.md forward pass on the shards: no "${column}" for ${layout}`);
+  return cell;
+}
+function forwardNumber(layout: string, column: string) {
+  const v = cellNumber(forwardCell(layout, column));
+  if (v === undefined) throw new Error(`docs/results.md forward pass on the shards: "${column}" for ${layout} is not a number`);
+  return v;
+}
+export type ShardedForward = { ranks: number[]; msPerToken: number[]; wholeMsPerToken: number; maxLogitDiff: number; sameTokens: boolean };
+export function shardedForward(): ShardedForward {
+  const ranks = [1, 2, 4];
+  const layout = (n: number) => (n === 1 ? "1 rank" : `${n} ranks`);
+  const run = {
+    ranks,
+    msPerToken: ranks.map((n) => forwardNumber(layout(n), "ms per decode step")),
+    wholeMsPerToken: forwardNumber("whole model, ModelRunner", "ms per decode step"),
+    maxLogitDiff: Math.max(...ranks.map((n) => forwardNumber(layout(n), "largest logit difference"))),
+    sameTokens: ranks.every((n) => { const [same, of] = forwardCell(layout(n), "greedy tokens equal").split(" of "); return same === of; }),
+  };
+  if (forwardNumber("1 rank", "largest logit difference") !== 0 || !run.sameTokens || run.msPerToken[2] <= run.wholeMsPerToken) throw new Error("docs/results.md forward pass on the shards: the chapter says one rank matches bit for bit, the greedy tokens are the same and the ranks on one GPU are slower than the whole model; rewrite it");
+  return run;
 }
 export function shardedForwardSentences(): string[] {
   const run = shardedForward();
-  if (!run) return [];
   return [
-    `On ${run.date} at commit ${run.commit}, the logits of the shards came within ${run.maxLogitDiff} of the whole model's, and the greedy tokens were ${run.sameTokens ? "the same" : "not all the same"} (measured).`,
-    `A token took ${run.ranks.map((n, i) => `${tpFmt(run.msPerToken[i], 2)} ms with ${n} ranks`).join(", ")}, against ${tpFmt(run.wholeMsPerToken, 2)} ms for the whole model (measured).`,
+    `With one rank the logits are the whole model's bit for bit. With 2 and 4 ranks they came within ${run.maxLogitDiff} of them, and every greedy token was the same (measured).`,
+    `A token took ${run.ranks.map((n, i) => `${tpFmt(run.msPerToken[i], 2)} ms with ${n} ${n === 1 ? "rank" : "ranks"}`).join(", ")}, against ${tpFmt(run.wholeMsPerToken, 2)} ms for the whole model (measured). The ranks take turns on the one GPU, so more ranks is slower here.`,
   ];
 }
 

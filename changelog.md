@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## runtime/tensor-parallel-forward
 
+- Part A: the tensor parallelism chapter states the measured forward pass: `shardedForward()` reads the new table of `docs/results.md` and fails the build when one rank stops matching bit for bit, a greedy token differs or the ranks on one GPU stop being slower.
+
 - Part A: `docs/claude/status.md` has a snapshot of the branch: the five commits and their gates, what review of the inherited code found, the numbers, and what is open (the Beyond page still says no forward pass runs on the shares).
 
 - Part A: the forward pass on the shards, measured. `scripts/sharded_forward_bench.cu` runs `ModelRunner` on the whole model and `ShardedRunner` with 1, 2 and 4 ranks, one per process; `docs/results.md` has the new section "Tensor parallelism: a forward pass on the shards" and `results/tensor_parallel/sharded_forward.md` the three runs. One rank gives the logits of the whole model bit for bit; 2 and 4 ranks differ by at most 0.75 and 0.64 over three prompts and 64 decode steps each, and every greedy token is the same (192 of 192). All ranks together take 2,474 and 2,978 MiB against 2,222, the extra copies of the embedding and the LM head. A decode step takes 8.34, 11.21 and 17.89 ms against 8.27 for `ModelRunner`, since the ranks run one after another on the one GPU: a check of the split, not a speedup. The section above no longer says no forward pass runs on the shards.
