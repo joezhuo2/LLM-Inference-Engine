@@ -183,8 +183,17 @@ void BlockManager::publish(SeqId, std::span<const int32_t>) {
     throw std::logic_error("unimplemented: BlockManager::publish");
 }
 
-int BlockManager::ref_count(int) const {
-    throw std::logic_error("unimplemented: BlockManager::ref_count");
+int BlockManager::ref_count(int block) const {
+    if (block < 0 || block >= num_blocks_) {
+        throw std::invalid_argument("[BlockManager] block id out of bounds: " +
+                                    std::to_string(block));
+    }
+
+    if (block == 0) {
+        return 0;
+    }
+
+    return block_meta_[block].ref_count;
 }
 
 int BlockManager::num_cached() const {
