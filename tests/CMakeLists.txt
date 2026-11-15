@@ -37,6 +37,7 @@ add_executable(unit_tests
   unit/test_stop_matcher.cpp
   unit/test_sampling_params.cpp
   unit/test_tensor.cpp
+  unit/test_tensor_parallel.cpp
   unit/test_text_stream.cpp
   unit/test_tokenizer.cpp
   unit/test_tokenizer_golden.cpp
@@ -101,7 +102,6 @@ endif()
 
 add_executable(todo_unit_tests
   todo/unit/test_prefix_cache.cpp
-  todo/unit/test_tensor_parallel.cpp
 )
 target_include_directories(todo_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(todo_unit_tests PRIVATE engine_core GTest::gtest_main)

@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## loader/tensor-parallel-wire
+
+- Part C, written by Joe, finished by Claude at Joe's request: `plan_shard_layout` (#202) passes its 15 tests, which move from `tests/todo/unit/` to `tests/unit/test_tensor_parallel.cpp` and from `todo_unit_tests` to `unit_tests`. Joe wrote the function in `src/loader/tensor_parallel.cpp` (branch `loader/tensor-parallel-impl`): the checks of the arguments and of every tensor, the regions in the order of `plan_weight_layout`, one copy per slice of rows and one copy per row for a slice of columns, sorted by `src`. Claude's part is the last failing test and the cleanup: the rejections of a bad checkpoint now carry the messages of `plan_weight_layout` (`weights: missing tensor <name>`, `<name> must be BF16`, `<name> has shape [..], expected [..]`, `unexpected tensor <name>`, `tied embeddings are not supported`), the helpers lose the file data offset they no longer use (a `TensorEntry` offset is already counted from the start of the file), and `total_bytes` is the end of the last region as in the full layout, not rounded up to the alignment.
+
 ## sched/speculative-wire
 
 - Part A: the speculative decoding chapter and the Beyond page say what the new measurements found. The last step of the chapter gives the full batch (fixed limit slower than plain, adaptive level), the load run, sampling and the draft model; Beyond says the draft model was tried and why it lost. `more` in `web/src/content/kernels/speculative-decoding.ts` reads the numbers from tables 4 to 7 of the section in `docs/results.md` and stops the build when one of those claims no longer holds.

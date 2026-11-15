@@ -2232,3 +2232,10 @@
 - **accepted share against rows spent: what an adaptive draft limit trades** => 
 - **Poisson arrivals and reading TPOT p50 against p99 under load** => 
 - **a build that fails when a sentence stops matching its table** => 
+
+## Tensor parallelism: the layout of one rank (Branch 151)
+
+- **tensor parallelism: one model cut across N GPUs along the width of each layer** => 
+- **why a slice of rows is one copy and a slice of columns is one copy per row** => 
+- **an offset counted from the start of the file against one counted from the start of the data** => 
+- **an error message as part of an interface that a test pins down** => 
