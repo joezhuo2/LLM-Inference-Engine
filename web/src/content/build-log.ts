@@ -16,7 +16,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
-  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles" | "speculate";
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles" | "speculate" | "rank";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -97,6 +97,8 @@ function shardValue(layout: string, column: string, table = 0) {
 
 const shareOf = (layout: string) => Math.round((100 * shardValue(layout, "MiB on the device")) / shardValue("full model", "MiB on the device"));
 const forward = shardedForward();
+
+export const rankScene = { n: 2, pct: shareOf("rank 0 of 2") };
 const unpackedColumn = profilingTable(shards, 1, "results").header[1];
 
 export const milestones: Milestone[] = [
@@ -521,6 +523,7 @@ export const milestones: Milestone[] = [
         date: "Nov 14",
         prs: [212],
         branch: "loader/tensor-parallel-wire",
+        scene: "rank",
         title: "The weights of one GPU out of several",
         text: `Tensor parallelism splits every layer's weights across N GPUs, called ranks. The first step: plan_shard_layout, written by Joe, gives the weights of one rank, and the engine can load them. A rank of 2 holds ${shareOf("rank 0 of 2")}% of the model and not half, and a rank of 4 holds ${shareOf("rank 0 of 4")}% (calculated), because every rank keeps the embedding and the LM head whole. A slice of columns is one copy per row, ${whole(shardValue("rank 0 of 2", "copies"))} copies in place of ${shardValue("full model", "copies")}, so a rank of 2 first took ${(shardValue("rank 0 of 2", unpackedColumn, 1) / 1000).toFixed(1)} s to load. upload_weights now packs the copies of one tensor into one chunk: a rank of 2 loads in ${shardValue("rank 0 of 2", "upload ms").toFixed(0)} ms and a rank of 4 in ${shardValue("rank 0 of 4", "upload ms").toFixed(0)} ms, against ${shardValue("full model", "upload ms").toFixed(0)} ms for the whole model.`,
         metric: {

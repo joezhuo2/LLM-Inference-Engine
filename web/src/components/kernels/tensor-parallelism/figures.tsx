@@ -19,7 +19,7 @@ const parts = (n: number) => {
   ];
 };
 
-function RankBar({ n, x, y, h, px }: { n: number; x: number; y: number; h: number; px: number }) {
+export function RankBar({ n, x, y, h, px }: { n: number; x: number; y: number; h: number; px: number }) {
   const list = parts(n);
   const starts = list.map((_, i) => list.slice(0, i).reduce((a, p) => a + p.bytes * px, x));
   return (
@@ -57,7 +57,7 @@ export function SharesFigure() {
   );
 }
 
-function Matrix({ m, x, y, w, h, n, on }: { m: TpMatrix; x: number; y: number; w: number; h: number; n: number; on: ReturnType<typeof useLoop>["on"] }) {
+export function Matrix({ m, x, y, w, h, n, on }: { m: TpMatrix; x: number; y: number; w: number; h: number; n: number; on: ReturnType<typeof useLoop>["on"] }) {
   const pieces: { x: number; y: number; w: number; h: number; r: number }[] = [];
   if (m.cut === "rows") {
     let top = y;

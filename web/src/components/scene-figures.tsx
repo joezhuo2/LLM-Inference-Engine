@@ -6,8 +6,10 @@ import { metric } from "@/components/gpu-floorplan";
 import { Frame, Label } from "@/components/kernels/frame";
 import { useLoop } from "@/components/kernels/loop";
 import { Chip, short } from "@/components/kernels/speculative-decoding/figures";
-import { bucketScene, sweepScene } from "@/content/build-log";
+import { Matrix, RankBar } from "@/components/kernels/tensor-parallelism/figures";
+import { bucketScene, rankScene, sweepScene } from "@/content/build-log";
 import { spec, specFmt } from "@/content/kernels/speculative-decoding";
+import { attentionMatrices, rankShare, tpShape } from "@/content/kernels/tensor-parallelism";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { ceilings } from "@/lib/data";
 
@@ -497,3 +499,42 @@ export function SpeculateFigure() {
     </Frame>
   );
 }
+
+export function RankFigure() {
+  const { on, grow } = useLoop(16);
+  const { n, pct } = rankScene;
+  const [qkv, wo] = attentionMatrices;
+  const px = 520 / rankShare(1).total;
+  const s = rankShare(n);
+  return (
+    <Frame label={`One layer's fused QKV weight is cut by rows and the output projection by columns for ${n} ranks, so each rank gets ${s.qHeads} of ${tpShape.heads} query heads. The embedding and the LM head stay whole in every rank, so a rank of ${n} holds ${pct}% of the model, not half`}>
+      <Label x={20} y={22} className="fill-text">{`one layer's attention weights, cut for ${n} ranks`}</Label>
+      {Array.from({ length: n }, (_, r) => (
+        <motion.g key={r} {...on(0.08 + (r * 0.84) / n, 0.08 + ((r + 1) * 0.84) / n, false)}>
+          <Label x={540} y={22} anchor="end" className="fill-accent">{`rank ${r} of ${n}: ${s.qHeads} heads`}</Label>
+        </motion.g>
+      ))}
+      <Matrix m={qkv} x={20} y={74} w={180} h={120} n={n} on={on} />
+      <Matrix m={wo} x={290} y={74} w={180} h={120} n={n} on={on} />
+      <Label x={20} y={218}>rows of one matrix, then the columns of the next</Label>
+      <motion.g {...on(0.04)}>
+        <Label x={20} y={248} className="fill-text">the whole model</Label>
+        <RankBar n={1} x={20} y={254} h={18} px={px} />
+      </motion.g>
+      <motion.g {...grow(0.2, 0.36)}>
+        <RankBar n={n} x={20} y={306} h={18} px={px} />
+      </motion.g>
+      <motion.g {...on(0.36)}>
+        <Label x={20} y={300} className="fill-accent">{`a rank of ${n}: ${pct}% of the model, not half`}</Label>
+        <line x1={280} y1={286} x2={280} y2={330} strokeDasharray="3 3" className="stroke-text" />
+        <Label x={284} y={340}>half</Label>
+      </motion.g>
+      <rect x={20} y={354} width={10} height={10} rx={1} className="fill-accent" />
+      <Label x={36} y={363}>{`layers, cut in ${n}`}</Label>
+      <rect x={140} y={354} width={10} height={10} rx={1} className="fill-text/70" />
+      <Label x={156} y={363}>embedding, LM head, norms: whole in every rank</Label>
+      <Label x={20} y={388}>bars to scale from the shapes; the percent from the MiB on the device</Label>
+    </Frame>
+  );
+}
+
