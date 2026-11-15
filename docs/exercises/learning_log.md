@@ -2272,3 +2272,6 @@
 - **changing one variable at a time: keeping the buffers against adding the same idle time as a sleep** => 
 - **sampling nvidia-smi next to per-call timestamps to line up a slowdown with a state change** => 
 - **minor and major page faults read with getrusage** => 
+## Tensor parallelism chapter (Branch 153)
+
+- **a glossary alias that is also an English verb** => 

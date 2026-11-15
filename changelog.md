@@ -18,6 +18,9 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 ## loader/upload-late-calls
 
 - Part A: the late upload calls explained in `docs/results.md`, new subsection "Late uploads in one process: the GPU lowers its clocks". From about the eleventh call in one process `upload_weights` took 130 to 180 ms more because the GPU drops to P5 (SM 180 to 352 MHz, memory 810 MHz) after 5.6 to 9.9 s in which it is busy for only about 100 ms out of every 370; the idle time is the 185 ms of `cudaMallocHost` and 80 ms of `cudaFreeHost` of each call. Keeping the pinned buffers and calling back to back never slowed down in 120 calls, while keeping them and sleeping 270 ms instead slowed down at the same time, and a program without engine code shows the same drop from 14.5 to 3.7 GB/s. Page faults, device memory, events, the count of calls and the layout are ruled out with numbers. No engine code changes: a real load uploads once, before the clocks drop.
+## web/tensor-parallel-chapter
+
+- Part A: five glossary terms for the tensor parallelism chapter in `web/src/lib/glossary.ts`: tensor parallelism, rank, all-reduce, partial result and NCCL, each with its hover card on its first use in a spread. `rank` matches only the singular, so the verb "ranks" in another chapter's review gets no card.
 
 ## loader/tensor-parallel-wire
 
