@@ -2240,3 +2240,5 @@
 - **an offset counted from the start of the file against one counted from the start of the data** => 
 - **an error message as part of an interface that a test pins down** => 
 - **reading a device buffer back to the host to check an upload** => 
+- **a fixed cost per copy: why 90,000 small copies take longer than 200 large ones** => 
+- **what tensor parallelism does not divide: the embedding and the LM head** => 

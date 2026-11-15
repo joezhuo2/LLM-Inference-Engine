@@ -602,6 +602,29 @@ Graphs make no difference here: `DecodeGraphs::covers` refuses prefill batches, 
 
 The `engine + graphs, budget 256` row is the same prompt alone under `--token-budget 256`, so a 2,048-token prompt runs as 8 chunks in 8 steps. With the tiled kernel it costs 25% more at 2,048 tokens (253.3 against 202.7 ms), 19% more at 1,024 and 12% more at 512; with paged prefill on 2026-11-05 the same split cost 2.1% (1,181.6 against 1,157.2 ms). In absolute terms the split costs about 50 ms now against 24 ms then, and it shows because a second of attention no longer sits under it. Nsight Systems says where it went (`docs/profiling.md`, "FlashAttention prefill in chunks", measured later the same day in its own session): of 52.2 ms more, 35.2 were the attention kernel itself, 9.8 the GEMMs and 9.4 gaps between launches. The kernel needed 115 registers per thread, so 104 of its thread blocks fit on the GPU at once, and a 256-row chunk launches 128: the last 24 ran after the others on a nearly empty GPU, and the attention took 73.0 ms where one step took 37.8. Since then the two divisions of the kernel's cache path are 32-bit, it needs 96 registers and 130 blocks fit, so this row of the table is out of date: in that later session the split costs 14% (228.1 against 199.3 ms, median of 5) where the kernel of this table cost 24% (244.9 against 197.6 ms). The one-step rows did not move outside the spread of their runs (199.3 against 197.6 ms).
 
+## Tensor parallelism: the weights of one rank
+
+From `scripts/shard_load_bench.cu` (#202). `plan_shard_layout` cuts the model for N GPUs (ranks), and `upload_weights` loads the layout of one rank the way it loads the full one. No forward pass runs on the shards yet, so this section has no tokens per second: it says what one rank holds and how long it takes to load. Measured on 2026-11-14 on the RTX 5060 Laptop GPU, release build, at commit 02e2917, with TinyLlama; this laptop has one GPU, so every rank is loaded onto it, one at a time. Each row is the median of three runs of the script, each of them the median of 7 uploads after one warm-up upload, and min to max is over all 21 uploads. `results/tensor_parallel/shard_load.md` holds the three runs.
+
+| layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
+| --- | --- | --- | --- | --- | --- | --- |
+| full model | 201 | 2,098.2 | 0.19 | 222.5 | 218.4 to 270.9 | 9.89 |
+| rank 0 of 1 | 90,269 | 2,098.2 | 35.69 | 5,024.9 | 4,288.4 to 5,480.8 | 0.44 |
+| rank 0 of 2 | 90,269 | 1,174.2 | 28.73 | 4,663.1 | 4,294.1 to 5,243.5 | 0.26 |
+| rank 1 of 2 | 90,269 | 1,174.2 | 27.96 | 4,723.7 | 4,522.2 to 5,367.0 | 0.26 |
+| rank 0 of 4 | 90,269 | 712.2 | 27.26 | 4,484.1 | 4,091.1 to 5,300.4 | 0.17 |
+| rank 1 of 4 | 90,269 | 712.2 | 27.95 | 4,516.9 | 4,353.0 to 4,911.2 | 0.17 |
+| rank 2 of 4 | 90,269 | 712.2 | 25.44 | 4,521.5 | 4,108.1 to 4,875.9 | 0.17 |
+| rank 3 of 4 | 90,269 | 712.2 | 25.34 | 4,532.2 | 3,461.1 to 4,893.2 | 0.16 |
+
+Memory. A rank of 2 holds 1,174.2 MiB, 56% of the full model and not half, and a rank of 4 holds 712.2 MiB, 34% and not a quarter. The layer matrices divide by N, but every rank holds the embedding and the LM head whole, 125.0 MiB each, and those 250 MiB do not shrink. Two ranks together hold 1.12 times the model and four ranks 1.36 times. Which rank embeds and samples is not designed yet; if only one does, the others can drop both tables.
+
+Load time. A rank takes 4.5 to 5.0 seconds to load against 0.22 for the whole model, about 20 times longer for half or a quarter of the bytes. The count of copies sets the time and the bytes do not: "rank 0 of 1" moves the same bytes as the full model and takes 5.0 s. A slice of rows is one copy, but a slice of columns (o_proj and down_proj) is one copy per row, 90,112 of the 90,269, and each copy in `upload_weights` is its own `memcpy` into a pinned buffer, its own `cudaMemcpyAsync` and its own event: about 50 us per copy, whatever its size. Planning costs 25 to 36 ms against 0.19, since each copy carries its tensor's name and shape. The spec of `plan_shard_layout` said to time the load before inventing a strided copy. It is timed now, and the load is slow enough to want one: a change to `CopyOp` and `upload_weights`, not made on this branch.
+
+Not measured: a forward pass on the shards, its logits against the unsharded model, and anything between two devices.
+
+To reproduce: `nvcc -std=c++20 -O3 -arch=sm_120 -Iinclude -Isrc scripts/shard_load_bench.cu build/release/src/libengine_runtime.a build/release/src/libengine_kernels.a build/release/src/libengine_core.a -lcublas -o /tmp/shard_load_bench && /tmp/shard_load_bench models/tinyllama 7` (arguments: model directory, uploads per layout).
+
 ## Kernels
 
 Every kernel exists twice, a naive one that is obviously correct (the test oracle and the "before" number) and an optimized one tested against it. "In the forward pass" says whether `PagedRunner` calls the fast one; the end-to-end numbers above include only the kernels marked yes.
