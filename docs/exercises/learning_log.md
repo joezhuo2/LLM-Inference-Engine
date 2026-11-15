@@ -2254,3 +2254,8 @@
 - **an all-reduce: every rank ends with the sum of the partial results of every rank** => 
 - **summing in float and rounding to BF16 once, against rounding after every add** => 
 - **passing a small fixed array of pointers to a kernel by value** => 
+- **a row-parallel and a column-parallel matrix: which side of a GEMM a split cuts** => 
+- **two all-reduces per layer: after the attention output and after the MLP down projection** => 
+- **a K/V cache per rank: each rank caches only its own KV heads** => 
+- **running the ranks one after another on one GPU as a check of the split** => 
+- **the largest logit difference as the measure of a reordered BF16 sum** => 

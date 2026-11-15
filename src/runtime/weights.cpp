@@ -8,6 +8,7 @@
 
 #include "engine/loader/mapped_file.h"
 #include "engine/loader/safetensors.h"
+#include "engine/loader/tensor_parallel.h"
 #include "engine/runtime/pinned_buffer.h"
 #include "kernels/cuda_check.h"
 
@@ -76,6 +77,19 @@ DeviceWeights load_weights(const std::filesystem::path& model_dir, Stream stream
     w.config = load_config(model_dir / "config.json");
     const MappedFile file(model_dir / "model.safetensors");
     w.layout = plan_weight_layout(w.config, parse_safetensors_header(file.bytes()));
+    w.buffer = DeviceBuffer(w.layout.total_bytes);
+    w.stats = upload_weights(file.bytes(), w.layout, w.buffer.data(), stream);
+    w.weights = bind_weights(w.layout, w.buffer.data());
+    return w;
+}
+
+DeviceWeights load_shard_weights(const std::filesystem::path& model_dir, int rank, int num_ranks,
+                                 Stream stream) {
+    DeviceWeights w;
+    const ModelConfig config = load_config(model_dir / "config.json");
+    w.config = shard_config(config, num_ranks);
+    const MappedFile file(model_dir / "model.safetensors");
+    w.layout = plan_shard_layout(config, parse_safetensors_header(file.bytes()), rank, num_ranks);
     w.buffer = DeviceBuffer(w.layout.total_bytes);
     w.stats = upload_weights(file.bytes(), w.layout, w.buffer.data(), stream);
     w.weights = bind_weights(w.layout, w.buffer.data());
