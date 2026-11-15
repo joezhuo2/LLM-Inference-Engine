@@ -140,6 +140,10 @@ void BlockManager::free(SeqId seq) {
         free_block(block_id);
     }
 
+    for (auto it = seq_data.table.rbegin(); it != seq_data.table.rend(); ++it) {
+        free_block(*it);
+    }
+
     sequences_.erase(seq);
 }
 
