@@ -87,7 +87,7 @@ function paragraph(ctx: Ctx, text: string, x: number, y: number, width: number, 
 const under = (ctx: Ctx, text: string, x: number, y: number, size: number): LinkLine => ({ x, y, width: ctx.measureText(text).width, size });
 
 const ROW = 92;
-const toBox = (x0: number, x1: number, y: number): [number, number, number, number] => [x0 / W, (y - 56) / H, x1 / W, (y + 36) / H];
+const toBox = (x0: number, x1: number, y: number, pitch: number): [number, number, number, number] => [x0 / W, (y - pitch * 0.61) / H, x1 / W, (y + pitch * 0.39) / H];
 
 type RouteStop = { key: string; local: number };
 let route: { order: RouteStop[]; chapters: string[]; minutes: number } = { order: [], chapters: [], minutes: 0 };
@@ -118,34 +118,39 @@ function routeDot(ctx: Ctx, x: number, y: number, palette: BookPalette) {
   ctx.fill();
 }
 
-function contentsRows(parts: typeof bookParts, withErrata: boolean) {
+const CONTENTS_TOP = 380;
+const CONTENTS_BOTTOM = H - 330;
+
+function contentsRows(parts: typeof bookParts, withErrata: boolean, scale = 1) {
   const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string; slug?: string }[] = [];
-  let y = 380;
-  const entries = parts.reduce((n, p) => n + p.slugs.length, 0);
-  const pitch = withErrata || entries < 2 ? ROW : Math.min(ROW, (H - 330 - 380 - 78 * parts.length - 40 * (parts.length - 1)) / (entries - 1));
+  let y = CONTENTS_TOP;
+  const pitch = ROW * scale;
   for (const part of parts) {
     rows.push({ kind: "part", y, text: `Part ${part.numeral} · ${part.title}` });
-    y += 78;
+    y += 78 * scale;
     for (const slug of part.slugs) {
       rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug), slug });
       y += pitch;
     }
-    y += 40;
+    y += 40 * scale;
   }
   if (withErrata) {
-    rows.push({ kind: "entry", y: y + 20, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
-    rows.push({ kind: "entry", y: y + 20 + ROW, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
-    rows.push({ kind: "entry", y: y + 20 + 2 * ROW, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+    rows.push({ kind: "entry", y: y + 20 * scale, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
+    rows.push({ kind: "entry", y: y + 20 * scale + pitch, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
+    rows.push({ kind: "entry", y: y + 20 * scale + 2 * pitch, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
   }
   return rows;
 }
 
-function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) {
+const contentsScale = (parts: typeof bookParts, withErrata: boolean) => Math.min(1, (CONTENTS_BOTTOM - CONTENTS_TOP) / (contentsRows(parts, withErrata).at(-1)!.y - CONTENTS_TOP));
+
+function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean, scale: number) {
   const x0 = side === "left" ? 130 : 170;
   const x1 = side === "left" ? W - 170 : W - 130;
-  const links: PageLink[] = contentsRows(parts, withErrata)
+  const rows = contentsRows(parts, withErrata, scale);
+  const links: PageLink[] = rows
     .filter((r) => r.href)
-    .map((r) => ({ side, box: toBox(x0, x1, r.y), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
+    .map((r) => ({ side, box: toBox(x0, x1, r.y, ROW * scale), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
   if (side === "left") links.push({ side, box: [x0 / W, (H - 215) / H, x1 / W, (H - 145) / H], href: "#path", label: routeLink });
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
@@ -157,7 +162,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       ctx.font = `92px ${fonts.serif}`;
       ctx.fillText("Contents", x0, 260);
     }
-    for (const row of contentsRows(parts, withErrata)) {
+    for (const row of contentsRows(parts, withErrata, scale)) {
       if (row.kind === "part") {
         ctx.fillStyle = palette.faint;
         ctx.font = `26px ${fonts.sans}`;
@@ -166,14 +171,14 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       }
       if (row.slug && route.chapters.includes(row.slug)) routeDot(ctx, x0 - 28, row.y - 13, palette);
       ctx.fillStyle = palette.faint;
-      ctx.font = `40px ${fonts.serif}`;
+      ctx.font = `${40 * scale}px ${fonts.serif}`;
       if (row.number) ctx.fillText(row.number, x0, row.y);
       ctx.fillStyle = palette.ink;
-      ctx.font = `46px ${fonts.serif}`;
+      ctx.font = `${46 * scale}px ${fonts.serif}`;
       const tx = x0 + 70;
       ctx.fillText(row.text, tx, row.y);
       const link = links.find((l) => l.href === row.href);
-      if (link) link.lines = [under(ctx, row.text, tx, row.y, 46)];
+      if (link) link.lines = [under(ctx, row.text, tx, row.y, 46 * scale)];
       const end = tx + ctx.measureText(row.text).width + 18;
       if (row.page === undefined) continue;
       ctx.font = `30px ${fonts.sans}`;
@@ -184,7 +189,6 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       for (let x = end; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
     }
     if (side === "right") {
-      const rows = contentsRows(parts, withErrata);
       ctx.fillStyle = palette.blue;
       ctx.font = `40px ${fonts.serif}`;
       paragraph(ctx, "Click a chapter to open it.", x0, Math.max(H - 250, rows[rows.length - 1].y + 110), x1 - x0, 48);
@@ -284,8 +288,9 @@ const flatStop = (spread: number, caption: string, title: string, paragraphs: st
 });
 
 export function contentsStop(spread = 0): Stop {
-  const left = contentsPage("left", bookParts.slice(0, 2), false);
-  const right = contentsPage("right", bookParts.slice(2), true);
+  const scale = Math.min(contentsScale(bookParts.slice(0, 2), false), contentsScale(bookParts.slice(2), true));
+  const left = contentsPage("left", bookParts.slice(0, 2), false, scale);
+  const right = contentsPage("right", bookParts.slice(2), true, scale);
   return {
     ...flatStop(spread, "Contents: click a chapter to open it", "Contents", bookOrder.map(chapterTitle)),
     paint: { left: left.paint, right: right.paint },

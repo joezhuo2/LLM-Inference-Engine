@@ -2286,3 +2286,4 @@
 - **a moving copy that hands over to its final copy, and hides when motion is reduced** => 
 - **clipping a CDP screenshot to one element: page coordinates add the scroll offset** => 
 - **a time lane: drawing work that takes turns on one device** => 
+- **fitting a list to a fixed page by scaling row pitch and type together** => 

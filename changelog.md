@@ -9,6 +9,9 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: the entry on the weights of one rank has its own scene: one layer's fused QKV weight cut by rows and the output projection by columns for 2 ranks, each rank lit in turn, and a rank of 2 against the whole model to scale, the embedding and the LM head whole in it; the percent is the one the entry text reads from `docs/results.md`.
 
 - Part A: the speculative decoding entry of the main timeline has its own scene: the recorded step whose guesses go partly wrong, the guesses copied from earlier in the context into the spare rows, the rows kept up to the first wrong guess and the rest dropped, and the tokens the step writes, all read from `results/speculative_example.json` and `docs/results.md`.
+## web/book-fit
+
+- Part A: the contents spread fits its list on the page for any number of entries: one scale for both pages shrinks the row pitch, the part gaps and the type of the entries together so the last row stays above the "Click a chapter to open it." line, and the hit boxes follow the scaled pitch. Errata was cut off below the page edge since chapters were added.
 
 ## runtime/tensor-parallel-forward
 
