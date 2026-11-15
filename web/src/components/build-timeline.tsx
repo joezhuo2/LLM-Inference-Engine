@@ -4,13 +4,14 @@ import { AnimatePresence, motion, type MotionValue, useMotionValueEvent, useScro
 import { createElement, useRef, useState } from "react";
 import { ChunkedFigure } from "@/components/chunked-scene";
 import { GemmTilesFigure, GpuFloorplan, ReductionRaceFigure } from "@/components/gpu-floorplan";
-import { BucketsFigure, GenerateFigure, RooflineFigure, SampleFigure, SweepFigure, TokenizeFigure } from "@/components/scene-figures";
+import { BucketsFigure, GenerateFigure, RooflineFigure, SampleFigure, SpeculateFigure, SweepFigure, TokenizeFigure } from "@/components/scene-figures";
 import { LookupScene } from "@/components/kernels/embedding-lookup";
 import { TileSweepFigure } from "@/components/kernels/flash-prefill/figures";
 import { useActiveStep } from "@/components/kernels/use-active-step";
 import { Scramble } from "@/components/scramble";
 import { bucketScene, type Entry, lookup, type Metric, type Milestone, milestones, repoUrl, sweepScene, tilesScene } from "@/content/build-log";
 import { flashShape } from "@/content/kernels/flash-prefill";
+import { spec } from "@/content/kernels/speculative-decoding";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { gloss } from "./glossed";
 
@@ -40,6 +41,7 @@ const captions: Record<Scene | "idle", string> = {
   sweep: `Tokens per second as the max batch doubles from ${sweepScene.points[0].batch} to ${sweepScene.points[sweepScene.points.length - 1].batch}: the curve flattens after ${sweepScene.knee}, while attention's share of a step's GPU time keeps growing.`,
   lookup: `Each token id picks one row of the embedding table and the row is copied into the hidden state. The fast kernel copies it in ${lookup.bytesPerThread}-byte loads; the launch got shorter and the step, which spends under ${lookup.underPct}% of its time here, did not.`,
   tiles: `A prompt's rows only look back, so the score table is a triangle. One warp holds ${flashShape.tile} query rows and the keys pass it ${flashShape.tile} at a time, each tile read once for all of them: ${tilesScene.tiled.toLocaleString("en-US")} ms to the first token of a ${tilesScene.prompt}-token prompt where one row at a time took ${tilesScene.paged.toLocaleString("en-US")} (measured).`,
+  speculate: `A decode step of one request has rows to spare. The last tokens appeared earlier, so the ${spec.missStep.draft.length} after them fill the rows as guesses; the model agrees with ${spec.missStep.kept}, the first wrong guess and the rows after it are dropped, and the step writes ${spec.missStep.kept + 1} tokens.`,
   warps: "Warps read the KV blocks a chunk at a time with a running max and sum in registers, so shared memory never holds the whole context.",
 };
 
@@ -47,7 +49,7 @@ function TilesScene() {
   return <TileSweepFigure mode="kernel" tile={flashShape.tile} warps={flashShape.warps} />;
 }
 
-const figures = { reduce: ReductionRaceFigure, gemm: GemmTilesFigure, tokenize: TokenizeFigure, generate: GenerateFigure, sample: SampleFigure, roofline: RooflineFigure, chunked: ChunkedFigure, buckets: BucketsFigure, sweep: SweepFigure, lookup: LookupScene, tiles: TilesScene };
+const figures = { reduce: ReductionRaceFigure, gemm: GemmTilesFigure, tokenize: TokenizeFigure, generate: GenerateFigure, sample: SampleFigure, roofline: RooflineFigure, chunked: ChunkedFigure, buckets: BucketsFigure, sweep: SweepFigure, lookup: LookupScene, tiles: TilesScene, speculate: SpeculateFigure };
 
 const isStandalone = (s: Scene | "idle"): s is keyof typeof figures => s in figures;
 

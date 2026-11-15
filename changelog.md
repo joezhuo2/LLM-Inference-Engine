@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/timeline-scenes
+
+- Part A: the speculative decoding entry of the main timeline has its own scene: the recorded step whose guesses go partly wrong, the guesses copied from earlier in the context into the spare rows, the rows kept up to the first wrong guess and the rest dropped, and the tokens the step writes, all read from `results/speculative_example.json` and `docs/results.md`.
+
 ## runtime/tensor-parallel-forward
 
 - Part A: the timeline entry of the forward pass links its pull request, #213.

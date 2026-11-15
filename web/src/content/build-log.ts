@@ -16,7 +16,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
-  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles";
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles" | "speculate";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -512,6 +512,7 @@ export const milestones: Milestone[] = [
         date: "Nov 12",
         prs: [210, 211],
         branch: "sched/speculative-wire",
+        scene: "speculate",
         title: "Guess the next tokens in the rows a step has to spare",
         text: `Speculative decoding fills the empty rows of a decode step with guesses of the next tokens, copied from earlier in the context, and keeps the ones the model agrees with. On prompts whose answers repeat them a step yields ${specFmt(spec.best.tokensPerStep, 2)} tokens, ${specFmt(spec.best.speedup, 2)} times the tokens per second (measured). Chat prompts repeat less and gain less, and when the batch is full of requests there are no rows to spare. A draft model can guess anywhere, but the one tried here was too slow to pay: ${specFmt(specMore.draftSpeedup, 2)} times the tokens per second.`,
         metric: { kind: "value", value: `${specFmt(spec.best.speedup, 2)}×`, label: "measured tokens per second on prompts that repeat, against plain decoding" },

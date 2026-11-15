@@ -5,7 +5,9 @@ import { useEffect } from "react";
 import { metric } from "@/components/gpu-floorplan";
 import { Frame, Label } from "@/components/kernels/frame";
 import { useLoop } from "@/components/kernels/loop";
+import { Chip, short } from "@/components/kernels/speculative-decoding/figures";
 import { bucketScene, sweepScene } from "@/content/build-log";
+import { spec, specFmt } from "@/content/kernels/speculative-decoding";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { ceilings } from "@/lib/data";
 
@@ -419,6 +421,79 @@ export function SweepFigure() {
       ))}
       <Label x={12} y={shareBase + 16}>max batch</Label>
       <Label x={12} y={388}>{`share measured in eager profiles, max batch ${profiled[0].batch} and up`}</Label>
+    </Frame>
+  );
+}
+
+const specTokens = [...spec.example.prompt_tokens, ...spec.example.output_tokens];
+const specTop = 100;
+const specPitch = 25;
+
+export function SpeculateFigure() {
+  const { on, move } = useLoop(14);
+  const s = spec.missStep;
+  const lead = Math.min(2, s.match);
+  const found = specTokens.slice(s.match - lead, s.match + s.ngram + s.draft.length);
+  const cw = Math.min(43, 520 / found.length);
+  const rows = 1 + s.draft.length;
+  const rowY = (i: number) => specTop + i * specPitch;
+  const guessX = (i: number) => 20 + (lead + s.ngram + i) * cw;
+  return (
+    <Frame label={`One decode step of one request with ${spec.maxBatch} rows. The last ${s.ngram} tokens appeared earlier in the context, so the ${s.draft.length} tokens after them fill rows 1 to ${s.draft.length} as guesses. The model agrees with ${s.kept}; the first wrong guess and the rows after it are dropped, and the step writes ${s.kept + 1} tokens`}>
+      <Label x={20} y={22} className="fill-text">one decode step: guesses fill the spare rows</Label>
+      <Label x={20} y={40}>earlier in the context</Label>
+      {found.map((t, i) => (
+        <motion.g key={i} {...on(0.03)}>
+          <Chip x={20 + i * cw} y={46} w={cw} text={short(t)} tone={i < lead ? "plain" : i < lead + s.ngram ? "pattern" : "draft"} />
+        </motion.g>
+      ))}
+      <motion.g {...on(0.08)}>
+        <Label x={20 + lead * cw} y={86} className="fill-accent">{`the last ${s.ngram} tokens`}</Label>
+        <Label x={540} y={86} anchor="end" className="fill-warn">{`the ${s.draft.length} after them: copied as guesses`}</Label>
+      </motion.g>
+      {Array.from({ length: rows }, (_, i) => (
+        <Label key={i} x={20} y={rowY(i) + 16}>{`row ${i}`}</Label>
+      ))}
+      <motion.g {...on(0.12)}>
+        <Chip x={64} y={rowY(0)} w={cw} text={short(specTokens[s.at - 1])} tone="real" />
+      </motion.g>
+      {s.draft.map((t, i) => (
+        <motion.g key={i} {...move(0.18 + i * 0.025, 0.3 + i * 0.025, 64 - guessX(i), rowY(i + 1) - 46, false, 0.62)}>
+          <Chip x={guessX(i)} y={46} w={cw} text={short(t)} tone="draft" />
+        </motion.g>
+      ))}
+      {s.draft.map((t, i) => (
+        <motion.g key={i} {...on(0.62)}>
+          <Chip x={64} y={rowY(i + 1)} w={cw} text={short(t)} tone={i < s.kept ? "pattern" : "dropped"} />
+        </motion.g>
+      ))}
+      {Array.from({ length: rows }, (_, i) => {
+        const kept = i <= s.kept;
+        const t = kept ? 0.44 + i * 0.05 : 0.62;
+        return (
+          <motion.g key={i} {...on(t)}>
+            {kept && (
+              <text x={118} y={rowY(i) + 16} className="fill-muted text-[11px]">
+                →
+              </text>
+            )}
+            {kept && <Chip x={134} y={rowY(i)} w={cw} text={short(specTokens[s.at + i])} tone="kept" />}
+            <Label x={186} y={rowY(i) + 16} className={kept && i < s.kept ? "fill-accent" : kept && i === s.draft.length ? "fill-muted" : "fill-warn"}>
+              {!kept ? "dropped: built on the wrong guess" : i === s.draft.length ? "no guess left to check" : i < s.kept ? `same as guess ${i + 1}: keep it` : `guess ${i + 1} was “${short(s.draft[i])}”: stop`}
+            </Label>
+          </motion.g>
+        );
+      })}
+      {rows < spec.maxBatch && (
+        <motion.g {...on(0.12)}>
+          <rect x={20} y={rowY(rows) + 4} width={520} height={20} rx={3} className="fill-none stroke-border" strokeDasharray="3 2" />
+          <Label x={30} y={rowY(rows) + 18}>{`rows ${rows} to ${spec.maxBatch - 1}: left empty, at most ${spec.maxDraft} guesses a step`}</Label>
+        </motion.g>
+      )}
+      <motion.g {...on(0.74)}>
+        <Label x={20} y={372} className="fill-accent">{`${s.kept + 1} tokens out of one step; ${specFmt(spec.best.tokensPerStep, 2)} a step on prompts that repeat (measured)`}</Label>
+      </motion.g>
+      <Label x={20} y={392}>{`step ${s.index} of a run recorded ${spec.date}, one request`}</Label>
     </Frame>
   );
 }
