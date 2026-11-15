@@ -2239,3 +2239,4 @@
 - **why a slice of rows is one copy and a slice of columns is one copy per row** => 
 - **an offset counted from the start of the file against one counted from the start of the data** => 
 - **an error message as part of an interface that a test pins down** => 
+- **reading a device buffer back to the host to check an upload** => 
