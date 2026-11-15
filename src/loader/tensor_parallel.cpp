@@ -79,12 +79,11 @@ void push_row_slice_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const 
     const int64_t cols = info.shape[1];
     const uint64_t row_bytes = static_cast<uint64_t>(cols) * bf16_elem_bytes;
 
-    copy_ops.push_back(
-        CopyOp{.name = name,
-               .src = info.offset + static_cast<uint64_t>(start) * row_bytes,
-               .dst = dst_os,
-               .bytes = static_cast<uint64_t>(count) * row_bytes,
-               .shape = {count, cols}});
+    copy_ops.push_back(CopyOp{.name = name,
+                              .src = info.offset + static_cast<uint64_t>(start) * row_bytes,
+                              .dst = dst_os,
+                              .bytes = static_cast<uint64_t>(count) * row_bytes,
+                              .shape = {count, cols}});
 }
 
 void push_col_slice_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const std::string& name,
@@ -99,12 +98,12 @@ void push_col_slice_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const 
     const uint64_t col_byte_os = static_cast<uint64_t>(start) * bf16_elem_bytes;
 
     for (int64_t r = 0; r < rows; ++r) {
-        copy_ops.push_back(CopyOp{
-            .name = name,
-            .src = info.offset + static_cast<uint64_t>(r) * full_row_bytes + col_byte_os,
-            .dst = dst_region.offset + static_cast<uint64_t>(r) * slice_row_bytes,
-            .bytes = slice_row_bytes,
-            .shape = {1, count}});
+        copy_ops.push_back(
+            CopyOp{.name = name,
+                   .src = info.offset + static_cast<uint64_t>(r) * full_row_bytes + col_byte_os,
+                   .dst = dst_region.offset + static_cast<uint64_t>(r) * slice_row_bytes,
+                   .bytes = slice_row_bytes,
+                   .shape = {1, count}});
     }
 }
 
@@ -287,6 +286,9 @@ WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeade
     shard_layout.lm_head = allocate_region(buffer_cursor, {vocab_size, hidden_size});
     push_whole_copy(shard_layout.copies, header.data_offset, "lm_head.weight", lm_head,
                     shard_layout.lm_head);
+
+    std::sort(shard_layout.copies.begin(), shard_layout.copies.end(),
+              [](const CopyOp& a, const CopyOp& b) { return a.src < b.src; });
 
     shard_layout.total_bytes = align_up(buffer_cursor, kWeightAlignment);
 
