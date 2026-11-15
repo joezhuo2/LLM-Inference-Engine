@@ -20,10 +20,10 @@ const shardCell = (layout: string, name: string) => {
 };
 const shard = {
   pct: Math.round((shardCell("rank 0 of 2", "MiB on the device") / shardCell("full model", "MiB on the device")) * 100),
-  loadS: shardCell("rank 0 of 2", "upload ms") / 1000,
-  fullS: shardCell("full model", "upload ms") / 1000,
+  loadMs: shardCell("rank 0 of 2", "upload ms"),
+  fullMs: shardCell("full model", "upload ms"),
 };
-if (shard.pct <= 50 || shard.loadS < 5 * shard.fullS) throw new Error("docs/results.md Tensor parallelism: Beyond says one of two shares is more than half the model and loads many times slower than the whole model; rewrite the multiple GPUs topic");
+if (shard.pct <= 50 || shard.loadMs >= shard.fullMs) throw new Error("docs/results.md Tensor parallelism: Beyond says one of two shares is more than half the model and loads faster than the whole model; rewrite the multiple GPUs topic");
 
 export { beyondTitle };
 
@@ -75,7 +75,7 @@ export const beyondTopics: BeyondTopic[] = [
     paragraphs: [
       "Tensor parallelism splits every layer's weight matrices across the GPUs. Each GPU reads only its share of the bytes for a token, and together the GPUs have several times the memory bandwidth. The price is communication: the partial results have to be combined inside every layer, on every step, over a link that is far slower than a GPU's own memory. It is also the way to run a model whose weights do not fit in one GPU.",
       "Pipeline parallelism puts different layers on different GPUs, and replicas put a whole copy of the model on each. In both, one token still has all of the weights read for it, one GPU at a time, so they raise the number of requests served and not the speed of one stream. The Megatron-LM paper describes the tensor split. It was written for training, and inference uses the same split of the forward pass.",
-      `This engine has the first step only: it cuts TinyLlama's weights for 2 or 4 GPUs and loads one share. A share of 2 is ${shard.pct}% of the model and not half, since every GPU keeps the embedding and the LM head whole. It loads in ${shard.loadS.toFixed(1)} seconds against ${shard.fullS.toFixed(2)} for the whole model, because a slice of columns is copied one row at a time. No forward pass runs on the shares yet.`,
+      `This engine has the first step only: it cuts TinyLlama's weights for 2 or 4 GPUs and loads one share. A share of 2 is ${shard.pct}% of the model and not half, since every GPU keeps the embedding and the LM head whole, and it loads in ${shard.loadMs.toFixed(0)} ms against ${shard.fullMs.toFixed(0)} for the whole model. No forward pass runs on the shares yet.`,
     ],
     source: { label: "Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism (Shoeybi et al., 2019)", href: "https://arxiv.org/abs/1909.08053" },
   },
