@@ -37,19 +37,35 @@ UploadStats upload_weights(std::span<const std::byte> file, const WeightLayout& 
     UploadStats stats;
     const auto start = std::chrono::steady_clock::now();
     size_t chunk = 0;
+    size_t staged = 0;
+    uint64_t staged_dst = 0;
+    const auto flush = [&] {
+        if (staged == 0) return;
+        CUDA_CHECK(cudaMemcpyAsync(dst + staged_dst, staging[chunk % 2].data(), staged,
+                                   cudaMemcpyHostToDevice, stream));
+        CUDA_CHECK(cudaEventRecord(drained[chunk % 2].event, stream));
+        ++chunk;
+        staged = 0;
+    };
+    const CopyOp* previous = nullptr;
     for (const CopyOp& c : layout.copies) {
-        for (uint64_t off = 0; off < c.bytes; off += chunk_bytes, ++chunk) {
-            const size_t n = size_t(std::min<uint64_t>(chunk_bytes, c.bytes - off));
-            PinnedBuffer& buf = staging[chunk % 2];
-            cudaEvent_t ready = drained[chunk % 2].event;
-            CUDA_CHECK(cudaEventSynchronize(ready));
-            std::memcpy(buf.data(), file.data() + c.src + off, n);
-            CUDA_CHECK(
-                cudaMemcpyAsync(dst + c.dst + off, buf.data(), n, cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK(cudaEventRecord(ready, stream));
+        if (previous && previous->name != c.name) flush();
+        previous = &c;
+        for (uint64_t off = 0; off < c.bytes;) {
+            if (staged == chunk_bytes || staged_dst + staged != c.dst + off) flush();
+            if (staged == 0) {
+                CUDA_CHECK(cudaEventSynchronize(drained[chunk % 2].event));
+                staged_dst = c.dst + off;
+            }
+            const size_t n = size_t(std::min<uint64_t>(chunk_bytes - staged, c.bytes - off));
+            std::memcpy(static_cast<std::byte*>(staging[chunk % 2].data()) + staged,
+                        file.data() + c.src + off, n);
+            staged += n;
+            off += n;
         }
         stats.bytes += c.bytes;
     }
+    flush();
     CUDA_CHECK(cudaStreamSynchronize(stream));
     stats.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
     return stats;

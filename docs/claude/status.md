@@ -325,3 +325,29 @@ Open:
 - The chapter is not on the one-hour path. The new site text was built and checked in headless Chrome only.
 
 Helpers: `~/.cache/llmie-spec/static.mjs` (static server for `web/out` on 4317), `cdp-motion.mjs` (samples a value per frame after a trigger), `verify.sh` and `verify-web.sh` (the gates).
+
+## Snapshot 2026-11-14 (tensor parallelism: the layout of one rank, finished and measured)
+
+Branch `loader/tensor-parallel-wire` (Branch 151, worktree `~/code/llm-inference-engine-tp`), stacked on Joe's `loader/tensor-parallel-impl` (his `plan_shard_layout`, #202). Local only, not pushed. Four commits on top of his:
+
+- 51fb62c: the rejections carry the messages of `plan_weight_layout`, the unused data offset is gone from the helpers, `total_bytes` is the end of the last region; the 15 tests moved to `tests/unit/test_tensor_parallel.cpp`. Full gate with the GPU: debug 828 of 828, cpu 389 of 389.
+- 02e2917: `WeightUpload.AShardUploadsThroughTheSameCopies` (GPU).
+- 587904e: `scripts/shard_load_bench.cu`, `docs/results.md` "Tensor parallelism: the weights of one rank", `results/tensor_parallel/shard_load.md`.
+- b678815: the Beyond page and spread (`web/src/content/beyond.ts` reads the new table and throws when its claims stop holding).
+
+Later the same day, three more commits:
+
+- fdeb8ca: `upload_weights` packs the copies of one tensor into one staging chunk when their destinations follow each other (no strided `CopyOp`; the copy list is unchanged). Full gate with the GPU: debug 828 of 828, cpu 389 of 389. The first gate run failed once on `Splits/PagedSplitTest.LargeScoresDoNotOverflow/splits16` with `cudaErrorInvalidValue` from `cudaStreamCreate` (`tests/support/device.h:12`); the test passed 5 times out of 5 alone and in two full gates after, and does not touch the upload.
+- 101ab18: the bench runs one layout per process and the results section is rewritten around the new numbers.
+- 46e937d: the Beyond text follows.
+
+What the measurement found: a rank of 2 is 1,174.2 MiB (56% of the model), a rank of 4 is 712.2 MiB (34%), because the embedding and the LM head stay whole in every rank. With one upload call per copy a rank loaded in 4.5 to 5.0 s against 0.22 s for the full model (90,269 copies in place of 201, about 50 us each); packed, a rank of 2 loads in 139 ms and a rank of 4 in 88 ms against 228 ms. Packing across tensors too made the full model 10% slower (227 against 205 ms, A/B in one session), so a tensor starts a new chunk.
+
+Open:
+
+- From about the eleventh `upload_weights` call in one process, some calls take 130 to 180 ms more inside the CUDA calls (the host copies keep their time). Not explained; every call allocates and frees two 64 MiB pinned buffers, which is the first thing to look at. A real load does one call per rank. `~/.cache/llmie-tp/ab/` has the A/B programs (`ab.cu`, `host.cu`).
+- Planning a rank costs 34 ms against 0.2 (90,269 copies with a name and a shape each).
+- Everything after the layout, each its own branch (see the spec text in the stub commit 789f5b1): a config for a shard, a runner and a KV cache per rank, the all-reduce, which rank embeds and samples, a flag on generate and bench, and the logits of the sharded forward against the unsharded one.
+- The book spread was checked in headless Chrome only (light theme, 1600 by 1000).
+
+Helpers: `~/.cache/llmie-tp/verify.sh` and `verify-web.sh` (the gates), `shard_load_bench` (the built bench), `bench_run1.md` to `bench_run3.md`.

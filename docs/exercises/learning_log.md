@@ -2232,3 +2232,16 @@
 - **accepted share against rows spent: what an adaptive draft limit trades** => 
 - **Poisson arrivals and reading TPOT p50 against p99 under load** => 
 - **a build that fails when a sentence stops matching its table** => 
+
+## Tensor parallelism: the layout of one rank (Branch 151)
+
+- **tensor parallelism: one model cut across N GPUs along the width of each layer** => 
+- **why a slice of rows is one copy and a slice of columns is one copy per row** => 
+- **an offset counted from the start of the file against one counted from the start of the data** => 
+- **an error message as part of an interface that a test pins down** => 
+- **reading a device buffer back to the host to check an upload** => 
+- **a fixed cost per copy: why 90,000 small copies take longer than 200 large ones** => 
+- **what tensor parallelism does not divide: the embedding and the LM head** => 
+- **gathering scattered source pieces into one staging buffer when their destinations are contiguous** => 
+- **an A/B in one session: why two numbers from different hours cannot be compared on this GPU** => 
+- **one process per measurement when the tenth call behaves unlike the first** => 

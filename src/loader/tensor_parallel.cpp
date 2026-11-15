@@ -1,32 +1,302 @@
 #include "engine/loader/tensor_parallel.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <stdexcept>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace engine {
 
-/*
-TODO(JOE): plan_shard_layout
+namespace {
 
-Purpose. Issue #202. Tensor parallelism runs one model on N GPUs by cutting every layer's weights into N shards along the dimension that the layer's hidden work happens in, so each GPU (a rank) holds about 1 / N of the layer weights and does 1 / N of the GEMM and attention work on the same tokens. A rank owns a contiguous set of attention heads and a contiguous set of MLP units. It computes its heads' attention and its units' MLP alone, and its output projection gives a partial result of full width; the partial results of all ranks are summed (an all-reduce) twice per layer, after o_proj and after down_proj, and that sum is exactly what the unsharded layer computes. This function is the first step and the only one that decides the split: the weight layout of one rank, in the same form plan_weight_layout gives for the whole model, so upload_weights and bind_weights work on a shard unchanged.
+constexpr uint64_t align_up(uint64_t byte_os, uint64_t alignment) {
+    return (byte_os + alignment - 1) & ~(alignment - 1);
+}
 
-Why the split is exact. Attention heads do not interact until o_proj, and o_proj is linear: attn W_o^T = sum over ranks of attn_r W_o,r^T, where attn_r is the rank's heads and W_o,r the matching columns of W_o. In the MLP, unit j is silu(x . gate_j) * (x . up_j) and does not interact with other units until down_proj, which is linear again: the sum over ranks of (the rank's units) W_down,r^T is the full output. The residual stream, the norms, the embedding and the LM head are not split: every rank holds them whole.
+std::string shape_string(const std::vector<int64_t>& shape) {
+    std::string text = "[";
 
-Interface. Declared in include/engine/loader/tensor_parallel.h. plan_shard_layout(config, header, rank, num_ranks) returns the WeightLayout of rank rank out of num_ranks. With N = num_ranks, h = config.heads / N, k = config.kv_heads / N, f = config.intermediate / N, d = config.hidden and hd = config.head_dim, rank r owns query heads r * h to (r + 1) * h - 1, kv heads r * k to (r + 1) * k - 1 and MLP units r * f to (r + 1) * f - 1. Because N divides kv_heads, a rank's query heads are exactly the groups of its kv heads, and its local query head j reads its local kv head j / group_size as before. The regions come in the order of plan_weight_layout, each aligned to kWeightAlignment, with these shapes and contents: embed [vocab, d], whole; per layer ln1 [d], whole; wqkv [(h + 2 * k) * hd, d], the rank's rows of q_proj (rows r * h * hd on), then its rows of k_proj (rows r * k * hd on), then its rows of v_proj; wo [d, h * hd], columns r * h * hd to (r + 1) * h * hd - 1 of o_proj; ln2 [d], whole; wgu [2 * f, d], rows r * f on of gate_proj, then the same rows of up_proj; wdown [d, f], columns r * f to (r + 1) * f - 1 of down_proj; then final_norm [d] and lm_head [vocab, d], whole. total_bytes is the end of the last region.
+    for (size_t i = 0; i < shape.size(); ++i) {
+        text += (i ? ", " : "") + std::to_string(shape[i]);
+    }
 
-Copies. copies lists what to copy from the file: each CopyOp moves bytes contiguous bytes from file offset src to offset dst of the shard's buffer, name is the tensor it reads from, and shape is the shape of the piece it moves (the tensor's own shape when it moves a whole tensor). Sorted by src, as plan_weight_layout does. Every byte of every region is written exactly once and nothing is written outside the regions. A slice of rows is one contiguous piece. A slice of columns is not: the matrices are stored row by row, so wo and wdown need one copy per row, 2 * d small copies per layer (90,112 for TinyLlama per rank). That is allowed here. Time the load before inventing a strided copy; if it is slow, that is a separate change to CopyOp and upload_weights.
+    return text + "]";
+}
 
-Errors. Throw std::invalid_argument with a message naming plan_shard_layout when num_ranks < 1, rank < 0, rank >= num_ranks, config.kv_heads is not a multiple of num_ranks, or config.intermediate is not a multiple of num_ranks (TinyLlama, with 4 kv heads and 5,632 units, allows 1, 2 and 4). Everything plan_weight_layout rejects is rejected the same way, with its std::runtime_error and message: tied embeddings, a missing tensor, a wrong shape, a tensor that is not BF16, an unexpected tensor. The header is the full checkpoint's; every rank reads the same file.
+const TensorEntry& require_bf16_tensor(const SafetensorsHeader& header, const std::string& name,
+                                       const std::vector<int64_t>& shape,
+                                       std::unordered_set<std::string>& seen) {
+    seen.insert(name);
 
-Edge cases. num_ranks = 1 gives the regions of plan_weight_layout and the same bytes. A rank with one kv head. The first and the last rank (off by one in the last column or row shows up there).
+    auto it = header.tensors.find(name);
 
-What to compare against. The tests build a fake checkpoint, apply the copies of plan_weight_layout and of every rank's plan to host buffers, and compare element by element; one test computes o_proj and the MLP from the shards and from the full weights and checks that the partial results add up.
+    if (it == header.tensors.end()) {
+        throw std::runtime_error("weights: missing tensor " + name);
+    }
 
-What is not here, and what one GPU can show. This laptop has one GPU, so the ranks can only be run as N streams on the same device. That proves the split and the sums are right; it cannot be faster than the unsharded model, because the same GPU does the same work plus the sums. Still to design, each its own branch: a config for a shard (ModelConfig uses hidden both as the residual width and as heads * head_dim, and in a shard they differ); one runner and one paged KV cache per rank, with k kv heads each and the same block tables; the all-reduce (on one device it is the add kernel over the ranks' partial results, summed in rank order so the result does not depend on timing; across devices it needs peer copies or NCCL and cannot be tested here); which rank embeds and samples; and a flag on engine generate and engine bench. The comparison to record in docs/results.md once it runs: logits of the sharded forward against the unsharded one (BF16 rounding of the partial sums makes them close, not bit-identical), and the per-rank memory against the full model.
+    const TensorEntry& info = it->second;
 
-Tests that prove it. tests/todo/unit/test_tensor_parallel.cpp (target todo_unit_tests, label todo_joe), 15 tests checked against a throwaway implementation and nine mutants of it: one rank equal to the full layout, region shapes and alignment, every region byte written once, each sharded matrix element by element for 2 and 4 ranks, the unsplit tensors, the partial outputs adding up, TinyLlama shapes, and every rejected argument. Run them with ctest --preset cpu -L todo_joe. When they pass, move the file to tests/unit/, add it to unit_tests and take it out of todo_unit_tests.
-*/
-WeightLayout plan_shard_layout(const ModelConfig&, const SafetensorsHeader&, int, int) {
-    throw std::logic_error("unimplemented: plan_shard_layout");
+    if (info.dtype != DType::BF16) {
+        throw std::runtime_error("weights: " + name + " must be BF16");
+    }
+
+    if (info.shape != shape) {
+        throw std::runtime_error("weights: " + name + " has shape " + shape_string(info.shape) +
+                                 ", expected " + shape_string(shape));
+    }
+
+    uint64_t bytes = dtype_size(DType::BF16);
+
+    for (int64_t dim_size : shape) {
+        bytes *= static_cast<uint64_t>(dim_size);
+    }
+
+    if (info.bytes != bytes) {
+        throw std::runtime_error("weights: " + name +
+                                 " has a byte size that does not match its shape");
+    }
+
+    return info;
+}
+
+Region allocate_region(uint64_t& buffer_cursor, const std::vector<int64_t>& region_shape) {
+    buffer_cursor = align_up(buffer_cursor, kWeightAlignment);
+    uint64_t region_bytes = dtype_size(DType::BF16);
+
+    for (int64_t dim_size : region_shape) {
+        region_bytes *= static_cast<uint64_t>(dim_size);
+    }
+
+    Region region{buffer_cursor, region_bytes, region_shape};
+    buffer_cursor += region_bytes;
+
+    return region;
+}
+
+void push_whole_copy(std::vector<CopyOp>& copy_ops, const std::string& name,
+                     const TensorEntry& info, const Region& dst_region) {
+    copy_ops.push_back(CopyOp{.name = name,
+                              .src = info.offset,
+                              .dst = dst_region.offset,
+                              .bytes = info.bytes,
+                              .shape = info.shape});
+}
+
+void push_row_slice_copy(std::vector<CopyOp>& copy_ops, const std::string& name,
+                         const TensorEntry& info, uint64_t dst_os, int64_t start, int64_t count) {
+    constexpr uint64_t bf16_elem_bytes = dtype_size(DType::BF16);
+    const int64_t cols = info.shape[1];
+    const uint64_t row_bytes = static_cast<uint64_t>(cols) * bf16_elem_bytes;
+
+    copy_ops.push_back(CopyOp{.name = name,
+                              .src = info.offset + static_cast<uint64_t>(start) * row_bytes,
+                              .dst = dst_os,
+                              .bytes = static_cast<uint64_t>(count) * row_bytes,
+                              .shape = {count, cols}});
+}
+
+void push_col_slice_copy(std::vector<CopyOp>& copy_ops, const std::string& name,
+                         const TensorEntry& info, const Region& dst_region, int64_t start,
+                         int64_t count) {
+    constexpr uint64_t bf16_elem_bytes = dtype_size(DType::BF16);
+
+    const int64_t rows = info.shape[0];
+    const int64_t full_cols = info.shape[1];
+    const uint64_t full_row_bytes = static_cast<uint64_t>(full_cols) * bf16_elem_bytes;
+    const uint64_t slice_row_bytes = static_cast<uint64_t>(count) * bf16_elem_bytes;
+    const uint64_t col_byte_os = static_cast<uint64_t>(start) * bf16_elem_bytes;
+
+    for (int64_t r = 0; r < rows; ++r) {
+        copy_ops.push_back(
+            CopyOp{.name = name,
+                   .src = info.offset + static_cast<uint64_t>(r) * full_row_bytes + col_byte_os,
+                   .dst = dst_region.offset + static_cast<uint64_t>(r) * slice_row_bytes,
+                   .bytes = slice_row_bytes,
+                   .shape = {1, count}});
+    }
+}
+
+}  // namespace
+
+WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeader& header, int rank,
+                               int num_ranks) {
+    if (num_ranks < 1) {
+        throw std::invalid_argument("[plan_shard_layout] num_ranks must be >= 1");
+    }
+
+    if (rank < 0 || rank >= num_ranks) {
+        throw std::invalid_argument("[plan_shard_layout] rank must be in [0, num_ranks)");
+    }
+
+    if (config.kv_heads <= 0 || (config.kv_heads % num_ranks) != 0) {
+        throw std::invalid_argument(
+            "[plan_shard_layout] config.kv_heads must be a multiple of num_ranks");
+    }
+
+    if (config.intermediate <= 0 || (config.intermediate % num_ranks) != 0) {
+        throw std::invalid_argument(
+            "[plan_shard_layout] config.intermediate must be a multiple of num_ranks");
+    }
+
+    if (config.heads <= 0 || (config.heads % num_ranks) != 0 ||
+        (config.heads % config.kv_heads) != 0) {
+        throw std::invalid_argument(
+            "[plan_shard_layout] config.heads must be divisible by num_ranks and kv_heads");
+    }
+
+    if (config.tie_embeddings) {
+        throw std::runtime_error("weights: tied embeddings are not supported");
+    }
+
+    std::unordered_set<std::string> seen;
+
+    const int64_t vocab_size = config.vocab;
+    const int64_t hidden_size = config.hidden;
+    const int64_t head_dim = config.head_dim;
+
+    const int64_t full_q_rows = static_cast<int64_t>(config.heads) * head_dim;
+    const int64_t full_kv_rows = static_cast<int64_t>(config.kv_heads) * head_dim;
+    const int64_t full_intermediate_rows = config.intermediate;
+
+    const TensorEntry& embed =
+        require_bf16_tensor(header, "model.embed_tokens.weight", {vocab_size, hidden_size}, seen);
+    const TensorEntry& final_norm =
+        require_bf16_tensor(header, "model.norm.weight", {hidden_size}, seen);
+    const TensorEntry& lm_head =
+        require_bf16_tensor(header, "lm_head.weight", {vocab_size, hidden_size}, seen);
+
+    struct LayerTensorEntries {
+        const TensorEntry* ln1 = nullptr;
+        const TensorEntry* q_proj = nullptr;
+        const TensorEntry* k_proj = nullptr;
+        const TensorEntry* v_proj = nullptr;
+        const TensorEntry* o_proj = nullptr;
+        const TensorEntry* ln2 = nullptr;
+        const TensorEntry* gate_proj = nullptr;
+        const TensorEntry* up_proj = nullptr;
+        const TensorEntry* down_proj = nullptr;
+    };
+
+    std::vector<LayerTensorEntries> all_layer_entries;
+    all_layer_entries.reserve(config.layers);
+
+    for (int layer = 0; layer < config.layers; ++layer) {
+        const std::string prefix = "model.layers." + std::to_string(layer) + ".";
+
+        LayerTensorEntries layer_entry{};
+
+        layer_entry.ln1 =
+            &require_bf16_tensor(header, prefix + "input_layernorm.weight", {hidden_size}, seen);
+
+        layer_entry.q_proj = &require_bf16_tensor(header, prefix + "self_attn.q_proj.weight",
+                                                  {full_q_rows, hidden_size}, seen);
+        layer_entry.k_proj = &require_bf16_tensor(header, prefix + "self_attn.k_proj.weight",
+                                                  {full_kv_rows, hidden_size}, seen);
+        layer_entry.v_proj = &require_bf16_tensor(header, prefix + "self_attn.v_proj.weight",
+                                                  {full_kv_rows, hidden_size}, seen);
+        layer_entry.o_proj = &require_bf16_tensor(header, prefix + "self_attn.o_proj.weight",
+                                                  {hidden_size, full_q_rows}, seen);
+
+        layer_entry.ln2 = &require_bf16_tensor(header, prefix + "post_attention_layernorm.weight",
+                                               {hidden_size}, seen);
+
+        layer_entry.gate_proj = &require_bf16_tensor(header, prefix + "mlp.gate_proj.weight",
+                                                     {full_intermediate_rows, hidden_size}, seen);
+        layer_entry.up_proj = &require_bf16_tensor(header, prefix + "mlp.up_proj.weight",
+                                                   {full_intermediate_rows, hidden_size}, seen);
+        layer_entry.down_proj = &require_bf16_tensor(header, prefix + "mlp.down_proj.weight",
+                                                     {hidden_size, full_intermediate_rows}, seen);
+
+        all_layer_entries.push_back(layer_entry);
+    }
+
+    for (const auto& [name, _] : header.tensors) {
+        if (!seen.contains(name)) {
+            throw std::runtime_error("weights: unexpected tensor " + name);
+        }
+    }
+
+    const int64_t shard_q_heads = config.heads / num_ranks;
+    const int64_t shard_kv_heads = config.kv_heads / num_ranks;
+    const int64_t shard_intermediate_units = config.intermediate / num_ranks;
+
+    constexpr uint64_t bf16_elem_bytes = dtype_size(DType::BF16);
+
+    const int64_t shard_q_rows = shard_q_heads * head_dim;
+    const int64_t shard_kv_rows = shard_kv_heads * head_dim;
+    const int64_t shard_wqkv_rows = (shard_q_heads + (2 * shard_kv_heads)) * head_dim;
+
+    WeightLayout shard_layout;
+    shard_layout.layers.resize(config.layers);
+    uint64_t buffer_cursor = 0;
+
+    shard_layout.embed = allocate_region(buffer_cursor, {vocab_size, hidden_size});
+    push_whole_copy(shard_layout.copies, "model.embed_tokens.weight", embed, shard_layout.embed);
+
+    for (int layer = 0; layer < config.layers; ++layer) {
+        const std::string prefix = "model.layers." + std::to_string(layer) + ".";
+        const LayerTensorEntries& entry = all_layer_entries[layer];
+        LayerLayout& dst_layer = shard_layout.layers[layer];
+
+        dst_layer.ln1 = allocate_region(buffer_cursor, {hidden_size});
+
+        push_whole_copy(shard_layout.copies, prefix + "input_layernorm.weight", *entry.ln1,
+                        dst_layer.ln1);
+
+        dst_layer.wqkv = allocate_region(buffer_cursor, {shard_wqkv_rows, hidden_size});
+
+        const uint64_t q_bytes =
+            static_cast<uint64_t>(shard_q_rows * hidden_size) * bf16_elem_bytes;
+        const uint64_t kv_bytes =
+            static_cast<uint64_t>(shard_kv_rows * hidden_size) * bf16_elem_bytes;
+
+        push_row_slice_copy(shard_layout.copies, prefix + "self_attn.q_proj.weight", *entry.q_proj,
+                            dst_layer.wqkv.offset, rank * shard_q_rows, shard_q_rows);
+        push_row_slice_copy(shard_layout.copies, prefix + "self_attn.k_proj.weight", *entry.k_proj,
+                            dst_layer.wqkv.offset + q_bytes, rank * shard_kv_rows, shard_kv_rows);
+        push_row_slice_copy(shard_layout.copies, prefix + "self_attn.v_proj.weight", *entry.v_proj,
+                            dst_layer.wqkv.offset + q_bytes + kv_bytes, rank * shard_kv_rows,
+                            shard_kv_rows);
+
+        dst_layer.wo = allocate_region(buffer_cursor, {hidden_size, shard_q_rows});
+        push_col_slice_copy(shard_layout.copies, prefix + "self_attn.o_proj.weight", *entry.o_proj,
+                            dst_layer.wo, rank * shard_q_rows, shard_q_rows);
+
+        dst_layer.ln2 = allocate_region(buffer_cursor, {hidden_size});
+        push_whole_copy(shard_layout.copies, prefix + "post_attention_layernorm.weight", *entry.ln2,
+                        dst_layer.ln2);
+
+        dst_layer.wgu = allocate_region(buffer_cursor, {2 * shard_intermediate_units, hidden_size});
+        const uint64_t gate_bytes =
+            static_cast<uint64_t>(shard_intermediate_units * hidden_size) * bf16_elem_bytes;
+
+        push_row_slice_copy(shard_layout.copies, prefix + "mlp.gate_proj.weight", *entry.gate_proj,
+                            dst_layer.wgu.offset, rank * shard_intermediate_units,
+                            shard_intermediate_units);
+        push_row_slice_copy(shard_layout.copies, prefix + "mlp.up_proj.weight", *entry.up_proj,
+                            dst_layer.wgu.offset + gate_bytes, rank * shard_intermediate_units,
+                            shard_intermediate_units);
+
+        dst_layer.wdown = allocate_region(buffer_cursor, {hidden_size, shard_intermediate_units});
+        push_col_slice_copy(shard_layout.copies, prefix + "mlp.down_proj.weight", *entry.down_proj,
+                            dst_layer.wdown, rank * shard_intermediate_units,
+                            shard_intermediate_units);
+    }
+
+    shard_layout.final_norm = allocate_region(buffer_cursor, {hidden_size});
+    push_whole_copy(shard_layout.copies, "model.norm.weight", final_norm, shard_layout.final_norm);
+
+    shard_layout.lm_head = allocate_region(buffer_cursor, {vocab_size, hidden_size});
+    push_whole_copy(shard_layout.copies, "lm_head.weight", lm_head, shard_layout.lm_head);
+
+    std::sort(shard_layout.copies.begin(), shard_layout.copies.end(),
+              [](const CopyOp& a, const CopyOp& b) { return a.src < b.src; });
+
+    shard_layout.total_bytes = buffer_cursor;
+
+    return shard_layout;
 }
 
 }  // namespace engine

@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "engine/loader/tensor_parallel.h"
 #include "engine/loader/weight_layout.h"
 #include "engine/runtime/device_buffer.h"
 #include "engine/runtime/weights.h"
@@ -66,4 +67,35 @@ TEST(WeightUpload, RejectsZeroChunk) {
     const auto layout = engine::plan_weight_layout(config, engine::test::fake_header(config));
     std::vector<std::byte> file(16);
     EXPECT_THROW(engine::upload_weights(file, layout, nullptr, nullptr, 0), std::invalid_argument);
+}
+
+TEST(WeightUpload, AShardUploadsThroughTheSameCopies) {
+    auto config = engine::test::tiny_config();
+    config.hidden = 16;
+    config.heads = 4;
+    config.kv_heads = 2;
+    const auto header = engine::test::fake_header(config, kDataOffset);
+    uint64_t end = kDataOffset;
+    for (const auto& [name, t] : header.tensors) end = std::max(end, t.offset + t.bytes);
+    std::vector<std::byte> file(end);
+    for (size_t i = 0; i < file.size(); ++i) file[i] = std::byte((i * 131 + 7) & 0xFF);
+    cudaStream_t stream = nullptr;
+    CUDA_CHECK(cudaStreamCreate(&stream));
+
+    for (int rank = 0; rank < 2; ++rank) {
+        SCOPED_TRACE(rank);
+        const WeightLayout layout = engine::plan_shard_layout(config, header, rank, 2);
+        DeviceBuffer device(layout.total_bytes);
+        const auto stats = engine::upload_weights(file, layout, device.data(), stream, 64);
+
+        std::vector<std::byte> back(layout.total_bytes);
+        CUDA_CHECK(cudaMemcpy(back.data(), device.data(), back.size(), cudaMemcpyDeviceToHost));
+        uint64_t total = 0;
+        for (const CopyOp& c : layout.copies) {
+            EXPECT_EQ(std::memcmp(back.data() + c.dst, file.data() + c.src, c.bytes), 0) << c.name;
+            total += c.bytes;
+        }
+        EXPECT_EQ(stats.bytes, total);
+    }
+    CUDA_CHECK(cudaStreamDestroy(stream));
 }
