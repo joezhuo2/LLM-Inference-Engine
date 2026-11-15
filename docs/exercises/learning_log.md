@@ -2242,3 +2242,4 @@
 - **reading a device buffer back to the host to check an upload** => 
 - **a fixed cost per copy: why 90,000 small copies take longer than 200 large ones** => 
 - **what tensor parallelism does not divide: the embedding and the LM head** => 
+- **gathering scattered source pieces into one staging buffer when their destinations are contiguous** => 
