@@ -325,3 +325,22 @@ Open:
 - The chapter is not on the one-hour path. The new site text was built and checked in headless Chrome only.
 
 Helpers: `~/.cache/llmie-spec/static.mjs` (static server for `web/out` on 4317), `cdp-motion.mjs` (samples a value per frame after a trigger), `verify.sh` and `verify-web.sh` (the gates).
+
+## Snapshot 2026-11-14 (tensor parallelism: the layout of one rank, finished and measured)
+
+Branch `loader/tensor-parallel-wire` (Branch 151, worktree `~/code/llm-inference-engine-tp`), stacked on Joe's `loader/tensor-parallel-impl` (his `plan_shard_layout`, #202). Local only, not pushed. Four commits on top of his:
+
+- 51fb62c: the rejections carry the messages of `plan_weight_layout`, the unused data offset is gone from the helpers, `total_bytes` is the end of the last region; the 15 tests moved to `tests/unit/test_tensor_parallel.cpp`. Full gate with the GPU: debug 828 of 828, cpu 389 of 389.
+- 02e2917: `WeightUpload.AShardUploadsThroughTheSameCopies` (GPU).
+- 587904e: `scripts/shard_load_bench.cu`, `docs/results.md` "Tensor parallelism: the weights of one rank", `results/tensor_parallel/shard_load.md`.
+- b678815: the Beyond page and spread (`web/src/content/beyond.ts` reads the new table and throws when its claims stop holding).
+
+What the measurement found: a rank of 2 is 1,174.2 MiB (56% of the model), a rank of 4 is 712.2 MiB (34%), because the embedding and the LM head stay whole in every rank. A rank loads in 4.5 to 5.0 s against 0.22 s for the full model: 90,269 copies in place of 201, about 50 us each.
+
+Open:
+
+- The strided copy the spec deferred is now justified: one copy per matrix for a column slice (a change to `CopyOp` and `upload_weights`), or packing the rows of a slice into one staging chunk, since their destinations are contiguous. Not started.
+- Everything after the layout, each its own branch (see the spec text in the stub commit 789f5b1): a config for a shard, a runner and a KV cache per rank, the all-reduce, which rank embeds and samples, a flag on generate and bench, and the logits of the sharded forward against the unsharded one.
+- The book spread was checked in headless Chrome only (light theme, 1600 by 1000).
+
+Helpers: `~/.cache/llmie-tp/verify.sh` and `verify-web.sh` (the gates), `shard_load_bench` (the built bench), `bench_run1.md` to `bench_run3.md`.
