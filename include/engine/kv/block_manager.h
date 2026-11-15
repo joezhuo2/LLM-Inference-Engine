@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <list>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -37,6 +39,33 @@ private:
         int length;
         std::vector<int> table;
     };
+
+    struct PrefixKey {
+        std::size_t hash;
+        std::vector<int32_t> tokens;
+
+        bool operator==(const PrefixKey& other) const {
+            return hash == other.hash && tokens == other.tokens;
+        }
+    };
+
+    struct PrefixKeyHash {
+        std::size_t operator()(const PrefixKey& k) const noexcept { return k.hash; }
+    };
+
+    struct BlockMeta {
+        int ref_count = 0;
+        bool published = false;
+        PrefixKey key{};
+        std::list<int>::iterator lru_it{};
+    };
+
+    std::vector<BlockMeta> block_meta_;
+    std::list<int> lru_cached_; // least recently used
+    std::unordered_map<PrefixKey, int, PrefixKeyHash> prefix_to_block_;
+
+    int match_blocks(std::span<const int32_t> tokens, std::vector<int>* matched_out) const;
+    void evict_block(int block_id);
 
     int num_blocks_;
     int block_size_;
