@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## runtime/tensor-parallel-forward
 
+- Part A: the main timeline has three more entries: speculative decoding (#210, #211), the layout of one rank (#212) and the forward pass on the shards with the explanation of the late upload calls.
+
 - Part A: the tensor parallelism chapter states the measured forward pass: `shardedForward()` reads the new table of `docs/results.md` and fails the build when one rank stops matching bit for bit, a greedy token differs or the ranks on one GPU stop being slower.
 
 - Part A: `docs/claude/status.md` has a snapshot of the branch: the five commits and their gates, what review of the inherited code found, the numbers, and what is open (the Beyond page still says no forward pass runs on the shares).
