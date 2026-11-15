@@ -167,8 +167,8 @@ int BlockManager::num_free() const {
     return free_count_;
 }
 
-int BlockManager::match_prefix(std::span<const int32_t>) const {
-    throw std::logic_error("unimplemented: BlockManager::match_prefix");
+int BlockManager::match_prefix(std::span<const int32_t> tokens) const {
+    return match_blocks(tokens, nullptr) * block_size_;
 }
 
 bool BlockManager::can_allocate_tokens(std::span<const int32_t>) const {
