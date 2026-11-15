@@ -56,6 +56,7 @@ if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_add.cpp
     gpu/test_add_rmsnorm.cpp
+    gpu/test_all_reduce.cpp
     gpu/test_attention.cpp
     gpu/test_bench.cpp
     gpu/test_bench_batched.cpp

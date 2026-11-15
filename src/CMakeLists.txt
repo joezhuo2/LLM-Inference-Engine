@@ -50,6 +50,7 @@ if(ENGINE_CUDA)
   add_library(engine_kernels
     kernels/add.cu
     kernels/add_rmsnorm.cu
+    kernels/all_reduce.cu
     kernels/attention.cu
     kernels/embedding.cu
     kernels/embedding_fast.cu

@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## runtime/tensor-parallel-forward
 
+- Part B: `all_reduce_add(x, partials, stream)` (`src/kernels/all_reduce.cu`) adds the partial results of 1 to 8 ranks to the residual stream in place: each element sums the partials in float in rank order, adds the old value of x and rounds to BF16 once. With one GPU the partials of every rank already sit in its memory, so this kernel stands for the all-reduce two GPUs would do over a link; with one rank it gives exactly what the residual add of `ModelRunner` gives. `AllReduce.MatchesAHostSum` checks 1, 2, 4 and 8 partials of 1, 3 and 512 rows against the same sum on the host, bit for bit, and `AllReduce.RejectsBadPartials` the rejections (no partial, more than 8, another shape or type).
+
 - Part A: `shard_config(config, num_ranks)` (`src/loader/tensor_parallel.cpp`) gives the config of one rank: the heads, the KV heads and the MLP width divided by the number of ranks, everything else unchanged, so the kernels of the whole model run on a shard as if it were a smaller model. It rejects a rank count below 1 and one that does not divide the KV heads, the heads or the MLP, each with its own message, and two unit tests pin the values for 1, 2 and 4 ranks of TinyLlama and every rejection. `ModelConfig::q_dim()` names the width of the query heads, which is the hidden size in the whole model and not in a shard, and `qkv_dim()` uses it. The three whole tensors of `plan_shard_layout` (embedding, final norm, LM head) are held by value, which ends three `-Wdangling-reference` warnings of GCC in the cpu preset.
 
 ## loader/tensor-parallel-wire

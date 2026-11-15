@@ -2251,3 +2251,6 @@
 - **the config of a shard: a smaller model with the same hidden size** => 
 - **the width of the query heads against the hidden size** => 
 - **a reference to the result of a function that took a temporary, and why GCC warns about it** => 
+- **an all-reduce: every rank ends with the sum of the partial results of every rank** => 
+- **summing in float and rounding to BF16 once, against rounding after every add** => 
+- **passing a small fixed array of pointers to a kernel by value** => 
