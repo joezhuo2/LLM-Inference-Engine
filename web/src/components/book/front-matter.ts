@@ -15,7 +15,7 @@ import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chap
 import type { BookPalette } from "./ink";
 import { listRows } from "./fit";
 import { bookHref } from "./paths";
-import type { Fonts } from "./typeset";
+import { type Fonts, fitFont } from "./typeset";
 
 export { bookOrder, bookParts };
 
@@ -457,8 +457,7 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number, lin
     ctx.font = `26px ${fonts.sans}`;
     ctx.fillText(`chapter ${def.number} · ${chapterTitle(def.slug)} · build it yourself`, x0, 150);
     ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.font = `${Math.min(92, (92 * width) / ctx.measureText(e.title).width)}px ${fonts.serif}`;
+    fitFont(ctx, e.title, 92, width, fonts.serif);
     ctx.fillText(e.title, x0, 260);
     ctx.fillStyle = palette.faint;
     ctx.font = `28px ${fonts.sans}`;
@@ -780,8 +779,7 @@ function textPage(side: Side, kicker: string, title: string, paragraphs: string[
     ctx.font = `26px ${fonts.sans}`;
     ctx.fillText(kicker, x0, 150);
     ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.font = `${Math.min(92, (92 * (x1 - x0)) / ctx.measureText(title).width)}px ${fonts.serif}`;
+    fitFont(ctx, title, 92, x1 - x0, fonts.serif);
     ctx.fillText(title, x0, 260);
     let px = size;
     const fit = (draw: boolean) => {
@@ -1018,8 +1016,7 @@ function estimateQuestion(e: Estimate, k: number) {
     ctx.font = `26px ${fonts.sans}`;
     ctx.fillText(`${estimatesTitle} · problem ${k + 1} of ${estimates.length}`, x0, 150);
     ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.font = `${Math.min(92, (92 * width) / ctx.measureText(e.title).width)}px ${fonts.serif}`;
+    fitFont(ctx, e.title, 92, width, fonts.serif);
     ctx.fillText(e.title, x0, 260);
     fitLayout((scale, draw) => {
       ctx.fillStyle = palette.ink;
@@ -1134,7 +1131,7 @@ function beyondTopicPage(topic: BeyondTopic, side: Side, k: number) {
     ctx.font = `26px ${fonts.sans}`;
     ctx.fillText(`${beyondTitle} · ${topic.unit}`, x0, 150);
     ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
+    fitFont(ctx, topic.title, 92, width, fonts.serif);
     ctx.fillText(topic.title, x0, 260);
     let px = 34;
     const fit = (draw: boolean) => {
@@ -1176,7 +1173,7 @@ function beyondUnitsPage(side: Side, k: number) {
     let y = 420;
     for (const topic of beyondTopics) {
       ctx.fillStyle = palette.ink;
-      ctx.font = `52px ${fonts.serif}`;
+      fitFont(ctx, topic.title, 52, x1 - x0, fonts.serif);
       ctx.fillText(topic.title, x0, y);
       ctx.fillStyle = palette.blue;
       ctx.font = `34px ${fonts.sans}`;
