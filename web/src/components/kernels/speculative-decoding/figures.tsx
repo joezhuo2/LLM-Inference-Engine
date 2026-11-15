@@ -11,12 +11,12 @@ const W = 520;
 const example = spec.example;
 const all = [...example.prompt_tokens, ...example.output_tokens];
 const tokens = (n: number) => (n === 1 ? "token" : `${n} tokens`);
-const short = (token: string, most = 6) => {
+export const short = (token: string, most = 6) => {
   const text = piece(token).trim() || "␣";
   return text.length > most ? `${text.slice(0, most - 1)}…` : text;
 };
 
-function Chip({ x, y, w, text, tone }: { x: number; y: number; w: number; text: string; tone: "plain" | "pattern" | "draft" | "kept" | "dropped" | "real" }) {
+export function Chip({ x, y, w, text, tone }: { x: number; y: number; w: number; text: string; tone: "plain" | "pattern" | "draft" | "kept" | "dropped" | "real" }) {
   const box = { plain: "fill-border", pattern: "fill-accent/30", draft: "fill-warn/20", kept: "fill-accent", dropped: "fill-none stroke-warn", real: "fill-text/70" }[tone];
   const ink = tone === "kept" || tone === "real" ? "fill-bg" : tone === "dropped" ? "fill-warn" : "fill-text";
   return (

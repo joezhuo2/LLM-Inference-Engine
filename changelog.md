@@ -2,6 +2,23 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/timeline-scenes
+
+- Part A: the in-this-chapter list of every byte runs lower on the page (to H-270, the click line at H-180), so long lists get larger type.
+
+- Part A: the entry on the forward pass on the shards has its own scene: 2 ranks computing their partial results in turn, for attention and then the MLP, each pair summed into the residual stream, a lane of the one GPU in time below, and the measured ms per token, logit difference and sums per token from the same accessors as the text.
+
+- Part A: the entry on the weights of one rank has its own scene: one layer's fused QKV weight cut by rows and the output projection by columns for 2 ranks, each rank lit in turn, and a rank of 2 against the whole model to scale, the embedding and the LM head whole in it; the percent is the one the entry text reads from `docs/results.md`.
+
+- Part A: the speculative decoding entry of the main timeline has its own scene: the recorded step whose guesses go partly wrong, the guesses copied from earlier in the context into the spare rows, the rows kept up to the first wrong guess and the rest dropped, and the tokens the step writes, all read from `results/speculative_example.json` and `docs/results.md`.
+## web/book-fit
+
+- Part A: page titles drawn on canvas shrink to the text width through one helper, `fitFont` in `typeset.ts`, used by the step pages, the exercise, estimate and start pages and now the Beyond spreads and the Beyond units list. "speculative decoding with a draft model" ran past the right page edge; the step page titles also measured against the page edge instead of the right margin, so a long one could reach the spine.
+
+- Part A: the "in this chapter" list sizes its step titles from the row pitch (0.8 of it, at most 46 px) instead of half of it, and spreads the rows down to just above "Click a step to turn to it.". On paged attention (20 rows), FlashAttention prefill and how many requests fit the titles were drawn at about 60% of the page numbers beside them with the bottom of the page empty. `listRows` in `web/src/components/book/fit.ts` lays the rows and group headings out, with a test in `web/scripts/book-fit.test.mjs`.
+
+- Part A: the contents spread fits its list on the page for any number of entries: one scale for both pages shrinks the row pitch, the part gaps and the type of the entries together so the last row stays above the "Click a chapter to open it." line, and the hit boxes follow the scaled pitch. Errata was cut off below the page edge since chapters were added.
+
 ## runtime/tensor-parallel-forward
 
 - Part A: the timeline entry of the forward pass links its pull request, #213.

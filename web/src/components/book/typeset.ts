@@ -79,6 +79,11 @@ function drawParagraph(ctx: CanvasRenderingContext2D, runs: Run[], x: number, y:
   return cy + lineHeight;
 }
 
+export function fitFont(ctx: CanvasRenderingContext2D, text: string, size: number, width: number, family: string): void {
+  ctx.font = `${size}px ${family}`;
+  ctx.font = `${Math.min(size, (size * width) / ctx.measureText(text).width)}px ${family}`;
+}
+
 export const DOT_PITCH = 2.4;
 export const dotRule = (lineHeight: number) => ({ dot: Math.max(1.5, lineHeight * 0.05), drop: lineHeight * 0.16 });
 
@@ -111,8 +116,7 @@ export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, p
   ctx.font = `${26 * unit}px ${fonts.sans}`;
   ctx.fillText(page.kicker, marginX, 150 * unit);
   ctx.fillStyle = palette.ink;
-  ctx.font = `${92 * unit}px ${fonts.serif}`;
-  ctx.font = `${Math.min(92, (92 * (w - marginX - 60 * unit)) / ctx.measureText(page.title).width) * unit}px ${fonts.serif}`;
+  fitFont(ctx, page.title, 92 * unit, textW, fonts.serif);
   ctx.fillText(page.title, marginX, 260 * unit);
   let y = 325 * unit;
   if (page.note) {

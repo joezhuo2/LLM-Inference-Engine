@@ -2281,3 +2281,10 @@
 - **a chapter that calculates bytes from the shape and checks them against measured MiB** => 
 - **text left out until a measurement exists, behind one accessor** => 
 - **checking a claim about shares by adding up the parts yourself** => 
+## Timeline diagrams and page fit (Branch 155)
+
+- **a moving copy that hands over to its final copy, and hides when motion is reduced** => 
+- **clipping a CDP screenshot to one element: page coordinates add the scroll offset** => 
+- **a time lane: drawing work that takes turns on one device** => 
+- **fitting a list to a fixed page by scaling row pitch and type together** => 
+- **deriving type size from row pitch so a list fills the page at any length** => 
