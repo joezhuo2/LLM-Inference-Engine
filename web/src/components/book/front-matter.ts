@@ -13,6 +13,7 @@ import { loadSlo } from "@/lib/data";
 import { type LinkLine, PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
+import { listRows } from "./fit";
 import { bookHref } from "./paths";
 import type { Fonts } from "./typeset";
 
@@ -337,25 +338,16 @@ function introRows(def: ChapterDef) {
   if (def.workbench.length > 0) starts[steps] = "try it yourself";
   if (built > reviewed) starts[reviewed] = "review";
   if (titles.length > built) starts[built] = "build it yourself";
-  const step = Math.min(ROW, (H - 700) / (titles.length + Object.keys(starts).length * 1.5));
-  const rows: { y: number; text: string; number?: string; kind?: "bench" | "review" | "build"; k?: number }[] = [];
-  let y = 380;
-  titles.forEach((text, k) => {
-    if (starts[k]) {
-      rows.push({ y: y + step * 0.2, text: starts[k] });
-      y += step * 1.5;
-    }
-    rows.push({ y, text, number: stepNumber(def, k) || undefined, kind: k >= built ? "build" : k >= reviewed ? "review" : k >= steps ? "bench" : undefined, k });
-    y += step;
-  });
-  return { rows, step };
+  const fit = listRows(titles.length, Object.keys(starts).map(Number), 380, H - 340, ROW);
+  const rows = fit.rows.map(({ y, k, head }) => (head !== undefined ? { y, text: starts[head] } : { y, text: titles[k!], number: stepNumber(def, k!) || undefined, kind: k! >= built ? ("build" as const) : k! >= reviewed ? ("review" as const) : k! >= steps ? ("bench" as const) : undefined, k }));
+  return { rows, step: fit.step, size: fit.size };
 }
 
 export function introStop(def: ChapterDef): Stop {
   const part = bookParts.find((p) => p.slugs.includes(def.slug));
   const title = chapterTitle(def.slug);
   const summary = kernelStory(def.slug)?.short ?? "";
-  const { rows, step } = introRows(def);
+  const { rows, step, size: titleSize } = introRows(def);
   const page = (k: number) => (chapterPage(def.slug) ?? 0) + k;
   const left = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "left");
@@ -388,14 +380,14 @@ export function introStop(def: ChapterDef): Stop {
         continue;
       }
       ctx.fillStyle = palette.faint;
-      ctx.font = `${Math.round(step * 0.43)}px ${fonts.serif}`;
+      ctx.font = `${Math.round(titleSize * 0.86)}px ${fonts.serif}`;
       if (row.number) ctx.fillText(row.number, x0, row.y);
       const target = String(page(row.k + 1));
       ctx.font = `30px ${fonts.sans}`;
       const pw = ctx.measureText(target).width;
       ctx.fillText(target, x1 - pw, row.y);
       const tx = x0 + 70;
-      let size = Math.round(step * 0.5);
+      let size = titleSize;
       ctx.font = `${size}px ${fonts.serif}`;
       while (size > 26 && ctx.measureText(row.text).width > x1 - pw - 40 - tx) ctx.font = `${--size}px ${fonts.serif}`;
       ctx.fillStyle = palette.ink;
