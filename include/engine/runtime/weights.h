@@ -34,5 +34,7 @@ struct DeviceWeights {
 };
 
 DeviceWeights load_weights(const std::filesystem::path& model_dir, Stream stream);
+DeviceWeights load_shard_weights(const std::filesystem::path& model_dir, int rank, int num_ranks,
+                                 Stream stream);
 
 }  // namespace engine

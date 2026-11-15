@@ -4,6 +4,7 @@ export const bookChapters: Record<string, () => Promise<ChapterDef>> = {
   "one-token": () => import("./one-token").then((m) => m.oneTokenChapter),
   "memory-budget": () => import("./memory-budget").then((m) => m.memoryBudgetChapter),
   "speculative-decoding": () => import("./speculative-decoding").then((m) => m.speculativeDecodingChapter),
+  "tensor-parallelism": () => import("./tensor-parallelism").then((m) => m.tensorParallelismChapter),
   foundations: () => import("./foundations").then((m) => m.foundationsChapter),
   gemm: () => import("./gemm").then((m) => m.gemmChapter),
   "paged-kv": () => import("./paged-kv").then((m) => m.pagedKvChapter),

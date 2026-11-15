@@ -120,6 +120,21 @@ void push_col_slice_copy(std::vector<CopyOp>& copy_ops, const std::string& name,
 
 }  // namespace
 
+ModelConfig shard_config(const ModelConfig& config, int num_ranks) {
+    if (num_ranks < 1) throw std::invalid_argument("shard_config: num_ranks must be at least 1");
+    if (config.kv_heads <= 0 || config.kv_heads % num_ranks != 0)
+        throw std::invalid_argument("shard_config: kv_heads must be a multiple of num_ranks");
+    if (config.heads <= 0 || config.heads % num_ranks != 0)
+        throw std::invalid_argument("shard_config: heads must be a multiple of num_ranks");
+    if (config.intermediate <= 0 || config.intermediate % num_ranks != 0)
+        throw std::invalid_argument("shard_config: intermediate must be a multiple of num_ranks");
+    ModelConfig shard = config;
+    shard.heads /= num_ranks;
+    shard.kv_heads /= num_ranks;
+    shard.intermediate /= num_ranks;
+    return shard;
+}
+
 WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeader& header, int rank,
                                int num_ranks) {
     if (num_ranks < 1) {
@@ -160,11 +175,11 @@ WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeade
     const int64_t full_kv_rows = static_cast<int64_t>(config.kv_heads) * head_dim;
     const int64_t full_intermediate_rows = config.intermediate;
 
-    const TensorEntry& embed =
+    const TensorEntry embed =
         require_bf16_tensor(header, "model.embed_tokens.weight", {vocab_size, hidden_size}, seen);
-    const TensorEntry& final_norm =
+    const TensorEntry final_norm =
         require_bf16_tensor(header, "model.norm.weight", {hidden_size}, seen);
-    const TensorEntry& lm_head =
+    const TensorEntry lm_head =
         require_bf16_tensor(header, "lm_head.weight", {vocab_size, hidden_size}, seen);
 
     struct LayerTensorEntries {

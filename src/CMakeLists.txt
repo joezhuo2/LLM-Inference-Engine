@@ -50,6 +50,7 @@ if(ENGINE_CUDA)
   add_library(engine_kernels
     kernels/add.cu
     kernels/add_rmsnorm.cu
+    kernels/all_reduce.cu
     kernels/attention.cu
     kernels/embedding.cu
     kernels/embedding_fast.cu
@@ -84,6 +85,8 @@ if(ENGINE_CUDA)
     runtime/pinned_buffer.cpp
     runtime/sampler.cpp
     runtime/serve.cpp
+    runtime/sharded_layer.cpp
+    runtime/sharded_runner.cpp
     runtime/weights.cpp
   )
   target_include_directories(engine_runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

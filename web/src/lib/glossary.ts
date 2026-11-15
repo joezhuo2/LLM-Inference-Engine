@@ -123,6 +123,11 @@ const entries: GlossEntry[] = [
   { key: "throughput", term: "throughput", full: "work done per second", why: "Tokens per second over all requests. Batching raises it, at the price of a longer step for each request.", aliases: ["throughput"] },
   { key: "static", term: "static batch", full: "a batch that runs until all its requests finish", why: "A request that stops early keeps its slot until the longest one is done; continuous batching refills it at once.", aliases: ["static batching", "static batch"] },
   { key: "bitid", term: "bit-identical", full: "the same output down to the last bit", why: "The test a fast kernel has to pass against the naive one. It pins every rounding step, not only the math.", aliases: ["bit-identical", "bit for bit"] },
+  { key: "tp", term: "tensor parallelism", full: "cutting every layer's weight matrices across several GPUs", why: "Each GPU reads only its piece of the weights for a token, and the partial results are added together twice in every layer.", aliases: ["tensor parallelism", "Tensor parallelism"] },
+  { key: "rank", term: "rank", full: "one of the N GPUs a model is cut across", why: "Rank r holds the r-th piece of every cut matrix and computes its part of every layer. Here every rank is loaded onto the one GPU.", aliases: ["rank"] },
+  { key: "allreduce", term: "all-reduce", full: "adding one vector from every rank and giving every rank the sum", why: "Tensor parallelism needs two in every layer. Between real GPUs it crosses the link between them; this engine has one GPU, so nothing crosses.", aliases: ["all-reduce", "all-reduces"] },
+  { key: "partial", term: "partial result", full: "one rank's share of a matrix product", why: "It has the full width but only part of the answer. The partial results of all ranks add up to what the whole matrix would give.", aliases: ["partial result", "partial results"] },
+  { key: "nccl", term: "NCCL", full: "NVIDIA Collective Communications Library", why: "The library that runs all-reduce and the other collective operations between NVIDIA GPUs. This engine does not use it.", aliases: ["NCCL"] },
   { key: "l1", term: "L1", full: "the small cache inside each SM", why: "The nearest cache to a thread. A load that hits it does not count against DRAM, which is why bytes loaded and bytes from DRAM differ.", aliases: ["L1"] },
 ];
 

@@ -282,6 +282,20 @@ export const exercises: Exercise[] = [
       { path: "scripts/prompts_repeat.json", label: "the four prompts whose answers repeat them" },
     ],
   },
+  {
+    kind: "open",
+    id: "tensor-parallel-ranks",
+    chapter: "tensor-parallelism",
+    title: "load every rank and add them up",
+    task: "Load all four ranks of 4 and the whole model, one process each, and check what the chapter says: every rank holds the same bytes, the four together hold more than the model, and each loads faster than the whole model.",
+    nudge: "Build scripts/shard_load_bench.cu with the nvcc line under Tensor parallelism in docs/results.md, then run it with the arguments models/tinyllama 7 4 R for R from 0 to 3, and models/tinyllama 7 0 0 for the whole model. Add up the MiB of the four ranks.",
+    runs: "gpu",
+    check: "There are no tests: the four ranks should print the same MiB, their sum divided by the whole model's MiB should match the chapter's ratio for 4 ranks, and the upload ms of a rank should stay below the whole model's in every run.",
+    compare: [
+      { path: "scripts/shard_load_bench.cu", label: "the load of one rank, timed" },
+      { path: "results/tensor_parallel/shard_load.md", label: "the runs this chapter's table comes from" },
+    ],
+  },
 ];
 
 export const chapterExercises = (slug: string): Exercise[] => exercises.filter((e) => e.chapter === slug);

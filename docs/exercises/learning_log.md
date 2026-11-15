@@ -2245,3 +2245,39 @@
 - **gathering scattered source pieces into one staging buffer when their destinations are contiguous** => 
 - **an A/B in one session: why two numbers from different hours cannot be compared on this GPU** => 
 - **one process per measurement when the tenth call behaves unlike the first** => 
+
+## Tensor parallelism: a forward pass on the shards (Branch 152)
+
+- **the config of a shard: a smaller model with the same hidden size** => 
+- **the width of the query heads against the hidden size** => 
+- **a reference to the result of a function that took a temporary, and why GCC warns about it** => 
+- **an all-reduce: every rank ends with the sum of the partial results of every rank** => 
+- **summing in float and rounding to BF16 once, against rounding after every add** => 
+- **passing a small fixed array of pointers to a kernel by value** => 
+- **a row-parallel and a column-parallel matrix: which side of a GEMM a split cuts** => 
+- **two all-reduces per layer: after the attention output and after the MLP down projection** => 
+- **a K/V cache per rank: each rank caches only its own KV heads** => 
+- **running the ranks one after another on one GPU as a check of the split** => 
+- **the largest logit difference as the measure of a reordered BF16 sum** => 
+- **a test that runs the built program and reads its output** => 
+- **extra memory of a split on one GPU: the tables every rank copies** => 
+- **why N ranks on one GPU are slower than the whole model: more launches on narrower matrices** => 
+- **reviewing code written by someone else before building on it** => 
+## Late upload calls (Branch 154)
+
+- **GPU performance states (P0, P2, P5) and the clocks each one allows** => 
+- **dynamic clock lowering when the GPU is busy only a small part of the time** => 
+- **why a host-to-device copy slows down with the memory clock** => 
+- **the cost of cudaMallocHost and cudaFreeHost against the copy they serve** => 
+- **changing one variable at a time: keeping the buffers against adding the same idle time as a sleep** => 
+- **sampling nvidia-smi next to per-call timestamps to line up a slowdown with a state change** => 
+- **minor and major page faults read with getrusage** => 
+## Tensor parallelism chapter (Branch 153)
+
+- **a glossary alias that is also an English verb** => 
+- **why cutting the first matrix by rows and the second by columns makes the partial results add** => 
+- **an elementwise activation between two cut matrices: why SwiGLU needs no sum** => 
+- **what tensor parallelism costs in memory: tables copied into every rank** => 
+- **a chapter that calculates bytes from the shape and checks them against measured MiB** => 
+- **text left out until a measurement exists, behind one accessor** => 
+- **checking a claim about shares by adding up the parts yourself** => 
