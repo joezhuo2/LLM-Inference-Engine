@@ -2280,3 +2280,4 @@
 - **what tensor parallelism costs in memory: tables copied into every rank** => 
 - **a chapter that calculates bytes from the shape and checks them against measured MiB** => 
 - **text left out until a measurement exists, behind one accessor** => 
+- **checking a claim about shares by adding up the parts yourself** => 
