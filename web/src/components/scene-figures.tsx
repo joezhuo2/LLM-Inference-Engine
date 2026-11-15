@@ -9,7 +9,7 @@ import { Chip, short } from "@/components/kernels/speculative-decoding/figures";
 import { Matrix, RankBar } from "@/components/kernels/tensor-parallelism/figures";
 import { bucketScene, rankScene, sweepScene } from "@/content/build-log";
 import { spec, specFmt } from "@/content/kernels/speculative-decoding";
-import { attentionMatrices, rankShare, tpShape } from "@/content/kernels/tensor-parallelism";
+import { attentionMatrices, rankShare, shardedForward, tpFmt, tpShape } from "@/content/kernels/tensor-parallelism";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { ceilings } from "@/lib/data";
 
@@ -538,3 +538,74 @@ export function RankFigure() {
   );
 }
 
+const shardBlocks = [
+  { name: "attention", what: `${rankShare(2).qHeads} of ${tpShape.heads} heads`, x: 20, t: 0.06 },
+  { name: "MLP", what: `${tpFmt(rankShare(2).channels)} channels`, x: 290, t: 0.44 },
+];
+const shardLane = [96, 96, 28];
+
+export function ShardsFigure() {
+  const { on, move } = useLoop(16);
+  const f = shardedForward();
+  const two = f.ranks.indexOf(2);
+  return (
+    <Frame label={`One layer with 2 ranks on one GPU: each rank in turn computes a partial result with its own weights, and the two partials are summed into the residual stream, after attention and after the MLP. ${tpShape.sums} sums in a token. A token took ${tpFmt(f.msPerToken[two], 2)} ms with 2 ranks against ${tpFmt(f.wholeMsPerToken, 2)} ms for the whole model (measured)`}>
+      <Label x={20} y={22} className="fill-text">one layer, 2 ranks taking turns on one GPU</Label>
+      <Label x={20} y={56}>residual stream</Label>
+      <line x1={20} y1={70} x2={540} y2={70} strokeWidth={2} className="stroke-border" />
+      {shardBlocks.map((b) => {
+        const node = b.x + 214;
+        const sum = b.t + 0.26;
+        return (
+          <g key={b.name}>
+            <Label x={b.x} y={100} className="fill-text">{b.name}</Label>
+            {[0, 1].map((r) => {
+              const y = 110 + r * 46;
+              return (
+                <g key={r}>
+                  <rect x={b.x} y={y} width={150} height={34} rx={3} className="fill-text/10 stroke-border" />
+                  <motion.rect x={b.x} y={y} width={150} height={34} rx={3} strokeWidth={1.5} className="fill-accent/25 stroke-accent" {...on(b.t + r * 0.1)} />
+                  <Label x={b.x + 10} y={y + 21} className="fill-text">{`rank ${r}: ${b.what}`}</Label>
+                  <motion.rect x={b.x + 164} y={y} width={10} height={34} rx={2} className="fill-accent" {...on(b.t + r * 0.1 + 0.06)} />
+                  <motion.rect x={b.x + 164} y={y} width={10} height={34} rx={2} className="fill-accent" {...move(sum, sum + 0.07, node - 5 - b.x - 164, 53 - y, false, sum + 0.1)} />
+                </g>
+              );
+            })}
+            <motion.g {...on(b.t + 0.16)}>
+              <Label x={b.x + 169} y={216} anchor="middle">partials</Label>
+            </motion.g>
+            <circle cx={node} cy={70} r={11} className="fill-surface stroke-border" />
+            <motion.circle cx={node} cy={70} r={11} strokeWidth={1.5} className="fill-accent/25 stroke-accent" {...on(sum + 0.08)} />
+            <motion.line x1={node + 11} y1={70} x2={b.x === 20 ? shardBlocks[1].x + 203 : 540} y2={70} strokeWidth={2} className="stroke-accent" {...on(sum + 0.08)} />
+            <text x={node} y={75} textAnchor="middle" className="fill-text text-[14px]">
+              +
+            </text>
+          </g>
+        );
+      })}
+      <Label x={20} y={250}>the one GPU, in time</Label>
+      {shardBlocks.map((b, k) =>
+        shardLane.map((w, i) => {
+          const x = 20 + k * 236 + shardLane.slice(0, i).reduce((a, c) => a + c + 4, 0);
+          const sum = i === 2;
+          return (
+            <g key={`${k}-${i}`}>
+              <rect x={x} y={258} width={w} height={24} rx={3} className="fill-text/10" />
+              <motion.rect x={x} y={258} width={w} height={24} rx={3} strokeWidth={1.5} className="fill-accent/25 stroke-accent" {...on(sum ? b.t + 0.34 : b.t + i * 0.1)} />
+              <text x={x + w / 2} y={274} textAnchor="middle" className="fill-text text-[11px]">
+                {sum ? "+" : `rank ${i}`}
+              </text>
+            </g>
+          );
+        }),
+      )}
+      {shardBlocks.map((b, k) => (
+        <Label key={b.name} x={20 + k * 236 + 112} y={298} anchor="middle">{b.name}</Label>
+      ))}
+      <Label x={20} y={328} className="fill-text">{`${tpShape.sums} sums in a token: 2 in each of ${tpShape.layers} layers`}</Label>
+      <Label x={20} y={348} className="fill-accent">{`a token: ${tpFmt(f.msPerToken[two], 2)} ms with 2 ranks in turn, ${tpFmt(f.wholeMsPerToken, 2)} ms whole (measured)`}</Label>
+      <Label x={20} y={368}>{`logits within ${f.maxLogitDiff}, every greedy token the same (measured)`}</Label>
+      <Label x={20} y={390}>one GPU: the ranks take turns, so it cannot be faster; the lane is not to scale</Label>
+    </Frame>
+  );
+}

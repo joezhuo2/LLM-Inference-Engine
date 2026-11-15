@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/timeline-scenes
 
+- Part A: the entry on the forward pass on the shards has its own scene: 2 ranks computing their partial results in turn, for attention and then the MLP, each pair summed into the residual stream, a lane of the one GPU in time below, and the measured ms per token, logit difference and sums per token from the same accessors as the text.
+
 - Part A: the entry on the weights of one rank has its own scene: one layer's fused QKV weight cut by rows and the output projection by columns for 2 ranks, each rank lit in turn, and a rank of 2 against the whole model to scale, the embedding and the LM head whole in it; the percent is the one the entry text reads from `docs/results.md`.
 
 - Part A: the speculative decoding entry of the main timeline has its own scene: the recorded step whose guesses go partly wrong, the guesses copied from earlier in the context into the spare rows, the rows kept up to the first wrong guess and the rest dropped, and the tokens the step writes, all read from `results/speculative_example.json` and `docs/results.md`.
