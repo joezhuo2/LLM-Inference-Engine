@@ -604,7 +604,7 @@ The `engine + graphs, budget 256` row is the same prompt alone under `--token-bu
 
 ## Tensor parallelism: the weights of one rank
 
-From `scripts/shard_load_bench.cu` (#202). `plan_shard_layout` cuts the model for N GPUs (ranks), and `upload_weights` loads the layout of one rank the way it loads the full one. No forward pass runs on the shards yet, so this section has no tokens per second: it says what one rank holds and how long it takes to load. Measured on 2026-11-14 on the RTX 5060 Laptop GPU, release build, at commit fdeb8ca, with TinyLlama; this laptop has one GPU, so every rank is loaded onto it, one at a time. Each row is the median of three runs of the script, each of them the median of 7 uploads after one warm-up upload, and min to max is over all 21 uploads. Each row runs in its own process. `results/tensor_parallel/shard_load.md` holds the runs.
+From `scripts/shard_load_bench.cu` (#202). `plan_shard_layout` cuts the model for N GPUs (ranks), and `upload_weights` loads the layout of one rank the way it loads the full one. This section has no tokens per second: it says what one rank holds and how long it takes to load; the forward pass on the shards is the next section. Measured on 2026-11-14 on the RTX 5060 Laptop GPU, release build, at commit fdeb8ca, with TinyLlama; this laptop has one GPU, so every rank is loaded onto it, one at a time. Each row is the median of three runs of the script, each of them the median of 7 uploads after one warm-up upload, and min to max is over all 21 uploads. Each row runs in its own process. `results/tensor_parallel/shard_load.md` holds the runs.
 
 | layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -632,9 +632,28 @@ A slice of rows is one copy, but a slice of columns (o_proj and down_proj) is on
 
 Two things measured on the way. Packing across tensors as well (the whole model in 64 MiB chunks) loaded the full model 10% slower than a chunk per tensor, 227 against 205 ms in an A/B of three rounds in one session, so a new tensor starts a new chunk and the full layout uploads exactly as before. And from about the eleventh upload inside one process, some uploads take 130 to 180 ms more, whatever their size, while the host copies alone keep their time (51 ms for a rank of 4): the extra time is inside the CUDA calls and is not explained. A real load uploads once per rank, so each row above runs in its own process, 8 uploads.
 
-Not measured: a forward pass on the shards, its logits against the unsharded model, and anything between two devices.
+Not measured here: anything between two devices. The forward pass on the shards and its logits against the unsharded model are in the next section.
 
 To reproduce: `nvcc -std=c++20 -O3 -arch=sm_120 -Iinclude -Isrc scripts/shard_load_bench.cu build/release/src/libengine_runtime.a build/release/src/libengine_kernels.a build/release/src/libengine_core.a -lcublas -o /tmp/shard_load_bench && for row in "0 0" "1 0" "2 0" "2 1" "4 0" "4 1" "4 2" "4 3"; do /tmp/shard_load_bench models/tinyllama 7 $row; done` (arguments: model directory, uploads per layout, number of ranks with 0 for the full model, rank).
+
+## Tensor parallelism: a forward pass on the shards
+
+From `scripts/sharded_forward_bench.cu`. `ShardedRunner` runs the forward pass of every rank of a split: each rank holds the weights `load_shard_weights` uploads, its own K/V cache for its own KV heads and its own scratch buffers, and a layer sums the partial outputs of the ranks into the residual stream twice, after the attention output projection and after the MLP down projection, with `all_reduce_add`. This laptop has one GPU, so the ranks run one after another on it and their partials meet in its memory: this is a check that the split computes the model, not a speedup, and a step with N ranks does all the work of the whole model plus N times the small kernels and the reductions. Measured on 2026-11-14 on the RTX 5060 Laptop GPU, release build, at commit 284c886, with TinyLlama, against `ModelRunner` on the whole model (both use the same naive kernels and cuBLAS). Three prompts (the start of a story, a question, a Python function to finish), 64 decode steps after each. Each row runs in its own process; ms per decode step is the median of the three runs' medians, each over 189 timed steps, and min to max is over all 567 steps. `results/tensor_parallel/sharded_forward.md` holds the runs.
+
+| layout | MiB on the device | largest logit difference | greedy tokens equal | ms per decode step | medians of the three runs | min to max |
+| --- | --- | --- | --- | --- | --- | --- |
+| whole model, ModelRunner | 2,222 | reference | reference | 8.27 | 8.24 to 8.57 | 7.79 to 12.85 |
+| 1 rank | 2,222 | 0 | 192 of 192 | 8.34 | 8.30 to 8.60 | 7.79 to 22.43 |
+| 2 ranks | 2,474 | 0.75 | 192 of 192 | 11.21 | 11.15 to 11.27 | 10.26 to 20.85 |
+| 4 ranks | 2,978 | 0.64 | 192 of 192 | 17.89 | 17.49 to 18.01 | 15.11 to 38.99 |
+
+The split is right. One rank gives the logits of the whole model bit for bit: its shapes are the whole model's, and `all_reduce_add` with one partial rounds exactly like the residual add of `ModelRunner`. With 2 and 4 ranks the largest difference over every prefill row and every decode step is 0.75 and 0.64, a few BF16 steps at logits of 10 to 20: the ranks round their partial outputs to BF16 before the sum, where one GEMM sums the whole row in float and rounds once. Every greedy answer is the same token for token, 64 of 64 for each prompt. The same numbers in the GPU tests (`tests/gpu/test_sharded_runner.cpp`, one 47-token prompt and 8 decode steps) are 0, 0.25 and 0.64, and the test allows 1.0.
+
+Memory, all ranks together, measured as the device memory in use before loading and after building the runner (weights, K/V caches of 256 positions, scratch, logits, cuBLAS workspace): 2 ranks take 252 MiB more than the whole model and 4 ranks 756 MiB more, the copies of the embedding and the LM head (250 MiB per extra rank) and little else. On real GPUs each would hold only its own share, 1,174 or 712 MiB of weights.
+
+Time. One rank costs what the whole model costs, 8.34 against 8.27 ms. Two ranks take 11.21 ms and four 17.89: the GEMMs of a step read the same bytes in total, but every rank launches its own attention, RoPE, SwiGLU and GEMMs on narrower matrices, and each layer adds two reductions over the hidden state. Nothing here says what two GPUs would gain; that needs a second GPU and a real all-reduce between them.
+
+To reproduce: `nvcc -std=c++20 -O3 -arch=sm_120 -Iinclude -Isrc scripts/sharded_forward_bench.cu build/release/src/libengine_runtime.a build/release/src/libengine_kernels.a build/release/src/libengine_core.a build/release/_deps/sentencepiece-build/src/libsentencepiece.a -lcublas -o /tmp/sharded_forward_bench && for ranks in 0 1 2 4; do /tmp/sharded_forward_bench models/tinyllama $ranks; done` (arguments: model directory, number of ranks with 0 for `ModelRunner` on the whole model).
 
 ## Kernels
 

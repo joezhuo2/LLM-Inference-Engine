@@ -2260,3 +2260,5 @@
 - **running the ranks one after another on one GPU as a check of the split** => 
 - **the largest logit difference as the measure of a reordered BF16 sum** => 
 - **a test that runs the built program and reads its output** => 
+- **extra memory of a split on one GPU: the tables every rank copies** => 
+- **why N ranks on one GPU are slower than the whole model: more launches on narrower matrices** => 
