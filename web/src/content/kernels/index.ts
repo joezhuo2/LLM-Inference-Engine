@@ -15,12 +15,13 @@ import { serving } from "./serving";
 import { speculativeDecoding } from "./speculative-decoding";
 import { splitAttention } from "./split-attention";
 import { swiglu } from "./swiglu";
+import { tensorParallelism } from "./tensor-parallelism";
 import { whereTheTimeWent } from "./where-the-time-went";
 import { deadEnds } from "../dead-ends";
 import { beyondTitle } from "../book-order";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [oneToken, foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, memoryBudget, serving, speculativeDecoding, whereTheTimeWent].map((k, index) => ({ ...k, index }));
+export const kernelStories: KernelStory[] = [oneToken, foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, memoryBudget, serving, speculativeDecoding, tensorParallelism, whereTheTimeWent].map((k, index) => ({ ...k, index }));
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);

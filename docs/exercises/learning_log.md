@@ -2275,3 +2275,8 @@
 ## Tensor parallelism chapter (Branch 153)
 
 - **a glossary alias that is also an English verb** => 
+- **why cutting the first matrix by rows and the second by columns makes the partial results add** => 
+- **an elementwise activation between two cut matrices: why SwiGLU needs no sum** => 
+- **what tensor parallelism costs in memory: tables copied into every rank** => 
+- **a chapter that calculates bytes from the shape and checks them against measured MiB** => 
+- **text left out until a measurement exists, behind one accessor** => 

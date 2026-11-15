@@ -41,6 +41,9 @@ import { SamplingStory } from "./sampling/story";
 import { ServingAboutStory } from "./serving/about";
 import { ServingSandbox } from "./serving/sandbox";
 import { SpeculativeSandbox } from "./speculative-decoding/sandbox";
+import { TensorAboutStory } from "./tensor-parallelism/about";
+import { TensorSandbox } from "./tensor-parallelism/sandbox";
+import { TensorStory } from "./tensor-parallelism/story";
 import { ServingStory } from "./serving/story";
 import { SplitAboutStory } from "./split-attention/about";
 import { SplitAttentionStory } from "./split-attention/story";
@@ -87,6 +90,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <MemoryStory />;
     case "speculative-decoding":
       return <SpeculativeStory />;
+    case "tensor-parallelism":
+      return <TensorStory />;
     default:
       return null;
   }
@@ -141,6 +146,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <MemoryAboutStory />;
     case "speculative-decoding":
       return <SpeculativeAboutStory />;
+    case "tensor-parallelism":
+      return <TensorAboutStory />;
     default:
       return null;
   }
@@ -182,6 +189,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <ServingSandbox />;
     case "speculative-decoding":
       return <SpeculativeSandbox />;
+    case "tensor-parallelism":
+      return <TensorSandbox />;
     default:
       return null;
   }
