@@ -72,6 +72,7 @@ if(ENGINE_CUDA)
     gpu/test_forward_golden.cpp
     gpu/test_gemm.cpp
     gpu/test_generate.cpp
+    gpu/test_generate_command.cpp
     gpu/test_greedy.cpp
     gpu/test_kv_cache.cpp
     gpu/test_load_weights.cpp
@@ -96,7 +97,9 @@ if(ENGINE_CUDA)
     gpu/test_write_kv.cpp
   )
   target_include_directories(gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
-  target_compile_definitions(gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
+  target_compile_definitions(gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS}
+    ENGINE_BINARY="$<TARGET_FILE:engine>")
+  add_dependencies(gpu_tests engine)
   target_link_libraries(gpu_tests PRIVATE engine_runtime engine_server_gpu httplib::httplib
     GTest::gtest_main)
   gtest_discover_tests(gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS gpu)

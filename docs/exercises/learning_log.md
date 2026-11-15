@@ -2259,3 +2259,4 @@
 - **a K/V cache per rank: each rank caches only its own KV heads** => 
 - **running the ranks one after another on one GPU as a check of the split** => 
 - **the largest logit difference as the measure of a reordered BF16 sum** => 
+- **a test that runs the built program and reads its output** => 
