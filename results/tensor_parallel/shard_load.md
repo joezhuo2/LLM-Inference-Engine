@@ -1,8 +1,55 @@
-# Shard load, three runs of scripts/shard_load_bench.cu
+# Shard load, runs of scripts/shard_load_bench.cu
 
-TinyLlama, RTX 5060 Laptop GPU, release build, commit 02e2917, 2026-11-14. Each run: 7 uploads per layout after one warm-up upload, median and min to max in ms.
+TinyLlama, RTX 5060 Laptop GPU, release build. Each row: 7 uploads after one warm-up upload, median and min to max in ms.
 
-## Run 1
+## With the copies of one tensor packed into one chunk (commit fdeb8ca, 2026-11-14)
+
+Each row in its own process.
+
+### Run 1
+
+| layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
+| --- | --- | --- | --- | --- | --- | --- |
+| full model | 201 | 2098.2 | 0.21 | 227.2 | 224.3 to 229.9 | 9.68 |
+| rank 0 of 1 | 90269 | 2098.2 | 33.47 | 230.6 | 228.4 to 232.9 | 9.54 |
+| rank 0 of 2 | 90269 | 1174.2 | 33.25 | 135.7 | 135.5 to 139.6 | 9.07 |
+| rank 1 of 2 | 90269 | 1174.2 | 33.81 | 137.5 | 134.9 to 138.2 | 8.95 |
+| rank 0 of 4 | 90269 | 712.2 | 33.77 | 87.4 | 85.5 to 89.0 | 8.54 |
+| rank 1 of 4 | 90269 | 712.2 | 34.09 | 89.0 | 86.3 to 93.3 | 8.39 |
+| rank 2 of 4 | 90269 | 712.2 | 34.41 | 86.5 | 85.3 to 92.6 | 8.63 |
+| rank 3 of 4 | 90269 | 712.2 | 33.98 | 88.6 | 88.4 to 89.5 | 8.43 |
+
+### Run 2
+
+| layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
+| --- | --- | --- | --- | --- | --- | --- |
+| full model | 201 | 2098.2 | 0.20 | 243.2 | 227.0 to 625.8 | 9.05 |
+| rank 0 of 1 | 90269 | 2098.2 | 33.74 | 231.7 | 228.8 to 235.1 | 9.50 |
+| rank 0 of 2 | 90269 | 1174.2 | 33.55 | 138.6 | 136.6 to 141.0 | 8.89 |
+| rank 1 of 2 | 90269 | 1174.2 | 33.41 | 139.3 | 136.0 to 140.2 | 8.84 |
+| rank 0 of 4 | 90269 | 712.2 | 33.65 | 88.5 | 87.6 to 91.2 | 8.44 |
+| rank 1 of 4 | 90269 | 712.2 | 33.89 | 89.1 | 83.6 to 91.1 | 8.39 |
+| rank 2 of 4 | 90269 | 712.2 | 34.34 | 85.5 | 84.6 to 89.3 | 8.73 |
+| rank 3 of 4 | 90269 | 712.2 | 33.75 | 89.2 | 85.1 to 91.8 | 8.37 |
+
+### Run 3
+
+| layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
+| --- | --- | --- | --- | --- | --- | --- |
+| full model | 201 | 2098.2 | 0.19 | 227.5 | 223.9 to 232.6 | 9.67 |
+| rank 0 of 1 | 90269 | 2098.2 | 33.61 | 228.4 | 226.4 to 230.0 | 9.63 |
+| rank 0 of 2 | 90269 | 1174.2 | 33.63 | 141.7 | 138.8 to 147.4 | 8.69 |
+| rank 1 of 2 | 90269 | 1174.2 | 33.91 | 142.4 | 138.9 to 143.2 | 8.65 |
+| rank 0 of 4 | 90269 | 712.2 | 33.82 | 87.5 | 86.4 to 91.3 | 8.54 |
+| rank 1 of 4 | 90269 | 712.2 | 34.03 | 89.4 | 87.3 to 91.1 | 8.35 |
+| rank 2 of 4 | 90269 | 712.2 | 33.49 | 86.6 | 84.3 to 92.0 | 8.62 |
+| rank 3 of 4 | 90269 | 712.2 | 33.66 | 88.0 | 84.9 to 89.2 | 8.49 |
+
+## One upload call per copy (commit 02e2917, 2026-11-14)
+
+All rows in one process.
+
+### Run 1
 
 | layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -15,7 +62,7 @@ TinyLlama, RTX 5060 Laptop GPU, release build, commit 02e2917, 2026-11-14. Each 
 | rank 2 of 4 | 90269 | 712.2 | 25.40 | 4616.6 | 4387.8 to 4875.9 | 0.16 |
 | rank 3 of 4 | 90269 | 712.2 | 25.29 | 4532.2 | 4260.0 to 4828.9 | 0.16 |
 
-## Run 2
+### Run 2
 
 | layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -28,7 +75,7 @@ TinyLlama, RTX 5060 Laptop GPU, release build, commit 02e2917, 2026-11-14. Each 
 | rank 2 of 4 | 90269 | 712.2 | 25.44 | 4461.3 | 4310.1 to 4768.9 | 0.17 |
 | rank 3 of 4 | 90269 | 712.2 | 25.50 | 4231.8 | 3461.1 to 4748.2 | 0.18 |
 
-## Run 3
+### Run 3
 
 | layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
 | --- | --- | --- | --- | --- | --- | --- |

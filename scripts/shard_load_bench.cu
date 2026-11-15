@@ -58,16 +58,17 @@ int main(int argc, char** argv) {
     cudaStream_t stream = nullptr;
     CUDA_CHECK(cudaStreamCreate(&stream));
 
-    std::printf(
-        "| layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |\n| --- "
-        "| --- | --- | --- | --- | --- | --- |\n");
-    row("full model", mapped.bytes(), stream, runs,
-        [&] { return plan_weight_layout(config, header); });
-    for (const int ranks : {1, 2, 4}) {
-        for (int rank = 0; rank < ranks; ++rank) {
-            row("rank " + std::to_string(rank) + " of " + std::to_string(ranks), mapped.bytes(),
-                stream, runs, [&] { return plan_shard_layout(config, header, rank, ranks); });
-        }
+    const int ranks = argc > 3 ? std::atoi(argv[3]) : 0;
+    const int rank = argc > 4 ? std::atoi(argv[4]) : 0;
+    if (ranks == 0) {
+        std::printf(
+            "| layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s "
+            "|\n| --- | --- | --- | --- | --- | --- | --- |\n");
+        row("full model", mapped.bytes(), stream, runs,
+            [&] { return plan_weight_layout(config, header); });
+    } else {
+        row("rank " + std::to_string(rank) + " of " + std::to_string(ranks), mapped.bytes(), stream,
+            runs, [&] { return plan_shard_layout(config, header, rank, ranks); });
     }
     CUDA_CHECK(cudaStreamDestroy(stream));
     return 0;

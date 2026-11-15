@@ -604,26 +604,37 @@ The `engine + graphs, budget 256` row is the same prompt alone under `--token-bu
 
 ## Tensor parallelism: the weights of one rank
 
-From `scripts/shard_load_bench.cu` (#202). `plan_shard_layout` cuts the model for N GPUs (ranks), and `upload_weights` loads the layout of one rank the way it loads the full one. No forward pass runs on the shards yet, so this section has no tokens per second: it says what one rank holds and how long it takes to load. Measured on 2026-11-14 on the RTX 5060 Laptop GPU, release build, at commit 02e2917, with TinyLlama; this laptop has one GPU, so every rank is loaded onto it, one at a time. Each row is the median of three runs of the script, each of them the median of 7 uploads after one warm-up upload, and min to max is over all 21 uploads. `results/tensor_parallel/shard_load.md` holds the three runs.
+From `scripts/shard_load_bench.cu` (#202). `plan_shard_layout` cuts the model for N GPUs (ranks), and `upload_weights` loads the layout of one rank the way it loads the full one. No forward pass runs on the shards yet, so this section has no tokens per second: it says what one rank holds and how long it takes to load. Measured on 2026-11-14 on the RTX 5060 Laptop GPU, release build, at commit fdeb8ca, with TinyLlama; this laptop has one GPU, so every rank is loaded onto it, one at a time. Each row is the median of three runs of the script, each of them the median of 7 uploads after one warm-up upload, and min to max is over all 21 uploads. Each row runs in its own process. `results/tensor_parallel/shard_load.md` holds the runs.
 
 | layout | copies | MiB on the device | plan ms | upload ms | min to max | GB/s |
 | --- | --- | --- | --- | --- | --- | --- |
-| full model | 201 | 2,098.2 | 0.19 | 222.5 | 218.4 to 270.9 | 9.89 |
-| rank 0 of 1 | 90,269 | 2,098.2 | 35.69 | 5,024.9 | 4,288.4 to 5,480.8 | 0.44 |
-| rank 0 of 2 | 90,269 | 1,174.2 | 28.73 | 4,663.1 | 4,294.1 to 5,243.5 | 0.26 |
-| rank 1 of 2 | 90,269 | 1,174.2 | 27.96 | 4,723.7 | 4,522.2 to 5,367.0 | 0.26 |
-| rank 0 of 4 | 90,269 | 712.2 | 27.26 | 4,484.1 | 4,091.1 to 5,300.4 | 0.17 |
-| rank 1 of 4 | 90,269 | 712.2 | 27.95 | 4,516.9 | 4,353.0 to 4,911.2 | 0.17 |
-| rank 2 of 4 | 90,269 | 712.2 | 25.44 | 4,521.5 | 4,108.1 to 4,875.9 | 0.17 |
-| rank 3 of 4 | 90,269 | 712.2 | 25.34 | 4,532.2 | 3,461.1 to 4,893.2 | 0.16 |
+| full model | 201 | 2,098.2 | 0.20 | 227.5 | 223.9 to 625.8 | 9.67 |
+| rank 0 of 1 | 90,269 | 2,098.2 | 33.61 | 230.6 | 226.4 to 235.1 | 9.54 |
+| rank 0 of 2 | 90,269 | 1,174.2 | 33.55 | 138.6 | 135.5 to 147.4 | 8.88 |
+| rank 1 of 2 | 90,269 | 1,174.2 | 33.81 | 139.3 | 134.9 to 143.2 | 8.84 |
+| rank 0 of 4 | 90,269 | 712.2 | 33.77 | 87.5 | 85.5 to 91.3 | 8.53 |
+| rank 1 of 4 | 90,269 | 712.2 | 34.03 | 89.1 | 83.6 to 93.3 | 8.38 |
+| rank 2 of 4 | 90,269 | 712.2 | 34.34 | 86.5 | 84.3 to 92.6 | 8.63 |
+| rank 3 of 4 | 90,269 | 712.2 | 33.75 | 88.6 | 84.9 to 91.8 | 8.43 |
 
 Memory. A rank of 2 holds 1,174.2 MiB, 56% of the full model and not half, and a rank of 4 holds 712.2 MiB, 34% and not a quarter. The layer matrices divide by N, but every rank holds the embedding and the LM head whole, 125.0 MiB each, and those 250 MiB do not shrink. Two ranks together hold 1.12 times the model and four ranks 1.36 times. Which rank embeds and samples is not designed yet; if only one does, the others can drop both tables.
 
-Load time. A rank takes 4.5 to 5.0 seconds to load against 0.22 for the whole model, about 20 times longer for half or a quarter of the bytes. The count of copies sets the time and the bytes do not: "rank 0 of 1" moves the same bytes as the full model and takes 5.0 s. A slice of rows is one copy, but a slice of columns (o_proj and down_proj) is one copy per row, 90,112 of the 90,269, and each copy in `upload_weights` is its own `memcpy` into a pinned buffer, its own `cudaMemcpyAsync` and its own event: about 50 us per copy, whatever its size. Planning costs 25 to 36 ms against 0.19, since each copy carries its tensor's name and shape. The spec of `plan_shard_layout` said to time the load before inventing a strided copy. It is timed now, and the load is slow enough to want one: a change to `CopyOp` and `upload_weights`, not made on this branch.
+Load time. A rank loads at close to the rate of the full model, 8.4 to 8.9 GB/s against 9.7: 139 ms for a rank of 2 and 88 ms for a rank of 4 against 228 ms for the whole model. It did not at first:
+
+| layout | upload ms, one call per copy (02e2917) | upload ms, one tensor per chunk (fdeb8ca) |
+| --- | --- | --- |
+| full model | 222.5 | 227.5 |
+| rank 0 of 1 | 5,024.9 | 230.6 |
+| rank 0 of 2 | 4,663.1 | 138.6 |
+| rank 0 of 4 | 4,484.1 | 87.5 |
+
+A slice of rows is one copy, but a slice of columns (o_proj and down_proj) is one copy per row, 90,112 of the 90,269, and `upload_weights` gave every copy its own `memcpy` into a pinned buffer, its own `cudaMemcpyAsync` and its own event: about 50 us per copy, whatever its size, so a rank took 20 times as long as the whole model for half or a quarter of the bytes. The spec of `plan_shard_layout` said to time the load before inventing a strided copy. Timed, it wanted a fix, and the fix needed no strided copy: the one-row copies of a slice arrive sorted by source with their destinations one after the other, so `upload_weights` now fills its pinned buffer across the copies of one tensor and sends it in one call. `CopyOp` and the copy list are unchanged. Planning still costs 34 ms against 0.2, since each copy carries its tensor's name and shape.
+
+Two things measured on the way. Packing across tensors as well (the whole model in 64 MiB chunks) loaded the full model 10% slower than a chunk per tensor, 227 against 205 ms in an A/B of three rounds in one session, so a new tensor starts a new chunk and the full layout uploads exactly as before. And from about the eleventh upload inside one process, some uploads take 130 to 180 ms more, whatever their size, while the host copies alone keep their time (51 ms for a rank of 4): the extra time is inside the CUDA calls and is not explained. A real load uploads once per rank, so each row above runs in its own process, 8 uploads.
 
 Not measured: a forward pass on the shards, its logits against the unsharded model, and anything between two devices.
 
-To reproduce: `nvcc -std=c++20 -O3 -arch=sm_120 -Iinclude -Isrc scripts/shard_load_bench.cu build/release/src/libengine_runtime.a build/release/src/libengine_kernels.a build/release/src/libengine_core.a -lcublas -o /tmp/shard_load_bench && /tmp/shard_load_bench models/tinyllama 7` (arguments: model directory, uploads per layout).
+To reproduce: `nvcc -std=c++20 -O3 -arch=sm_120 -Iinclude -Isrc scripts/shard_load_bench.cu build/release/src/libengine_runtime.a build/release/src/libengine_kernels.a build/release/src/libengine_core.a -lcublas -o /tmp/shard_load_bench && for row in "0 0" "1 0" "2 0" "2 1" "4 0" "4 1" "4 2" "4 3"; do /tmp/shard_load_bench models/tinyllama 7 $row; done` (arguments: model directory, uploads per layout, number of ranks with 0 for the full model, rank).
 
 ## Kernels
 
