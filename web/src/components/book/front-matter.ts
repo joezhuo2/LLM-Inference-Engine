@@ -338,7 +338,7 @@ function introRows(def: ChapterDef) {
   if (def.workbench.length > 0) starts[steps] = "try it yourself";
   if (built > reviewed) starts[reviewed] = "review";
   if (titles.length > built) starts[built] = "build it yourself";
-  const fit = listRows(titles.length, Object.keys(starts).map(Number), 380, H - 340, ROW);
+  const fit = listRows(titles.length, Object.keys(starts).map(Number), 380, H - 270, ROW);
   const rows = fit.rows.map(({ y, k, head }) => (head !== undefined ? { y, text: starts[head] } : { y, text: titles[k!], number: stepNumber(def, k!) || undefined, kind: k! >= built ? ("build" as const) : k! >= reviewed ? ("review" as const) : k! >= steps ? ("bench" as const) : undefined, k }));
   return { rows, step: fit.step, size: fit.size };
 }
@@ -398,7 +398,7 @@ export function introStop(def: ChapterDef): Stop {
     }
     ctx.fillStyle = palette.blue;
     ctx.font = `40px ${fonts.serif}`;
-    paragraph(ctx, "Click a step to turn to it.", x0, H - 250, x1 - x0, 48);
+    paragraph(ctx, "Click a step to turn to it.", x0, H - 180, x1 - x0, 48);
   };
   const entries = rows.filter((r) => r.k !== undefined);
   const links: PageLink[] = entries.map((r, i) => ({
