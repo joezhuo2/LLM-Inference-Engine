@@ -120,6 +120,7 @@ class TextSide {
   readonly textures: [THREE.CanvasTexture, THREE.CanvasTexture];
   readonly meshes: [THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>, THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>];
   active = 0;
+  private drawn: (Stop | null)[] = [null, null];
 
   constructor(geometry: THREE.BufferGeometry, parent: THREE.Object3D, anisotropy: number, textureWidth: number) {
     const make = () => {
@@ -146,10 +147,13 @@ class TextSide {
     return this.canvases[this.active];
   }
 
-  prepare(draw: (canvas: HTMLCanvasElement) => void): number {
+  prepare(stop: Stop, draw: (canvas: HTMLCanvasElement) => void): number {
     const next = 1 - this.active;
-    draw(this.canvases[next]);
-    this.textures[next].needsUpdate = true;
+    if (this.drawn[next] !== stop) {
+      draw(this.canvases[next]);
+      this.textures[next].needsUpdate = true;
+      this.drawn[next] = stop;
+    }
     return next;
   }
 
@@ -198,6 +202,7 @@ export class BookScene {
   private target = { stop: 0, beat: 0 };
   private running = false;
   private riffleNext = false;
+  private direction: 1 | -1 = 1;
   private riffleLeaves: { front: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>; back: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial> }[] = [];
   private opened = false;
   private closedView = false;
@@ -651,10 +656,10 @@ export class BookScene {
     this.closedView = false;
     this.target = { stop: start, beat: 0 };
     const first = this.options.stops[start];
-    const leftNext = this.leftText.prepare((c) => this.drawLeft(c, first));
+    const leftNext = this.leftText.prepare(first, (c) => this.drawLeft(c, first));
     this.leftText.blend(leftNext, 1);
     this.leftText.commit(leftNext);
-    const rightNext = this.rightText.prepare((c) => this.drawRight(c, first));
+    const rightNext = this.rightText.prepare(first, (c) => this.drawRight(c, first));
     this.rightText.blend(rightNext, 1);
     this.rightText.commit(rightNext);
     const beat = this.beatOf(start, 0)!;
@@ -668,6 +673,7 @@ export class BookScene {
     if (first.exhibit !== null) await this.popUp(first.exhibit, 0);
     this.publishOverlay();
     this.kick();
+    if (!this.running) window.setTimeout(() => this.prefetch(), 250);
   }
 
   async close(): Promise<void> {
@@ -774,6 +780,18 @@ export class BookScene {
     }
     this.rush = false;
     this.running = false;
+    window.setTimeout(() => this.prefetch(), 250);
+  }
+
+  private prefetch(): void {
+    if (this.running || !this.opened || !this.visible) return;
+    const here = this.options.stops[this.applied.stop];
+    const next = this.options.stops[this.applied.stop + this.direction];
+    if (!here || !next || next.spread === here.spread) return;
+    const left = this.leftText.prepare(next, (c) => this.drawLeft(c, next));
+    const right = this.rightText.prepare(next, (c) => this.drawRight(c, next));
+    this.renderer.initTexture(this.leftText.textures[left]);
+    this.renderer.initTexture(this.rightText.textures[right]);
   }
 
   private waitForCamera(): Promise<void> {
@@ -791,6 +809,7 @@ export class BookScene {
     this.frozenSoon = false;
     this.options.onOverlay(null);
     const exhibitChanges = from.exhibit !== to.exhibit || from.spread !== to.spread;
+    if (to.spread !== from.spread) this.direction = to.spread > from.spread ? 1 : -1;
     const fold = exhibitChanges && from.exhibit !== null ? this.foldDown(from.exhibit) : null;
     this.setCamGoal(this.beatOf(stop, beat)!, 1.9);
     const riffle = this.riffleNext;
@@ -798,8 +817,8 @@ export class BookScene {
     if (from.spread !== to.spread) {
       await (riffle ? this.riffle(from, to) : this.turnLeaf(from, to));
     } else {
-      const left = this.leftText.prepare((c) => this.drawLeft(c, to));
-      const right = this.rightText.prepare((c) => this.drawRight(c, to));
+      const left = this.leftText.prepare(to, (c) => this.drawLeft(c, to));
+      const right = this.rightText.prepare(to, (c) => this.drawRight(c, to));
       await this.tween(0.7, (t) => {
         this.leftText.blend(left, t);
         this.rightText.blend(right, t);
@@ -849,8 +868,8 @@ export class BookScene {
 
   private async turnLeaf(from: Stop, to: Stop): Promise<void> {
     const forward = to.spread > from.spread;
-    const left = this.leftText.prepare((c) => this.drawLeft(c, to));
-    const right = this.rightText.prepare((c) => this.drawRight(c, to));
+    const left = this.leftText.prepare(to, (c) => this.drawLeft(c, to));
+    const right = this.rightText.prepare(to, (c) => this.drawRight(c, to));
     if (forward) {
       this.leaf.front.material.map = this.rightText.textures[this.rightText.active];
       this.leaf.back.material.map = this.leftText.textures[left];
@@ -901,8 +920,8 @@ export class BookScene {
     const leaves = this.riffleLeaves;
     const n = leaves.length;
     const paper = leaves[1].front.material.map;
-    const left = this.leftText.prepare((c) => this.drawLeft(c, to));
-    const right = this.rightText.prepare((c) => this.drawRight(c, to));
+    const left = this.leftText.prepare(to, (c) => this.drawLeft(c, to));
+    const right = this.rightText.prepare(to, (c) => this.drawRight(c, to));
     for (const leaf of leaves) {
       leaf.front.material.map = paper;
       leaf.back.material.map = paper;

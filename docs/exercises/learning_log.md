@@ -2295,3 +2295,5 @@
 - **a gentle-start ease: sine in-out against cubic in-out** => 
 - **patching a three.js material shader with onBeforeCompile** => 
 - **why uploading a large canvas texture stalls a frame** => 
+- **prefetching into the spare half of a double buffer** => 
+- **renderer.initTexture: uploading a texture before it is drawn** => 
