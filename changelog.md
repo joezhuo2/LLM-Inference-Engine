@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## results/refresh-2026-11-16
 
+- Part A: the overview says how many weeks the build took from the dates of the timeline (seven, Sep 24 to Nov 14) instead of a fixed "five weeks".
+
 - Part A: `/kernels` lists the chapters in book order and numbers them like Every Byte (chapter 1 to 19, then beyond and what didn't work), so a card, a story page and the book give a chapter the same number; `content/kernels/index.ts` throws when a story has no place in `bookOrder`.
 
 - Part A: the fused add + RMSNorm figure of the foundations chapter no longer gives two packets the same React key (`x-0`, `r-1`, `sum-2` were logged on every render).

@@ -560,3 +560,17 @@ export const milestones: Milestone[] = [
     ],
   },
 ];
+
+const dayOf = (text: string) => {
+  const [month, day] = text.split(" ");
+  const m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(month);
+  if (m < 0 || !Number(day)) throw new Error(`build-log: cannot read the date "${text}"`);
+  return Date.UTC(2026, m, Number(day));
+};
+
+const entryDates = milestones.flatMap((m) => m.entries.map((e) => dayOf(e.date)));
+const firstDay = Math.min(dayOf(milestones[0].dates.split(" to ")[0]), ...entryDates);
+const weeks = Math.round((Math.max(...entryDates) - firstDay) / (7 * 864e5));
+const weekWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+
+export const buildWeeks = `${weekWords[weeks] ?? weeks} ${weeks === 1 ? "week" : "weeks"}`;
