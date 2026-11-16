@@ -2,6 +2,20 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/nav-trim
+
+- Part A: scrolling down from the hero no longer plays the glitch effect; the GlitchExit component is gone.
+
+- Part A: switching between light and dark reveals the new theme in a circle that grows from the toggle over 0.7 s (a view transition with a clip-path animation); without view transitions or with reduced motion it switches at once.
+
+- Part A: wheel scrolling on the whole site eases toward its target (smoothScroll copied from Crystal Design's smooth-scroll package, writing with behavior instant so the CSS smooth scroll for anchors does not fight it); nested scrollers and reduced motion keep native scrolling.
+
+- Part A: the links to Every Byte and the one-hour path moved from the kernels page into the footer, hidden for now with the hidden attribute.
+
+- Part A: the top bar no longer links every byte and exercises; both pages still exist at their URLs.
+
+- Part A: the theme toggle in the top bar is a sun or moon icon, a GitHub icon next to it opens the repository in a new tab, and both show a themed tooltip on hover or keyboard focus.
+
 ## web/timeline-scenes
 
 - Part A: the in-this-chapter list of every byte runs lower on the page (to H-270, the click line at H-180), so long lists get larger type.
