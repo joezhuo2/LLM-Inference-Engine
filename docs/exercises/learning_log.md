@@ -2300,3 +2300,5 @@
 - **a hinge strip: a curve between two moving points** => 
 - **picking the nearest of two meshes with one raycast** => 
 - **hit slop: a hit area larger than what it marks** => 
+- **recto and verso: why right-hand pages are odd** => 
+- **drawing a shared detail in one place instead of in every painter** => 

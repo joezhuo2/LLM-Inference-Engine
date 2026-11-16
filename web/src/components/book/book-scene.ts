@@ -20,7 +20,6 @@ export type Stop = {
   figure: string;
   caption: string;
   instruction?: string;
-  folio: string;
   overlay: OverlayKind;
   beats: Beat[];
   paint?: { left?: PagePainter; right?: PagePainter };
@@ -57,6 +56,7 @@ type SceneOptions = {
   onCoverClick?: () => void;
   onLink?: (link: PageLink) => void;
   onTerm?: (term: TermHit | null) => void;
+  pageOf?: (spread: number, side: "left" | "right") => number | undefined;
 };
 
 export type TermHit = { key: string; x: number; y: number; tap: boolean };
@@ -741,11 +741,27 @@ export class BookScene {
     const seen = new Set<string>();
     const left = stop.paint?.left ? (stop.paint.left(canvas, this.kit.palette, this.options.fonts), []) : drawTextPage(canvas, stop.page, this.kit.palette, this.options.fonts, seen);
     this.terms.set(stop, { seen, left, right: [] });
+    this.drawFolio(canvas, stop, "left");
+  }
+
+  private drawFolio(canvas: HTMLCanvasElement, stop: Stop, side: "left" | "right"): void {
+    const page = this.options.pageOf?.(stop.spread, side);
+    if (page === undefined) return;
+    const ctx = canvas.getContext("2d")!;
+    const unit = canvas.width / 1200;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = this.kit.palette.faint;
+    ctx.font = `${26 * unit}px ${this.options.fonts.sans}`;
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = side;
+    ctx.fillText(String(page), side === "left" ? 130 * unit : canvas.width - 130 * unit, canvas.height - 90 * unit);
+    ctx.textAlign = "left";
   }
 
   private drawRight(canvas: HTMLCanvasElement, stop: Stop): void {
     if (stop.paint?.right) {
       stop.paint.right(canvas, this.kit.palette, this.options.fonts);
+      this.drawFolio(canvas, stop, "right");
       return;
     }
     if (stop.overlay) {
@@ -755,8 +771,9 @@ export class BookScene {
       return;
     }
     const marks = this.terms.get(stop);
-    const right = drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, stop.folio, this.kit.palette, this.options.fonts, new Set(marks?.seen));
+    const right = drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, this.kit.palette, this.options.fonts, new Set(marks?.seen));
     if (marks) marks.right = right;
+    this.drawFolio(canvas, stop, "right");
   }
 
   goTo(stop: number, beat: number, riffle = false): void {
