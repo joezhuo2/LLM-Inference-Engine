@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/nav-trim
 
+- Part A: switching between light and dark reveals the new theme in a circle that grows from the toggle over 0.7 s (a view transition with a clip-path animation); without view transitions or with reduced motion it switches at once.
+
 - Part A: wheel scrolling on the whole site eases toward its target (smoothScroll copied from Crystal Design's smooth-scroll package, writing with behavior instant so the CSS smooth scroll for anchors does not fight it); nested scrollers and reduced motion keep native scrolling.
 
 - Part A: the links to Every Byte and the one-hour path moved from the kernels page into the footer, hidden for now with the hidden attribute.
