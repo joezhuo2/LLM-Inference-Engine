@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## results/refresh-2026-11-16
 
+- Part A: the fused add + RMSNorm figure of the foundations chapter no longer gives two packets the same React key (`x-0`, `r-1`, `sum-2` were logged on every render).
+
 - Part A: `scripts/make_results.py` adds "(CUDA Graphs)" to the headings of the graph profile block, so `docs/results.md` no longer has two sections with the same id.
 
 ## web/every-byte-fixes
