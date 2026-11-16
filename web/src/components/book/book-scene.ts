@@ -104,6 +104,7 @@ function edgeTexture(paper: string, ink: string): THREE.CanvasTexture {
 }
 
 const pageHeight = (fromSpine: number) => -0.032 * Math.exp(-fromSpine * 13) - 0.006 * fromSpine * fromSpine;
+const SPINE_HALF = BLOCK + 0.022;
 
 function onPaper(material: THREE.MeshLambertMaterial, paper: string, flip: boolean): void {
   material.onBeforeCompile = (shader) => {
@@ -181,6 +182,7 @@ export class BookScene {
   private kit: Kit;
   private model: BookModel;
   private leftHalf = new THREE.Group();
+  private spineBand: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>;
   private bookRoot = new THREE.Group();
   private modelRoot = new THREE.Group();
   private leftText: TextSide;
@@ -302,6 +304,11 @@ export class BookScene {
     const spine = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, PAGE_D + 0.05), coverMaterial);
     spine.position.set(0, -BLOCK - 0.012, 0);
     this.bookRoot.add(spine);
+    const bandGeometry = new THREE.PlaneGeometry(1, PAGE_D + 0.05, 16, 1);
+    bandGeometry.rotateX(-Math.PI / 2);
+    this.spineBand = new THREE.Mesh(bandGeometry, new THREE.MeshLambertMaterial({ color: palette.cover, side: THREE.DoubleSide }));
+    this.spineBand.castShadow = true;
+    this.bookRoot.add(this.spineBand);
 
     const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.003, 0.34), new THREE.MeshLambertMaterial({ color: palette.ribbon }));
     ribbon.position.set(0.13, -BLOCK - 0.026, PAGE_D / 2 + 0.14);
@@ -632,7 +639,25 @@ export class BookScene {
   }
 
   private setLeftAngle(t: number): void {
-    this.leftHalf.rotation.z = -Math.PI * (1 - t);
+    const phi = -Math.PI * (1 - t);
+    this.leftHalf.rotation.z = phi;
+    const [ax, ay] = [0, -SPINE_HALF];
+    const [bx, by] = [SPINE_HALF * Math.sin(phi), -SPINE_HALF * Math.cos(phi)];
+    const length = Math.hypot(bx - ax, by - ay);
+    this.spineBand.visible = length > 0.002;
+    if (!this.spineBand.visible) return;
+    const [nx, ny] = [-(by - ay) / length, (bx - ax) / length];
+    const position = this.spineBand.geometry.attributes.position as THREE.BufferAttribute;
+    const columns = 17;
+    for (let i = 0; i < position.count; i++) {
+      const s = (i % columns) / (columns - 1);
+      const bulge = 0.22 * length * Math.sin(Math.PI * s);
+      position.setX(i, ax + (bx - ax) * s + nx * bulge);
+      position.setY(i, ay + (by - ay) * s + ny * bulge);
+    }
+    position.needsUpdate = true;
+    this.spineBand.geometry.computeVertexNormals();
+    this.spineBand.geometry.computeBoundingSphere();
   }
 
   showClosed(): void {

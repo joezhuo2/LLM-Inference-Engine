@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/every-byte-fixes
 
+- Part A: the closed book has a rounded spine joining the two boards, and it follows the cover as the book opens and closes (#215).
+
 - Part A: once a turn settles, every byte draws the next spread (in the direction of the last turn) into the spare page canvases and uploads them while idle; the next turn reuses them and starts without a long frame (#215).
 
 - Part A: the turning leaf samples the page textures already on the GPU and lays them on paper in its shader, instead of copying two full-size canvases and uploading them at the start of every turn (#215).
