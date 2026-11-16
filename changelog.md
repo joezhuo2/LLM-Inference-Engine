@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/nav-trim
+
+- Part A: the theme toggle in the top bar is a sun or moon icon, a GitHub icon next to it opens the repository in a new tab, and both show a themed tooltip on hover or keyboard focus.
+
 ## web/timeline-scenes
 
 - Part A: the in-this-chapter list of every byte runs lower on the page (to H-270, the click line at H-180), so long lists get larger type.
