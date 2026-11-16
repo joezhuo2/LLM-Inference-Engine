@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## results/refresh-2026-11-16
 
+- Part A: status notes for the refresh (`docs/claude/status.md`).
+
 - Part A: five more stub exercises from the Part C stubs that have landed since: `Scheduler::cancel`, `decode_graph_buckets`, `flash_attention_prefill`, prompt lookup (`propose_prompt_lookup`, `count_accepted`, `BlockManager::truncate`) and `plan_shard_layout`, each with the commit just before Joe's implementation, its tests and its TODO(JOE) spec (`exercise-specs.mjs`).
 
 - Part A: the site follows the rerun: `step-history.json` gets the 2026-11-16 profiles, the dashboard's recording label says how many sequences the run reached (8) next to its max batch (16), the timeline's prefill scene and the closing chapter's prefill chart take llama.cpp from the 2026-11-10 kernel table so every bar is from one session, the prefill captions say median of 3, and the KV replay test reads the step count from the trace instead of a fixed 751.
