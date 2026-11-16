@@ -531,7 +531,17 @@ export class BookScene {
     const boxes = hit.object === this.leftPlane ? marks.left : marks.right;
     const u = hit.uv.x;
     const v = 1 - hit.uv.y;
-    return boxes.find((t) => u >= t.box[0] && u <= t.box[2] && v >= t.box[1] && v <= t.box[3])?.key ?? null;
+    let best: string | null = null;
+    let bestDistance = Infinity;
+    for (const { box, key } of boxes) {
+      const tall = box[3] - box[1];
+      const padU = tall * (PAGE_D / PAGE_W) * 0.4;
+      const padV = tall * 0.15;
+      if (u < box[0] - padU || u > box[2] + padU || v < box[1] - padV || v > box[3] + padV) continue;
+      const distance = Math.max(box[0] - u, 0, u - box[2]) / (PAGE_D / PAGE_W) + Math.max(box[1] - v, 0, v - box[3]);
+      if (distance < bestDistance) [best, bestDistance] = [key, distance];
+    }
+    return best;
   }
 
   private hoverTerm(key: string | null, event: PointerEvent | null, tap: boolean): void {

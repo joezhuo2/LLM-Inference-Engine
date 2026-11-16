@@ -2299,3 +2299,4 @@
 - **renderer.initTexture: uploading a texture before it is drawn** => 
 - **a hinge strip: a curve between two moving points** => 
 - **picking the nearest of two meshes with one raycast** => 
+- **hit slop: a hit area larger than what it marks** => 
