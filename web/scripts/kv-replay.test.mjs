@@ -39,8 +39,9 @@ test("a trace with preemptions is refused", () => {
 test("the recorded chat trace replays step for step", () => {
   const path = new URL("../../results/traces/chat_b16_rate4.json", import.meta.url);
   if (!existsSync(path)) return;
-  const r = replayKv(JSON.parse(readFileSync(path, "utf8")), "chat_b16_rate4.json");
-  assert.equal(r.steps.length, 751);
+  const trace = JSON.parse(readFileSync(path, "utf8"));
+  const r = replayKv(trace, "chat_b16_rate4.json");
+  assert.equal(r.steps.length, trace.steps.length);
   assert.equal(r.requests.length, 24);
   assert.ok(r.peak.blocks > 0 && r.max_block < 128);
 });

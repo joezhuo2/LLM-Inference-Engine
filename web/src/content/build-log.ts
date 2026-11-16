@@ -85,9 +85,7 @@ function prefillPath(path: string) {
   return tableValue("flashattention-prefill-kernels", { "prefill attention": path }, longPrompt, 0, "results");
 }
 
-const llamaPrefill = tableValue("prefill-against-prompt-length", { system: "llama.cpp -ub 512" }, longPrompt, 0, "results");
-
-export const tilesScene = { prompt: longPrompt, paged: prefillPath("paged decode kernels"), first: prefillPath("flash, first kernel"), tiled: prefillPath("flash, tiled kernel"), llama: llamaPrefill };
+export const tilesScene = { prompt: longPrompt, paged: prefillPath("paged decode kernels"), first: prefillPath("flash, first kernel"), tiled: prefillPath("flash, tiled kernel"), llama: prefillPath("llama.cpp -ub 512") };
 
 const shards = "tensor-parallelism-the-weights-of-one-rank";
 

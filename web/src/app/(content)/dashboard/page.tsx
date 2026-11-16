@@ -11,7 +11,7 @@ function recordingLabel(): string {
   const date = String(t.meta.date ?? "").slice(0, 10);
   const commit = t.commit ? `, commit ${t.commit}` : "";
   const gpu = String(t.meta.gpu).replace(/^NVIDIA (GeForce )?/, "");
-  return `${date} on ${gpu}${commit}: ${t.requests} chat requests at ${String(t.meta.request_rate)}/s, batch up to ${String(t.meta.max_batch)}${t.meta.graphs ? ", CUDA Graphs" : ""}`;
+  return `${date} on ${gpu}${commit}: ${t.requests} chat requests at ${String(t.meta.request_rate)}/s, max batch ${String(t.meta.max_batch)}, ${t.max_batch_seen} reached${t.meta.graphs ? ", CUDA Graphs" : ""}`;
 }
 
 export default function DashboardPage() {
