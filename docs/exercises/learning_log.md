@@ -2304,3 +2304,13 @@
 - **drawing a shared detail in one place instead of in every painter** => 
 - **aria-pressed on a toggle button** => 
 - **usePathname after history.pushState in the Next.js app router** => 
+
+## Site chrome (Branch 157)
+
+- **a CSS-only tooltip with group-hover and has-[:focus-visible]** => 
+- **rel=noopener noreferrer on links that open a new tab** => 
+- **the hidden attribute: keeping markup in the page without showing it** => 
+- **inertial scrolling: easing the scroll position toward a target each frame** => 
+- **a non-passive wheel listener and preventDefault** => 
+- **the View Transitions API: document.startViewTransition** => 
+- **animating a view transition pseudo-element with element.animate** => 

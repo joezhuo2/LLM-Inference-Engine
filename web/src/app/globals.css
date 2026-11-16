@@ -257,6 +257,16 @@ main:focus {
   pointer-events: none;
 }
 
+.theme-switch header {
+  view-transition-name: none !important;
+}
+
+.theme-switch::view-transition-old(root),
+.theme-switch::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 ::view-transition-group(site-header) {
   animation: none;
   z-index: 100;
