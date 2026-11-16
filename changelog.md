@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/nav-trim
 
+- Part A: the links to Every Byte and the one-hour path moved from the kernels page into the footer, hidden for now with the hidden attribute.
+
 - Part A: the top bar no longer links every byte and exercises; both pages still exist at their URLs.
 
 - Part A: the theme toggle in the top bar is a sun or moon icon, a GitHub icon next to it opens the repository in a new tab, and both show a themed tooltip on hover or keyboard focus.
