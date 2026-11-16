@@ -2,6 +2,26 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/every-byte-fixes
+
+- Part A: clicking the every byte tab while the book is open closes it back to the cover (page 1); the book watches the path because a URL changed by pushState keeps the same page mounted (#215).
+
+- Part A: the book bar has a table of contents button and a magnifier toggle (on by default), and the list view or reading view link is an icon with a tooltip (#215).
+
+- Part A: every byte numbers each page: the left page of a spread is even and the right page odd, after the cover as page 1; the scene draws both numbers for every spread, and the contents, the in-this-chapter lists and the bar follow (#215).
+
+- Part A: glossary terms in the book answer the pointer a little outside the word (0.4 of the term box height to each side, 0.15 above and below), and the nearest term wins where two areas overlap (#215).
+
+- Part A: the magnifier works on the right page as well: anywhere on a painted page, and on a figure page only over the caption below the model (#215).
+
+- Part A: the closed book has a rounded spine joining the two boards, and it follows the cover as the book opens and closes (#215).
+
+- Part A: once a turn settles, every byte draws the next spread (in the direction of the last turn) into the spare page canvases and uploads them while idle; the next turn reuses them and starts without a long frame (#215).
+
+- Part A: the turning leaf samples the page textures already on the GPU and lays them on paper in its shader, instead of copying two full-size canvases and uploading them at the start of every turn (#215).
+
+- Part A: every byte turns a page from its outer edge first (going forward the edge now leads by 0.4 of the turn, as it already did going back) and eases the leaf with a sine curve, so the edge lifts about 0.2 s after a click instead of about 0.75 s (#215).
+
 ## web/nav-trim
 
 - Part A: scrolling down from the hero no longer plays the glitch effect; the GlitchExit component is gone.

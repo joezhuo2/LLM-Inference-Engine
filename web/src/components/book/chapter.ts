@@ -97,7 +97,7 @@ export function chapterStops(chapter: ChapterDef, text: ChapterText[]): Stop[] {
   const kicker = `chapter ${chapter.number} · ${chapter.title}`;
   const steps = text.map((t, i): Stop => {
     const group = chapter.steps[i]?.group;
-    const page: PageText = { kicker: group ? `${kicker} · ${group}` : kicker, title: t.title, note: i === 0 ? chapter.formula : undefined, paragraphs: t.paragraphs, folio: "" };
+    const page: PageText = { kicker: group ? `${kicker} · ${group}` : kicker, title: t.title, note: i === 0 ? chapter.formula : undefined, paragraphs: t.paragraphs };
     return {
       exhibit: chapter.exhibits[i] ?? null,
       spread: i,
@@ -105,7 +105,6 @@ export function chapterStops(chapter: ChapterDef, text: ChapterText[]): Stop[] {
       figure: `Fig. ${chapter.number}.${i + 1 - (chapter.lead ?? 0)}`,
       caption: chapter.captions[i] ?? "",
       instruction: chapter.instructions[i],
-      folio: "",
       overlay: chapter.overlays[i] ?? null,
       beats: chapter.beats[i] ?? [overview(t.title)],
     };
@@ -115,10 +114,9 @@ export function chapterStops(chapter: ChapterDef, text: ChapterText[]): Stop[] {
     return {
       exhibit: null,
       spread: i,
-      page: { kicker: `${kicker} · try it yourself`, title: w.title, paragraphs: plainRuns(w.paragraphs), folio: "" },
+      page: { kicker: `${kicker} · try it yourself`, title: w.title, paragraphs: plainRuns(w.paragraphs) },
       figure: "",
       caption: "",
-      folio: "",
       overlay: w.overlay,
       beats: chapter.beats[i] ?? [flat(w.caption)],
     };

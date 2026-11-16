@@ -2289,6 +2289,22 @@
 - **fitting a list to a fixed page by scaling row pitch and type together** => 
 - **deriving type size from row pitch so a list fills the page at any length** => 
 
+## Every Byte fixes (Branch 156)
+
+- **a page curl where the free edge leads the spine** => 
+- **a gentle-start ease: sine in-out against cubic in-out** => 
+- **patching a three.js material shader with onBeforeCompile** => 
+- **why uploading a large canvas texture stalls a frame** => 
+- **prefetching into the spare half of a double buffer** => 
+- **renderer.initTexture: uploading a texture before it is drawn** => 
+- **a hinge strip: a curve between two moving points** => 
+- **picking the nearest of two meshes with one raycast** => 
+- **hit slop: a hit area larger than what it marks** => 
+- **recto and verso: why right-hand pages are odd** => 
+- **drawing a shared detail in one place instead of in every painter** => 
+- **aria-pressed on a toggle button** => 
+- **usePathname after history.pushState in the Next.js app router** => 
+
 ## Site chrome (Branch 157)
 
 - **a CSS-only tooltip with group-hover and has-[:focus-visible]** => 

@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Group, Object3D } from "three";
@@ -23,7 +23,7 @@ import { ReviewPage } from "./review-page";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
+import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
@@ -79,9 +79,8 @@ function compose(raw: Record<string, Stop[]>) {
   for (const key of keys) {
     const slug = chapterSlugs.includes(key) ? key : undefined;
     raw[key].forEach((s, i) => {
-      const folios = slug && i > 0 && s.page ? { page: { ...s.page, folio: String((chapterPage(key) ?? 0) + i) } } : {};
       meta.push({ key, local: slug ? i - 1 : i, slug, exhibit: slug ? s.exhibit : null });
-      stops.push({ ...s, ...folios, spread: stops.length, exhibit: slug && s.exhibit !== null ? chapterSlugs.indexOf(slug) : null });
+      stops.push({ ...s, spread: stops.length, exhibit: slug && s.exhibit !== null ? chapterSlugs.indexOf(slug) : null });
     });
   }
   return { stops, meta };
@@ -93,6 +92,7 @@ const initial = compose(base);
 export function EveryByte() {
   const reduced = usePrefersReducedMotion();
   const router = useRouter();
+  const pathname = usePathname();
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const bodies = useRef<HTMLDivElement>(null);
@@ -125,6 +125,7 @@ export function EveryByte() {
   const [narrow, setNarrow] = useState(false);
   const [total, setTotal] = useState(0);
   const [short, setShort] = useState(false);
+  const [lensOn, setLensOn] = useState(true);
   const shortRef = useRef(false);
 
   useEffect(() => void numberBook().then(setTotal), []);
@@ -275,6 +276,10 @@ export function EveryByte() {
     [],
   );
 
+  useEffect(() => {
+    if (pathname.replace(/\/$/, "") === BOOK) closeBook(false);
+  }, [pathname, closeBook]);
+
   const goStop = useCallback(
     async (key: string, local: number) => {
       await Promise.all([ensure(key), numberBook()]);
@@ -415,6 +420,11 @@ export function EveryByte() {
           onOverlay: setOverlay,
           onLens: setLens,
           onTerm: setTerm,
+          pageOf: (spread, side) => {
+            const key = book.current.meta[spread]?.key;
+            const first = key === undefined ? undefined : chapterPage(key);
+            return first === undefined ? undefined : 2 * (first + spread - firstOf(key!)) - (side === "left" ? 2 : 1);
+          },
           onPageClick: (side) => hostEl.dispatchEvent(new CustomEvent("bookpage", { detail: side })),
           onCoverClick: () => hostEl.dispatchEvent(new CustomEvent("bookcover")),
           onLink: (link) => hostEl.dispatchEvent(new CustomEvent("booklink", { detail: link.href })),
@@ -571,7 +581,7 @@ export function EveryByte() {
       </div>
       <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
         <canvas ref={canvas} role="img" aria-label={open ? `3D book "Every Byte", open at ${title}. ${caption}` : "3D book \"Every Byte\", closed on the desk"} className="absolute inset-0 size-full" />
-        <Magnifier lens={lens} />
+        <Magnifier lens={lensOn ? lens : null} />
         <PointGloss at={term} />
         <motion.nav
           aria-label="book"
@@ -580,7 +590,7 @@ export function EveryByte() {
           transition={{ duration: reduced ? 0 : 0.7, ease: "easeInOut" }}
           className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 overflow-hidden rounded-full border border-white/30 bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
         >
-          <div ref={barRef} className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 py-1 pl-1.5 pr-4">
+          <div ref={barRef} className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 py-1 pl-1.5 pr-1.5">
             <button type="button" aria-label="previous chapter" disabled={!open || !routeSection(segment, -1, shortOn)} onClick={() => jump(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
               <Icon d="M8 3 3 8l5 5M13 3 8 8l5 5" />
             </button>
@@ -592,7 +602,7 @@ export function EveryByte() {
             </button>
             {total > 0 && (
               <span className="shrink-0 text-text">
-                <Scramble key={page} text={`${page} / ${total}`} numeric durationMs={700} />
+                <Scramble key={page} text={`${open ? `${leftPage(page)}–${page * 2 - 1}` : 1} / ${total * 2 - 1}`} numeric durationMs={700} />
               </span>
             )}
             <span className="min-w-0 max-w-[22rem] truncate">
@@ -613,9 +623,17 @@ export function EveryByte() {
             <button type="button" aria-label="next chapter" disabled={!open || !routeSection(segment, 1, shortOn)} onClick={() => jump(1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
               <Icon d="M3 3l5 5-5 5M8 3l5 5-5 5" />
             </button>
-            <Link href={otherHref} className="link-underline ml-1 shrink-0 border-l border-border pl-3 max-sm:hidden">
-              {def ? "reading view" : "list view"}
-            </Link>
+            <span className="ml-1 flex shrink-0 items-center gap-1.5 border-l border-border pl-2">
+              <button type="button" aria-label="table of contents" title="table of contents" onClick={() => void goKey("contents", true)} className="pressable rounded-full p-1.5 hover:text-text">
+                <Icon d="M8 4.5C6.5 3.5 4.5 3 2 3v9.5c2.5 0 4.5.5 6 1.5 1.5-1 3.5-1.5 6-1.5V3c-2.5 0-4.5.5-6 1.5zM8 4.5V14" />
+              </button>
+              <button type="button" aria-label="magnifier" title="magnifier" aria-pressed={lensOn} onClick={() => setLensOn((on) => !on)} className={clsx("pressable rounded-full p-1.5 hover:text-text", lensOn && "text-accent")}>
+                <Icon d="M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 1 0 0-9zM10.3 10.3 14 14" />
+              </button>
+              <Link href={otherHref} aria-label={def ? "reading view" : "list view"} title={def ? "reading view" : "list view"} className="pressable rounded-full p-1.5 hover:text-text max-sm:hidden">
+                <Icon d={def ? "M4 2.5h8v11H4zM6 5.5h4M6 8h4M6 10.5h2.5" : "M6 4h8M6 8h8M6 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"} />
+              </Link>
+            </span>
           </div>
         </motion.nav>
         <AnimatePresence>
@@ -675,7 +693,7 @@ export function EveryByte() {
                     <button type="button" data-book-link={`${bookHref(def.slug)}#${k}`} onClick={() => turnTo(def.slug, k)} className="link-underline text-left text-text">
                       {t}
                     </button>
-                    <span className="ml-auto tabular-nums">{(chapterPage(def.slug) ?? 0) + k + 1}</span>
+                    <span className="ml-auto tabular-nums">{leftPage((chapterPage(def.slug) ?? 0) + k + 1)}</span>
                   </li>
                 ))}
               </ol>
@@ -918,7 +936,7 @@ export function EveryByte() {
                           {chapterTitle(slug)}
                         </Link>
                         {route.chapters.includes(slug) && <span className="text-xs text-accent">{shortPathName}</span>}
-                        <span className="ml-auto tabular-nums">{chapterPage(slug)}</span>
+                        <span className="ml-auto tabular-nums">{leftPage(chapterPage(slug))}</span>
                       </li>
                     ))}
                   </ol>
@@ -927,15 +945,15 @@ export function EveryByte() {
               {route.order.length > 0 && hourButton}
               <button type="button" data-book-link="#beyond" onClick={() => void goKey("beyond", true)} className="link-underline mt-2 flex w-full text-text">
                 Beyond this engine
-                <span className="ml-auto tabular-nums text-muted">{chapterPage("beyond")}</span>
+                <span className="ml-auto tabular-nums text-muted">{leftPage(chapterPage("beyond"))}</span>
               </button>
               <button type="button" data-book-link="#estimates" onClick={() => void goKey("estimates", true)} className="link-underline mt-2 flex w-full text-text">
                 Estimate it yourself
-                <span className="ml-auto tabular-nums text-muted">{chapterPage("estimates")}</span>
+                <span className="ml-auto tabular-nums text-muted">{leftPage(chapterPage("estimates"))}</span>
               </button>
               <button type="button" data-book-link="#errata" onClick={() => void goKey("errata", true)} className="link-underline mt-2 flex w-full text-text">
                 {`Errata: ${errataTitle}`}
-                <span className="ml-auto tabular-nums text-muted">{chapterPage("errata")}</span>
+                <span className="ml-auto tabular-nums text-muted">{leftPage(chapterPage("errata"))}</span>
               </button>
             </>
           )}

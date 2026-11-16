@@ -4,7 +4,7 @@ import type { BookPalette } from "./ink";
 export type Run = { text: string; accent: boolean; term?: string };
 export type TermBox = { box: [number, number, number, number]; key: string };
 type Marks = { boxes: TermBox[]; w: number; h: number; color: string };
-export type PageText = { kicker: string; title: string; note?: string; paragraphs: Run[][]; folio: string };
+export type PageText = { kicker: string; title: string; note?: string; paragraphs: Run[][] };
 export type Fonts = { serif: string; sans: string; mono: string };
 
 export function readFonts(): Fonts {
@@ -135,13 +135,13 @@ export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, p
   ctx.font = `${size * unit}px ${fonts.sans}`;
   let cy = y + size * unit;
   for (const runs of paragraphs) cy = drawParagraph(ctx, runs, marginX, cy, textW, size * 1.46 * unit, palette.ink, palette.blue, false, marks) + size * 0.7 * unit;
-  ctx.fillStyle = palette.faint;
-  ctx.font = `${26 * unit}px ${fonts.sans}`;
-  ctx.fillText(page.folio, marginX, h - 90 * unit);
   return marks.boxes;
 }
 
-export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, caption: string, instruction: string | undefined, folio: string, palette: BookPalette, fonts: Fonts, seen?: Set<string>): TermBox[] {
+const CAPTION_RISE = 300;
+export const captionTop = (w: number, h: number) => (h - (CAPTION_RISE + 40) * (w / 1200)) / h;
+
+export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, caption: string, instruction: string | undefined, palette: BookPalette, fonts: Fonts, seen?: Set<string>): TermBox[] {
   const ctx = canvas.getContext("2d")!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const w = canvas.width;
@@ -150,7 +150,7 @@ export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, capti
   const unit = w / 1200;
   const x = 170 * unit;
   const width = w - 260 * unit;
-  let y = h - 300 * unit;
+  let y = h - CAPTION_RISE * unit;
   ctx.textBaseline = "alphabetic";
   ctx.font = `italic ${28 * unit}px ${fonts.sans}`;
   const marks: Marks = { boxes: [], w, h, color: palette.blue };
@@ -160,10 +160,5 @@ export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, capti
     ctx.font = `${40 * unit}px ${fonts.serif}`;
     drawParagraph(ctx, [{ text: instruction, accent: false }], x, y + 12 * unit, width, 48 * unit, palette.blue, palette.blue, false);
   }
-  ctx.fillStyle = palette.faint;
-  ctx.font = `${26 * unit}px ${fonts.sans}`;
-  ctx.textAlign = "right";
-  ctx.fillText(folio, w - x, h - 90 * unit);
-  ctx.textAlign = "left";
   return marks.boxes;
 }
