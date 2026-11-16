@@ -1,7 +1,7 @@
 import { goodputSeries, largestGap, loadProvenance, loadRates, loadValue, peakGoodput, ttftTailSeries } from "@/content/results";
 import { ceilings, decodeSteps, launchGaps, loadSlo, modelShape, profilingTable } from "@/lib/data";
 import { sweepOps, sweepPoints } from "./cuda-graphs";
-import { flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashShape, flashSystems, flashTokens, flashTtft } from "./flash-prefill";
+import { flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashShape, flashSystems, flashTokens } from "./flash-prefill";
 import historyJson from "./step-history.json";
 import { type KernelStory, measured } from "./types";
 
@@ -132,7 +132,7 @@ export const prefillPaths = [
   { id: "paged", label: "decode kernels, one walk per row", ms: flashLengths.map((p) => flashPath(flashPaths.paged, p)) },
   { id: "first", label: "first flash kernel", ms: flashLengths.map((p) => flashPath(flashPaths.first, p)) },
   { id: "tiled", label: "tiled flash kernel", ms: flashLengths.map((p) => flashPath(flashPaths.tiled, p)) },
-  { id: "llama", label: "llama.cpp", ms: flashLengths.map((p) => flashTtft(flashSystems.llama, p)) },
+  { id: "llama", label: "llama.cpp", ms: flashLengths.map((p) => flashPath(flashSystems.llama, p)) },
 ];
 export const prefillLengths = flashLengths;
 export const prefillTokens = flashLengths.map(flashTokens);
@@ -310,7 +310,7 @@ export const whereTheTimeWent: KernelStory = {
   excerpts: [],
   measurements: [
     { doc: "results", section: "gpu-time-per-op-in-a-decode-step", table: 0, caption: "today's batch-1 decode step, GPU time per op, launched one by one", command: "scripts/profile.sh nsys decode_step --max-batch 1 (run by scripts/reproduce.sh)" },
-    { doc: "results", section: "prefill-against-prompt-length", table: 0, caption: "TTFT in ms against prompt tokens, one request per run, median of 5 (min to max)", command: "python scripts/prefill_ttft.py --llama-batched-bench <path> --token-budget 256" },
+    { doc: "results", section: "prefill-against-prompt-length", table: 0, caption: "TTFT in ms against prompt tokens, one request per run, median of 3 (min to max)", command: "python scripts/prefill_ttft.py --llama-batched-bench <path> --token-budget 256" },
     { doc: "results", section: "under-load", table: 0, caption: `Poisson arrivals at each rate, medians of the runs; engine runs measured ${load.date} at commit ${load.commit}`, command: "scripts/load_sweep.sh, then scripts/load_report.py" },
     { doc: "results", section: "batch-size-past-16", table: 0, caption: "all requests submitted at once, twice as many as the max batch, median of 3 runs", command: "scripts/batch_sweep.sh, then scripts/batch_report.py" },
   ],

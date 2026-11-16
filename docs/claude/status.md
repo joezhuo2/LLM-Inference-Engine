@@ -390,3 +390,15 @@ Open:
 - The staging allocation left out of the reported upload time; whether native Linux lowers the clocks the same way.
 - A stray worktree `~/code/llm-inference-engine-beyond` holds the branch name `web/tensor-parallel-chapter` with broken metadata; not touched.
 - Everything listed as not wired in the snapshot above.
+
+## Snapshot 2026-11-16 (results refresh and site audit fixes)
+
+Branch `results/refresh-2026-11-16`, worktree `~/code/llm-inference-engine-refresh`, from main 78d9f2f, nothing pushed. Commits, each with its changelog entry:
+
+- 05c3749: `make_results.py` adds "(CUDA Graphs)" to the graph profile headings, so `docs/results.md` has no duplicate section ids.
+- bcf4cf8, 98bf71e, eaddcb7: site errors from the audit: duplicate React keys in the foundations figure; `/kernels` ordered and numbered by `bookOrder` (01 to 19, beyond 20, dead ends 21); the overview counts the weeks from the timeline.
+- c81fcd0: `scripts/reproduce.sh` minus load, vLLM and on-chip (driver `~/.cache/llmie-refresh/run.sh`, which also drops the `load_report.py` call so the 2026-11-11 load results keep their commit, and re-records the chat trace). Measured at eaddcb7: graphs batch 1 144.9 tok/s (302 GB/s, 93%), batch 16 1738.5 (12.0x); prefill 2,048 tokens 164.3 ms against llama.cpp 186.0. llama.cpp and HF moved too (driver 591.84, was 617.42); the DRAM copy test still reads 323 GB/s. Hand text of results.md, README and docs/api.md rewritten to the new numbers.
+- e873777: step-history.json regenerated, dashboard label "max batch 16, 8 reached", prefill charts kept to one session (llama.cpp row added to the 2026-11-10 kernel table), captions median of 3.
+- a19a859: stub exercises for Scheduler::cancel, decode_graph_buckets, flash_attention_prefill, prompt lookup, plan_shard_layout.
+
+Not done: the results page still lacks the batch sweep past 16, the prefill curve, speculative decoding and tensor parallelism; no graphs profile at batch 16; prefix caching exercise waits for Joe's implementation; the exercise commands at the five new start commits were not run; the engine gate (verify.sh) was not run (no engine code changed besides `scripts/make_results.py`, whose unit tests pass). `next build` printed Next.js 16.4.3's security upgrade recommendation.

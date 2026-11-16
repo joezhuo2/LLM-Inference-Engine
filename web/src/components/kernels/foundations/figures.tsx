@@ -261,7 +261,7 @@ export function FusionFigure({ numbers }: { numbers: FusionNumbers }) {
   const packet = (k: number, x: number, y: number, up: boolean, name: string, cls = "fill-accent") => {
     const [s, e] = at(k);
     return (
-      <g key={`${name}-${k}`}>
+      <g>
         <motion.rect x={x} y={y} width={16} height={10} rx={2} className={cls} {...move(s, e, 0, up ? -trip : trip, false)} />
         <Label x={x + 20} y={y + (up ? -trip / 2 : trip / 2) + 8}>{name}</Label>
       </g>

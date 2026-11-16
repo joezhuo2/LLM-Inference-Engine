@@ -89,7 +89,7 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `an illustrative 8-token prompt; single-request TTFT, median of 5 runs, from docs/results.md: ${ttft128} ms for 128 tokens (${perToken128} ms per token) and ${ttft2048.toLocaleString("en-US")} ms for 2,048 tokens (${perToken2048} ms per token)`,
+  `an illustrative 8-token prompt; single-request TTFT, median of 3 runs, from docs/results.md: ${ttft128} ms for 128 tokens (${perToken128} ms per token) and ${ttft2048.toLocaleString("en-US")} ms for 2,048 tokens (${perToken2048} ms per token)`,
   `illustrative tokens; ${gbs} GB/s is ${percent}% of the measured peak, the engine at batch 1 without CUDA Graphs, from docs/results.md`,
   `${ttft2048.toLocaleString("en-US")} ms prefill of 2,048 tokens (docs/results.md) against ${stepMs} ms per decode step at a 1,984-token prompt, batch 1, with CUDA Graphs (docs/profiling.md)`,
   "an illustrative 96-token sequence in a 16-block pool; the blocks and their order are made up",

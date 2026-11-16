@@ -372,5 +372,191 @@
    "label": "Tests that prove it",
    "text": "tests/todo/unit/test_scheduler_chunked.cpp (target todo_unit_tests, label todo_joe). Run them with ctest --preset cpu -L todo_joe. When they pass, move the file into tests/unit/, add it to unit_tests and delete todo_unit_tests."
   }
+ ],
+ "scheduler-cancel": [
+  {
+   "label": "Purpose",
+   "text": "The HTTP server (`engine serve`, src/server/serving_loop.cpp) has to take a request out of the scheduler before it finishes: when its client disconnects in the middle of a stream, and when a stop string ends the answer. docs/api.md promises that a client that disconnects cancels its request and frees its blocks. Today a request leaves the scheduler only by EOS or max_new_tokens, so until this exists the server catches the logic_error below, prints one warning, stops sending the request's tokens anywhere and lets it decode until it finishes, holding its KV blocks and a batch row the whole time. With the dashboard's playground and several browser tabs that is real waste: an abandoned 2,000-token answer keeps 125 blocks and a row of every decode step for its whole length."
+  },
+  {
+   "label": "Interface",
+   "text": "void Scheduler::cancel(SeqId id), declared in include/engine/sched/scheduler.h. It is called on the engine thread between steps, like submit: after update (and the take_finished that follows it) and before the next schedule. It removes request id from the scheduler wherever it is. A waiting request (never admitted, or preempted and back in the waiting queue) leaves the waiting queue; it holds no blocks. A running request leaves the running list and every block it holds goes back to the block manager at once. Afterwards request(id) throws, num_waiting() or num_running() is one lower, the id is free to be submitted again, and the request is never returned by take_finished."
+  },
+  {
+   "label": "What must hold",
+   "text": "The other requests do not notice: the waiting queue and the running list keep their relative order, so the next schedule() admits, decodes and preempts exactly as if the cancelled request had never been submitted, and their outputs are unchanged. Blocks are conserved: once every request has finished or been cancelled, blocks().num_free() is num_blocks - 1 again (block 0 stays reserved). A request that was blocking the head of the waiting queue no longer blocks it, so a smaller request behind it can be admitted by the very next schedule()."
+  },
+  {
+   "label": "Errors",
+   "text": "Throw std::invalid_argument, naming the id, and change nothing, when id is not held (never submitted, already cancelled, or already returned by take_finished), when it has finished but has not been taken yet (state Finished), and when a step is pending (schedule() returned a non-empty step that update() has not consumed yet; cancelling then would make update's tokens line up with the wrong sequences). invalid_argument is a logic_error, so the server rethrows it instead of treating it as \"not implemented\"."
+  },
+  {
+   "label": "Edge cases",
+   "text": "Cancelling the only running request leaves an idle scheduler whose next schedule() returns an empty step. Cancelling right after submit, before any schedule(), is valid. Cancelling a preempted request while it waits must not free blocks a second time (preemption already freed them). Cancelling two requests in a row, or the one at the back of the running list (the next preemption victim), keeps the order of the rest."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/unit/test_scheduler_cancel.cpp (target todo_unit_tests, label todo_joe): a waiting request leaves the queue, a running one frees all its blocks at once, only the other blocks stay held, the other requests keep their batch order, a cancelled request is never returned as finished, freeing the front of the queue admits the next request, a preempted request can be cancelled while it waits, unknown, cancelled, finished-but-not-taken and taken ids are rejected, a cancel while a step is pending is rejected and changes nothing, the id can be submitted again, and 20 random runs of 12 requests with random cancels keep every other answer equal to its answer alone and return every block. Run them with ctest --preset cpu -L todo_joe. When they pass, move the file into tests/unit/, add it to unit_tests and delete todo_unit_tests; tests/unit/test_serving_loop.cpp and tests/unit/test_http_server.cpp then exercise the server path where blocks come back right after a disconnect, and the server's warning disappears."
+  }
+ ],
+ "graph-buckets": [
+  {
+   "label": "Purpose",
+   "text": "DecodeGraphs pads every decode batch up to the smallest captured bucket that holds it, and today the buckets are the powers of two below --max-batch plus --max-batch itself (graph_buckets in src/app/bench_command.cpp and again in src/server/gpu_backend.cpp). Up to batch 16 that wastes little, but #121 sweeps 32, 64, 128 and 256, and there 17 sequences under --max-batch 32 run 32 rows, 33 under 64 run 64, and so on: just under half the rows can be padding, and with the GEMMs bandwidth bound until roughly batch 100 (16 FLOP/byte against a 107 ridge) the padded rows still cost attention, the LM head and sampling. This function makes the bucket grid finer on request, so the sweep can measure what padding costs at each size and whether a finer grid pays for the extra graphs. steps_per_octave = 1 is exactly today's grid."
+  },
+  {
+   "label": "Interface",
+   "text": "std::vector<int64_t> decode_graph_buckets(int64_t max_batch, int64_t steps_per_octave), declared in include/engine/sched/graph_buckets.h, part of engine_core so it runs in the cpu preset. It returns the list DecodeGraphs takes as its buckets argument: strictly increasing, starting at 1 and ending at max_batch."
+  },
+  {
+   "label": "The grid",
+   "text": "Split the range into octaves [2^k, 2^(k+1)). Within octave k the step is max(1, 2^k / steps_per_octave), and the octave contributes 2^k, 2^k + step, 2^k + 2 * step, and so on while the value stays below 2^(k+1). Keep every value below max_batch, then append max_batch. So steps_per_octave = 2 gives 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, ... and steps_per_octave = 4 gives 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, ... An octave smaller than steps_per_octave just takes every integer in it. max_batch itself appears once, whether or not it falls on the grid."
+  },
+  {
+   "label": "What must hold",
+   "text": "Every power of two up to max_batch is a bucket, and a finer grid contains every bucket of a coarser one (steps_per_octave s and 2s). Two neighbouring buckets b and b' satisfy b' - b <= max(1, b / steps_per_octave), so a batch of n sequences pads by fewer than n / steps_per_octave rows: under 50% of its rows padding at 1, under a third at 2, under a fifth at 4. With steps_per_octave = 1 the result equals the current graph_buckets for every max_batch, so swapping it in changes nothing until someone asks for more."
+  },
+  {
+   "label": "Errors",
+   "text": "Throw std::invalid_argument when max_batch is below 1 or steps_per_octave is not a power of two (1, 2, 4, 8, ...). No upper limit on either here; DecodeGraphs already rejects buckets above the runner's max_seqs."
+  },
+  {
+   "label": "Edge cases",
+   "text": "max_batch = 1 gives {1} for any steps_per_octave. max_batch on the grid is not repeated (steps_per_octave = 2, max_batch = 12 ends 8, 12). max_batch off the grid ends the list after the last grid value below it (steps_per_octave = 2, max_batch = 13 ends 8, 12, 13). A steps_per_octave larger than max_batch gives every integer from 1 to max_batch."
+  },
+  {
+   "label": "Cost to keep in mind",
+   "text": "DecodeGraphs captures one graph per bucket and attention split count, so the bucket count multiplies capture time at start-up and graph memory: to 256 the grid has 9 buckets at steps_per_octave 1, 16 at 2 and 28 at 4. Check num_captured() and start-up time when you pick a default."
+  },
+  {
+   "label": "What is not here",
+   "text": "Wiring comes after this passes: replace both graph_buckets copies with a call to this, and add a --graph-steps option (default 1) to engine bench and engine serve. The Part A half of #121 (the 32 to 256 sweep with and without graphs, the per-op profile at each size, the padding cost of 17 sequences under --max-batch 32) then runs at steps_per_octave 1 and 2 or 4 and decides whether the default changes."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/unit/test_graph_buckets.cpp (target todo_unit_tests, label todo_joe). Run them with ctest --preset cpu -L todo_joe. When they pass, move the file into tests/unit/, add it to unit_tests and delete todo_unit_tests."
+  }
+ ],
+ "flash-prefill": [
+  {
+   "label": "Purpose",
+   "text": "Prefill today runs the decode kernel (paged_attention_decode_v2, or the split version) with one row per prompt token: row t walks its whole context of t + 1 tokens through its own copy of the block table, one thread block per (row, query head), and the 8 query heads that share a kv head each read it separately. The K and V bytes a prompt of L tokens reads therefore grow with L squared, and none of that work uses the tensor cores. #120 measured what it costs (results/prefill/prefill.md, commit 1693c46, single request, median of 5): engine TTFT 15.7, 97.8, 337.0 and 1,152.2 ms at 128, 512, 1,024 and 2,048 prompt tokens, against llama.cpp at 16.1, 44.0, 95.0 and 179.5 ms (-ub 512); per prompt token the engine goes from 0.123 to 0.563 ms while llama.cpp stays near 0.09. Those are the \"before\" numbers. This function is the FlashAttention-style replacement for the prefill rows: a causal kernel that loads a tile of queries once, streams tiles of keys and values past it, computes Q K^T and P V with mma on the tensor cores, keeps an online softmax per query row, and reads the chunk's own keys and values straight from the qkv buffer instead of the paged cache. The decode kernels stay as they are for decode rows."
+  },
+  {
+   "label": "Interface",
+   "text": "Declared in include/engine/kernels/flash_prefill.h. One call handles every prefill chunk of a step (a step from Scheduler::schedule_chunked, laid out by build_chunked_batch: the decode rows first, then each chunk's rows in order, contiguous). qkv is the BF16 [T, (heads + 2 * kv_heads) * head_dim] output of the fused QKV GEMM after RoPE for all T rows of the step, and out is BF16 [T, heads * head_dim]. k_cache and v_cache are the BF16 [num_blocks, kv_heads, block_size, head_dim] views of the paged cache of this layer. chunk_starts is I32 [C + 1] and cached_lens is I32 [C], for C >= 0 chunks: chunk c is rows chunk_starts[c] to chunk_starts[c + 1] - 1 of qkv and out, and those rows are the tokens at positions cached_lens[c] to cached_lens[c] + count - 1 of one sequence, where count = chunk_starts[c + 1] - chunk_starts[c]. block_tables is I32 [C, max_blocks], one row per chunk (not per token): position j of chunk c's sequence is in physical block block_tables[c][j / block_size] at offset j % block_size. Rows before chunk_starts[0] and from chunk_starts[C] on are not prefill rows (in a mixed step, the decode rows) and are left alone. heads and kv_heads come from the shapes as in the paged kernels: head_dim = k_cache.shape[3], kv_heads = k_cache.shape[1], heads = out.shape[1] / head_dim."
+  },
+  {
+   "label": "Semantics",
+   "text": "For row r = chunk_starts[c] + i, query head h, the query is at position p = cached_lens[c] + i and attends to positions 0 to p. Keys and values at positions below cached_lens[c] (the part of the sequence earlier steps already cached) come from the paged cache through block_tables[c]. Keys and values at positions cached_lens[c] to p come from the K and V columns of qkv rows chunk_starts[c] to r. In the engine write_kv has already copied those rows into the cache, but the kernel must not read the cache slots of positions at or after cached_lens[c]: the tests fill them with other values and with NaN. Query head h reads kv head h / (heads / kv_heads). out[r][h * head_dim + d] = sum over j <= p of P_j * V_j[d], with P the softmax over j <= p of s_j = scale * (q_h . K_j) and scale = 1 / sqrt(head_dim). qkv, both caches, block_tables, chunk_starts and cached_lens are not modified."
+  },
+  {
+   "label": "Numerics",
+   "text": "Round each score as the naive and paged kernels do, s_j = bf16(bf16(q_h . K_j) * scale), with the dot product accumulated in FP32 (mma with FP32 accumulators does that; the order inside it is the hardware's). Keep the running maximum, the running sum and the output accumulator in FP32, rescale them with exp(m_old - m_new) when the maximum rises, and round the output to BF16 once after dividing by the sum. Rounding the unnormalized probabilities to BF16 to feed the P V mma is allowed. Masked positions (after p) contribute exactly nothing: no NaN from -inf - -inf, no 0 / 0 in a row whose first tile is entirely masked, and the result stays right when exp would overflow without subtracting the maximum (scores up to 128 in the tests). A query at position 0 with no cached prefix (cached_lens[c] = 0, i = 0) gives exactly V_0 for every head, bit for bit."
+  },
+  {
+   "label": "Determinism",
+   "text": "The output of a row depends only on its own chunk: its query, the K and V rows of its chunk up to and including its own row, cached_lens[c], the first ceil(cached_lens[c] / block_size) entries of block_tables[c] and the cached tokens they reach. It is bit-identical whether the chunk is computed alone or next to other chunks and decode rows in the same call, whatever comes after the row in its own chunk (a chunk of 100 rows and the first 37 of those rows as a chunk of 37 give the same 37 outputs), and on every repeat. It does not have to be bit-identical across different chunkings of the same prompt (the same 300 tokens as one chunk, or as three chunks of 100 with the first two in the cache), only within the tolerance below. No atomics on floats, and nothing whose order depends on block timing."
+  },
+  {
+   "label": "Errors and preconditions",
+   "text": "Before launching anything, throw std::invalid_argument with a message naming flash_attention_prefill when: k_cache or v_cache is not BF16 or not 4-dimensional, or their shapes differ; head_dim is not a multiple of 16 or is above 128 (the mma tiles need 16-wide k steps; this is the one limit the decode kernels do not have); out is not BF16 or not 2-dimensional, its width is not a multiple of head_dim, or heads is not a positive multiple of kv_heads; qkv is not BF16 or not 2-dimensional, its row count differs from out's, or its width is not (heads + 2 * kv_heads) * head_dim; chunk_starts is not I32, not 1-dimensional or empty; cached_lens is not I32, not 1-dimensional or not of length C; block_tables is not I32, not 2-dimensional, has a row count other than C or has no columns. The caller guarantees, without checks: 0 <= chunk_starts[0] <= chunk_starts[1] <= ... <= chunk_starts[C] <= T (a chunk may be empty); cached_lens[c] >= 0; cached_lens[c] + count <= max_blocks * block_size; and the first ceil(cached_lens[c] / block_size) entries of block_tables[c] are between 0 and num_blocks - 1 (later entries may be anything, -1 included). Those values live on the device, so the kernel cannot size its grid from them: no cudaMemcpy back to the host, no synchronization, no allocation. The call must be capturable in a CUDA graph (the tests capture it and replay it) and asynchronous on stream, with KERNEL_CHECK after each launch."
+  },
+  {
+   "label": "Edge cases",
+   "text": "C = 0 (chunk_starts of length 1) and T = 0 are valid and launch nothing (the tensors of a T = 0 call may have null data). Empty chunks write nothing. A chunk of one row is a prefill of one token. Prompts of up to 8,192 tokens in one chunk, cached prefixes from 1 to several thousand tokens, chunk lengths on both sides of your tile sizes and of the block size, and C = 16 chunks of mixed lengths must all be right. Any positive block_size, any head_dim allowed above, and heads any multiple of kv_heads (the tests use head dims 16 to 128 and block sizes 1 to 32)."
+  },
+  {
+   "label": "What to compare against",
+   "text": "naive::attention on a contiguous copy of the chunk's context (the cached prefix followed by the chunk's own K and V) with start = cached_lens[c], within 1/64 of (the largest |V_j[d]| over j <= p) + |naive output| per element, and Hugging Face's attn output of every layer of the traced reference prompt within 2^-7 times the largest |V| of the visible tokens in that column, both as one chunk and as three chunks with the earlier ones cached. For speed: Nsight Systems on engine bench at 2,048 prompt tokens before and after, the attention share of prefill and its time per layer; Nsight Compute on the kernel alone (tensor pipe utilization, DRAM bytes read against the bytes of K and V the chunk actually needs, achieved occupancy, shared memory per block); then rerun the prefill section of scripts/reproduce.sh and put the new TTFT row next to the #120 numbers in docs/results.md. Record what tile sizes you tried and why you kept the ones you did in docs/profiling.md."
+  },
+  {
+   "label": "What is not here",
+   "text": "Wiring is a separate Part B branch once the tests pass: PagedRunner sends prefill rows here and decode rows to v2 or split, build_chunked_batch emits chunk_starts, cached_lens and one table row per chunk (which also ends the per-token copy of the block table that #120 noted), and DecodeGraphs stays decode only."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/gpu/test_flash_prefill.cpp (target todo_gpu_tests, labels todo_joe and gpu): one chunk of 37 tokens, chunk lengths around 16, 64 and 128, prompts of 2,048, 4,096 and 8,192 tokens, cached prefixes from 1 to 1,000 tokens, decode rows around the chunks left untouched with guard elements around out, 16 chunks in one call, empty chunks, scores up to 128, a running maximum that rises, falls or spikes, the first position equal to V bit for bit, NaN in the cache slots of the chunk's own positions and outside the context and -1 table entries leaving the output bit-identical, batch invariance, rows independent of the rows after them, repeatability, the same prompt chunked three ways, a graph capture and replay, six head and block layouts, HF's attn on all 22 layers as one chunk and as three, C = 0 and T = 0, and every rejected argument. Run them with ctest --preset debug -L todo_joe, then compute-sanitizer --tool memcheck on them. When they pass, move the file to tests/gpu/, add it to gpu_tests and delete todo_gpu_tests."
+  }
+ ],
+ "speculative": [
+  {
+   "label": "Purpose",
+   "text": "Issue #102. A decode step produces one token per sequence, and at batch 1 most of its time is reading the weights once for a single row. Speculative decoding guesses the next k tokens cheaply, runs the model once on all of them as k + 1 rows of the same sequence (the weights are still read once), and keeps the guesses the model agrees with. The plan (docs/claude/build_plan.md, P13) starts with prompt lookup: no draft model, the guess is copied from the place in the context where the last few tokens appeared before. It pays off when the output repeats its input (summaries, code edits, quoting) and costs k wasted rows per step when it does not. The output is exactly what plain decoding would produce, token for token, because every kept token is the one the model sampled. These three functions are the host side: making the guess, counting how much of it survived, and giving back the cache slots of the part that did not."
+  },
+  {
+   "label": "The step they serve",
+   "text": "A sequence has its tokens 0 to n - 1, with keys and values cached for 0 to n - 2, and x = token n - 1 is the input of the next step. Plain decode runs one row (x at position n - 1) and samples token n. A speculative step takes draft = propose_prompt_lookup(tokens 0 to n - 1), of length k, reserves k + 1 slots with append_slot, and runs k + 1 rows: x at position n - 1, then draft[i] at position n + i. Row i attends to everything before it, like a prefill chunk, and is sampled with the step number of output token i of this step (the sampler is keyed by seed and step, include/engine/sampling/sample.h), giving sampled[0 .. k]. sampled[0] is always right: it is what plain decode would have sampled. sampled[i + 1] is right only if draft[0 .. i] were all right, because row i + 1 was computed from them. With a = count_accepted(draft, sampled), the step emits sampled[0 .. a], that is a + 1 tokens, the cache is valid for positions up to n - 1 + a, and truncate(seq, n + a) gives back the slots of the k - a rows that were computed from a wrong token. sampled[a] is the input of the next step."
+  },
+  {
+   "label": "Interface",
+   "text": "Declared in include/engine/sched/speculative.h and include/engine/kv/block_manager.h. propose_prompt_lookup(context, max_ngram, max_draft) returns at most max_draft tokens. For g from min(max_ngram, context.size() - 1) down to 1, take the last g tokens of context as the pattern and look for an earlier start i where context[i .. i + g) equals the pattern and i + g <= context.size() - 1 (the match is not the pattern itself and has at least one token after it; it may overlap the pattern). The first g that has a match wins, and among its matches the latest one (largest i) wins. The result is context[i + g .. min(i + g + max_draft, context.size())). No match for any g gives an empty vector, as does a context of fewer than 2 tokens. count_accepted(draft, sampled) returns the largest a such that draft[i] == sampled[i] for all i < a; sampled may be shorter or longer than draft (normally draft.size() + 1), and a never exceeds either size. BlockManager::truncate(seq, length) sets the length of seq to length and releases the blocks its table no longer needs, so the table has ceil(length / block_size) entries afterwards; the next append_slot returns the slot of position length, reusing the slot that was given back."
+  },
+  {
+   "label": "Semantics of truncate",
+   "text": "A released block follows the rules of free for one block: its count goes down by 1, and at 0 it becomes blank (or cached, if it is published, once prefix caching from #99 is in). truncate to the current length does nothing. The caller guarantees that no position at or after length has been published: the rows of a speculative step are published, if at all, only after truncate. That is what keeps a partial last block private."
+  },
+  {
+   "label": "Errors",
+   "text": "Throw std::invalid_argument when: max_ngram < 1 or max_draft < 1 in propose_prompt_lookup (message naming the function); seq is not registered, length < 1 or length > length(seq) in truncate (message starting with [BlockManager]; to drop a whole sequence use free). count_accepted cannot fail."
+  },
+  {
+   "label": "Edge cases",
+   "text": "A context where the pattern only occurs as itself gives nothing. A context of one repeated token gives a draft of 1 token (the latest match ends one token before the end). max_ngram above the context length is allowed. Token ids are compared as plain numbers; there is no special token handling here: stopping at EOS or at max_new_tokens inside the accepted run is the scheduler's job."
+  },
+  {
+   "label": "Cost",
+   "text": "Looking for the pattern by scanning the context is O(context.size() * max_ngram) per sequence per step, a few thousand comparisons at this engine's context sizes. Measure before building an index."
+  },
+  {
+   "label": "What to compare against",
+   "text": "The tests check propose_prompt_lookup against a plain triple loop written out in the test file over random contexts with a small vocabulary. For the feature as a whole, once it is wired: the same prompt and seed give the same tokens with and without speculation, the acceptance rate (accepted drafts / proposed drafts) and tokens per step, and TPOT on prompts that repeat their input (a summary of a long text, a code edit) and on chat prompts that do not, each against plain decode. Put both in docs/results.md."
+  },
+  {
+   "label": "What is not here",
+   "text": "The scheduler and runner side, a separate branch once these pass: a step type whose sequences carry draft rows (Scheduler::schedule_chunked already has prefill chunks with several rows per sequence; a speculative sequence is a chunk in which every row is sampled), reserving k + 1 slots and falling back to plain decode when blocks are short or the draft is empty, sampling every row with its own step number, calling truncate in update, stopping at EOS inside the accepted run, counting proposed and accepted tokens in the metrics, and a flag on engine serve and engine bench. Decode graphs are keyed by row count (#121), so a speculative step needs its own buckets or runs outside the graph. A draft model instead of prompt lookup is a later issue."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/unit/test_speculative.cpp (target todo_unit_tests, label todo_joe), 24 tests checked against a throwaway implementation and eight mutants of it: the longest pattern, the latest match, overlap, the end of the context, 4,000 random contexts against a plain search, the accept count, and truncate at every accept count of a 9-row step. Run them with ctest --preset cpu -L todo_joe. When they pass, move the file to tests/unit/, add it to unit_tests and take it out of todo_unit_tests."
+  }
+ ],
+ "tensor-parallel": [
+  {
+   "label": "Purpose",
+   "text": "Issue #202. Tensor parallelism runs one model on N GPUs by cutting every layer's weights into N shards along the dimension that the layer's hidden work happens in, so each GPU (a rank) holds about 1 / N of the layer weights and does 1 / N of the GEMM and attention work on the same tokens. A rank owns a contiguous set of attention heads and a contiguous set of MLP units. It computes its heads' attention and its units' MLP alone, and its output projection gives a partial result of full width; the partial results of all ranks are summed (an all-reduce) twice per layer, after o_proj and after down_proj, and that sum is exactly what the unsharded layer computes. This function is the first step and the only one that decides the split: the weight layout of one rank, in the same form plan_weight_layout gives for the whole model, so upload_weights and bind_weights work on a shard unchanged."
+  },
+  {
+   "label": "Why the split is exact",
+   "text": "Attention heads do not interact until o_proj, and o_proj is linear: attn W_o^T = sum over ranks of attn_r W_o,r^T, where attn_r is the rank's heads and W_o,r the matching columns of W_o. In the MLP, unit j is silu(x . gate_j) * (x . up_j) and does not interact with other units until down_proj, which is linear again: the sum over ranks of (the rank's units) W_down,r^T is the full output. The residual stream, the norms, the embedding and the LM head are not split: every rank holds them whole."
+  },
+  {
+   "label": "Interface",
+   "text": "Declared in include/engine/loader/tensor_parallel.h. plan_shard_layout(config, header, rank, num_ranks) returns the WeightLayout of rank rank out of num_ranks. With N = num_ranks, h = config.heads / N, k = config.kv_heads / N, f = config.intermediate / N, d = config.hidden and hd = config.head_dim, rank r owns query heads r * h to (r + 1) * h - 1, kv heads r * k to (r + 1) * k - 1 and MLP units r * f to (r + 1) * f - 1. Because N divides kv_heads, a rank's query heads are exactly the groups of its kv heads, and its local query head j reads its local kv head j / group_size as before. The regions come in the order of plan_weight_layout, each aligned to kWeightAlignment, with these shapes and contents: embed [vocab, d], whole; per layer ln1 [d], whole; wqkv [(h + 2 * k) * hd, d], the rank's rows of q_proj (rows r * h * hd on), then its rows of k_proj (rows r * k * hd on), then its rows of v_proj; wo [d, h * hd], columns r * h * hd to (r + 1) * h * hd - 1 of o_proj; ln2 [d], whole; wgu [2 * f, d], rows r * f on of gate_proj, then the same rows of up_proj; wdown [d, f], columns r * f to (r + 1) * f - 1 of down_proj; then final_norm [d] and lm_head [vocab, d], whole. total_bytes is the end of the last region."
+  },
+  {
+   "label": "Copies",
+   "text": "copies lists what to copy from the file: each CopyOp moves bytes contiguous bytes from file offset src to offset dst of the shard's buffer, name is the tensor it reads from, and shape is the shape of the piece it moves (the tensor's own shape when it moves a whole tensor). Sorted by src, as plan_weight_layout does. Every byte of every region is written exactly once and nothing is written outside the regions. A slice of rows is one contiguous piece. A slice of columns is not: the matrices are stored row by row, so wo and wdown need one copy per row, 2 * d small copies per layer (90,112 for TinyLlama per rank). That is allowed here. Time the load before inventing a strided copy; if it is slow, that is a separate change to CopyOp and upload_weights."
+  },
+  {
+   "label": "Errors",
+   "text": "Throw std::invalid_argument with a message naming plan_shard_layout when num_ranks < 1, rank < 0, rank >= num_ranks, config.kv_heads is not a multiple of num_ranks, or config.intermediate is not a multiple of num_ranks (TinyLlama, with 4 kv heads and 5,632 units, allows 1, 2 and 4). Everything plan_weight_layout rejects is rejected the same way, with its std::runtime_error and message: tied embeddings, a missing tensor, a wrong shape, a tensor that is not BF16, an unexpected tensor. The header is the full checkpoint's; every rank reads the same file."
+  },
+  {
+   "label": "Edge cases",
+   "text": "num_ranks = 1 gives the regions of plan_weight_layout and the same bytes. A rank with one kv head. The first and the last rank (off by one in the last column or row shows up there)."
+  },
+  {
+   "label": "What to compare against",
+   "text": "The tests build a fake checkpoint, apply the copies of plan_weight_layout and of every rank's plan to host buffers, and compare element by element; one test computes o_proj and the MLP from the shards and from the full weights and checks that the partial results add up."
+  },
+  {
+   "label": "What is not here, and what one GPU can show",
+   "text": "This laptop has one GPU, so the ranks can only be run as N streams on the same device. That proves the split and the sums are right; it cannot be faster than the unsharded model, because the same GPU does the same work plus the sums. Still to design, each its own branch: a config for a shard (ModelConfig uses hidden both as the residual width and as heads * head_dim, and in a shard they differ); one runner and one paged KV cache per rank, with k kv heads each and the same block tables; the all-reduce (on one device it is the add kernel over the ranks' partial results, summed in rank order so the result does not depend on timing; across devices it needs peer copies or NCCL and cannot be tested here); which rank embeds and samples; and a flag on engine generate and engine bench. The comparison to record in docs/results.md once it runs: logits of the sharded forward against the unsharded one (BF16 rounding of the partial sums makes them close, not bit-identical), and the per-rank memory against the full model."
+  },
+  {
+   "label": "Tests that prove it",
+   "text": "tests/todo/unit/test_tensor_parallel.cpp (target todo_unit_tests, label todo_joe), 15 tests checked against a throwaway implementation and nine mutants of it: one rank equal to the full layout, region shapes and alignment, every region byte written once, each sharded matrix element by element for 2 and 4 ranks, the unsplit tensors, the partial outputs adding up, TinyLlama shapes, and every rejected argument. Run them with ctest --preset cpu -L todo_joe. When they pass, move the file to tests/unit/, add it to unit_tests and take it out of todo_unit_tests."
+  }
  ]
 }

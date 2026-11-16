@@ -106,6 +106,7 @@ class Blocks(unittest.TestCase):
                                    for n in ("environment", "profile", "profile_graphs", "scoreboard", "table")))
             self.assertEqual(mr.main(["--results-dir", str(d / "results"), "--doc", str(doc)]), 0)
             self.assertIn("- decode: graphs", doc.read_text())
+            self.assertIn("### Launch gaps (CUDA Graphs)", doc.read_text())
 
     def test_roofline_block_is_filled_when_present(self):
         with tempfile.TemporaryDirectory() as d:

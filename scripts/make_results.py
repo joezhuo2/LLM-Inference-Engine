@@ -146,7 +146,7 @@ def main(argv=None):
 
     graphs_path = args.results_dir / "decode_step_graphs.md"
     graphs_profile = ("No profile recorded.\n" if not graphs_path.exists()
-                      else graphs_path.read_text().replace("\n## ", "\n### ").replace("## ", "### ", 1))
+                      else re.sub(r"^### (.+)$", r"### \1 (CUDA Graphs)", graphs_path.read_text().replace("\n## ", "\n### ").replace("## ", "### ", 1), flags=re.M))
 
     text = args.doc.read_text()
     text = replace_block(text, "environment", environment_block(env))
