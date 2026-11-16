@@ -2302,3 +2302,4 @@
 - **hit slop: a hit area larger than what it marks** => 
 - **recto and verso: why right-hand pages are odd** => 
 - **drawing a shared detail in one place instead of in every painter** => 
+- **aria-pressed on a toggle button** => 
