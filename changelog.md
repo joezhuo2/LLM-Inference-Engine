@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## results/refresh-2026-11-16
+
+- Part A: `scripts/make_results.py` adds "(CUDA Graphs)" to the headings of the graph profile block, so `docs/results.md` no longer has two sections with the same id.
+
 ## web/every-byte-fixes
 
 - Part A: clicking the every byte tab while the book is open closes it back to the cover (page 1); the book watches the path because a URL changed by pushState keeps the same page mounted (#215).
