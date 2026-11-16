@@ -1,7 +1,7 @@
-date=2026-10-25T11:52:26Z
-commit=7d60861
+date=2026-11-16T20:12:50Z
+commit=eaddcb7
 gpu=NVIDIA GeForce RTX 5060 Laptop GPU
-driver=617.42
+driver=591.84
 cuda=13.3
 build=Release
 peak_gb_s=323.6

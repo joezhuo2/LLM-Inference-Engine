@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## results/refresh-2026-11-16
 
+- Part A: rerun `scripts/reproduce.sh` (everything but the load sweep, vLLM and the on-chip benchmarks, which were measured on 2026-11-11 and 2026-11-04) at eaddcb7 on 2026-11-16, and re-record the chat trace the dashboard replays: batch 1 with graphs 144.9 tokens/s (6.86 ms, 302 GB/s = 93% of the peak, was 127.3), batch 16 with graphs 1738.5 (12.0x, was 11.0x), prefill of 2,048 tokens 164.3 ms against llama.cpp's 186.0; the hand-written paragraphs of `docs/results.md`, the README table and the trace description in `docs/api.md` follow the new numbers, and the 2026-11-10 FlashAttention kernel table keeps llama.cpp's row from its own session. llama.cpp is faster too (125.8 against 110.1 tokens/s at batch 1, driver 591.84 against 617.42) while the measured DRAM bandwidth is still 323 GB/s.
+
 - Part A: the overview says how many weeks the build took from the dates of the timeline (seven, Sep 24 to Nov 14) instead of a fixed "five weeks".
 
 - Part A: `/kernels` lists the chapters in book order and numbers them like Every Byte (chapter 1 to 19, then beyond and what didn't work), so a card, a story page and the book give a chapter the same number; `content/kernels/index.ts` throws when a story has no place in `bookOrder`.
