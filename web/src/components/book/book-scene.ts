@@ -62,6 +62,7 @@ type SceneOptions = {
 export type TermHit = { key: string; x: number; y: number; tap: boolean };
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeInOutSine = (t: number) => (1 - Math.cos(Math.PI * t)) / 2;
 const easeOutBack = (t: number) => 1 + 2.1 * Math.pow(t - 1, 3) + 1.1 * Math.pow(t - 1, 2);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 const rad = (deg: number) => (deg * Math.PI) / 180;
@@ -860,10 +861,10 @@ export class BookScene {
     this.leaf.backMap.needsUpdate = true;
     this.leaf.front.visible = true;
     this.leaf.back.visible = true;
-    this.setLeaf(forward ? 0 : 1);
+    this.setLeaf(forward ? 0 : 1, forward);
     if (!forward) zeroActive();
     this.leftText.meshes[this.leftText.active].material.opacity = forward ? this.leftText.meshes[this.leftText.active].material.opacity : 1;
-    await this.tween(1.8, (t) => this.setLeaf(forward ? easeInOut(t) : 1 - easeInOut(t)));
+    await this.tween(1.8, (t) => this.setLeaf(forward ? easeInOutSine(t) : 1 - easeInOutSine(t), forward));
     this.leaf.front.visible = false;
     this.leaf.back.visible = false;
     if (forward) {
@@ -926,7 +927,7 @@ export class BookScene {
       const u = easeInOut(t);
       leaves.forEach((leaf, k) => {
         const p = clamp01((u - (k * 0.65) / (n - 1)) / 0.35);
-        this.setLeaf(forward ? p : 1 - p);
+        this.setLeaf(forward ? p : 1 - p, forward);
         const attributes = leaf.front.geometry.attributes;
         (attributes.position.array as Float32Array).set(source.position.array as Float32Array);
         (attributes.normal.array as Float32Array).set(source.normal.array as Float32Array);
@@ -948,7 +949,7 @@ export class BookScene {
     }
   }
 
-  private setLeaf(t: number): void {
+  private setLeaf(t: number, forward: boolean): void {
     const position = this.leaf.geometry.attributes.position as THREE.BufferAttribute;
     const columns = 41;
     const ds = PAGE_W / 40;
@@ -957,7 +958,7 @@ export class BookScene {
     let x = 0;
     let y = 0.002;
     for (let j = 0; j < columns; j++) {
-      const phi = Math.PI * clamp01(t * 1.4 - 0.4 * (j / 40));
+      const phi = Math.PI * clamp01(t * 1.4 - 0.4 * (forward ? 1 - j / 40 : j / 40));
       xs.push(x);
       ys.push(y + Math.abs(Math.cos(phi)) * pageHeight(Math.abs(x)));
       x += Math.cos(phi) * ds;

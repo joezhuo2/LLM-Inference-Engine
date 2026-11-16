@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/every-byte-fixes
+
+- Part A: every byte turns a page from its outer edge first (going forward the edge now leads by 0.4 of the turn, as it already did going back) and eases the leaf with a sine curve, so the edge lifts about 0.2 s after a click instead of about 0.75 s (#215).
+
 ## web/timeline-scenes
 
 - Part A: the in-this-chapter list of every byte runs lower on the page (to H-270, the click line at H-180), so long lists get larger type.

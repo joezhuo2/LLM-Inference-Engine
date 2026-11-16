@@ -2288,3 +2288,8 @@
 - **a time lane: drawing work that takes turns on one device** => 
 - **fitting a list to a fixed page by scaling row pitch and type together** => 
 - **deriving type size from row pitch so a list fills the page at any length** => 
+
+## Every Byte fixes (Branch 156)
+
+- **a page curl where the free edge leads the spine** => 
+- **a gentle-start ease: sine in-out against cubic in-out** => 
