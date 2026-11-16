@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/every-byte-fixes
 
+- Part A: the magnifier works on the right page as well: anywhere on a painted page, and on a figure page only over the caption below the model (#215).
+
 - Part A: the closed book has a rounded spine joining the two boards, and it follows the cover as the book opens and closes (#215).
 
 - Part A: once a turn settles, every byte draws the next spread (in the direction of the last turn) into the spare page canvases and uploads them while idle; the next turn reuses them and starts without a long frame (#215).

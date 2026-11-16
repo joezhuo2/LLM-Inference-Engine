@@ -2298,3 +2298,4 @@
 - **prefetching into the spare half of a double buffer** => 
 - **renderer.initTexture: uploading a texture before it is drawn** => 
 - **a hinge strip: a curve between two moving points** => 
+- **picking the nearest of two meshes with one raycast** => 

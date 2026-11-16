@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { type BookPalette, createKit, inkShared, type Kit, readBookPalette } from "./ink";
-import { drawCaptionPage, drawTextPage, type Fonts, type PageText, type TermBox } from "./typeset";
+import { captionTop, drawCaptionPage, drawTextPage, type Fonts, type PageText, type TermBox } from "./typeset";
 import { LinkUnderline } from "./underline";
 
 export const PAGE_W = 1;
@@ -200,7 +200,7 @@ export class BookScene {
   private terms = new WeakMap<Stop, { seen: Set<string>; left: TermBox[]; right: TermBox[] }>();
   private hovered: string | null = null;
   private underline: LinkUnderline;
-  private lens: { x: number; y: number; u: number; v: number } | null = null;
+  private lens: { x: number; y: number; u: number; v: number; side: "left" | "right" } | null = null;
   private target = { stop: 0, beat: 0 };
   private running = false;
   private riffleNext = false;
@@ -551,24 +551,28 @@ export class BookScene {
 
   private updateLens(event: PointerEvent): void {
     const stop = this.options.stops[this.applied.stop];
-    if (!stop?.page || this.narrow || this.camStartTime >= 0 || this.leaf.front.visible) {
+    if (!stop || this.narrow || this.camStartTime >= 0 || this.leaf.front.visible) {
       this.showLens(null);
       return;
     }
     this.setPointer(event);
-    const hit = this.raycaster.intersectObject(this.leftPlane)[0];
-    if (!hit?.uv) {
+    const hit = this.raycaster.intersectObjects([this.leftPlane, this.rightPlane], false)[0];
+    const side = hit?.object === this.leftPlane ? "left" : "right";
+    const v = hit?.uv ? 1 - hit.uv.y : 0;
+    const source = side === "left" ? this.leftText.current : this.rightText.current;
+    const text = side === "left" ? !!stop.page : !stop.overlay && (stop.exhibit === null || (!stop.paint?.right && v >= captionTop(source.width, source.height)));
+    if (!hit?.uv || !text) {
       this.showLens(null);
       return;
     }
     const rect = this.options.canvas.getBoundingClientRect();
-    this.showLens({ x: event.clientX - rect.left, y: event.clientY - rect.top, u: hit.uv.x, v: 1 - hit.uv.y });
+    this.showLens({ x: event.clientX - rect.left, y: event.clientY - rect.top, u: hit.uv.x, v, side });
   }
 
-  private showLens(lens: { x: number; y: number; u: number; v: number } | null): void {
+  private showLens(lens: { x: number; y: number; u: number; v: number; side: "left" | "right" } | null): void {
     if (!lens && !this.lens) return;
     this.lens = lens;
-    this.options.onLens(lens && { ...lens, source: this.leftText.current, lines: this.underline.lines("left"), color: this.kit.palette.blue });
+    this.options.onLens(lens && { ...lens, source: (lens.side === "left" ? this.leftText : this.rightText).current, lines: this.underline.lines(lens.side), color: this.kit.palette.blue });
   }
 
   private setVisible(visible: boolean): void {

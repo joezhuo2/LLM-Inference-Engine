@@ -141,6 +141,9 @@ export function drawTextPage(canvas: HTMLCanvasElement, page: PageText | null, p
   return marks.boxes;
 }
 
+const CAPTION_RISE = 300;
+export const captionTop = (w: number, h: number) => (h - (CAPTION_RISE + 40) * (w / 1200)) / h;
+
 export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, caption: string, instruction: string | undefined, folio: string, palette: BookPalette, fonts: Fonts, seen?: Set<string>): TermBox[] {
   const ctx = canvas.getContext("2d")!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -150,7 +153,7 @@ export function drawCaptionPage(canvas: HTMLCanvasElement, figure: string, capti
   const unit = w / 1200;
   const x = 170 * unit;
   const width = w - 260 * unit;
-  let y = h - 300 * unit;
+  let y = h - CAPTION_RISE * unit;
   ctx.textBaseline = "alphabetic";
   ctx.font = `italic ${28 * unit}px ${fonts.sans}`;
   const marks: Marks = { boxes: [], w, h, color: palette.blue };
