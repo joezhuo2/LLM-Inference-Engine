@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/every-byte-fixes
 
+- Part A: the turning leaf samples the page textures already on the GPU and lays them on paper in its shader, instead of copying two full-size canvases and uploading them at the start of every turn (#215).
+
 - Part A: every byte turns a page from its outer edge first (going forward the edge now leads by 0.4 of the turn, as it already did going back) and eases the leaf with a sine curve, so the edge lifts about 0.2 s after a click instead of about 0.75 s (#215).
 
 ## web/timeline-scenes

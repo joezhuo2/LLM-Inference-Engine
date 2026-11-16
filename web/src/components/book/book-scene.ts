@@ -105,6 +105,16 @@ function edgeTexture(paper: string, ink: string): THREE.CanvasTexture {
 
 const pageHeight = (fromSpine: number) => -0.032 * Math.exp(-fromSpine * 13) - 0.006 * fromSpine * fromSpine;
 
+function onPaper(material: THREE.MeshLambertMaterial, paper: string, flip: boolean): void {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.paper = { value: new THREE.Color(paper) };
+    shader.fragmentShader = shader.fragmentShader.replace("void main() {", "uniform vec3 paper;\nvoid main() {").replace(
+      "#include <map_fragment>",
+      `vec4 ink = texture2D(map, vec2(${flip ? "1.0 - vMapUv.x" : "vMapUv.x"}, vMapUv.y));\ndiffuseColor.rgb *= mix(paper, ink.rgb, ink.a);`,
+    );
+  };
+}
+
 class TextSide {
   readonly canvases: [HTMLCanvasElement, HTMLCanvasElement];
   readonly textures: [THREE.CanvasTexture, THREE.CanvasTexture];
@@ -171,7 +181,7 @@ export class BookScene {
   private modelRoot = new THREE.Group();
   private leftText: TextSide;
   private rightText: TextSide;
-  private leaf: { front: THREE.Mesh; back: THREE.Mesh; geometry: THREE.BufferGeometry; frontMap: THREE.CanvasTexture; backMap: THREE.CanvasTexture; frontCanvas: HTMLCanvasElement; backCanvas: HTMLCanvasElement };
+  private leaf: { front: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>; back: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>; geometry: THREE.BufferGeometry; frontMap: THREE.CanvasTexture; backMap: THREE.CanvasTexture; frontCanvas: HTMLCanvasElement; backCanvas: HTMLCanvasElement };
   private desk: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>;
   private cam = { x: 0, y: 0, z: 0, az: 0, el: 60, dist: 6 };
   private camGoal = { x: 0, y: 0, z: 0, az: 0, el: 60, dist: 6 };
@@ -334,8 +344,10 @@ export class BookScene {
     backLeaf.texture.wrapS = THREE.RepeatWrapping;
     backLeaf.texture.repeat.x = -1;
     backLeaf.texture.offset.x = 1;
-    const front = new THREE.Mesh(leafGeometry, new THREE.MeshLambertMaterial({ map: frontLeaf.texture, side: THREE.FrontSide }));
-    const back = new THREE.Mesh(leafGeometry, new THREE.MeshLambertMaterial({ map: backLeaf.texture, side: THREE.BackSide }));
+    const front = new THREE.Mesh(leafGeometry, new THREE.MeshLambertMaterial({ map: this.rightText.textures[0], side: THREE.FrontSide }));
+    const back = new THREE.Mesh(leafGeometry, new THREE.MeshLambertMaterial({ map: this.leftText.textures[0], side: THREE.BackSide }));
+    onPaper(front.material, palette.paper, false);
+    onPaper(back.material, palette.paper, true);
     front.castShadow = true;
     front.visible = false;
     back.visible = false;
@@ -837,33 +849,23 @@ export class BookScene {
 
   private async turnLeaf(from: Stop, to: Stop): Promise<void> {
     const forward = to.spread > from.spread;
-    const scratch = document.createElement("canvas");
-    scratch.width = this.leaf.frontCanvas.width;
-    scratch.height = this.leaf.frontCanvas.height;
     const left = this.leftText.prepare((c) => this.drawLeft(c, to));
     const right = this.rightText.prepare((c) => this.drawRight(c, to));
-    const zeroActive = () => {
-      this.leftText.meshes[this.leftText.active].material.opacity = 0;
-      this.rightText.meshes[this.rightText.active].material.opacity = 0;
-    };
     if (forward) {
-      this.composeLeaf(this.leaf.frontCanvas, this.rightText.current);
-      this.composeLeaf(this.leaf.backCanvas, this.leftText.canvases[left]);
+      this.leaf.front.material.map = this.rightText.textures[this.rightText.active];
+      this.leaf.back.material.map = this.leftText.textures[left];
       this.rightText.blend(right, 1);
       this.rightText.commit(right);
     } else {
-      this.composeLeaf(this.leaf.frontCanvas, this.rightText.canvases[right]);
-      this.composeLeaf(this.leaf.backCanvas, this.leftText.current);
+      this.leaf.front.material.map = this.rightText.textures[right];
+      this.leaf.back.material.map = this.leftText.textures[this.leftText.active];
       this.leftText.blend(left, 1);
       this.leftText.commit(left);
+      this.rightText.meshes[this.rightText.active].material.opacity = 0;
     }
-    this.leaf.frontMap.needsUpdate = true;
-    this.leaf.backMap.needsUpdate = true;
     this.leaf.front.visible = true;
     this.leaf.back.visible = true;
     this.setLeaf(forward ? 0 : 1, forward);
-    if (!forward) zeroActive();
-    this.leftText.meshes[this.leftText.active].material.opacity = forward ? this.leftText.meshes[this.leftText.active].material.opacity : 1;
     await this.tween(1.8, (t) => this.setLeaf(forward ? easeInOutSine(t) : 1 - easeInOutSine(t), forward));
     this.leaf.front.visible = false;
     this.leaf.back.visible = false;

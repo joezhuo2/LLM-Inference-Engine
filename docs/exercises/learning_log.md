@@ -2293,3 +2293,5 @@
 
 - **a page curl where the free edge leads the spine** => 
 - **a gentle-start ease: sine in-out against cubic in-out** => 
+- **patching a three.js material shader with onBeforeCompile** => 
+- **why uploading a large canvas texture stalls a frame** => 
