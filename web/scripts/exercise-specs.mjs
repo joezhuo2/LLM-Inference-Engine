@@ -18,6 +18,11 @@ export const specSources = [
   { id: "swiglu", start: "efecbaa", file: "src/kernels/swiglu_fast.cu", title: "swiglu (fast)" },
   { id: "cuda-graphs", start: "b8fef56", file: "src/runtime/decode_graphs.cpp", title: "DecodeGraphs" },
   { id: "chunked-prefill", start: "2d9ee3b", file: "src/sched/scheduler.cpp", title: "Scheduler::schedule_chunked" },
+  { id: "scheduler-cancel", start: "a5d0793", file: "src/sched/scheduler.cpp", title: "Scheduler::cancel" },
+  { id: "graph-buckets", start: "11c250f", file: "src/sched/graph_buckets.cpp", title: "decode_graph_buckets" },
+  { id: "flash-prefill", start: "4c406f7", file: "src/kernels/flash_prefill.cu", title: "flash_attention_prefill" },
+  { id: "speculative", start: "865c3b5", file: "src/sched/speculative.cpp", title: "speculative decoding by prompt lookup (propose_prompt_lookup, count_accepted, BlockManager::truncate)" },
+  { id: "tensor-parallel", start: "ac6d5f0", file: "src/loader/tensor_parallel.cpp", title: "plan_shard_layout" },
 ];
 
 export function parseSpecs(source) {
