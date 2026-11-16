@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/every-byte-fixes
 
+- Part A: clicking the every byte tab while the book is open closes it back to the cover (page 1); the book watches the path because a URL changed by pushState keeps the same page mounted (#215).
+
 - Part A: the book bar has a table of contents button and a magnifier toggle (on by default), and the list view or reading view link is an icon with a tooltip (#215).
 
 - Part A: every byte numbers each page: the left page of a spread is even and the right page odd, after the cover as page 1; the scene draws both numbers for every spread, and the contents, the in-this-chapter lists and the bar follow (#215).

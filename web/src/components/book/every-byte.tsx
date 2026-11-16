@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Group, Object3D } from "three";
@@ -92,6 +92,7 @@ const initial = compose(base);
 export function EveryByte() {
   const reduced = usePrefersReducedMotion();
   const router = useRouter();
+  const pathname = usePathname();
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const bodies = useRef<HTMLDivElement>(null);
@@ -274,6 +275,10 @@ export function EveryByte() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (pathname.replace(/\/$/, "") === BOOK) closeBook(false);
+  }, [pathname, closeBook]);
 
   const goStop = useCallback(
     async (key: string, local: number) => {
