@@ -2294,3 +2294,5 @@
 - **a CSS-only tooltip with group-hover and has-[:focus-visible]** => 
 - **rel=noopener noreferrer on links that open a new tab** => 
 - **the hidden attribute: keeping markup in the page without showing it** => 
+- **inertial scrolling: easing the scroll position toward a target each frame** => 
+- **a non-passive wheel listener and preventDefault** => 

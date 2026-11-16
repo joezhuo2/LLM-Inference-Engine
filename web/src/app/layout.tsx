@@ -5,6 +5,7 @@ import { Footer } from "@/components/footer";
 import { GlossProvider } from "@/components/gloss";
 import { IntroLoader } from "@/components/intro-loader";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { SmoothScroll } from "@/components/smooth-scroll";
 import { TopBar } from "@/components/top-bar";
 import { ogImage } from "@/lib/og";
 import "./globals.css";
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </a>
           <IntroLoader />
           <ScrollToTop />
+          <SmoothScroll />
           <TopBar />
           <main id="content" tabIndex={-1} className="flex-1 scroll-mt-12">
             <GlossProvider>{children}</GlossProvider>

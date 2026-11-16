@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/nav-trim
 
+- Part A: wheel scrolling on the whole site eases toward its target (smoothScroll copied from Crystal Design's smooth-scroll package, writing with behavior instant so the CSS smooth scroll for anchors does not fight it); nested scrollers and reduced motion keep native scrolling.
+
 - Part A: the links to Every Byte and the one-hour path moved from the kernels page into the footer, hidden for now with the hidden attribute.
 
 - Part A: the top bar no longer links every byte and exercises; both pages still exist at their URLs.
