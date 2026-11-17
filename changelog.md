@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/glossary-terms
+
+- Part A: ten more glossary terms with hover cards: floor, knee, shard, oracle, free list, SLO, SSE, safetensors, pinned memory and causal mask (`web/src/lib/glossary.ts`)
+
 ## kernel/fp8-batch16-stubs
 
 - Part C (stub): `paged_attention_decode_grouped` for #94, decode attention with one block per row and KV head that serves every query head of the group from one load of the keys and values (`include/engine/kernels/paged_attention_grouped.h`, `src/kernels/paged_attention_grouped.cu` with the TODO(JOE) spec). It throws until Joe writes it. 28 todo_joe tests in `tests/todo/gpu/test_paged_attention_grouped.cpp`: the tests `paged_attention_decode_v2` passes, with head dims that are multiples of 16

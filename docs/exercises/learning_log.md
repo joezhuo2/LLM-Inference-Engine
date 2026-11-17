@@ -2343,3 +2343,11 @@
 - **mma.sync with .e4m3 operands** => 
 - **one block per (row, KV head): sharing K and V loads across a group of query heads** => 
 - **P V as a second matrix product** => 
+
+## Glossary terms (Branch 160)
+
+- **service level objective (SLO)** => 
+- **server-sent events (SSE)** => 
+- **pinned (page-locked) host memory** => 
+- **a causal mask** => 
+- **a test oracle** => 
