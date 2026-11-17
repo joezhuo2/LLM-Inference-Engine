@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/motion-pass
+
+- Part A: the Every Byte bar and the one-hour pill take their edge and shadow from the theme (`--pill-edge`, `--pill-shadow` in `globals.css`) in place of a fixed white border and black shadow, and the table of contents, magnifier and reading view buttons show a themed hover text above the bar in place of the browser's `title` tooltip (`every-byte.tsx`, `book-view.tsx`)
+
 ## results/refresh-2026-11-16
 
 - Part A: status notes for the refresh (`docs/claude/status.md`).

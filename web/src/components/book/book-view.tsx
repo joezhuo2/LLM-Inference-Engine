@@ -279,7 +279,7 @@ export function BookView({ chapter }: { chapter: ChapterDef }) {
           <nav
             aria-label="book"
             style={{ width: barWidth ?? undefined }}
-            className="absolute bottom-4 left-1/2 z-20 max-w-[calc(100%-2rem)] -translate-x-1/2 overflow-hidden rounded-full border border-white/30 bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150 transition-[width] duration-700 ease-[var(--ease-in-out)] motion-reduce:transition-none"
+            className="absolute bottom-4 left-1/2 z-20 max-w-[calc(100%-2rem)] -translate-x-1/2 overflow-hidden rounded-full border border-[var(--pill-edge)] bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-[color:var(--pill-shadow)] backdrop-blur-xl backdrop-saturate-150 transition-[width] duration-700 ease-[var(--ease-in-out)] motion-reduce:transition-none"
           >
             <div ref={barInner} className="flex w-max items-center gap-1.5 py-1 pl-1.5 pr-4">
             <button type="button" aria-label="previous page" disabled={stop === 0} onClick={() => go(stop - 1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
