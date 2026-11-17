@@ -32,7 +32,7 @@ export function RankBar({ n, x, y, h, px }: { n: number; x: number; y: number; h
 }
 
 export function SharesFigure() {
-  const { on } = useLoop(14);
+  const { on, grow } = useLoop(14);
   const px = W / full;
   const groups = rankChoices.map((n, k) => ({ n, top: 44 + rankChoices.slice(0, k).reduce((a, m) => a + 26 + m * 22, 0), s: rankShare(n) }));
   return (
@@ -44,7 +44,9 @@ export function SharesFigure() {
         <motion.g key={g.n} {...on(0.05 + k * 0.2)}>
           <Label x={X} y={g.top + 12} className="fill-text">{g.n === 1 ? "1 GPU: the whole model" : `${g.n} GPUs: each holds ${fmt(g.s.pct)}% of the model`}</Label>
           {Array.from({ length: g.n }, (_, r) => (
-            <RankBar key={r} n={g.n} x={X} y={g.top + 20 + r * 22} h={16} px={px} />
+            <motion.g key={r} {...grow(0.07 + k * 0.2 + r * 0.02, 0.17 + k * 0.2 + r * 0.02)}>
+              <RankBar n={g.n} x={X} y={g.top + 20 + r * 22} h={16} px={px} />
+            </motion.g>
           ))}
         </motion.g>
       ))}
@@ -111,7 +113,7 @@ export function MatrixFigure({ part }: { part: "attention" | "mlp" }) {
 }
 
 export function SumsFigure() {
-  const { on } = useLoop(14);
+  const { on, grow, move } = useLoop(14);
   const lanes = [0, 1];
   const ys = [92, 212];
   return (
@@ -122,15 +124,21 @@ export function SumsFigure() {
       <rect x={X} y={70} width={16} height={180} rx={2} className="fill-text/70" />
       <Label x={X} y={270}>x, whole</Label>
       {lanes.map((r) => (
+        <motion.circle key={`x${r}`} cx={X + 8} cy={160} r={5} className="fill-accent" {...move(0.05 + r * 0.2, 0.15 + r * 0.2, 36, ys[r] + 12 - 160, false)} />
+      ))}
+      {lanes.map((r) => (
+        <motion.rect key={`p${r}`} x={X + 260} y={ys[r] - 30} width={16} height={84} rx={2} className="fill-accent" {...move(0.48, 0.6, 180, 148 - ys[r], false)} />
+      ))}
+      {lanes.map((r) => (
         <motion.g key={r} {...on(0.05 + r * 0.2)}>
           <Label x={X + 40} y={ys[r] - 26} className="fill-text">{`rank ${r}`}</Label>
           <rect x={X + 40} y={ys[r] - 16} width={80} height={56} rx={2} className="fill-text/30" />
           <Label x={X + 46} y={ys[r] + 18}>its rows</Label>
-          <rect x={X + 140} y={ys[r] - 4} width={16} height={32} rx={2} className="fill-accent/60" />
+          <motion.rect x={X + 140} y={ys[r] - 4} width={16} height={32} rx={2} className="fill-accent/60" {...grow(0.12 + r * 0.2, 0.18 + r * 0.2, "y")} />
           <Label x={X + 128} y={ys[r] + 50}>its slice</Label>
           <rect x={X + 176} y={ys[r] - 16} width={56} height={56} rx={2} className="fill-text/30" />
           <Label x={X + 180} y={ys[r] + 18}>its columns</Label>
-          <rect x={X + 260} y={ys[r] - 30} width={16} height={84} rx={2} className="fill-accent" />
+          <motion.rect x={X + 260} y={ys[r] - 30} width={16} height={84} rx={2} className="fill-accent" {...grow(0.17 + r * 0.2, 0.24 + r * 0.2, "y")} />
           <Label x={X + 284} y={ys[r] + 18}>a partial result, full size</Label>
         </motion.g>
       ))}
@@ -138,7 +146,7 @@ export function SumsFigure() {
         <text x={X + 268} y={160} textAnchor="middle" className="fill-text text-[18px]">
           +
         </text>
-        <rect x={X + 440} y={70} width={16} height={180} rx={2} className="fill-accent" />
+        <motion.rect x={X + 440} y={70} width={16} height={180} rx={2} className="fill-accent" {...grow(0.58, 0.68, "y")} />
         <Label x={X + 400} y={270} className="fill-accent">the sum = the whole layer</Label>
       </motion.g>
       <Label x={X} y={316} className="fill-text">{`twice in every layer: after attention, and after the MLP (${tpShape.sums} sums per token)`}</Label>
@@ -154,7 +162,7 @@ const forwardRows = [
 ];
 
 export function ForwardFigure() {
-  const { on } = useLoop(16);
+  const { on, move } = useLoop(16);
   const n = 2;
   const left = X + 64;
   return (
@@ -181,6 +189,9 @@ export function ForwardFigure() {
             {box(0, 0, "norm", "fill-text/30", 0.04 + k * 0.4)}
             {Array.from({ length: n }, (_, r) => row.ops.map((op, i) => box(1 + r * row.ops.length + i, 1 + r, op, "fill-accent/50", 0.08 + k * 0.4 + (r * row.ops.length + i) * 0.02)))}
             {box(boxes - 1, 0, "sum", "fill-accent", 0.3 + k * 0.4)}
+            {Array.from({ length: n }, (_, r) => (
+              <motion.rect key={`c${r}`} x={left + (1 + r * row.ops.length) * pitch - 2} y={top + 16 + (1 + r) * 34} width={pitch + 1} height={30} rx={3} className="fill-none stroke-text" strokeWidth={1.5} {...move(0.08 + k * 0.4 + r * 0.11, 0.19 + k * 0.4 + r * 0.11, (row.ops.length - 1) * pitch, 0, false)} />
+            ))}
           </g>
         );
       })}
@@ -191,7 +202,7 @@ export function ForwardFigure() {
 }
 
 export function RankBytesFigure() {
-  const { on } = useLoop(14);
+  const { on, grow } = useLoop(14);
   const px = W / full;
   const rows = measuredRanks.filter((r) => r.n !== 1);
   return (
@@ -203,7 +214,9 @@ export function RankBytesFigure() {
         <motion.g key={r.n} {...on(0.05 + i * 0.15)}>
           <Label x={X} y={62 + i * 78} className="fill-text">{r.n === 0 ? "the whole model" : `a rank of ${r.n}: ${fmt(r.calc.pct)}%, not ${fmt(100 / r.n)}%`}</Label>
           <Label x={X + W} y={62 + i * 78} anchor="end" className="fill-accent">{`${fmt(r.mib, 1)} MiB`}</Label>
-          <RankBar n={Math.max(1, r.n)} x={X} y={72 + i * 78} h={26} px={px} />
+          <motion.g {...grow(0.07 + i * 0.15, 0.19 + i * 0.15)}>
+            <RankBar n={Math.max(1, r.n)} x={X} y={72 + i * 78} h={26} px={px} />
+          </motion.g>
           {r.n > 1 && <line x1={X + W / r.n} x2={X + W / r.n} y1={68 + i * 78} y2={104 + i * 78} strokeDasharray="3 3" className="stroke-text" />}
         </motion.g>
       ))}
@@ -250,7 +263,7 @@ export function LoadFigure() {
 }
 
 export function WireFigure() {
-  const { on } = useLoop(14);
+  const { on, move } = useLoop(14);
   const n = mostRanks;
   const ring = Array.from({ length: n }, (_, r) => {
     const a = (r / n) * Math.PI * 2 - Math.PI / 2;
@@ -269,11 +282,16 @@ export function WireFigure() {
           <Label x={X + 30} y={113 + r * 46} className="fill-text">{`rank ${r}, its turn`}</Label>
         </motion.g>
       ))}
+      <motion.rect x={X + 20} y={92} width={180} height={34} rx={3} className="fill-none stroke-text" strokeWidth={1.5} {...move(0.4, 0.8, 0, (n - 1) * 46, false)} />
       <Label x={X} y={326}>a sum is an add in the one GPU&apos;s memory</Label>
       <Label x={330} y={62} className="fill-text">{`${n} real GPUs`}</Label>
       {ring.map((p, r) => {
         const q = ring[(r + 1) % n];
         return <line key={`l${r}`} x1={p.x} y1={p.y} x2={q.x} y2={q.y} strokeDasharray="4 4" className="stroke-text/50" />;
+      })}
+      {ring.map((p, r) => {
+        const q = ring[(r + 1) % n];
+        return <motion.circle key={`s${r}`} cx={p.x} cy={p.y} r={5} className="fill-accent" {...move(0.3 + (r * 0.6) / n, 0.3 + ((r + 1) * 0.6) / n, q.x - p.x, q.y - p.y, false)} />;
       })}
       {ring.map((p, r) => (
         <g key={r}>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExerciseCard } from "@/components/exercise-card";
+import { ExercisesFigure } from "@/components/kernels/page-figures";
 import { EstimateCard } from "@/components/estimate-card";
 import { bookHref } from "@/components/book/paths";
 import { PageTitle } from "@/components/page-title";
@@ -47,6 +48,7 @@ export default function Exercises() {
             <li>Write the function until they pass, using the spec and the tests as your only guide.</li>
             <li>Compare with the code that shipped, and read the chapter&apos;s timeline and what didn&apos;t work for the mistakes made on the way.</li>
           </ol>
+          <ExercisesFigure total={exercises.length} cpu={cpuCount()} numpy={numpyCount()} />
           <p className="max-w-2xl tabular-nums text-text">
             {cpuCount()} of {exercises.length} run on a CPU. {numpyCount()} more have a NumPy version that does, so {cpuCount() + numpyCount()} of {exercises.length} can be started without an NVIDIA GPU.
           </p>

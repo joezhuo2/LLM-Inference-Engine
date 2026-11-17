@@ -99,7 +99,7 @@ export function RowsFigure() {
       {rowTimes.slice(0, 6).map((r, i) => (
         <motion.g key={r.rows} {...on(0.56 + i * 0.05)}>
           <Label x={X} y={208 + i * 26}>{`${r.rows} ${r.rows === 1 ? "row" : "rows"} · ${fmt(r.steps)} ${r.steps === 1 ? "step" : "steps"}`}</Label>
-          <rect x={X + 150} y={197 + i * 26} width={r.ms * px} height={14} rx={2} className={r.rows === 1 ? "fill-text/70" : "fill-accent/60"} />
+          <motion.rect x={X + 150} y={197 + i * 26} width={r.ms * px} height={14} rx={2} className={r.rows === 1 ? "fill-text/70" : "fill-accent/60"} {...grow(0.58 + i * 0.05, 0.68 + i * 0.05)} />
           <Label x={X + 156 + r.ms * px} y={208 + i * 26} className="fill-text">{`${fmt(r.ms, 2)} ms`}</Label>
         </motion.g>
       ))}
@@ -145,8 +145,8 @@ export function GuessFigure() {
         <Label x={X + (tail.length - s.ngram) * w} y={yEnd + 42} className="fill-accent">{`the last ${tokens(s.ngram)}: the pattern`}</Label>
       </motion.g>
       {s.draft.map((t, i) => (
-        <motion.g key={i} {...move(0.38 + i * 0.03, 0.52 + i * 0.03, 0, 0)}>
-          <Chip x={endX + i * w} y={yEnd} w={w} text={short(t)} tone="draft" />
+        <motion.g key={i} {...move(0.38 + i * 0.03, 0.54 + i * 0.03, endX - X - (lead + s.ngram) * w, yEnd - yTop, true, 0.94)}>
+          <Chip x={X + (lead + s.ngram + i) * w} y={yTop} w={w} text={short(t)} tone="draft" />
         </motion.g>
       ))}
       <motion.g {...on(0.7)}>
@@ -159,7 +159,7 @@ export function GuessFigure() {
 }
 
 export function CheckFigure() {
-  const { on } = useLoop(14);
+  const { on, move } = useLoop(14);
   const s = spec.missStep;
   const rows = 1 + s.draft.length;
   const pitch = Math.min(30, 290 / rows);
@@ -182,7 +182,11 @@ export function CheckFigure() {
             <text x={X + 165} y={y + 16} className="fill-muted text-[11px]">
               →
             </text>
-            {keptRow ? <Chip x={X + 190} y={y} w={90} text={short(all[s.at + i], 11)} tone="kept" /> : <Chip x={X + 190} y={y} w={90} text="dropped" tone="dropped" />}
+            {keptRow ? (
+              <motion.g {...move(0.08 + i * 0.07, 0.17 + i * 0.07, 130, 0, true, 0.94)}>
+                <Chip x={X + 60} y={y} w={90} text={short(all[s.at + i], 11)} tone="kept" />
+              </motion.g>
+            ) : <Chip x={X + 190} y={y} w={90} text="dropped" tone="dropped" />}
             {keptRow && (
               <Label x={X + 320} y={y + 16} className={wrong ? "fill-warn" : i < s.draft.length ? "fill-accent" : "fill-muted"}>
                 {i >= s.draft.length ? "no guess left to check" : wrong ? `guess was “${short(s.draft[i], 11)}”: stop here` : "same as the guess: go on"}
@@ -205,7 +209,7 @@ export function CheckFigure() {
 }
 
 export function TruncateFigure() {
-  const { on } = useLoop(14);
+  const { on, move, reduced } = useLoop(14);
   const s = spec.missStep;
   const block = 16;
   const first = Math.floor((s.at - 1) / block) * block;
@@ -223,9 +227,21 @@ export function TruncateFigure() {
           {Array.from({ length: block }, (_, i) => {
             const pos = first + b * block + i;
             const tone = pos < s.at - 1 ? "fill-text/25" : pos === s.at - 1 ? "fill-text/70" : pos <= keptEnd ? "fill-accent" : pos <= last ? "fill-none stroke-warn" : "fill-none stroke-border";
+            const rejected = pos > keptEnd && pos <= last;
+            const slot = <rect x={X + i * cell} y={66 + b * 86} width={cell - 3} height={34} rx={2} className={tone} strokeDasharray={rejected ? "3 2" : undefined} />;
+            if (rejected && !reduced)
+              return (
+                <g key={i}>
+                  <motion.g {...on(0.04)}>
+                    <rect x={X + i * cell} y={66 + b * 86} width={cell - 3} height={34} rx={2} className="fill-none stroke-border" />
+                  </motion.g>
+                  <motion.g {...on(0.2, 0.46, false)}>{slot}</motion.g>
+                  <motion.g {...move(0.44, 0.56, 0, 20, false)}>{slot}</motion.g>
+                </g>
+              );
             return (
               <motion.g key={i} {...on(pos < s.at - 1 ? 0.04 : pos <= keptEnd ? 0.2 : 0.36)}>
-                <rect x={X + i * cell} y={66 + b * 86} width={cell - 3} height={34} rx={2} className={tone} strokeDasharray={pos > keptEnd && pos <= last ? "3 2" : undefined} />
+                {slot}
               </motion.g>
             );
           })}

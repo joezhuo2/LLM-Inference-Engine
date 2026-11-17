@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { gloss } from "@/components/glossed";
+import { BeyondFigure } from "@/components/kernels/page-figures";
 import { StoryNav } from "@/components/kernels/story-nav";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
@@ -53,6 +54,7 @@ export default function Beyond() {
                   {t.title}
                 </h2>
               </div>
+              <BeyondFigure id={t.id} />
               {t.paragraphs.map((p) => (
                 <p key={p} className="max-w-2xl text-muted">
                   {gloss(p)}

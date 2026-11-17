@@ -14,6 +14,8 @@
   --baseline: #a8a28f;
   --on-mark: #fbf8f4;
   --warn: #964260;
+  --pill-edge: rgb(255 255 255 / 0.45);
+  --pill-shadow: rgb(84 78 60 / 0.2);
   --series-1: #3d7099;
   --series-2: #c4708b;
   --series-3: #b8b096;
@@ -54,6 +56,8 @@
   --baseline: #75705f;
   --on-mark: #fbf8f4;
   --warn: #e8b7c2;
+  --pill-edge: rgb(231 226 214 / 0.14);
+  --pill-shadow: rgb(0 0 0 / 0.5);
   --series-1: #7ea9cc;
   --series-2: #d58098;
   --series-3: #e7e2d6;

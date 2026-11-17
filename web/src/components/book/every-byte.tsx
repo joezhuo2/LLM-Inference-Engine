@@ -335,6 +335,16 @@ export function EveryByte() {
   );
 
   const barRef = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<{ label: string; x: number; on: boolean }>();
+  const tipProps = (label: string) => {
+    const show = (e: { currentTarget: HTMLElement }) => {
+      const box = e.currentTarget.getBoundingClientRect();
+      const frame = e.currentTarget.closest("nav")?.parentElement?.getBoundingClientRect();
+      setTip({ label, x: box.left + box.width / 2 - (frame?.left ?? 0), on: true });
+    };
+    const hide = () => setTip((t) => t && { ...t, on: false });
+    return { onPointerEnter: show, onFocus: show, onPointerLeave: hide, onBlur: hide };
+  };
   const [barWidth, setBarWidth] = useState<number>();
   useEffect(() => {
     const el = barRef.current;
@@ -588,7 +598,7 @@ export function EveryByte() {
           initial={false}
           animate={{ width: barWidth }}
           transition={{ duration: reduced ? 0 : 0.7, ease: "easeInOut" }}
-          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 overflow-hidden rounded-full border border-white/30 bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
+          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 overflow-hidden rounded-full border border-[var(--pill-edge)] bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-[color:var(--pill-shadow)] backdrop-blur-xl backdrop-saturate-150"
         >
           <div ref={barRef} className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 py-1 pl-1.5 pr-1.5">
             <button type="button" aria-label="previous chapter" disabled={!open || !routeSection(segment, -1, shortOn)} onClick={() => jump(-1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">
@@ -624,18 +634,25 @@ export function EveryByte() {
               <Icon d="M3 3l5 5-5 5M8 3l5 5-5 5" />
             </button>
             <span className="ml-1 flex shrink-0 items-center gap-1.5 border-l border-border pl-2">
-              <button type="button" aria-label="table of contents" title="table of contents" onClick={() => void goKey("contents", true)} className="pressable rounded-full p-1.5 hover:text-text">
+              <button type="button" aria-label="table of contents" {...tipProps("table of contents")} onClick={() => void goKey("contents", true)} className="pressable rounded-full p-1.5 hover:text-text">
                 <Icon d="M8 4.5C6.5 3.5 4.5 3 2 3v9.5c2.5 0 4.5.5 6 1.5 1.5-1 3.5-1.5 6-1.5V3c-2.5 0-4.5.5-6 1.5zM8 4.5V14" />
               </button>
-              <button type="button" aria-label="magnifier" title="magnifier" aria-pressed={lensOn} onClick={() => setLensOn((on) => !on)} className={clsx("pressable rounded-full p-1.5 hover:text-text", lensOn && "text-accent")}>
+              <button type="button" aria-label="magnifier" {...tipProps("magnifier")} aria-pressed={lensOn} onClick={() => setLensOn((on) => !on)} className={clsx("pressable rounded-full p-1.5 hover:text-text", lensOn && "text-accent")}>
                 <Icon d="M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 1 0 0-9zM10.3 10.3 14 14" />
               </button>
-              <Link href={otherHref} aria-label={def ? "reading view" : "list view"} title={def ? "reading view" : "list view"} className="pressable rounded-full p-1.5 hover:text-text max-sm:hidden">
+              <Link href={otherHref} aria-label={def ? "reading view" : "list view"} {...tipProps(def ? "reading view" : "list view")} className="pressable rounded-full p-1.5 hover:text-text max-sm:hidden">
                 <Icon d={def ? "M4 2.5h8v11H4zM6 5.5h4M6 8h4M6 10.5h2.5" : "M6 4h8M6 8h8M6 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"} />
               </Link>
             </span>
           </div>
         </motion.nav>
+        <span
+          aria-hidden
+          style={{ left: tip?.x ?? "50%" }}
+          className={clsx("pointer-events-none absolute bottom-[3.75rem] z-20 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-surface/95 px-2.5 py-1.5 text-xs text-muted shadow-lg shadow-[color:var(--pill-shadow)] backdrop-blur-md transition-[opacity,translate] duration-300 ease-out motion-reduce:transition-none", tip?.on ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0")}
+        >
+          {tip?.label}
+        </span>
         <AnimatePresence>
           {shortOn && (
             <motion.div
@@ -645,7 +662,7 @@ export function EveryByte() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: reduced ? 0 : -10 }}
               transition={{ duration: reduced ? 0 : 0.7, ease: "easeInOut" }}
-              className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-white/30 bg-surface/55 py-1 pl-4 pr-1.5 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150"
+              className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--pill-edge)] bg-surface/55 py-1 pl-4 pr-1.5 tabular-nums text-xs text-muted shadow-lg shadow-[color:var(--pill-shadow)] backdrop-blur-xl backdrop-saturate-150"
             >
               <span className="text-text">{shortPathName}</span>
               <span>{routeAt >= 0 ? `${routeAt + 1} of ${route.order.length}` : "off the path, turn the page to rejoin"}</span>
