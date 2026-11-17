@@ -41,7 +41,7 @@ export function TankFigure() {
 }
 
 export function BytesFigure() {
-  const { on } = useLoop(14);
+  const { on, grow } = useLoop(14);
   const chipW = 96;
   const ladder = [
     { label: "one cached token", bytes: budget.tokenBytes, text: `${fmt(budget.tokenBytes)} bytes` },
@@ -81,7 +81,7 @@ export function BytesFigure() {
             {r.text}
           </Label>
           <rect x={X} y={167 + i * 42} width={W} height={7} rx={2} className="fill-border" />
-          <rect x={X} y={167 + i * 42} width={Math.max(1.5, (r.bytes / budget.pool) * W)} height={7} rx={2} className={i === 4 ? "fill-text/70" : "fill-accent"} />
+          <motion.rect x={X} y={167 + i * 42} width={Math.max(1.5, (r.bytes / budget.pool) * W)} height={7} rx={2} className={i === 4 ? "fill-text/70" : "fill-accent"} {...grow(0.55 + i * 0.06, 0.63 + i * 0.06)} />
         </motion.g>
       ))}
       <Label x={X} y={384}>bars to the scale of the pool; calculated from the model&apos;s shape and the block count</Label>
@@ -90,7 +90,7 @@ export function BytesFigure() {
 }
 
 export function BudgetFigure() {
-  const { on } = useLoop(14);
+  const { on, draw } = useLoop(14);
   const top = 40;
   const h = 200;
   const maxBatch = batchRows[batchRows.length - 1].batch;
@@ -110,9 +110,9 @@ export function BudgetFigure() {
       <Label x={x(0) - 4} y={top + h + 4} anchor="end">
         0
       </Label>
-      <motion.polyline points={curve} fill="none" strokeWidth={2} className="stroke-accent" {...on(0.08)} />
-      {batchRows.map((r, i) => (
-        <motion.g key={r.batch} {...on(0.15 + i * 0.06)}>
+      <motion.polyline points={curve} fill="none" strokeWidth={2} className="stroke-accent" {...draw(0.04, 0.5)} />
+      {batchRows.map((r) => (
+        <motion.g key={r.batch} {...on(0.04 + (0.46 * (r.batch - 1)) / (maxBatch - 1))}>
           <circle cx={x(r.batch)} cy={y(r.context)} r={4} className={r.bound === "pool" ? "fill-warn" : "fill-accent"} />
           <Label x={x(r.batch)} y={top + h + 16} anchor="middle">
             {r.batch}

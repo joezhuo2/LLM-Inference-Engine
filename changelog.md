@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/motion-pass
 
+- Part A: more motion in four kernel stories. `useLoop` gets `draw` (a line draws itself). The residual add and RMSNorm lead-in figure had fades only: its bars now rise and a dot runs from the stream to each norm and from each block back to the stream. Speculative decoding: the guess travels from where it was found to the end of the context (it moved by 0 before), sampled tokens slide out of their inputs, rejected cache slots drop away, the row bars grow. Tensor parallelism: bars grow, the input and the partial results travel to the sum, a cursor runs along each rank, packets cross the links between GPUs. Memory budget: the ladder bars grow and the budget curve draws
+
 - Part A: the Every Byte bar and the one-hour pill take their edge and shadow from the theme (`--pill-edge`, `--pill-shadow` in `globals.css`) in place of a fixed white border and black shadow, and the table of contents, magnifier and reading view buttons show a themed hover text above the bar in place of the browser's `title` tooltip (`every-byte.tsx`, `book-view.tsx`)
 
 ## results/refresh-2026-11-16
