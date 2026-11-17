@@ -107,6 +107,7 @@ if(ENGINE_CUDA)
   add_executable(todo_gpu_tests
     todo/gpu/test_fp8_kv.cpp
     todo/gpu/test_gemm_fp8.cpp
+    todo/gpu/test_paged_attention_grouped.cpp
   )
   target_include_directories(todo_gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(todo_gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})

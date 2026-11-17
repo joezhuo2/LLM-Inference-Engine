@@ -402,3 +402,16 @@ Branch `results/refresh-2026-11-16`, worktree `~/code/llm-inference-engine-refre
 - a19a859: stub exercises for Scheduler::cancel, decode_graph_buckets, flash_attention_prefill, prompt lookup, plan_shard_layout.
 
 Not done: the results page still lacks the batch sweep past 16, the prefill curve, speculative decoding and tensor parallelism; no graphs profile at batch 16; prefix caching exercise waits for Joe's implementation; the exercise commands at the five new start commits were not run; the engine gate (verify.sh) was not run (no engine code changed besides `scripts/make_results.py`, whose unit tests pass). `next build` printed Next.js 16.4.3's security upgrade recommendation.
+
+## Snapshot 2026-11-17 (Part C stubs for #126, #104 and #94; ten glossary terms)
+
+Branch 161 `kernel/fp8-batch16-stubs` (worktree ~/code/llm-inference-engine-fp8, gate ~/.cache/llmie-fp8/verify.sh), four commits, each gated with the GPU available:
+- `DType::F8E4M3` (Part A).
+- #126: `write_kv_fp8` and `paged_attention_decode_fp8` (`src/kernels/fp8_kv.cu`), 33 todo_joe tests. One FP32 scale for the keys and one for the values; the byte is what `__nv_cvt_float_to_fp8(x / scale, __NV_SATFINITE, __NV_E4M3)` gives.
+- #104: `gemm_fp8` (`src/kernels/gemm_fp8.cu`), 29 todo_joe tests. FP8 weights with a scale per output row, BF16 activations, no tensor cores required.
+- #94: `paged_attention_decode_grouped` (`src/kernels/paged_attention_grouped.cu`), 28 todo_joe tests: the v2 tests with head dims that are multiples of 16.
+
+The tests were checked against throwaway implementations (in ~/.cache/llmie-fp8/throwaway, never committed) and mutants of them: 8 for the cache (7 caught), 5 for the product, 1 for grouped attention. The one that passed multiplies by 1 / scale in place of dividing; with BF16 inputs the bytes came out the same for every scale tried, so the spec only defines the division. Branch 160 `web/glossary-terms`: floor, knee, shard, oracle, free list, SLO, SSE, safetensors, pinned memory, causal mask.
+
+Not done: no quantizer, no wiring, no accuracy or speed numbers (each spec lists them under What is not here); the PTX and cuBLASLt remarks in the gemm_fp8 spec come from the manuals, nothing was run; the hover cards of the new terms were not looked at in a browser.
+

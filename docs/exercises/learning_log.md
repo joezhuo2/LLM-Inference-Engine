@@ -2341,3 +2341,5 @@
 - **a scale per output row (per-channel quantization)** => 
 - **weights in 8 bits with activations in 16** => 
 - **mma.sync with .e4m3 operands** => 
+- **one block per (row, KV head): sharing K and V loads across a group of query heads** => 
+- **P V as a second matrix product** => 
