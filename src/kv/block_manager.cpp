@@ -78,9 +78,26 @@ int BlockManager::allocate_block() {
 }
 
 void BlockManager::free_block(int block_id) {
-    if (block_id >= 0 && block_id < num_blocks_ && !free_blocks_[block_id]) {
-        free_blocks_[block_id] = true;
+    if (block_id <= 0 || block_id >= num_blocks_) {
+        return;
+    }
+
+    auto& meta = block_meta_[block_id];
+
+    if (meta.ref_count <= 0) {
+        return;
+    }
+
+    meta.ref_count--;
+
+    if (meta.ref_count == 0) {
         free_count_++;
+
+        if (meta.published) {
+            meta.lru_it = lru_cached_.insert(lru_cached_.end(), block_id);
+        } else {
+            free_blocks_[block_id] = true;
+        }
     }
 }
 
