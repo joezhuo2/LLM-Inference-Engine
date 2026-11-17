@@ -3,6 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import clsx from "clsx";
 import Link from "next/link";
+import { motion } from "motion/react";
 import { useState } from "react";
 import { kernelCards, layerOps } from "@/content/kernels";
 import { cellNumber, decodeSteps } from "@/lib/data";
@@ -10,6 +11,7 @@ import { useHoveredKernel } from "@/lib/kernel-hover";
 import { radioKeyDown } from "@/lib/radio-keys";
 import { EasedBar } from "./eased-bar";
 import { LayerEnd } from "./layer-ends";
+import { useLoop } from "./loop";
 
 const choices = [
   { key: "b1", label: "batch 1" },
@@ -27,16 +29,20 @@ const maxShare = Math.max(...choices.flatMap((c) => layerOps.map((l) => shareIn(
 export function LayerMap() {
   const [batch, setBatch] = useState<"b1" | "b16">("b1");
   const hovered = useHoveredKernel();
+  const { on } = useLoop(14);
   const table = decodeSteps[batch];
   if (!table) return null;
   const share = (op: string) => shareIn(batch, op);
+  const dwell = layerOps.map((l) => Math.max(share(l.op), 4));
+  const whole = dwell.reduce((a, b) => a + b, 0);
+  const starts = dwell.map((_, i) => 0.02 + (0.94 * dwell.slice(0, i).reduce((a, b) => a + b, 0)) / whole);
   const ready = new Set(kernelCards.filter((k) => k.ready).map((k) => k.slug));
   return (
     <figure className="rounded border border-border bg-surface p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <figcaption className="max-w-xl text-sm text-muted">
           One of TinyLlama&apos;s 22 layers, in the order its kernels run in a decode step. Bars are each kernel&apos;s share
-          of the step&apos;s GPU time over all layers, on one scale for both batch sizes. The projections take about as long
+          of the step&apos;s GPU time over all layers, on one scale for both batch sizes. The dot walks the layer and stays on each kernel for about its share. The projections take about as long
           at batch 16 as at batch 1, since the weights are read once either way; attention grows with every row.
         </figcaption>
         <div
@@ -76,7 +82,8 @@ export function LayerMap() {
             </span>
           );
           return (
-            <li key={l.op} className="grid grid-cols-[10.5rem_1fr_4.5rem] items-center gap-3 sm:grid-cols-[13rem_1fr_6rem]">
+            <li key={l.op} className="relative grid grid-cols-[10.5rem_1fr_4.5rem] items-center gap-3 sm:grid-cols-[13rem_1fr_6rem]">
+              <motion.span key={batch} aria-hidden className="absolute -left-2.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-accent" {...on(starts[i], starts[i] + (0.94 * dwell[i]) / whole, false)} />
               {linked ? (
                 <Link href={`/kernels/${l.slug}`} transitionTypes={["nav-forward"]} className="link-underline min-w-0">
                   {label}
