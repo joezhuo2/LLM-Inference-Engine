@@ -37,7 +37,8 @@ BlockManager::BlockManager(int num_blocks, int block_size)
     : num_blocks_(checked_num_blocks(num_blocks, block_size)),
       block_size_(block_size),
       free_count_(num_blocks_ - 1),
-      free_blocks_(num_blocks_, true) {
+      free_blocks_(num_blocks_, true),
+      block_meta_(checked_num_blocks(num_blocks, block_size)) {
     free_blocks_[0] = false;
 }
 
