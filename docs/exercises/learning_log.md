@@ -2338,3 +2338,6 @@
 - **saturating a conversion in place of overflowing to NaN** => 
 - **a quantization scale: stored = round(x / scale), read = stored * scale** => 
 - **cuda_fp8.h: __nv_cvt_float_to_fp8 and __nv_fp8_e4m3** => 
+- **a scale per output row (per-channel quantization)** => 
+- **weights in 8 bits with activations in 16** => 
+- **mma.sync with .e4m3 operands** => 
