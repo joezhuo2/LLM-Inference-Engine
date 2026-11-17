@@ -2319,3 +2319,5 @@
 
 - **git mv: a rename git can follow in the history** => 
 - **a relative link in Markdown resolves from the file that holds it** => 
+- **where GitHub looks for a pull request template and issue templates** => 
+- **private vulnerability reporting on GitHub** => 
