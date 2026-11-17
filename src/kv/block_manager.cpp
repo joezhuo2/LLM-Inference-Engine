@@ -21,6 +21,16 @@ int checked_num_blocks(int num_blocks, int block_size) {
     return num_blocks;
 }
 
+std::size_t hash_combine_token(std::size_t seed, int32_t token) noexcept {
+    std::uint64_t x = static_cast<std::uint64_t>(static_cast<uint32_t>(token));
+    x += 0x9e3779b97f4a7c15ULL;
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+    x = x ^ (x >> 31);
+
+    return seed ^ (static_cast<size_t>(x) + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2));
+}
+
 }  // namespace
 
 BlockManager::BlockManager(int num_blocks, int block_size)
