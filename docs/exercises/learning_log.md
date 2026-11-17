@@ -2330,3 +2330,7 @@
 - **animating pathLength to draw an SVG line** => 
 - **transform-box: fill-box for scaling an SVG shape about its own edge** => 
 - **a quadratic Bezier curve in an SVG path (Q)** => 
+
+## FP8 and batch-16 stubs (Branch 161)
+
+- **FP8 E4M3: 1 sign bit, 4 exponent bits, 3 mantissa bits** => 

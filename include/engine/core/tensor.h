@@ -8,7 +8,7 @@
 
 namespace engine {
 
-enum class DType : uint8_t { BF16, F16, F32, I32, I64 };
+enum class DType : uint8_t { BF16, F16, F32, I32, I64, F8E4M3 };
 
 constexpr size_t dtype_size(DType dtype) {
     switch (dtype) {
@@ -20,6 +20,8 @@ constexpr size_t dtype_size(DType dtype) {
             return 4;
         case DType::I64:
             return 8;
+        case DType::F8E4M3:
+            return 1;
     }
     return 0;
 }
@@ -36,6 +38,8 @@ constexpr std::string_view dtype_name(DType dtype) {
             return "I32";
         case DType::I64:
             return "I64";
+        case DType::F8E4M3:
+            return "F8_E4M3";
     }
     return "?";
 }

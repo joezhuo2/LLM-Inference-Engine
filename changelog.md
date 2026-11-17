@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kernel/fp8-batch16-stubs
+
+- Part A: `DType::F8E4M3`, one byte per element, named `F8_E4M3` as safetensors spells it (`include/engine/core/tensor.h`), for the FP8 stubs of #126 and #104
+
 ## docs/root-files
 
 - Part A: `LICENSE`: the MIT license, chosen by Joe, linked from the README's Documentation list

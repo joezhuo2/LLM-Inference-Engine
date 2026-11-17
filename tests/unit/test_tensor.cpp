@@ -13,6 +13,7 @@ TEST(DType, Sizes) {
     EXPECT_EQ(engine::dtype_size(DType::F32), 4u);
     EXPECT_EQ(engine::dtype_size(DType::I32), 4u);
     EXPECT_EQ(engine::dtype_size(DType::I64), 8u);
+    EXPECT_EQ(engine::dtype_size(DType::F8E4M3), 1u);
 }
 
 TEST(DType, NamesMatchSafetensors) {
@@ -21,6 +22,7 @@ TEST(DType, NamesMatchSafetensors) {
     EXPECT_EQ(engine::dtype_name(DType::F32), "F32");
     EXPECT_EQ(engine::dtype_name(DType::I32), "I32");
     EXPECT_EQ(engine::dtype_name(DType::I64), "I64");
+    EXPECT_EQ(engine::dtype_name(DType::F8E4M3), "F8_E4M3");
 }
 
 TEST(Tensor, NumelAndBytes) {
