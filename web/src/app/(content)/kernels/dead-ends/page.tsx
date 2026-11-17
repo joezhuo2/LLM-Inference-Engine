@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DeadEndList } from "@/components/kernels/dead-end-list";
+import { DeadEndsFigure } from "@/components/kernels/page-figures";
 import { StoryNav } from "@/components/kernels/story-nav";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
@@ -32,6 +33,7 @@ export default function DeadEnds() {
             what was tried, what the measurement or the test showed, and what was kept. Numbers are as measured at the time.
           </p>
         </header>
+        <DeadEndsFigure items={deadEnds.map((d) => d.kind)} />
         <DeadEndList />
         <StoryNav slug="dead-ends" />
       </article>

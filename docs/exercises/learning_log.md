@@ -2321,3 +2321,4 @@
 - **a Tailwind arbitrary shadow color: shadow-[color:var(--x)]** => 
 - **animating pathLength to draw an SVG line** => 
 - **transform-box: fill-box for scaling an SVG shape about its own edge** => 
+- **a quadratic Bezier curve in an SVG path (Q)** => 
