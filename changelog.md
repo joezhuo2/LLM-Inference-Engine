@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## kernel/fp8-batch16-stubs
 
+- Part C (stub): `write_kv_fp8` and `paged_attention_decode_fp8` for #126, an FP8 E4M3 KV cache with one scale for the keys and one for the values (`include/engine/kernels/fp8_kv.h`, `src/kernels/fp8_kv.cu` with the TODO(JOE) spec). Both throw until Joe writes them. 33 todo_joe tests in `tests/todo/gpu/test_fp8_kv.cpp` (target `todo_gpu_tests`), checked against a throwaway implementation and mutants of it; `tests/support/fp8.h` converts on the host with `cuda_fp8.h`
+
 - Part A: `DType::F8E4M3`, one byte per element, named `F8_E4M3` as safetensors spells it (`include/engine/core/tensor.h`), for the FP8 stubs of #126 and #104
 
 ## docs/root-files

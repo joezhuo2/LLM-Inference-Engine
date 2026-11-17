@@ -2334,3 +2334,7 @@
 ## FP8 and batch-16 stubs (Branch 161)
 
 - **FP8 E4M3: 1 sign bit, 4 exponent bits, 3 mantissa bits** => 
+- **round to nearest, ties to even** => 
+- **saturating a conversion in place of overflowing to NaN** => 
+- **a quantization scale: stored = round(x / scale), read = stored * scale** => 
+- **cuda_fp8.h: __nv_cvt_float_to_fp8 and __nv_fp8_e4m3** => 

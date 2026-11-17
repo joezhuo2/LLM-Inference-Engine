@@ -55,6 +55,7 @@ if(ENGINE_CUDA)
     kernels/embedding.cu
     kernels/embedding_fast.cu
     kernels/flash_prefill.cu
+    kernels/fp8_kv.cu
     kernels/gemm.cpp
     kernels/paged_attention.cu
     kernels/paged_attention_v2.cu
