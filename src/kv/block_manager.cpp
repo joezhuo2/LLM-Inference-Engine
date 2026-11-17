@@ -42,6 +42,19 @@ BlockManager::BlockManager(int num_blocks, int block_size)
     free_blocks_[0] = false;
 }
 
+void BlockManager::evict_block(int id) {
+    auto& meta = block_meta_[id];
+
+    if (meta.published) {
+        lru_cached_.erase(meta.lru_it);
+        prefix_to_block_.erase(meta.key);
+        meta.published = false;
+        meta.key = PrefixKey{};
+    }
+
+    free_blocks_[id] = true;
+}
+
 int BlockManager::allocate_block() {
     for (int i = 1; i < num_blocks_; ++i) {
         if (free_blocks_[i]) {
