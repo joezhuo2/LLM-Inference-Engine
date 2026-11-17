@@ -199,6 +199,29 @@ void BlockManager::free(SeqId seq) {
     sequences_.erase(seq);
 }
 
+void BlockManager::truncate(SeqId seq, int length) {
+    auto& seq_data = get_sequence(seq);
+
+    if (length < 1 || length > seq_data.length) {
+        throw std::invalid_argument(
+            "[BlockManager] invalid truncate length " + std::to_string(length) + " for sequence " +
+            std::to_string(seq) + " of length " + std::to_string(seq_data.length));
+    }
+
+    if (length == seq_data.length) {
+        return;
+    }
+
+    int new_blocks = (length + block_size_ - 1) / block_size_;
+
+    while (static_cast<int>(seq_data.table.size()) > new_blocks) {
+        free_block(seq_data.table.back());
+        seq_data.table.pop_back();
+    }
+
+    seq_data.length = length;
+}
+
 int BlockManager::slot(SeqId seq, int pos) const {
     auto& seq_data = get_sequence(seq);
 
