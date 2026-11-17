@@ -60,9 +60,20 @@ int BlockManager::allocate_block() {
         if (free_blocks_[i]) {
             free_blocks_[i] = false;
             free_count_--;
+            block_meta_[i].ref_count = 1;
             return i;
         }
     }
+
+    if (!lru_cached_.empty()) {
+        int victim = lru_cached_.front();
+        evict_block(victim);
+        free_blocks_[victim] = false;
+        free_count_--;
+        block_meta_[victim].ref_count = 1;
+        return victim;
+    }
+
     throw std::runtime_error("[BlockManager] Out of free blocks despite prior check.");
 }
 
