@@ -2330,3 +2330,24 @@
 - **animating pathLength to draw an SVG line** => 
 - **transform-box: fill-box for scaling an SVG shape about its own edge** => 
 - **a quadratic Bezier curve in an SVG path (Q)** => 
+
+## FP8 and batch-16 stubs (Branch 161)
+
+- **FP8 E4M3: 1 sign bit, 4 exponent bits, 3 mantissa bits** => 
+- **round to nearest, ties to even** => 
+- **saturating a conversion in place of overflowing to NaN** => 
+- **a quantization scale: stored = round(x / scale), read = stored * scale** => 
+- **cuda_fp8.h: __nv_cvt_float_to_fp8 and __nv_fp8_e4m3** => 
+- **a scale per output row (per-channel quantization)** => 
+- **weights in 8 bits with activations in 16** => 
+- **mma.sync with .e4m3 operands** => 
+- **one block per (row, KV head): sharing K and V loads across a group of query heads** => 
+- **P V as a second matrix product** => 
+
+## Glossary terms (Branch 160)
+
+- **service level objective (SLO)** => 
+- **server-sent events (SSE)** => 
+- **pinned (page-locked) host memory** => 
+- **a causal mask** => 
+- **a test oracle** => 
