@@ -143,9 +143,9 @@ mkdirSync(dataDir, { recursive: true });
 const summaries = readSummaries();
 const environment = readEnvironment();
 const traces = syncTraces();
-const profilingPath = resolve(web, "../docs/profiling.md");
+const profilingPath = resolve(web, "../profiling.md");
 const profiling = existsSync(profilingPath) ? parseProfiling(readFileSync(profilingPath, "utf8")) : [];
-const resultsPath = resolve(web, "../docs/results.md");
+const resultsPath = resolve(web, "../results.md");
 const resultsText = existsSync(resultsPath) ? readFileSync(resultsPath, "utf8") : "";
 const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsText);
 const loadRun = /Engine runs measured ([\d-]+(?: to [\d-]+)?) at commit (\w+) on ([^;.]+)/.exec(resultsText);
@@ -163,7 +163,7 @@ const modelShape = { ...parseModelShape(readFileSync(resolve(web, "../tests/unit
 const repoText = (path) => readFileSync(resolve(web, "..", path), "utf8");
 const graphRule = parseGraphRule(repoText("src/app/bench_command.cpp"), repoText("include/engine/sched/paged_batch.h"), repoText("src/sched/paged_batch.cpp"));
 const flashKernel = parseFlashKernel(repoText("src/kernels/flash_prefill.cu"), repoText("tests/gpu/test_flash_prefill.cpp"));
-const hardwarePath = resolve(web, "../docs/hardware.md");
+const hardwarePath = resolve(web, "../hardware.md");
 const hardware = existsSync(hardwarePath) ? parseHardware(readFileSync(hardwarePath, "utf8")) : {};
 const decodeSteps = {};
 for (const [key, name] of [["b1", "decode_step.md"], ["b16", "decode_step_b16.md"], ["graphs", "decode_step_graphs.md"]]) {

@@ -90,10 +90,10 @@ const steps: StoryStep[] = [
   },
 ];
 
-const profile = `results/decode_step.md, the profile docs/results.md shows: batch 1, 64 prompt and 64 output tokens, ${fmt(stepProfile.kernels)} kernels per step launched one by one`;
+const profile = `results/decode_step.md, the profile results.md shows: batch 1, 64 prompt and 64 output tokens, ${fmt(stepProfile.kernels)} kernels per step launched one by one`;
 
 const captions = [
-  `prompt tokens from the recorded run in results/kv_demo.json; host times from docs/profiling.md, Tokenizer on the host: median of 2,001 calls on the CPU alone (scripts/tokenizer_bench.cpp); the bars are to the scale of one decoded token`,
+  `prompt tokens from the recorded run in results/kv_demo.json; host times from profiling.md, Tokenizer on the host: median of 2,001 calls on the CPU alone (scripts/tokenizer_bench.cpp); the bars are to the scale of one decoded token`,
   `${profile}; time per op is a mean over the steps, divided by ${journey.layers} for one layer; the first layer has a norm without an add and the last an add without a norm, counted with add + RMSNorm`,
   `logits: the Hugging Face reference in BF16 on the same context (scripts/dump_logits.py), top 5 of ${fmt(journey.vocab)}; IDs printed by scripts/tokenizer_bench.cpp; kernel times from ${profile}; the sampler is the greedy sample kernel, measured outside the step's span`,
   `${profile}; kernel times are means and the span and the time per token medians, so the parts add up to ${fmt(tripSum)} of the ${fmt(tokenUs)} µs; gaps are span minus busy time; host is the time per token minus span and sampler`,

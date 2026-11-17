@@ -243,7 +243,7 @@ const captions = [
   "lane j reads dims j, j + 8, j + 16 … so each step's 8 reads are side by side in memory: one 16-byte read, three shuffles, against v1's keys 128 bytes apart",
   "Nsight Compute, clocks locked and caches cold, so slower than the bench loop",
   `one row at 2,048 tokens, ${v1At2048} µs per launch from the bench loop; a block has 256 threads, so 64 work and 192 wait in pass three; the threads and cells are a sketch`,
-  "bytes from the launch code of each kernel (docs/profiling.md): 4 bytes per token for v1, and the benchmark's longest rows are 8,192 tokens; 48 KB is CUDA's default per-block limit",
+  "bytes from the launch code of each kernel (profiling.md): 4 bytes per token for v1, and the benchmark's longest rows are 8,192 tokens; 48 KB is CUDA's default per-block limit",
   `attention per decode step ${stepBefore} → ${stepAfter} µs with contexts of at most 64 tokens (eager profile); before e07c022, after 79c1f91, scripts/reproduce.sh, RTX 5060 Laptop GPU`,
   `µs per launch from the bench loop, every row at the full context; v2 is ${(v1At2048 / v2At2048).toFixed(1)}x faster than v1 at one row and 2,048 tokens, and about ${typical}x from 512 tokens up; the shortest context is 128 tokens`,
 ];

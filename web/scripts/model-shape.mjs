@@ -22,7 +22,7 @@ export function parseModelShape(cppText) {
 
 export function parseRooflineContext(resultsText) {
   const match = /mean attended context ([\d.]+) tokens/.exec(resultsText);
-  if (!match) throw new Error("docs/results.md has no mean attended context in its Roofline section");
+  if (!match) throw new Error("results.md has no mean attended context in its Roofline section");
   return Number(match[1]);
 }
 

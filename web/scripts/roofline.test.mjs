@@ -5,7 +5,7 @@ import { analyse, crossoverRows, opCost, rowSteps, rowsAt, rowsBetween, stepOf }
 import { parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 import { parseProfiling } from "./profiling.mjs";
 
-const results = readFileSync(new URL("../../docs/results.md", import.meta.url), "utf8");
+const results = readFileSync(new URL("../../results.md", import.meta.url), "utf8");
 const shape = parseModelShape(readFileSync(new URL("../../tests/unit/test_config.cpp", import.meta.url), "utf8"));
 const context = parseRooflineContext(results);
 const ceilings = { gbs: 323.6, tflops: 34.5 };

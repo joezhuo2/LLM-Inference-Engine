@@ -29,7 +29,7 @@ export const timeAbout: StoryStep = {
   ),
 };
 
-export const timeAboutCaption = `results/decode_step.md, the profile docs/results.md shows: batch 1, 64 prompt and 64 output tokens, ${s.kernels} kernels per step launched one by one; span, busy time and time per token are medians, time per op is a mean over the steps, so the ops add up to ${timeFmt(s.kernelSum)} µs`;
+export const timeAboutCaption = `results/decode_step.md, the profile results.md shows: batch 1, 64 prompt and 64 output tokens, ${s.kernels} kernels per step launched one by one; span, busy time and time per token are medians, time per op is a mean over the steps, so the ops add up to ${timeFmt(s.kernelSum)} µs`;
 
 export function TimeAboutStory() {
   return <StickyStory kicker="the idea" steps={[timeAbout]} caption={() => timeAboutCaption} figure={() => <ProfileFigure />} />;

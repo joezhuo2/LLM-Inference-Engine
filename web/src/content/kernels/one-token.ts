@@ -141,7 +141,7 @@ export const oneToken: KernelStory = {
   testing: "",
   excerpts: [],
   measurements: [
-    { section: tokenizerSection, table: 0, caption: "the two host stages for this chapter's prompt and answer, median of 2,001 calls", command: "/tmp/tokenizer_bench models/tinyllama (build line in docs/profiling.md)" },
+    { section: tokenizerSection, table: 0, caption: "the two host stages for this chapter's prompt and answer, median of 2,001 calls", command: "/tmp/tokenizer_bench models/tinyllama (build line in profiling.md)" },
     { doc: "results", section: "gpu-time-per-op-in-a-decode-step", table: 0, caption: "the batch-1 decode step, GPU time per op, launched one by one", command: "scripts/profile.sh nsys decode_step --max-batch 1 (run by scripts/reproduce.sh)" },
   ],
   timeline: [],

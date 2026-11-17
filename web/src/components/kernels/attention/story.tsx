@@ -113,8 +113,8 @@ const captions = [
     ? `example block table; the pool held ${poolBlocks.toLocaleString("en-US")} blocks in the recorded run`
     : "example block table",
   `the same block table; inside a block one KV head's 16 keys are 16 × ${headDim} BF16 values in a row, ${(16 * headDim * 2).toLocaleString("en-US")} bytes, as paged_attention_v2.cu lays them out`,
-  `${stepV1} → ${stepV2} µs per decode step (eager profile, contexts of at most 64 tokens), from docs/profiling.md; v1 made three passes and held at most 2,048 tokens, v2 shares each key between eight lanes`,
-  `${v2Loop} µs → ${split8} µs, one row at 2,048 tokens, from docs/profiling.md; one block per query head is ${shape.heads} blocks at batch 1; the busy SMs are an illustration`,
+  `${stepV1} → ${stepV2} µs per decode step (eager profile, contexts of at most 64 tokens), from profiling.md; v1 made three passes and held at most 2,048 tokens, v2 shares each key between eight lanes`,
+  `${v2Loop} µs → ${split8} µs, one row at 2,048 tokens, from profiling.md; one block per query head is ${shape.heads} blocks at batch 1; the busy SMs are an illustration`,
 ];
 
 export const attentionSteps = steps;

@@ -18,7 +18,7 @@ const weights = params * 2;
 const pool = poolBlocks * blockBytes;
 const free = pool / fraction;
 const rest = vram - weights - free;
-if (rest < 0) throw new Error("the recorded KV pool is larger than the VRAM left after the weights: check docs/hardware.md and the kv replay");
+if (rest < 0) throw new Error("the recorded KV pool is larger than the VRAM left after the weights: check hardware.md and the kv replay");
 
 export const budget = {
   gpu: hw.gpu,
@@ -114,7 +114,7 @@ export const memoryBudget: KernelStory = {
     { path: "include/engine/kv/cache_size.h", label: "block size 16, fraction 0.9" },
     { path: "src/runtime/kv_cache.cpp", label: "free memory, the pool's allocation" },
     { path: "src/kv/block_manager.cpp", label: "who holds which block" },
-    { path: "docs/hardware.md", label: "the GPU's memory" },
+    { path: "hardware.md", label: "the GPU's memory" },
   ],
   tests: [{ path: "tests/unit/test_kv_cache_size.cpp", label: "bytes per block and the pool size" }],
   testing: "",

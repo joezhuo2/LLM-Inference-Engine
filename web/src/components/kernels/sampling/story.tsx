@@ -216,7 +216,7 @@ const captions = [
   "the offsets are the kernel's; the cells are a sketch",
   "example keys; the kernel searches the 32-bit key of every logit, 32 passes",
   "example keys; the bar is the kept share of the probability mass",
-  `µs per call at 1 row, first of two runs, RTX 5060 Laptop GPU (docs/profiling.md); top-k 50 ${one("top-k 50")}, sorting the row alone ${one("full sort alone")}`,
+  `µs per call at 1 row, first of two runs, RTX 5060 Laptop GPU (profiling.md); top-k 50 ${one("top-k 50")}, sorting the row alone ${one("full sort alone")}`,
   `Nsight Compute on one temperature-only launch: the FP64 instructions are ${share}% of all instructions, and ${vocab} tokens get noise where top-k 50 computes it for 50; float times from a throwaway copy`,
   "µs per call, first of two runs; blue is faster than sorting the row alone",
 ];

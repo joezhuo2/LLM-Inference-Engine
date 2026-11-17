@@ -28,7 +28,7 @@ export const chunkedPrefillAbout: StoryStep = {
   ),
 };
 
-export const chunkedPrefillAboutCaption = "illustrative: one request with a 6-token prompt above; below, 3 decoding requests and a new prompt, each step drawn in proportion to its rows; prefill times are measured alone, docs/results.md";
+export const chunkedPrefillAboutCaption = "illustrative: one request with a 6-token prompt above; below, 3 decoding requests and a new prompt, each step drawn in proportion to its rows; prefill times are measured alone, results.md";
 
 const lengths = ["128", "512", "1,024", "2,048"];
 const promptTokens = 6;

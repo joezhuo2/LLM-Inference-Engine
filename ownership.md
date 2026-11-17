@@ -29,9 +29,9 @@ For Part C, Claude never writes any of the implementation. It writes a stub that
 | Build, CI and tooling after the bootstrap | CLI11, the library split, test targets and labels, CI timeouts and retries, `scripts/format.sh`, `scripts/requirements.txt` | A | Claude |
 | Bootstrap scaffolding | The first `CMakeLists.txt` files, `CMakePresets.json`, `.clang-format`, `.clangd`, `.github/workflows/ci.yml`, the version library, the smoke kernel and the first two tests | A | Joe created and committed them, following the setup guide written with Claude during planning |
 | Learning exercises | `src/practice/` (move-only buffer, safetensors header reader, three reductions, the bandwidth test, the PyTorch TinyLlama forward pass with a KV cache) | none | Joe |
-| Measurements and notes | `docs/exercises/` (bandwidth, DRAM throughput and reduction results), `docs/hardware.md` | none | Joe |
+| Measurements and notes | `docs/exercises/` (bandwidth, DRAM throughput and reduction results), `hardware.md` | none | Joe |
 | Learning log | `docs/exercises/learning_log.md` | none | Claude lists the concepts each change relies on as blank entries; every definition is Joe's |
-| README, changelog, this page | `README.md`, `changelog.md`, `docs/ownership.md` | A | Claude |
+| README, changelog, this page | `README.md`, `changelog.md`, `ownership.md` | A | Claude |
 
 ## Planned components
 

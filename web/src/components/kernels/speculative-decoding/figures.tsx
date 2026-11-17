@@ -304,7 +304,7 @@ export function PayoffFigure() {
       <motion.g {...on(0.8)}>
         <Label x={X} y={360} className="fill-accent">{`${fmt(spec.best.speedup, 2)}× the tokens per second with up to ${spec.best.k} guesses, when there is something to copy`}</Label>
       </motion.g>
-      <Label x={X} y={384}>docs/results.md, Speculative decoding: one request at a time, median of the runs (measured)</Label>
+      <Label x={X} y={384}>results.md, Speculative decoding: one request at a time, median of the runs (measured)</Label>
     </Frame>
   );
 }

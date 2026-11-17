@@ -27,7 +27,7 @@ export type DeadEnd = {
   metric?: Metric;
 };
 
-const profiling = (section: string, label: string) => ({ label, path: `docs/profiling.md#${section}` });
+const profiling = (section: string, label: string) => ({ label, path: `profiling.md#${section}` });
 
 const rope = "fast-rope-branch-31";
 const fused = "fused-add-rmsnorm-branch-30";

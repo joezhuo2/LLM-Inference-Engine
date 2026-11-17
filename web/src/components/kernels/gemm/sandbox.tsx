@@ -242,7 +242,7 @@ export function TilingSandbox({ pages }: { pages?: { one: HTMLElement | null; tw
           : `${t.bound}-bound: ${t.intensity.toFixed(1)} FLOP per byte against the ridge at ${t.ridge.toFixed(0)}, so the slower of the two ceilings is ${t.bound === "memory" ? "bandwidth" : "the tensor cores"}.`}
       </p>
       <p className="text-muted">
-        {`Computed from the tile sizes: every tile load counted as DRAM traffic, no L2 cache, 2 stages, BF16. Ceilings are the measured ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s, ${hardware().shared_kb_per_sm} KB shared memory per SM from docs/hardware.md.`}
+        {`Computed from the tile sizes: every tile load counted as DRAM traffic, no L2 cache, 2 stages, BF16. Ceilings are the measured ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s, ${hardware().shared_kb_per_sm} KB shared memory per SM from hardware.md.`}
       </p>
     </div>
   );

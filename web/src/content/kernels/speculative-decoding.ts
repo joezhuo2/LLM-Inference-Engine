@@ -7,17 +7,17 @@ const section = "speculative-decoding";
 const table = profilingTable(section, 0, "results");
 const column = (name: string) => {
   const i = table.header.indexOf(name);
-  if (i < 0) throw new Error(`docs/results.md Speculative decoding: no column "${name}"`);
+  if (i < 0) throw new Error(`results.md Speculative decoding: no column "${name}"`);
   return i;
 };
 const sameOutput = (row: string[]) => {
   const match = /^(\d+) of (\d+)$/.exec(row[column("same output")]);
-  if (!match) throw new Error('docs/results.md Speculative decoding: "same output" must read "N of M"');
+  if (!match) throw new Error('results.md Speculative decoding: "same output" must read "N of M"');
   return { same: Number(match[1]), prompts: Number(match[2]) };
 };
 const number = (row: string[], name: string) => {
   const v = Number.parseFloat(row[column(name)]);
-  if (Number.isNaN(v)) throw new Error(`docs/results.md Speculative decoding: no number in "${name}"`);
+  if (Number.isNaN(v)) throw new Error(`results.md Speculative decoding: no number in "${name}"`);
   return v;
 };
 
@@ -40,7 +40,7 @@ export const sweep: SweepRow[] = table.rows.map((r) => ({
 const of = (set: SweepRow["set"]) => sweep.filter((r) => r.set === set).sort((a, b) => a.k - b.k);
 export const repeatRows = of("repeat");
 export const chatRows = of("chat");
-if (repeatRows.length < 2 || chatRows.length < 2 || repeatRows[0].k !== 0 || chatRows[0].k !== 0) throw new Error("docs/results.md Speculative decoding: each prompt set needs a row without drafts and at least one with");
+if (repeatRows.length < 2 || chatRows.length < 2 || repeatRows[0].k !== 0 || chatRows[0].k !== 0) throw new Error("results.md Speculative decoding: each prompt set needs a row without drafts and at least one with");
 
 const fastest = (rows: SweepRow[]) => rows.reduce((best, r) => (r.ms < best.ms ? r : best));
 const slowest = (rows: SweepRow[]) => rows.reduce((worst, r) => (r.ms > worst.ms ? r : worst));
@@ -48,7 +48,7 @@ const slowest = (rows: SweepRow[]) => rows.reduce((worst, r) => (r.ms > worst.ms
 const example = speculativeExample();
 const rowsTable = profilingTable(section, 2, "results");
 export const rowTimes = rowsTable.rows.map((r) => ({ rows: Number.parseInt(r[0], 10), steps: Number.parseInt(r[1].replace(/,/g, ""), 10), ms: Number.parseFloat(r[2]) }));
-if (rowTimes.length < 2 || rowTimes.some((r) => Number.isNaN(r.rows + r.steps + r.ms))) throw new Error("docs/results.md Speculative decoding: the third table must list rows, steps and median ms");
+if (rowTimes.length < 2 || rowTimes.some((r) => Number.isNaN(r.rows + r.steps + r.ms))) throw new Error("results.md Speculative decoding: the third table must list rows, steps and median ms");
 const drafted = example.steps.reduce((sum, s) => sum + s.draft.length, 0);
 const kept = example.steps.reduce((sum, s) => sum + s.kept, 0);
 const bestStep = example.steps.reduce((best, s) => (s.kept > best.kept ? s : best));
@@ -88,13 +88,13 @@ export const spec = {
 };
 
 const chatAtBest = spec.chatAt(spec.best.k);
-if (!chatAtBest || chatAtBest.ms >= spec.chatPlain.ms) throw new Error("docs/results.md Speculative decoding: the chapter says chat prompts gain at the best draft length of the repeat prompts; rewrite its last step");
+if (!chatAtBest || chatAtBest.ms >= spec.chatPlain.ms) throw new Error("results.md Speculative decoding: the chapter says chat prompts gain at the best draft length of the repeat prompts; rewrite its last step");
 
 const pick = (index: number, where: Record<string, string>, name: string) => {
   const t = profilingTable(section, index, "results");
   const row = t.rows.find((r) => Object.entries(where).every(([k, v]) => r[t.header.indexOf(k)] === v));
   const v = row ? Number.parseFloat(row[t.header.indexOf(name)]) : Number.NaN;
-  if (Number.isNaN(v)) throw new Error(`docs/results.md Speculative decoding: table ${index + 1} has no "${name}" for ${JSON.stringify(where)}`);
+  if (Number.isNaN(v)) throw new Error(`results.md Speculative decoding: table ${index + 1} has no "${name}" for ${JSON.stringify(where)}`);
   return v;
 };
 const shared = (guesses: string) => pick(3, { prompts: "chat", requests: String(example.max_batch), guesses }, "against none");
@@ -111,7 +111,7 @@ export const more = {
   loadAdaptiveMs: pick(6, { "requests/s": "4", guesses: "adaptive" }, "TPOT p50 ms"),
 };
 if (more.sharedFixed >= 1 || more.sharedAdaptive < more.sharedFixed || more.draftSpeedup >= 1 || more.loadAdaptiveMs >= more.loadPlainMs)
-  throw new Error("docs/results.md Speculative decoding: the chapter says a full batch loses with the fixed limit, the adaptive limit does better, the draft model is slower and load gains; rewrite the last step and Beyond");
+  throw new Error("results.md Speculative decoding: the chapter says a full batch loses with the fixed limit, the adaptive limit does better, the draft model is slower and load gains; rewrite the last step and Beyond");
 
 export const speculativeDecoding: KernelStory = {
   slug: "speculative-decoding",

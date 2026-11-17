@@ -159,7 +159,7 @@ export const prefill = {
 
 const present = (id: string) => goodputSeries.some((s) => s.id === id && s.values.some((v) => v !== undefined));
 const engineIds = ["chunked", "budget-2048", "engine"].filter(present);
-if (engineIds.length === 0 || !present("vllm")) throw new Error("docs/results.md Under load has no engine or no vLLM rows that content/results.ts knows");
+if (engineIds.length === 0 || !present("vllm")) throw new Error("results.md Under load has no engine or no vLLM rows that content/results.ts knows");
 const labelOf = (id: string) => goodputSeries.find((s) => s.id === id)?.label ?? id;
 const peaks = engineIds.map((id) => ({ id, label: labelOf(id), ...peakGoodput(id) }));
 const best = peaks.reduce((a, b) => (b.value > a.value ? b : a));
@@ -210,12 +210,12 @@ export const loadTitle = load.verdict === "vllm" ? "under load, vLLM still serve
 
 const sweepAt = (batch: number) => {
   const p = sweepPoints.find((x) => x.batch === batch);
-  if (!p) throw new Error(`docs/results.md Batch size past 16 has no max batch ${batch}`);
+  if (!p) throw new Error(`results.md Batch size past 16 has no max batch ${batch}`);
   return p;
 };
 const opsAt = (batch: number) => {
   const p = sweepOps.find((x) => x.batch === batch);
-  if (!p) throw new Error(`docs/results.md Batch size past 16 has no profile at max batch ${batch}`);
+  if (!p) throw new Error(`results.md Batch size past 16 has no profile at max batch ${batch}`);
   return p;
 };
 const loadBatch = 16;
@@ -226,7 +226,7 @@ const cellRuns = (cell: string) => cell.split("/").map((p) => Number(p.trim())).
 const gumbelTable = profilingTable(gumbel, 2);
 const floatRow = gumbelTable.rows.find((r) => r[0].startsWith("float"));
 const floatRuns = cellRuns(floatRow?.[1] ?? "");
-if (floatRuns.length === 0) throw new Error("docs/profiling.md Sampling: no float variant of gumbel() in the third table");
+if (floatRuns.length === 0) throw new Error("profiling.md Sampling: no float variant of gumbel() in the third table");
 
 export const next = {
   loadBatch,
@@ -297,13 +297,13 @@ export const whereTheTimeWent: KernelStory = {
     label: "of a batch-1 token is the read of the weights at this GPU's peak bandwidth",
   },
   sources: [
-    { path: "docs/results.md", label: "every table this chapter reads" },
-    { path: "docs/profiling.md", label: "the profiles, kernel by kernel" },
+    { path: "results.md", label: "every table this chapter reads" },
+    { path: "profiling.md", label: "the profiles, kernel by kernel" },
     { path: "results/decode_step.md", label: "the decode step profile, one version per commit" },
     { path: "results/decode_step_graphs.md", label: "the same step replayed from a graph" },
     { path: "scripts/profile_report.py", label: "kernels grouped by the op that launched them" },
     { path: "web/scripts/step-history.mjs", label: "reads every committed version of the profile" },
-    { path: "docs/baselines.md", label: "how llama.cpp and vLLM were run" },
+    { path: "baselines.md", label: "how llama.cpp and vLLM were run" },
   ],
   tests: [],
   testing: "",

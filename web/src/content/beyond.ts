@@ -17,7 +17,7 @@ const shardTable = profilingTable("tensor-parallelism-the-weights-of-one-rank", 
 const shardCell = (layout: string, name: string) => {
   const row = shardTable.rows.find((r) => r[0] === layout);
   const v = row ? Number(row[shardTable.header.indexOf(name)].replaceAll(",", "")) : Number.NaN;
-  if (Number.isNaN(v)) throw new Error(`docs/results.md Tensor parallelism: no "${name}" for ${layout}`);
+  if (Number.isNaN(v)) throw new Error(`results.md Tensor parallelism: no "${name}" for ${layout}`);
   return v;
 };
 const shard = {
@@ -25,7 +25,7 @@ const shard = {
   loadMs: shardCell("rank 0 of 2", "upload ms"),
   fullMs: shardCell("full model", "upload ms"),
 };
-if (shard.pct <= 50 || shard.loadMs >= shard.fullMs) throw new Error("docs/results.md Tensor parallelism: Beyond says one of two shares is more than half the model and loads faster than the whole model; rewrite the multiple GPUs topic");
+if (shard.pct <= 50 || shard.loadMs >= shard.fullMs) throw new Error("results.md Tensor parallelism: Beyond says one of two shares is more than half the model and loads faster than the whole model; rewrite the multiple GPUs topic");
 
 export { beyondTitle };
 

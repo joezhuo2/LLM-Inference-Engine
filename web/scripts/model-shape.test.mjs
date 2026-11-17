@@ -25,7 +25,7 @@ test("the roofline context is read from results.md", () => {
 test("the repository files parse", () => {
   const shape = parseModelShape(readFileSync(new URL("../../tests/unit/test_config.cpp", import.meta.url), "utf8"));
   assert.equal(shape.hidden % shape.heads, 0);
-  assert.ok(parseRooflineContext(readFileSync(new URL("../../docs/results.md", import.meta.url), "utf8")) > 0);
+  assert.ok(parseRooflineContext(readFileSync(new URL("../../results.md", import.meta.url), "utf8")) > 0);
 });
 
 test("the graph rule is read from the C++ sources", () => {

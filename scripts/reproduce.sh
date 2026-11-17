@@ -7,7 +7,7 @@ usage() {
 usage: scripts/reproduce.sh [--quick] [--skip-tests] [--skip-hf] [--skip-llamacpp] [--skip-load]
                            [--skip-prefill] [--skip-vllm] [--skip-onchip]
 
-Rebuilds the release preset and re-measures everything docs/results.md reports:
+Rebuilds the release preset and re-measures everything results.md reports:
   results/environment.txt   commit, GPU, driver, CUDA, date, workload
   results/correctness.txt   teacher-forced and free-running comparison with HuggingFace
   results/engine_b*_r*.csv  engine bench at max batch 1 2 4 8 16, REPEATS runs each
@@ -32,7 +32,7 @@ Rebuilds the release preset and re-measures everything docs/results.md reports:
   results/onchip/           L2, shared memory, register and DRAM latency microbenchmarks
                             (scripts/onchip_bench.cu, REPEATS runs, scripts/onchip_report.py)
   results/plots/            the plots and summary_table.md
-and then refreshes the measured blocks of docs/results.md.
+and then refreshes the measured blocks of results.md.
 
 Environment: MODEL (default models/tinyllama), PEAK_GB_S (measured DRAM bandwidth, 323.6),
 PEAK_TFLOPS (measured BF16 GEMM peak from scripts/gemm_peak.cu, 34.5),
@@ -90,7 +90,7 @@ echo "== environment"
 {
     echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     dirty=""
-    git diff --quiet HEAD -- . ':!results' ':!docs/results.md' || dirty=" (uncommitted changes)"
+    git diff --quiet HEAD -- . ':!results' ':!results.md' || dirty=" (uncommitted changes)"
     echo "commit=$(git rev-parse --short HEAD)$dirty"
     echo "gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
     echo "driver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1)"
@@ -255,5 +255,5 @@ if ls "$out"/load/*_summary.csv > /dev/null 2>&1; then
     "$python" scripts/load_report.py --dir "$out/load" --commit "$(git rev-parse --short HEAD)" \
         "${load_report_traces[@]}"
 fi
-"$python" scripts/make_results.py --results-dir "$out" --doc docs/results.md --peak-gb-s "$peak"
-echo "done: review docs/results.md and results/plots, then commit results/ and the doc together"
+"$python" scripts/make_results.py --results-dir "$out" --doc results.md --peak-gb-s "$peak"
+echo "done: review results.md and results/plots, then commit results/ and the doc together"

@@ -25,7 +25,7 @@ export const memoryAbout: StoryStep = {
   ),
 };
 
-export const memoryAboutCaption = `${gb(budget.vram)} from docs/hardware.md; weights calculated from the model's shapes at 2 bytes per parameter; the pool is the ${fmt(budget.poolBlocks)} blocks the engine allocated in the recorded run of ${budget.poolDate} (measured); kept free is the other tenth of what was free; everything else is the remainder, calculated`;
+export const memoryAboutCaption = `${gb(budget.vram)} from hardware.md; weights calculated from the model's shapes at 2 bytes per parameter; the pool is the ${fmt(budget.poolBlocks)} blocks the engine allocated in the recorded run of ${budget.poolDate} (measured); kept free is the other tenth of what was free; everything else is the remainder, calculated`;
 
 export function MemoryAboutStory() {
   return <StickyStory kicker="the idea" steps={[memoryAbout]} caption={() => memoryAboutCaption} figure={() => <TankFigure />} />;

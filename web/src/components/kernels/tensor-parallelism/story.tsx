@@ -18,7 +18,7 @@ const last = split[split.length - 1];
 const twoLoad = loadHistory.rows.find((r) => r.n === two.n);
 const lastLoad = loadHistory.rows.find((r) => r.n === last.n);
 const wholeLoad = loadHistory.rows.find((r) => r.n === 0);
-if (!twoLoad || !lastLoad || !wholeLoad) throw new Error("docs/results.md Tensor parallelism: the second table has no row for the whole model or a split one");
+if (!twoLoad || !lastLoad || !wholeLoad) throw new Error("results.md Tensor parallelism: the second table has no row for the whole model or a split one");
 const forward = shardedForwardSentences();
 const half = 100 / two.n;
 
@@ -142,7 +142,7 @@ const steps: StoryStep[] = [
   },
 ];
 
-const source = "docs/results.md, Tensor parallelism: the weights of one rank";
+const source = "results.md, Tensor parallelism: the weights of one rank";
 const captions = [
   `rows and columns as plan_shard_layout() in src/loader/tensor_parallel.cpp picks them; TinyLlama's shapes from config.json; boxes not to scale`,
   `rows and columns as plan_shard_layout() picks them; ${fmt(s.intermediate)} channels, ${fmt(s.hidden)} wide; boxes not to scale`,
@@ -150,7 +150,7 @@ const captions = [
   "the structure of the sharded forward pass: what each rank keeps and where the two sums are",
   `${source}: MiB on the device, every rank loaded onto the one GPU (measured); the parts calculated from the shapes`,
   `${source}: upload ms, median of 21 uploads, one process per layout (measured at ${loadHistory.before} and ${loadHistory.after})`,
-  `${s.layers} layers × 2 sums, calculated; the one GPU of docs/hardware.md`,
+  `${s.layers} layers × 2 sums, calculated; the one GPU of hardware.md`,
 ];
 
 export const tensorSteps = steps;

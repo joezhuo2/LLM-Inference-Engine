@@ -225,7 +225,7 @@ export function RankBytesFigure() {
       <Label x={X + 16} y={327}>layer matrices, divided by N</Label>
       <rect x={X + 200} y={318} width={10} height={10} rx={1} className="fill-text/70" />
       <Label x={X + 216} y={327}>embedding, LM head, norms</Label>
-      <Label x={X} y={388}>MiB on the device, docs/results.md, Tensor parallelism (measured); the parts calculated from the shapes</Label>
+      <Label x={X} y={388}>MiB on the device, results.md, Tensor parallelism (measured); the parts calculated from the shapes</Label>
     </Frame>
   );
 }
@@ -257,7 +257,7 @@ export function LoadFigure() {
       <Label x={X + 16} y={349}>{`one call per copy (${loadHistory.before})`}</Label>
       <rect x={X + 220} y={340} width={10} height={10} rx={1} className="fill-accent" />
       <Label x={X + 236} y={349}>{`the copies of one tensor in one chunk (${loadHistory.after})`}</Label>
-      <Label x={X} y={388}>upload ms, median of 21 uploads, docs/results.md, Tensor parallelism (measured)</Label>
+      <Label x={X} y={388}>upload ms, median of 21 uploads, results.md, Tensor parallelism (measured)</Label>
     </Frame>
   );
 }
