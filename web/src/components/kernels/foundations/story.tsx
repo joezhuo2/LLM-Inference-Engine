@@ -296,13 +296,13 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `all ${blocks} blocks of ${threadsPerBlock} threads drawn (${threadsPerBlock / 32} warps each), as in SwiGLU's first draft; one block and one warp zoomed; SM count from docs/hardware.md`,
-  `${hw.gpu}: sizes from docs/hardware.md, DRAM bandwidth from the bandwidth test, the rest from scripts/onchip_bench.cu: median of ${run.runs} runs at about ${whole(chip.mhz)} MHz, commit ${run.commit}, ${run.date.slice(0, 10)}; shared memory reads ${whole(chip.smem128Gbs)} GB/s with 128-bit loads, ${whole(chip.smem32Gbs)} with 32-bit; over all ${hw.sms} SMs, ${mb(hw.sms * hw.shared_kb_per_sm)} of shared memory and ${mb(chip.regTotalKb)} of registers`,
-  `gate/up weights [${out.toLocaleString("en-US")} × ${inn.toLocaleString("en-US")}] in BF16, ${(weightBytes / 1e6).toFixed(0)} MB, from config.json; ceilings from docs/results.md, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s; ${prefillRows} rows needs ${mathUs(prefillRows).toFixed(0)} µs of arithmetic, computed from the ceilings, not measured`,
-  `docs/results.md, Roofline: gate/up at 1 and 16 rows measured; the ring follows the two ceilings, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s`,
-  "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
-  `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, docs/profiling.md: ${fusion.unfusedKb} KB unfused, ${fusion.fusedKb} KB fused; SwiGLU's vector loads are 16 bytes; each packet stands for a whole tensor, not to scale`,
-  `docs/results.md, Kernels; a decode step copies one row per sequence, a ${lookup.prefillTokens.toLocaleString("en-US")}-token prefill step one row per prompt token; ${lookup.naiveLoads} loads per naive thread computed from the ${lookup.hidden.toLocaleString("en-US")}-value row and its ${lookup.naiveThreads} threads`,
+  `all ${blocks} blocks of ${threadsPerBlock} threads drawn (${threadsPerBlock / 32} warps each), as in SwiGLU's first draft; one block and one warp zoomed; SM count from hardware.md`,
+  `${hw.gpu}: sizes from hardware.md, DRAM bandwidth from the bandwidth test, the rest from scripts/onchip_bench.cu: median of ${run.runs} runs at about ${whole(chip.mhz)} MHz, commit ${run.commit}, ${run.date.slice(0, 10)}; shared memory reads ${whole(chip.smem128Gbs)} GB/s with 128-bit loads, ${whole(chip.smem32Gbs)} with 32-bit; over all ${hw.sms} SMs, ${mb(hw.sms * hw.shared_kb_per_sm)} of shared memory and ${mb(chip.regTotalKb)} of registers`,
+  `gate/up weights [${out.toLocaleString("en-US")} × ${inn.toLocaleString("en-US")}] in BF16, ${(weightBytes / 1e6).toFixed(0)} MB, from config.json; ceilings from results.md, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s; ${prefillRows} rows needs ${mathUs(prefillRows).toFixed(0)} µs of arithmetic, computed from the ceilings, not measured`,
+  `results.md, Roofline: gate/up at 1 and 16 rows measured; the ring follows the two ceilings, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s`,
+  "results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
+  `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, profiling.md: ${fusion.unfusedKb} KB unfused, ${fusion.fusedKb} KB fused; SwiGLU's vector loads are 16 bytes; each packet stands for a whole tensor, not to scale`,
+  `results.md, Kernels; a decode step copies one row per sequence, a ${lookup.prefillTokens.toLocaleString("en-US")}-token prefill step one row per prompt token; ${lookup.naiveLoads} loads per naive thread computed from the ${lookup.hidden.toLocaleString("en-US")}-value row and its ${lookup.naiveThreads} threads`,
 ];
 
 export const foundationsSteps = steps;

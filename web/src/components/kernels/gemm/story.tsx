@@ -312,11 +312,11 @@ const steps: StoryStep[] = [
 
 const captions = [
   "bytes from the weight shapes in config.json; GPU time per op from the batch-1 Nsight Systems profile in results/decode_step.md",
-  `12 of 2,560 QKV rows drawn; the floor is ${(weightBytes / 1e9).toFixed(2)} GB ÷ the measured ${peak.gbs} GB/s, calculated, against a ridge of ${Math.round(ridge)} FLOP/byte; time per token from docs/results.md`,
-  `GB/s from scripts/roofline.py over the batch-1 profile; the peak, ${peak.gbs} GB/s, from the bandwidth test in docs/results.md`,
+  `12 of 2,560 QKV rows drawn; the floor is ${(weightBytes / 1e9).toFixed(2)} GB ÷ the measured ${peak.gbs} GB/s, calculated, against a ridge of ${Math.round(ridge)} FLOP/byte; time per token from results.md`,
+  `GB/s from scripts/roofline.py over the batch-1 profile; the peak, ${peak.gbs} GB/s, from the bandwidth test in results.md`,
   `16 rows meet each weight byte: 16 FLOP per byte against a ridge of ${Math.round(ridge)} (calculated); µs per step from the batch-1 profile (${Math.round(sum("1")).toLocaleString("en-US")} µs) and the batch-16 profile; TFLOP/s from scripts/roofline.py`,
-  `results/decode_step_b16.md: ${prefillRows} rows are ${prefillRoof.maxBatch} prompts of ${prefillRoof.promptTokens} tokens, ${prefillTimes.toFixed(1)}x the ridge (FLOPs and bytes calculated from config.json); the ${prefillRoof.count} GEMMs took ${prefillRoof.ms} ms (measured). Per prompt token, docs/results.md: engine ${curve.engineShort} ms at ${curve.short} tokens and ${curve.engineLong} at ${curve.long} (${curve.perRowLong} with the per-row attention it replaced), llama.cpp ${curve.llamaLow} to ${curve.llamaHigh} (${curve.llamaTflops.toFixed(1)} TFLOP/s at ${curve.long}, calculated), decode ${(tpotGraphs / 1000).toFixed(2)} ms, ${Math.round(tpotGraphs / 1000 / curve.engineShort)}x the short-prompt cost`,
-  "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU; the prefill point is the calculated and measured one from results/decode_step_b16.md",
+  `results/decode_step_b16.md: ${prefillRows} rows are ${prefillRoof.maxBatch} prompts of ${prefillRoof.promptTokens} tokens, ${prefillTimes.toFixed(1)}x the ridge (FLOPs and bytes calculated from config.json); the ${prefillRoof.count} GEMMs took ${prefillRoof.ms} ms (measured). Per prompt token, results.md: engine ${curve.engineShort} ms at ${curve.short} tokens and ${curve.engineLong} at ${curve.long} (${curve.perRowLong} with the per-row attention it replaced), llama.cpp ${curve.llamaLow} to ${curve.llamaHigh} (${curve.llamaTflops.toFixed(1)} TFLOP/s at ${curve.long}, calculated), decode ${(tpotGraphs / 1000).toFixed(2)} ms, ${Math.round(tpotGraphs / 1000 / curve.engineShort)}x the short-prompt cost`,
+  "results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU; the prefill point is the calculated and measured one from results/decode_step_b16.md",
   "a 3 × 4 W drawn; the engine's real call has out = 2,560 to 32,000 and in = 2,048 or 5,632",
 ];
 

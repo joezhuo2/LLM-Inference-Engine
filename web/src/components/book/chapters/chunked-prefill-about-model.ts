@@ -257,7 +257,7 @@ export function createChunkedPrefillAboutModel(kit: Kit, fonts: Fonts): BookMode
   });
   railCard.group.position.set(0.5, 0, railZ + 0.05);
   const note = createCard(kit, 0.86, 0.035, (ctx, w, h) => {
-    pen(ctx, fonts, w, h)(`illustrative: steps drawn in proportion to their rows, ${decoders} decoders; prefill times from docs/results.md`, 0.03, 0.7, 0.5, kit.palette.faint);
+    pen(ctx, fonts, w, h)(`illustrative: steps drawn in proportion to their rows, ${decoders} decoders; prefill times from results.md`, 0.03, 0.7, 0.5, kit.palette.faint);
   });
   note.group.position.set(0.5, 0, 0.385);
   root.add(rail, inkSegments(ticks, kit.thin), knob, railCard.group, note.group);

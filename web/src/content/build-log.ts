@@ -67,7 +67,7 @@ const ladderMax = bucket("1");
 function ladder(steps: number) {
   const sizes = graphBuckets(ladderMax, steps);
   const size = bucket(String(steps));
-  if (paddedRows === undefined || sizes.find((b) => b >= paddedRows) !== size) throw new Error(`docs/results.md Batch size past 16: the padding table puts ${paddedRows} rows in the graph for ${size} at ${steps} graph steps, the bucket rule does not`);
+  if (paddedRows === undefined || sizes.find((b) => b >= paddedRows) !== size) throw new Error(`results.md Batch size past 16: the padding table puts ${paddedRows} rows in the graph for ${size} at ${steps} graph steps, the bucket rule does not`);
   return { steps, sizes, size, ms: padding(String(steps), "TPOT p50 (ms)") };
 }
 

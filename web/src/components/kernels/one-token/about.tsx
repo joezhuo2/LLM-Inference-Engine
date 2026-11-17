@@ -25,7 +25,7 @@ export const tokenAbout: StoryStep = {
   ),
 };
 
-export const tokenAboutCaption = `the question, the answer and its tokens are the recorded greedy run in results/kv_demo.json; host times from docs/profiling.md, Tokenizer on the host (encode ${fmt(hostTimes.encode, 1)} µs); GPU times from results/decode_step.md, batch 1, 64 prompt and 64 output tokens, so they are the times of a typical decode step, not of this exact one`;
+export const tokenAboutCaption = `the question, the answer and its tokens are the recorded greedy run in results/kv_demo.json; host times from profiling.md, Tokenizer on the host (encode ${fmt(hostTimes.encode, 1)} µs); GPU times from results/decode_step.md, batch 1, 64 prompt and 64 output tokens, so they are the times of a typical decode step, not of this exact one`;
 
 export function OneTokenAboutStory() {
   return <StickyStory kicker="the idea" steps={[tokenAbout]} caption={() => tokenAboutCaption} figure={() => <PipelineFigure />} />;

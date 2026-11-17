@@ -84,10 +84,10 @@ const fs = flashShape;
 const fr = flashRoofline;
 
 const fromBook = {
-  roofline: "measured in this book: the roofline tables in docs/results.md",
+  roofline: "measured in this book: the roofline tables in results.md",
   config: "this book's model: TinyLlama config.json",
-  hardware: "this book's GPU: docs/hardware.md",
-  bandwidth: "measured in this book: the bandwidth ceiling in docs/results.md",
+  hardware: "this book's GPU: hardware.md",
+  bandwidth: "measured in this book: the bandwidth ceiling in results.md",
 };
 
 export const estimatesTitle = "estimate it yourself";
@@ -219,7 +219,7 @@ export const estimates: Estimate[] = [
     title: `${fs.group} query heads, one read of the keys`,
     question: `TinyLlama has ${fs.heads} query heads and ${fs.kvHeads} KV heads. This book's prefill kernel gives each query head its own warp, and each warp loads every tile of K and V for itself. How many FLOP does it do per byte of K and V it loads, what would that be if one thread block served the ${fs.group} query heads of a KV head and loaded each tile once, and where do both sit against this book's ridge?`,
     first: `Work it out first: one tile pair is ${fs.tile} query rows against ${fs.tile} keys of one head. Count its FLOP in the two products, then the bytes of its K tile and V tile in BF16.`,
-    sources: [fromBook.config, fromBook.roofline, "this book's kernel: src/kernels/flash_prefill.cu", "measured in this book: Nsight Compute and Nsight Systems on that kernel, docs/profiling.md"],
+    sources: [fromBook.config, fromBook.roofline, "this book's kernel: src/kernels/flash_prefill.cu", "measured in this book: Nsight Compute and Nsight Systems on that kernel, profiling.md"],
     steps: [
       `FLOP per tile pair = 2 products (Q·K and P·V) × 2 FLOP × ${fs.tile} rows × ${fs.tile} keys × ${fs.headDim} dimensions = ${whole(fr.pairFlop)} (calculated).`,
       `Bytes per tile pair = 2 (K and V) × ${fs.tile} keys × ${fs.headDim} values × ${setup.bytesPerWeight} bytes = ${whole(fr.pairBytes)}, so ${whole(fr.pairFlop)} ÷ ${whole(fr.pairBytes)} = ${fr.now} FLOP per byte (calculated). It is the ${fs.tile} rows of the tile: every row that shares a load adds 1 FLOP per byte.`,

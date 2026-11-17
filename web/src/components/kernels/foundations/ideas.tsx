@@ -123,8 +123,8 @@ const ideaSteps: StoryStep[] = [
 export const ideaCaptions = [
   `bytes and FLOPs from config.json; ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s measured on the ${hw.gpu.replace("NVIDIA GeForce ", "")}; reading ${ms(readMs)} ms and arithmetic ${ms(mathMs, 2)} ms calculated; the step is the median time per output token of engine + CUDA Graphs at batch 1`,
   `illustrative: ${cacheSteps} tokens, one head; K and V computed over ${cacheSteps} steps: ${cacheSteps} with a cache, ${uncachedWork} without; ${int(kvBytesPerToken)} bytes = ${m.layers} layers × K and V × ${m.kv_heads} KV heads × ${headDim} values × 2 bytes`,
-  `measured medians of engine + CUDA Graphs runs from docs/results.md: ${int(b1.tps)} tokens per second and ${ms(b1.tpot)} ms per output token at batch 1, ${int(b16.tps)} and ${ms(b16.tpot)} ms at batch 16, ${(b16.tps / b1.tps).toFixed(0)} times the tokens per second`,
-  `${hw.vram_gb.toFixed(1)} GB from docs/hardware.md, weights ${gb(storedBytes)} GB; the pool is the ${int(pool.kv_blocks)} blocks of ${pool.block_size} tokens the engine allocated in the recorded chat run; calculated: ${int(poolTokens / reserveTokens)} reservations of ${int(reserveTokens)} tokens, or about ${int(chatsFit)} chats of ${chatTokens} tokens; reservations drawn to scale within each row`,
+  `measured medians of engine + CUDA Graphs runs from results.md: ${int(b1.tps)} tokens per second and ${ms(b1.tpot)} ms per output token at batch 1, ${int(b16.tps)} and ${ms(b16.tpot)} ms at batch 16, ${(b16.tps / b1.tps).toFixed(0)} times the tokens per second`,
+  `${hw.vram_gb.toFixed(1)} GB from hardware.md, weights ${gb(storedBytes)} GB; the pool is the ${int(pool.kv_blocks)} blocks of ${pool.block_size} tokens the engine allocated in the recorded chat run; calculated: ${int(poolTokens / reserveTokens)} reservations of ${int(reserveTokens)} tokens, or about ${int(chatsFit)} chats of ${chatTokens} tokens; reservations drawn to scale within each row`,
   `illustrative: three conversations decoding while a long prompt arrives, step lengths not to scale; measured medians: ${ms(b1.tpot)} ms per token alone, ${ms(b16.tpot)} ms at batch 16`,
 ];
 

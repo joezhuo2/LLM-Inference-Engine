@@ -5,7 +5,7 @@ const fmt = tpFmt;
 const s = tpShape;
 const two = firstSplit;
 const twoLoad = loadHistory.rows.find((r) => r.n === two.n);
-if (!twoLoad) throw new Error(`docs/results.md Tensor parallelism: no load of a rank of ${two.n}`);
+if (!twoLoad) throw new Error(`results.md Tensor parallelism: no load of a rank of ${two.n}`);
 
 export const review: ChapterReview = {
   lesson: "Cut the first matrix of each half of a layer by rows and the second by columns, and the ranks' partial results add up to the whole layer's: two sums per layer.",

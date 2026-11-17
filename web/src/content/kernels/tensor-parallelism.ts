@@ -4,12 +4,12 @@ import type { KernelStory } from "./types";
 const forwardRows = profilingTable("tensor-parallelism-a-forward-pass-on-the-shards", 0, "results");
 function forwardCell(layout: string, column: string) {
   const cell = forwardRows.rows.find((r) => r[0] === layout)?.[forwardRows.header.indexOf(column)];
-  if (cell === undefined) throw new Error(`docs/results.md forward pass on the shards: no "${column}" for ${layout}`);
+  if (cell === undefined) throw new Error(`results.md forward pass on the shards: no "${column}" for ${layout}`);
   return cell;
 }
 function forwardNumber(layout: string, column: string) {
   const v = cellNumber(forwardCell(layout, column));
-  if (v === undefined) throw new Error(`docs/results.md forward pass on the shards: "${column}" for ${layout} is not a number`);
+  if (v === undefined) throw new Error(`results.md forward pass on the shards: "${column}" for ${layout} is not a number`);
   return v;
 }
 export type ShardedForward = { ranks: number[]; msPerToken: number[]; wholeMsPerToken: number; maxLogitDiff: number; sameTokens: boolean };
@@ -23,7 +23,7 @@ export function shardedForward(): ShardedForward {
     maxLogitDiff: Math.max(...ranks.map((n) => forwardNumber(layout(n), "largest logit difference"))),
     sameTokens: ranks.every((n) => { const [same, of] = forwardCell(layout(n), "greedy tokens equal").split(" of "); return same === of; }),
   };
-  if (forwardNumber("1 rank", "largest logit difference") !== 0 || !run.sameTokens || run.msPerToken[2] <= run.wholeMsPerToken) throw new Error("docs/results.md forward pass on the shards: the chapter says one rank matches bit for bit, the greedy tokens are the same and the ranks on one GPU are slower than the whole model; rewrite it");
+  if (forwardNumber("1 rank", "largest logit difference") !== 0 || !run.sameTokens || run.msPerToken[2] <= run.wholeMsPerToken) throw new Error("results.md forward pass on the shards: the chapter says one rank matches bit for bit, the greedy tokens are the same and the ranks on one GPU are slower than the whole model; rewrite it");
   return run;
 }
 export function shardedForwardSentences(): string[] {
@@ -77,17 +77,17 @@ const history = profilingTable(section, 1, "results");
 const layoutName = (n: number) => (n === 0 ? "full model" : `rank 0 of ${n}`);
 const cell = (table: typeof layouts, layout: string, col: number) => {
   const v = cellNumber(table.rows.find((r) => r[0] === layout)?.[col]);
-  if (v === undefined) throw new Error(`docs/results.md Tensor parallelism: no "${table.header[col]}" for ${layout}`);
+  if (v === undefined) throw new Error(`results.md Tensor parallelism: no "${table.header[col]}" for ${layout}`);
   return v;
 };
 const col = (name: string) => {
   const i = layouts.header.indexOf(name);
-  if (i < 0) throw new Error(`docs/results.md Tensor parallelism: no column "${name}"`);
+  if (i < 0) throw new Error(`results.md Tensor parallelism: no column "${name}"`);
   return i;
 };
 const commitOf = (i: number) => {
   const m = /^upload ms, (one call per copy|one tensor per chunk) \((\w+)\)$/.exec(history.header[i] ?? "");
-  if (!m) throw new Error(`docs/results.md Tensor parallelism: the second table's column ${i} is not "upload ms, one call per copy (commit)" or "one tensor per chunk (commit)"`);
+  if (!m) throw new Error(`results.md Tensor parallelism: the second table's column ${i} is not "upload ms, one call per copy (commit)" or "one tensor per chunk (commit)"`);
   return m[2];
 };
 
@@ -106,8 +106,8 @@ export const loadHistory = {
 };
 
 for (const r of measuredRanks) {
-  if (Math.abs(r.calc.total / 1048576 - r.mib) > 0.1) throw new Error(`docs/results.md Tensor parallelism: ${r.layout} holds ${r.mib} MiB, but the chapter calculates ${(r.calc.total / 1048576).toFixed(1)} MiB from the model's shape; rewrite the chapter's memory spread`);
-  if (r.copies !== rankCopies(r.n)) throw new Error(`docs/results.md Tensor parallelism: ${r.layout} has ${r.copies} copies, the chapter counts ${rankCopies(r.n)} (one per row of a column slice)`);
+  if (Math.abs(r.calc.total / 1048576 - r.mib) > 0.1) throw new Error(`results.md Tensor parallelism: ${r.layout} holds ${r.mib} MiB, but the chapter calculates ${(r.calc.total / 1048576).toFixed(1)} MiB from the model's shape; rewrite the chapter's memory spread`);
+  if (r.copies !== rankCopies(r.n)) throw new Error(`results.md Tensor parallelism: ${r.layout} has ${r.copies} copies, the chapter counts ${rankCopies(r.n)} (one per row of a column slice)`);
 }
 export const whole = measuredRanks[0];
 export const split = measuredRanks.filter((r) => r.n > 1);
@@ -115,7 +115,7 @@ export const firstSplit = split[0];
 export const slowRanks = loadHistory.rows.filter((r) => r.n > 0);
 export const perCopySpan = { min: Math.min(...slowRanks.map((r) => r.perCopy)), max: Math.max(...slowRanks.map((r) => r.perCopy)) };
 if (!firstSplit || firstSplit.calc.pct <= 100 / firstSplit.n || split.some((r) => r.ms >= whole.ms) || slowRanks.some((r) => r.perCopy < 10 * r.packed || r.perCopy < whole.ms))
-  throw new Error("docs/results.md Tensor parallelism: the chapter says a rank holds more than its share, loads faster than the whole model, and took ten times as long with one call per copy; rewrite the memory and load spreads");
+  throw new Error("results.md Tensor parallelism: the chapter says a rank holds more than its share, loads faster than the whole model, and took ten times as long with one call per copy; rewrite the memory and load spreads");
 
 export const tensorParallelism: KernelStory = {
   slug: "tensor-parallelism",

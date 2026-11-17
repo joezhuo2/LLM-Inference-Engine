@@ -2314,3 +2314,8 @@
 - **a non-passive wheel listener and preventDefault** => 
 - **the View Transitions API: document.startViewTransition** => 
 - **animating a view transition pseudo-element with element.animate** => 
+
+## Root documents (Branch 159)
+
+- **git mv: a rename git can follow in the history** => 
+- **a relative link in Markdown resolves from the file that holds it** => 

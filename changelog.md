@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## docs/root-files
+
+- Part A: the main documents move to the repo root: `results.md`, `profiling.md`, `baselines.md`, `hardware.md` and `ownership.md` leave `docs/` (which keeps `api.md`, the exercises and the working notes), and every reference follows (`scripts/reproduce.sh`, `scripts/make_results.py`, the site's `sync-data.mjs`, its tests, labels and links). The README's Architecture and Design decisions sections become `architecture.md` and its Running and Reproducing the results sections become `reproduce.md`; the README links both and gets a Documentation list. Older changelog entries keep the paths they were written with
+
 ## results/refresh-2026-11-16
 
 - Part A: status notes for the refresh (`docs/claude/status.md`).

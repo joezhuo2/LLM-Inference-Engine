@@ -25,8 +25,8 @@ export const foundations: KernelStory = {
     intro: "Pick one op of a TinyLlama decode step and set the batch: the dot lands where its FLOPs per byte put it under the two ceilings measured on this GPU. Lock in a guess first for where the op crosses the ridge, then drag the batch from one row up to a long prompt (a log scale) and watch which bound it hits. Values marked computed come from the ceilings and the model's shapes; where the profiles measured the op, the measured dot and numbers sit next to them.",
   },
   sources: [
-    { path: "docs/hardware.md", label: "SMs, shared memory, L2, registers, VRAM" },
-    { path: "docs/results.md", label: "roofline and ceilings" },
+    { path: "hardware.md", label: "SMs, shared memory, L2, registers, VRAM" },
+    { path: "results.md", label: "roofline and ceilings" },
     { path: "scripts/roofline.py", label: "roofline" },
     { path: "scripts/gemm_peak.cu", label: "compute ceiling" },
     { path: "src/practice/bandwith_test.cu", label: "bandwidth ceiling" },

@@ -119,11 +119,11 @@ const steps: StoryStep[] = [
 
 const source = `recorded ${spec.date} on the ${spec.example.gpu}: the prompt "${spec.example.name}" of scripts/prompts_repeat.json, greedy, up to ${spec.maxDraft} guesses per step`;
 const captions = [
-  `time per token of the engine with CUDA Graphs at max batch 1 and ${spec.maxBatch}, docs/results.md, Throughput and latency (measured); below, the median time of a step by its number of rows over the traced runs of docs/results.md, Speculative decoding (measured, ${spec.date})`,
+  `time per token of the engine with CUDA Graphs at max batch 1 and ${spec.maxBatch}, results.md, Throughput and latency (measured); below, the median time of a step by its number of rows over the traced runs of results.md, Speculative decoding (measured, ${spec.date})`,
   `${source}; the match and the draft of each step are rebuilt from the recorded tokens by scripts/speculative_example.py and checked against the counts the engine recorded`,
   `${source}; kept and dropped rows as the engine recorded them (measured)`,
   `the slots of step ${miss.index} of the recorded answer; block size 16 from include/engine/kv/cache_size.h`,
-  `docs/results.md, Speculative decoding: one request at a time at max batch ${spec.maxBatch} with CUDA Graphs, greedy, to the end of the answer; time per output token after the first, median of the runs (measured)`,
+  `results.md, Speculative decoding: one request at a time at max batch ${spec.maxBatch} with CUDA Graphs, greedy, to the end of the answer; time per output token after the first, median of the runs (measured)`,
 ];
 
 export const speculativeSteps = steps;

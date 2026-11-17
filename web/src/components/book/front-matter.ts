@@ -712,7 +712,7 @@ function servingPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fon
   ctx.fillText("batching, to scale", x0, 1110);
   ctx.fillStyle = palette.faint;
   ctx.font = `26px ${fonts.sans}`;
-  ctx.fillText("engine with CUDA Graphs, whole decode step, docs/results.md", x0, 1148);
+  ctx.fillText("engine with CUDA Graphs, whole decode step, results.md", x0, 1148);
   const barX = x0 + 150;
   const barMax = x1 - 170 - barX;
   const bars = (title: string, y: number, values: number[], text: (v: number) => string) => {

@@ -75,7 +75,7 @@ const steps: StoryStep[] = [
 
 const captions = [
   `calculated from TinyLlama's config.json: ${budget.layers} layers, ${budget.kvHeads} KV heads, head dimension ${budget.headDim}, BF16; block size ${budget.blockTokens} from include/engine/kv/cache_size.h`,
-  `calculated: ${fmt(budget.poolBlocks)} blocks, one of them reserved, shared equally and rounded down to whole blocks; measured: the peak block count of ${sweepPeak.batch} short requests, docs/results.md, Batch size past 16`,
+  `calculated: ${fmt(budget.poolBlocks)} blocks, one of them reserved, shared equally and rounded down to whole blocks; measured: the peak block count of ${sweepPeak.batch} short requests, results.md, Batch size past 16`,
   `TinyLlama's pool is measured; the other three are calculated from published shapes (${l3.model}: ${l3.layers} layers, ${l3.kvHeads} KV heads; ${l2.model}: ${l2.layers} layers, ${l2.kvHeads} KV heads; head dimension ${l3.headDim}), weights at exactly 16 or 4 bits, cache in BF16, the same ${gb(budget.rest)} for everything else`,
 ];
 

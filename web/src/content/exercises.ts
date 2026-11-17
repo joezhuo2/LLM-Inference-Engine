@@ -351,11 +351,11 @@ export const exercises: Exercise[] = [
     runs: "gpu",
     tag: "open ended, the kernel's tests still apply",
     write: { title: "Change the kernel in place", text: "Start from main. The kernel is one file, and its tests are already part of the build.", commands: ["cmake --preset debug -DCMAKE_CUDA_ARCHITECTURES=native && cmake --build --preset debug", "ctest --preset debug -R 'Flash(AttentionPrefill|Layout)'"] },
-    check: `The ${flashShape.tests} tests of tests/gpu/test_flash_prefill.cpp must pass unchanged, the bit-for-bit ones included. Then profile one launch with the Nsight Compute command in docs/profiling.md and compare with today's kernel (measured): ${flashFmt(flashProfile.step.requestedMb)} MB requested, ${flashProfile.step.l1Hit}% of it in L1, tensor pipe at ${flashProfile.step.tensor}%, ${flashProfile.step.occupancy}% of warp places filled, ${flashProfile.step.ms} ms. The bound: at the measured GEMM peak the products of a whole ${flashLong}-token prefill would take ${flashRoofline.floorMs.toFixed(0)} ms of the ${flashRoofline.kernelMs} ms the kernel takes in Nsight Systems, so against that measured ceiling nothing gains more than ${flashRoofline.maxGain.toFixed(1)} times (calculated).`,
+    check: `The ${flashShape.tests} tests of tests/gpu/test_flash_prefill.cpp must pass unchanged, the bit-for-bit ones included. Then profile one launch with the Nsight Compute command in profiling.md and compare with today's kernel (measured): ${flashFmt(flashProfile.step.requestedMb)} MB requested, ${flashProfile.step.l1Hit}% of it in L1, tensor pipe at ${flashProfile.step.tensor}%, ${flashProfile.step.occupancy}% of warp places filled, ${flashProfile.step.ms} ms. The bound: at the measured GEMM peak the products of a whole ${flashLong}-token prefill would take ${flashRoofline.floorMs.toFixed(0)} ms of the ${flashRoofline.kernelMs} ms the kernel takes in Nsight Systems, so against that measured ceiling nothing gains more than ${flashRoofline.maxGain.toFixed(1)} times (calculated).`,
     compare: [
       { path: "src/kernels/flash_prefill.cu", label: "the kernel as it is today" },
       { path: "tests/gpu/test_flash_prefill.cpp", label: "the tests it must still pass" },
-      { path: "docs/profiling.md", label: "the Nsight Compute numbers to start from, under FlashAttention prefill in chunks" },
+      { path: "profiling.md", label: "the Nsight Compute numbers to start from, under FlashAttention prefill in chunks" },
     ],
   },
   {
@@ -378,7 +378,7 @@ export const exercises: Exercise[] = [
     chapter: "tensor-parallelism",
     title: "load every rank and add them up",
     task: "Load all four ranks of 4 and the whole model, one process each, and check what the chapter says: every rank holds the same bytes, the four together hold more than the model, and each loads faster than the whole model.",
-    nudge: "Build scripts/shard_load_bench.cu with the nvcc line under Tensor parallelism in docs/results.md, then run it with the arguments models/tinyllama 7 4 R for R from 0 to 3, and models/tinyllama 7 0 0 for the whole model. Add up the MiB of the four ranks.",
+    nudge: "Build scripts/shard_load_bench.cu with the nvcc line under Tensor parallelism in results.md, then run it with the arguments models/tinyllama 7 4 R for R from 0 to 3, and models/tinyllama 7 0 0 for the whole model. Add up the MiB of the four ranks.",
     runs: "gpu",
     check: "There are no tests: the four ranks should print the same MiB, their sum divided by the whole model's MiB should match the chapter's ratio for 4 ranks, and the upload ms of a rank should stay below the whole model's in every run.",
     compare: [

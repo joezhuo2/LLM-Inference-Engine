@@ -13,7 +13,7 @@ export function twoRuns(section: string, match: Record<string, string>, column: 
   const { header, rows } = profilingTable(section);
   const row = rows.find((r) => Object.entries(match).every(([k, v]) => r[header.indexOf(k)] === v));
   const runs = (row?.[header.indexOf(column)] ?? "").split("/").map(cellNumber);
-  if (runs.length !== 2 || runs.some((v) => v === undefined)) throw new Error(`docs/profiling.md ${section}: no two runs for ${JSON.stringify(match)} in "${column}"`);
+  if (runs.length !== 2 || runs.some((v) => v === undefined)) throw new Error(`profiling.md ${section}: no two runs for ${JSON.stringify(match)} in "${column}"`);
   return ((runs[0] ?? 0) + (runs[1] ?? 0)) / 2;
 }
 
@@ -27,22 +27,22 @@ export const sweepPoints = firstColumn(0).map((b) => ({ batch: Number(b), graphs
 export const sweepOps = firstColumn(1).map((b) => ({ batch: Number(b), attention: past({ "max batch": b }, "attention µs", 1), gemms: past({ "max batch": b }, "GEMMs µs", 1), busy: past({ "max batch": b }, "busy µs", 1), share: past({ "max batch": b }, "attention share", 1) }));
 const gains = sweepPoints.slice(1).map((p, i) => ({ batch: p.batch, gain: p.graphs / sweepPoints[i].graphs - 1 }));
 const lastBigGain = gains.filter((g) => g.gain > 0.2).pop();
-if (!lastBigGain || sweepPoints.length < 2) throw new Error("docs/results.md Batch size past 16: throughput never rises by more than 20% for a doubling of the max batch");
+if (!lastBigGain || sweepPoints.length < 2) throw new Error("results.md Batch size past 16: throughput never rises by more than 20% for a doubling of the max batch");
 export const sweepKnee = lastBigGain.batch;
 
 const paddingHeader = profilingTable(pastSixteen, 2, "results").header.find((h) => h.startsWith("bucket for")) ?? "";
 const paddingRows = cellNumber(paddingHeader.replace("bucket for", ""));
-if (paddingRows === undefined) throw new Error("docs/results.md Batch size past 16: the padding table has no \"bucket for N rows\" column");
+if (paddingRows === undefined) throw new Error("results.md Batch size past 16: the padding table has no \"bucket for N rows\" column");
 const paddingRuns = firstColumn(2).map((steps) => ({ steps: Number(steps), bucket: past({ "graph steps": steps }, paddingHeader, 2), tpot: past({ "graph steps": steps }, "TPOT p50 (ms)", 2), tokens: past({ "graph steps": steps }, "tokens/s", 2) }));
 const paddingMaxBatch = Math.max(...paddingRuns.map((r) => r.bucket));
 for (const r of paddingRuns) {
   const bucket = bucketFor(paddingRows, decodeGraphBuckets(paddingMaxBatch, r.steps));
-  if (bucket !== r.bucket) throw new Error(`docs/results.md Batch size past 16: ${paddingRows} rows with ${r.steps} graph steps replay the ${r.bucket} graph in the table but the ${bucket} graph by the bucket rule`);
+  if (bucket !== r.bucket) throw new Error(`results.md Batch size past 16: ${paddingRows} rows with ${r.steps} graph steps replay the ${r.bucket} graph in the table but the ${bucket} graph by the bucket rule`);
 }
 const defaultSteps = graphRule().steps;
 const coarseRun = paddingRuns.find((r) => r.steps === 1);
 const defaultRun = paddingRuns.find((r) => r.steps === defaultSteps);
-if (!coarseRun || !defaultRun) throw new Error(`docs/results.md Batch size past 16: the padding table has no row for 1 or for ${defaultSteps} graph steps`);
+if (!coarseRun || !defaultRun) throw new Error(`results.md Batch size past 16: the padding table has no row for 1 or for ${defaultSteps} graph steps`);
 export const padding = {
   rows: paddingRows,
   maxBatch: paddingMaxBatch,

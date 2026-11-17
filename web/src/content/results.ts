@@ -13,7 +13,7 @@ export const benchRun: Provenance = {
   gpu,
   commit: String(environment.commit ?? "unknown"),
   date: String(environment.date ?? "").slice(0, 10),
-  source: "results/*_summary.csv, docs/results.md",
+  source: "results/*_summary.csv, results.md",
   command: "scripts/reproduce.sh",
 };
 
@@ -40,7 +40,7 @@ function checkedMedian(system: (typeof benchSystems)[number], batch: number, key
   const value = medianOf(system.id, batch, key);
   const column = key === "output_throughput" ? "output tok/s" : "TPOT p50 ms";
   const shown = value === undefined ? undefined : key === "output_throughput" ? Number(value.toFixed(1)) : Number((value * 1e3).toFixed(2));
-  if (shown !== docCell(system.doc, batch, column)) throw new Error(`results/ CSVs and docs/results.md disagree on ${system.doc} batch ${batch} ${column}: ${shown} against ${docCell(system.doc, batch, column)}`);
+  if (shown !== docCell(system.doc, batch, column)) throw new Error(`results/ CSVs and results.md disagree on ${system.doc} batch ${batch} ${column}: ${shown} against ${docCell(system.doc, batch, column)}`);
   return shown;
 }
 
@@ -71,7 +71,7 @@ export type Gauge =
 
 function match(text: string, pattern: RegExp, what: string): number[] {
   const m = pattern.exec(text);
-  if (!m) throw new Error(`docs/results.md scoreboard: cannot read ${what} from "${text}"`);
+  if (!m) throw new Error(`results.md scoreboard: cannot read ${what} from "${text}"`);
   return m.slice(1).map(Number);
 }
 
@@ -110,7 +110,7 @@ export const scoreboard: Criterion[] = [
     status,
     gauge: gaugeFor(id, target, measuredText),
   })),
-  { id: "4", name: "Nsight Compute before and after per kernel", target: "a number for every optimized kernel", measured: "kernel table in docs/results.md and docs/profiling.md", status: "tracked" },
+  { id: "4", name: "Nsight Compute before and after per kernel", target: "a number for every optimized kernel", measured: "kernel table in results.md and profiling.md", status: "tracked" },
   { id: "5", name: "Reproducible from a clean clone", target: "one command", measured: "scripts/reproduce.sh", status: "tracked" },
 ];
 
@@ -126,7 +126,7 @@ function runs(section: string, prompt: number, column: string): { mean: number; 
   const row = rows.find((r) => r[header.indexOf("max batch")] === "1" && r[header.indexOf("prompt")] === prompt.toLocaleString("en-US"));
   const cell = row?.[header.indexOf(column)];
   const parts = (cell ?? "").split("/").map((p) => cellNumber(p.trim()));
-  if (parts.length !== 2 || parts.some((p) => p === undefined)) throw new Error(`docs/profiling.md ${section}: no two runs for prompt ${prompt} in "${column}"`);
+  if (parts.length !== 2 || parts.some((p) => p === undefined)) throw new Error(`profiling.md ${section}: no two runs for prompt ${prompt} in "${column}"`);
   const [a, b] = parts as number[];
   return { mean: (a + b) / 2, text: `${a.toFixed(2)} / ${b.toFixed(2)}` };
 }
@@ -149,7 +149,7 @@ export const contextRun: Provenance = {
   gpu,
   commit: "e298faf (branch 42), 7770e78 (branch 43)",
   date: "2026-10-23 and 24",
-  source: "docs/profiling.md, split attention in the forward pass and in CUDA Graphs",
+  source: "profiling.md, split attention in the forward pass and in CUDA Graphs",
   command: "build/release/bin/engine bench --model models/tinyllama --max-batch 1 --num-requests 1 --prompt-len 1984 --output-len 64 --warmup 1 --graphs",
 };
 
@@ -243,13 +243,13 @@ export const roofline = benchSystems.map(roofSeries);
 
 export const roofIntensity = roofRows.map((_, i) => {
   const x = roofline.map((s) => s.intensity[i]).find((v) => v !== undefined);
-  if (x === undefined) throw new Error(`docs/results.md roofline: no point at ${roofRows[i]} rows`);
+  if (x === undefined) throw new Error(`results.md roofline: no point at ${roofRows[i]} rows`);
   return x;
 });
 
 export function roofPct(id: string, rows: number): number {
   const v = cellNumber(roofTable.rows.find((x) => x[0] === benchSystems.find((s) => s.id === id)?.doc && x[1] === String(rows))?.[roofCol("% of roof")]);
-  if (v === undefined) throw new Error(`docs/results.md roofline: no % of roof for ${id} at ${rows} rows`);
+  if (v === undefined) throw new Error(`results.md roofline: no % of roof for ${id} at ${rows} rows`);
   return v;
 }
 
@@ -286,7 +286,7 @@ function loadCell(table: typeof loadTable, doc: string, qps: number, column: str
 }
 
 function loadSeries(column: string): Series[] {
-  if (loadTable.header.indexOf(column) < 0) throw new Error(`docs/results.md under load: no column "${column}"`);
+  if (loadTable.header.indexOf(column) < 0) throw new Error(`results.md under load: no column "${column}"`);
   return loadSystems.map(({ doc, ...s }) => ({ ...s, values: loadRates.map((q) => loadCell(loadTable, doc, q, column)) }));
 }
 
@@ -310,7 +310,7 @@ export function peakGoodput(id: string): { qps: number; value: number } {
 export function largestGap(id: string, qps: number): number {
   const doc = loadSystems.find((s) => s.id === id)?.doc ?? id;
   const v = loadCell(gapTable, doc, qps, "largest gap ms");
-  if (v === undefined) throw new Error(`docs/results.md under load: no largest gap for ${doc} at ${qps} QPS`);
+  if (v === undefined) throw new Error(`results.md under load: no largest gap for ${doc} at ${qps} QPS`);
   return v;
 }
 
@@ -320,6 +320,6 @@ export const loadProvenance: Provenance = {
   gpu: run.gpu.replace(/^NVIDIA GeForce /, ""),
   commit: run.commit,
   date: run.date,
-  source: "results/load/, docs/results.md (Under load)",
+  source: "results/load/, results.md (Under load)",
   command: `TOKEN_BUDGET=${chunkBudget} scripts/load_sweep.sh, then scripts/load_report.py (scripts/reproduce.sh runs every budget)`,
 };

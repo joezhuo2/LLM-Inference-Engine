@@ -370,7 +370,7 @@ export function ChunkedPrefillSandbox({ pages }: { pages?: { predict: HTMLElemen
 
   const scale = (
     <p className="max-w-2xl text-muted">
-      {`For scale, measured on this engine (docs/results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms (${fmt(aloneLargeBefore)} ms with the per-row prefill attention that the FlashAttention prefill kernel replaced). A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}.`}
+      {`For scale, measured on this engine (results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms (${fmt(aloneLargeBefore)} ms with the per-row prefill attention that the FlashAttention prefill kernel replaced). A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}.`}
     </p>
   );
 

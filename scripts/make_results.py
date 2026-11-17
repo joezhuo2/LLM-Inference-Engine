@@ -127,9 +127,9 @@ def replace_block(text, name, content):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Refresh the measured blocks of docs/results.md")
+    ap = argparse.ArgumentParser(description="Refresh the measured blocks of results.md")
     ap.add_argument("--results-dir", type=Path, default=Path("results"))
-    ap.add_argument("--doc", type=Path, default=Path("docs/results.md"))
+    ap.add_argument("--doc", type=Path, default=Path("results.md"))
     ap.add_argument("--peak-gb-s", type=float, default=PEAK_GB_S)
     args = ap.parse_args(argv)
 
