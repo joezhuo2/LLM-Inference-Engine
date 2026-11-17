@@ -125,6 +125,7 @@ The `cpu` preset builds and tests only the pure C++ parts, for machines without 
 - [ownership.md](ownership.md): who wrote which part
 - [docs/api.md](docs/api.md): the HTTP API
 - [changelog.md](changelog.md): every change, by branch
+- [LICENSE](LICENSE): MIT
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) and the issue and pull request templates in `.github/`
 
 ## Repository layout

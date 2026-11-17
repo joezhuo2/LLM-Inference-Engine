@@ -4,6 +4,8 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## docs/root-files
 
+- Part A: `LICENSE`: the MIT license, chosen by Joe, linked from the README's Documentation list
+
 - Part A: community files: `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md` (what the unauthenticated server is and is not, private reporting through GitHub), issue templates for a bug, a result that does not reproduce and an idea or question (`.github/ISSUE_TEMPLATE/`), and the pull request template moves from `.github/workflows/`, where GitHub never read it, to `.github/pull_request_template.md`
 
 - Part A: the main documents move to the repo root: `results.md`, `profiling.md`, `baselines.md`, `hardware.md` and `ownership.md` leave `docs/` (which keeps `api.md`, the exercises and the working notes), and every reference follows (`scripts/reproduce.sh`, `scripts/make_results.py`, the site's `sync-data.mjs`, its tests, labels and links). The README's Architecture and Design decisions sections become `architecture.md` and its Running and Reproducing the results sections become `reproduce.md`; the README links both and gets a Documentation list. Older changelog entries keep the paths they were written with
