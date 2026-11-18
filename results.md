@@ -1,6 +1,6 @@
 # Results
 
-What the engine measures against the five MVP criteria, against HuggingFace transformers and llama.cpp, and where a decode step spends its time. The blocks between `auto` markers are written by `scripts/make_results.py` from the files `scripts/reproduce.sh` produces in `results/`; everything else is hand-written and has to be revisited when a kernel lands (see the checklist at the end).
+What the engine measures against the five MVP criteria, against HuggingFace transformers, llama.cpp and vLLM, and where a decode step spends its time. The blocks between `auto` markers are written by `scripts/make_results.py` from the files `scripts/reproduce.sh` produces in `results/`; everything else is hand-written and has to be revisited when a kernel lands (see the checklist at the end).
 
 Regenerate everything with one command, plugged in and with no other GPU program running:
 

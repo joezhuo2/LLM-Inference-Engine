@@ -12,7 +12,7 @@
 
 <p align="center"><a href="#goals">Goals</a> • <a href="#results">Results</a> • <a href="#the-site">Site</a> • <a href="architecture.md">Architecture</a> • <a href="#building">Building</a> • <a href="reproduce.md">Reproducing</a> • <a href="#repository-layout">Layout</a></p>
 
-> A single-GPU LLM inference engine in C++20 and CUDA. It serves [TinyLlama-1.1B-Chat-v1.0](https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) in BF16 with FP32 accumulation, matches HuggingFace output token for token, and serves many concurrent requests with a paged KV cache, a paged decode attention kernel, continuous batching, custom fused kernels, sampling on the GPU, and CUDA Graphs. The goal is not to beat vLLM. It is a small engine in which every design decision is measured, explained and reproducible: every performance number comes from a script in this repo that anyone can rerun.
+> A single-GPU LLM inference engine in C++20 and CUDA. It serves [TinyLlama-1.1B-Chat-v1.0](https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) in BF16 with FP32 accumulation, matches HuggingFace output token for token, and serves many concurrent requests with a paged KV cache, a paged decode attention kernel, continuous batching with chunked prefill, a FlashAttention-style prefill kernel, speculative decoding, custom fused kernels, sampling on the GPU, and CUDA Graphs. The goal is not to beat vLLM. It is a small engine in which every design decision is measured, explained and reproducible: every performance number comes from a script in this repo that anyone can rerun.
 
 ## Goals
 
@@ -55,6 +55,8 @@ With CUDA Graphs the engine is ahead of llama.cpp at every batch size: 1.15x at 
 
 Decode is bandwidth bound at every batch size here: every point sits left of the 107 FLOP/byte ridge (measured 34.5 TFLOP/s BF16 GEMM peak over 323.6 GB/s). At batch 1 the cuBLAS GEMVs run at 99% to 110% of the bandwidth roof (a measured copy bandwidth, which a kernel that only reads can pass), so they cannot get faster without reading fewer bytes. At batch 16 the same GEMMs take the same time while doing 16 times the FLOPs, which is where the 12x comes from, but attention, whose intensity does not grow with the batch because each sequence reads its own KV cache, rises to 18% of kernel time at only 8% of its roof: the largest remaining target. The whole step with graphs is at 93% of the roof at batch 1 and 80% at batch 16 (llama.cpp 69%, HF 13%).
 
+`results.md` also measures what came after the MVP: the engine and vLLM 0.32.0 under Poisson arrivals ("Under load"), batch sizes past 16, speculative decoding, prefill against prompt length, and tensor parallelism with every shard on this one GPU.
+
 All numbers are from this one laptop GPU, whose clocks move by 10% to 20% between runs; a cloud GPU run was planned and has not been done.
 
 ## The site
@@ -65,7 +67,7 @@ All numbers are from this one laptop GPU, whose clocks move by 10% to 20% betwee
 
 ![The results page: tokens per second against max batch, beside the text explaining it](assets/results.png)
 
-**`/kernels`** has a story page for each kernel and engine technique, including the dead ends, each drawn from recorded data with before and after numbers and links to the source. The paged KV page lets you allocate blocks yourself.
+**`/kernels`** has a story page for each kernel and engine technique, including the dead ends, each drawn from recorded data with before and after numbers and links to the source. The paged KV page lets you allocate blocks yourself. **`/every-byte`** is the same material as a book you page through, in chapter order with a review at the end of each chapter, and **`/exercises`** lists the stubs to write yourself against the tests in this repo.
 
 ![The paged KV story: a request's block table pointing into the shared pool](assets/kernel-story.png)
 
@@ -85,15 +87,17 @@ Decoding one token at batch 1 reads every weight except all but one row of the e
 
 ## Beyond the MVP
 
-Llama-3.2-1B and other models, FP8 and INT8 Tensor Core GEMMs, prefix caching and copy-on-write blocks and a draft model that makes speculative decoding faster.
+Built since the MVP and measured in `results.md`: chunked prefill, FlashAttention-style prefill, finer CUDA Graph buckets, speculative decoding by prompt lookup or with a draft model, and a tensor-parallel forward pass with every shard on one GPU (`engine generate --tensor-parallel`).
+
+Next, each already in the tree as a stub with its spec and tests: decode attention that loads each KV head once for the 8 query heads that share it, prefix caching in the block manager, and FP8 for the KV cache and the GEMMs. After those: Llama-3.2-1B and other models, and a draft model that makes speculative decoding faster (TinyStories-110M makes it slower).
 
 ## Hardware
 
-Developed on an RTX 5060 Laptop GPU (Blackwell, compute capability 12.0, 8 GB GDDR7, 26 SMs) under WSL2 with Ubuntu 24.04, CUDA 13.3 and GCC 13. Its measured memory bandwidth, 323.6 GB/s (about 84% of the theoretical peak), is the denominator for every "% of peak" figure. All the results above were measured on it; on another GPU, measure its ceilings first (see "Reproducing the results").
+Developed on an RTX 5060 Laptop GPU (Blackwell, compute capability 12.0, 8 GB GDDR7, 26 SMs) under WSL2 with Ubuntu 24.04, CUDA 13.3 and GCC 13. Its measured memory bandwidth, 323.6 GB/s (about 84% of the theoretical peak), is the denominator for every "% of peak" figure. All the results above were measured on it; on another GPU, measure its ceilings first ([reproduce.md](reproduce.md#reproducing-the-results)).
 
 ## Building
 
-Requires CUDA 12.8 or newer (for `sm_120`), CMake 3.28 or newer, Ninja and a C++20 compiler; GoogleTest, nlohmann/json, CLI11 and cpp-httplib are found on the system or fetched. Download the model and link the directory that holds it into the repo as `models` (gitignored), or set `ENGINE_MODEL_DIR` to the model directory instead:
+Requires CUDA 12.8 or newer (for `sm_120`), CMake 3.28 or newer, Ninja and a C++20 compiler; GoogleTest, nlohmann/json, CLI11, cpp-httplib and SentencePiece are found on the system or fetched. Download the model and link the directory that holds it into the repo as `models` (gitignored), or set `ENGINE_MODEL_DIR` to the model directory instead:
 
 ```bash
 hf download TinyLlama/TinyLlama-1.1B-Chat-v1.0 --local-dir ~/models/tinyllama
@@ -140,6 +144,7 @@ docs/             API contract (api.md), learning exercises and working notes
 *.md              architecture, reproduce, results, profiling, baselines, hardware, ownership and the changelog, at the root
 web/              the project site (static Next.js export): results, kernel stories and the dashboard
 assets/           images used by this README
+graphify-out/     a generated knowledge graph of the repo (GRAPH_REPORT.md)
 ```
 
 ## Ownership
