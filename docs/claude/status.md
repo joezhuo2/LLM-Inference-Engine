@@ -1,6 +1,6 @@
 # Status
 
-Last updated 2026-10-10 (PRs #24 to #27 merged; branch 19 `sched/scheduler` done locally, not pushed). Always confirm against git (`git fetch`, `git log --oneline origin/main`, `git branch -vv`, `gh pr list --state all -L 5`) before acting; this file may be behind.
+This file is a log, oldest first: the dated notes below, then `## Snapshot` sections. Read the last snapshot first. Since #220 `results.md`, `profiling.md`, `baselines.md`, `hardware.md` and `ownership.md` are at the repo root, so older entries that say `docs/results.md` and so on mean those. Always confirm against git (`git fetch`, `git log --oneline origin/main`, `git branch -vv`, `gh pr list --state all -L 5`) before acting; this file may be behind.
 
 
 2026-10-11: branch 19 has since merged (main 135b3bd). Joe's `kv/block-manager-impl` (main checkout) now holds his BlockManager (c27b0b5, 034de07) plus 6 Claude fix commits (17184c8..d90b5c7: format, allocate loop, slot formula, invalid_argument everywhere, constructor validation, tests moved to `tests/unit/`). All 15 BlockManager tests pass (also under ASan and UBSan), gate green with GPU. Not pushed. The gate copy for the main checkout is `~/.cache/llmie-claude/verify-main.sh`.
@@ -415,3 +415,9 @@ The tests were checked against throwaway implementations (in ~/.cache/llmie-fp8/
 
 Not done: no quantizer, no wiring, no accuracy or speed numbers (each spec lists them under What is not here); the PTX and cuBLASLt remarks in the gemm_fp8 spec come from the manuals, nothing was run; the hover cards of the new terms were not looked at in a browser.
 
+
+## Snapshot 2026-11-18 (markdown audit)
+
+Branch `docs/md-audit` (worktree ~/code/llm-inference-engine-mdaudit). Brought the markdown files up to the code on main 78780b2: README (what is built since the MVP, what is stubbed next, `/every-byte` and `/exercises`, SentencePiece), `reproduce.md` (the flags `generate`, `bench` and `serve` have now, vLLM setup, everything `reproduce.sh` runs and its skip flags), `ownership.md` (the planned table became what landed and who wrote it, from the changelog tags), `web/README.md`, and this folder's `README.md` and `working_rules.md` (tracked since c7c6633, per-branch worktrees, root paths).
+
+Not touched: the plans, `review_notes.md`, `technical_notes.md`, the branch summaries and the older entries here still name `docs/results.md` and the like; they are records of their day. The "about 10 minutes" of a full `reproduce.sh` run in `reproduce.md` and `results.md` predates the load, vLLM, prefill and on-chip parts and was not timed again. Joe's branch `kv/prefix-cache-impl` is in the main checkout with prefix caching in progress.
