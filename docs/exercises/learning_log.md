@@ -2469,3 +2469,4 @@
 - **floating-point subtraction error** => 
 - **an all-reduce** => 
 - **a single source of truth** => 
+- **4-bit weights** => 
