@@ -3,7 +3,7 @@
 import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { TilingSandbox } from "@/components/kernels/gemm/sandbox";
-import { gemmCaptions, gemmNumbers, gemmSteps, RooflinePicker } from "@/components/kernels/gemm/story";
+import { GemmScaleFigure, gemmCaptions, gemmNumbers, gemmSteps, RooflinePicker } from "@/components/kernels/gemm/story";
 import { GemmStream } from "@/components/kernels/gemm/stream";
 import { gemmAbout, gemmAboutCaption } from "@/components/kernels/gemm/about";
 import { gemm, prefillRoof } from "@/content/kernels/gemm";
@@ -40,6 +40,7 @@ const beats: Beat[][] = [
   ],
   [flat(`Prefill at ${prefillRoof.rows.toLocaleString("en-US")} rows: past the ridge`)],
   [flat("Switch between 1 row, 16 rows and prefill")],
+  [flat("TinyLlama on this GPU against Llama 3 8B on an H100")],
   [
     overview("One row of W in three places"),
     close("Close up: the twelve addresses, one row after the other", [0.53, 0.02, -0.5], 0.92, 0.3, 0, 42),
@@ -55,6 +56,7 @@ const instructions = [
   "Drag the pink ball along the rail to change the rows from one to 16.",
   undefined,
   undefined,
+  "Find the dashed mark of a 16-row batch against both ridges.",
   "Watch one row of W lift in all three places: the same four addresses.",
 ];
 
@@ -116,6 +118,14 @@ function GemmOverlay({ kind, target, narrow }: OverlayProps) {
           </div>,
           target,
         )}
+      {kind === "scale" &&
+        target &&
+        createPortal(
+          <div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>
+            <GemmScaleFigure />
+          </div>,
+          target,
+        )}
       {kind === "roofline" &&
         target &&
         createPortal(
@@ -137,8 +147,8 @@ const chapter: ChapterDef = {
   formula: gemm.formula,
   steps: gemmSteps,
   captions: gemmCaptions,
-  exhibits: [0, 2, 3, 4, null, null, 1],
-  overlays: [null, null, null, null, "prefill-roofline", "roofline", null],
+  exhibits: [0, 2, 3, 4, null, null, null, 1],
+  overlays: [null, null, null, null, "prefill-roofline", "roofline", "scale", null],
   instructions,
   beats,
   workbench,

@@ -2484,3 +2484,5 @@
 - **shared sandbox state** => 
 - **a GEMV floor** => 
 - **arithmetic intensity** => 
+- **rows per weight read** => 
+- **the compute-bound crossover** => 
