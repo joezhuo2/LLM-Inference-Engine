@@ -4,6 +4,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 
 ## web/book-perf
 
+- Part A: every text on a diagram card now shrinks to stay inside its card, and the seven station labels of chapter 1 share one size that fits (`web/src/components/book/ink.ts`)
 - Part A: Every Byte stays smooth after a page turn: shaders compile ahead of use, the next spread and the next chapter's models wait for a still cursor, page canvases upload without a GPU readback, hidden exhibits skip the per-frame matrix pass, and the magnifier draws without a React render and shows the text at 1.8 times its size on screen (`web/src/components/book/`)
 
 ## web/every-byte-audit

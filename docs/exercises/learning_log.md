@@ -2522,3 +2522,5 @@
 - **willReadFrequently** => 
 - **a long task** => 
 - **an imperative handle** => 
+- **a text bounding box** => 
+- **a fit guard** => 
