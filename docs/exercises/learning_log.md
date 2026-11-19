@@ -2493,3 +2493,6 @@
 - **a canvas 2D isometric projection** => 
 - **a piecewise-linear scroll remap** => 
 - **a content layer** => 
+- **HTML dialog showModal** => 
+- **the inert attribute** => 
+- **a Suspense fallback in a static export** => 
