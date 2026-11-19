@@ -184,6 +184,7 @@ export class BookScene {
   private raf = 0;
   private visible = true;
   private frozen = false;
+  private opening = 0;
   private options: SceneOptions;
   private kit: Kit;
   private model: BookModel;
@@ -700,6 +701,7 @@ export class BookScene {
     if (!resting) this.showClosed();
     this.closedView = false;
     this.target = { stop: start, beat: 0 };
+    this.opening = start;
     const first = this.options.stops[start];
     const leftNext = this.leftText.prepare(first, (c) => this.drawLeft(c, first));
     this.leftText.blend(leftNext, 1);
@@ -711,10 +713,10 @@ export class BookScene {
     if (!this.options.reduced && !resting) await this.wait(0.5);
     this.setCamGoal(beat, 2.2);
     await this.tween(2.2, (t) => this.setLeftAngle(easeInOut(t)));
-    this.applied.stop = start;
+    this.applied.stop = this.opening;
     this.applied.beat = 0;
     this.opened = true;
-    this.model.enter?.(start);
+    this.model.enter?.(this.opening);
     if (first.exhibit !== null) await this.popUp(first.exhibit, 0);
     this.publishOverlay();
     this.kick();
@@ -817,6 +819,7 @@ export class BookScene {
   setStops(stops: Stop[], map: (index: number) => number): void {
     this.options.stops = stops;
     if (this.applied.stop >= 0) this.applied.stop = map(this.applied.stop);
+    this.opening = map(this.opening);
     this.target.stop = map(this.target.stop);
   }
 

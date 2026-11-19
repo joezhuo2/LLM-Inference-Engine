@@ -2412,3 +2412,5 @@
 - **history.replaceState** => 
 - **URLSearchParams** => 
 - **localStorage** => 
+- **index remapping** => 
+- **a race condition** => 
