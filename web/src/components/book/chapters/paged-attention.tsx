@@ -100,7 +100,7 @@ const workbench: WorkbenchPage[] = [
     overlay: "sandbox-step",
     caption: "Step through it yourself: one block, one update",
     paragraphs: [
-      "Each step reads one block: its scores q · k / √d, then the running max m, the running sum l and the accumulator acc are updated before the next block arrives.",
+      "Each step reads one block: its scores q · k / √d, then the running max m, the running sum l and the accumulator acc are updated before the next block arrives. The context and block size are mirrored at the top of the right page.",
       "Watch the m row. When a block's best score beats every earlier one, m is raised and the rescale factor exp(m old - m new) drops below 1; l and acc are multiplied by it before the new weights are added.",
       "When m is unchanged the factor is exactly 1 and the new weights are simply added. Either way no block is read twice, which is what lets v2 keep only one chunk in shared memory.",
       "The table below counts the blocks read and the bytes they would cost at head dim 64: K and V in BF16, for one head.",
@@ -112,7 +112,7 @@ const workbench: WorkbenchPage[] = [
     caption: "Step through it yourself: predict, then compare",
     paragraphs: [
       "Answer the question first: a block arrives whose best score is bigger than any before. What happens to l and the accumulator?",
-      "Then press jump to the next raised m and check your answer against the update on the previous page.",
+      "Then press jump to the next raised m and check your answer against the update line under the choices. The context and block size are mirrored at the top of the right page.",
       "The table compares acc / l so far with ordinary softmax attention computed in one go. Read every block and the two columns agree to float precision.",
       "That agreement is the point of the online softmax: the same output as the three-pass v1, from one pass over the keys.",
     ],
