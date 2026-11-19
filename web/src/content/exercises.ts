@@ -25,13 +25,55 @@ export type StubExercise = Base & {
 
 export type OpenStart = { title: string; text: string; commands: string[] };
 
-export type OpenExercise = Base & { kind: "open"; runs: "gpu"; check: string; compare: { path: string; label: string }[]; write?: OpenStart; tag?: string };
+export type OpenExercise = Base & { kind: "open"; check: string; compare: { path: string; label: string }[]; write?: OpenStart; tag?: string } & ({ runs: "gpu" } | { runs: "cpu"; write: OpenStart });
 
 export const openTag = (e: OpenExercise) => e.tag ?? "no tests, open ended";
 
 export type Exercise = StubExercise | OpenExercise;
 
+const numpyDir = "docs/exercises/numpy";
+
+export const numpyFile = (n: Pick<Numpy, "name">) => `${numpyDir}/${n.name}.py`;
+
+export const numpySolution = (n: Pick<Numpy, "name">) => `${numpyDir}/solutions/${n.name}.py`;
+
+export const numpyCommand = (n: Pick<Numpy, "name">) => `python3 ${numpyFile(n)}`;
+
+export const numpyInstall = "pip install numpy";
+
 export const exercises: Exercise[] = [
+  {
+    kind: "open",
+    id: "decode-step",
+    chapter: "one-token",
+    title: "one decode step in NumPy",
+    task: "Write one decode step for one token of a tiny model with random weights: look up its embedding row, run one layer in the engine's order, then the final norm, the LM head and the argmax. Every station of this chapter in about forty lines of NumPy, on any machine.",
+    nudge: "Follow the chapter's list of ten operations and keep the residual stream apart from the normed copy that each projection reads: RMSNorm, QKV, RoPE on Q and K only, the new key and value after the cached ones, attention, output projection, add, RMSNorm, gate/up, SwiGLU, down, add. Query head h reads key/value head h // (HEADS // KV_HEADS), as in TinyLlama.",
+    runs: "cpu",
+    tag: "NumPy, checked against a slow loop",
+    write: { title: "Fill in the function", text: "It needs Python 3 and numpy. Until decode_step is written the command stops with NotImplementedError and says what to write; when it is right it prints ok.", commands: [numpyInstall, numpyCommand({ name: "decode_step" })] },
+    check: "Your logits must match a slow looped reference within 0.001 and your token id must match it exactly, once at position 0 with an empty cache and once with nine cached tokens. The reference is put together from the slow versions in rope.py, add_rmsnorm.py, swiglu.py and common.py, the same ones the later exercises check against. The model keeps TinyLlama's layout (eight query heads per key/value head, its MLP to hidden ratio, its eps and RoPE theta) at a toy width, so nothing is downloaded.",
+    compare: [
+      { path: numpySolution({ name: "decode_step" }), label: "a reference solution" },
+      { path: "src/runtime/paged_runner.cpp", label: "the engine's order of the same steps, in PagedRunner::run_staged" },
+    ],
+  },
+  {
+    kind: "open",
+    id: "cpu-bandwidth",
+    chapter: "foundations",
+    title: "measure your own roof on a CPU",
+    task: "Copy an array far larger than your CPU's caches, keep the best of a few copies and turn it into GB/s. Then turn that into the time it takes to read TinyLlama's weights once: the least time a decoded token can take at that rate. No GPU needed.",
+    nudge: "Count both the bytes read and the bytes written, as the GPU version does. Then run two or three copies of the script at the same time and add up their GB/s: if the total climbs, one thread was not enough to reach your memory's peak.",
+    runs: "cpu",
+    tag: "NumPy, open ended",
+    write: { title: "Run it, then change it", text: "It needs Python 3 and numpy. The file copies a 256 MiB array; give it another size in MiB to try others. Shrink the array until the GB/s jumps: that is where it starts to fit in a cache.", commands: [numpyInstall, numpyCommand({ name: "bandwidth" }), `${numpyCommand({ name: "bandwidth" })} 4`] },
+    check: "There are no tests. NumPy copies on one thread, so the GB/s it prints is a floor for your machine's bandwidth, not its peak. Compare it with the peak on your memory's spec sheet, and with the GPU roof in this chapter: the ratio is about how much faster the GPU reads the same weights.",
+    compare: [
+      { path: numpyFile({ name: "bandwidth" }), label: "the copy, and the weight bytes counted from the TinyLlama config" },
+      { path: "src/practice/bandwith_test.cu", label: "Joe's GPU version" },
+    ],
+  },
   {
     kind: "open",
     id: "bandwidth",
@@ -216,6 +258,22 @@ export const exercises: Exercise[] = [
     numpy: { name: "swiglu", compares: "Your output against silu(gate) · up with silu(g) = g / (1 + e^−g), where the first half of each input row is the gate and the second half is up. Swapping the halves fails the check." },
   },
   {
+    kind: "open",
+    id: "gumbel-max",
+    chapter: "sampling",
+    title: "sampling is an argmax",
+    task: "Write Gumbel-max sampling in NumPy: divide the logits by the temperature, add the noise −log(−log u) to each and take the argmax. At temperature 0 it is plain greedy. A second small function returns the top-k cut, the k-th largest scaled logit, below which every token is dropped before the noise.",
+    nudge: "Drop tokens by comparing with the cut, not by keeping exactly k indices: tokens tied at the cut all stay in, as in the engine's kernel. At temperature 0 leave u alone and return the largest logit.",
+    runs: "cpu",
+    tag: "NumPy, checked against a slow loop",
+    write: { title: "Fill in the two functions", text: "It needs Python 3 and numpy. Until they are written the command stops with NotImplementedError and says what to write; when both are right it prints ok.", commands: [numpyInstall, numpyCommand({ name: "gumbel_max" })] },
+    check: "Two parts. With the same u, your pick must equal a slow looped reference exactly over 300 random rows, temperatures and top-k settings, ties included. Then over 20,000 seeded draws for each of three settings, how often each token wins must match softmax(logits / T), over the top k when it is set, within 0.015. The u are made as the engine makes them, (a random 32-bit integer + 0.5) / 2³², so none is 0 or 1.",
+    compare: [
+      { path: numpySolution({ name: "gumbel_max" }), label: "a reference solution" },
+      { path: "src/sampling/sample.cu", label: "the kernel: the same argmax, with counter-based noise and a binary-searched top-k cut" },
+    ],
+  },
+  {
     kind: "stub",
     id: "cuda-graphs",
     chapter: "cuda-graphs",
@@ -396,19 +454,11 @@ export const numpyOf = (e: Exercise): Numpy | undefined => (e.kind === "stub" ? 
 
 export const cpuCount = () => exercises.filter((e) => e.runs === "cpu").length;
 
+export const numpyOnly = (e: Exercise) => e.kind === "open" && e.runs === "cpu";
+
 export const numpyCount = () => exercises.filter((e) => numpyOf(e)).length;
 
-const numpyDir = "docs/exercises/numpy";
-
-export const numpyFile = (n: Numpy) => `${numpyDir}/${n.name}.py`;
-
-export const numpySolution = (n: Numpy) => `${numpyDir}/solutions/${n.name}.py`;
-
-export const numpyCommand = (n: Numpy) => `python3 ${numpyFile(n)}`;
-
 export const numpyUrl = (n: Numpy) => `${repoUrl}/blob/main/${numpyFile(n)}`;
-
-export const numpyInstall = "pip install numpy";
 
 export const numpyNote = "The engine keeps BF16 values and rounds at fixed points inside each kernel. The NumPy files use float32 and compare within a small tolerance, so they teach the algorithm and not the rounding; the CUDA tests make the exact comparison.";
 

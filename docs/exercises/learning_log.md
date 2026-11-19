@@ -2367,3 +2367,5 @@
 - **the Gumbel-max trick** => 
 - **temperature** => 
 - **a top-k threshold** => 
+- **a discriminated union** => 
+- **the temporal dead zone** => 

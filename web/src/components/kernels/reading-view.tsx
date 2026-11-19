@@ -129,7 +129,7 @@ export async function ReadingView({ slug }: { slug: string }) {
         {chapterExercises(story.slug).length > 0 && (
           <Section id="build" title="build it yourself">
             <p className="max-w-2xl text-muted">
-              Start from the commit where the stub landed, make its tests pass, then compare with what shipped. Each card says whether it runs on a CPU or needs an NVIDIA GPU, and some have a NumPy version to try first on any machine. All the exercises, and what you need to run them, are on the{" "}
+              Each card says whether it runs on a CPU or needs an NVIDIA GPU. A stub starts from the commit where it landed: make its tests pass, then compare with what shipped. A NumPy file runs on any machine, and some GPU stubs have one to try first. All the exercises, and what you need to run them, are on the{" "}
               <Link href="/exercises" className="link-underline text-text">
                 exercises page
               </Link>
