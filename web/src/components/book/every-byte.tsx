@@ -22,7 +22,7 @@ import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookModel, BookScene, OverlayRect, Stop } from "./book-scene";
 import { ReviewPage } from "./review-page";
 import { GlossaryArticle } from "./glossary-article";
-import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
+import { FitPage, type LensHandle, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
 import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, ideasRoute, isDeep, setIdeasView, deepGroup, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText, glossarySpreads, glossaryStops, glossaryTitle, engineStops } from "./front-matter";
@@ -166,7 +166,7 @@ export function EveryByte() {
   const [beat, setBeat] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [overlay, setOverlay] = useState<OverlayRect | null>(null);
-  const [lens, setLens] = useState<Lens | null>(null);
+  const lens = useRef<LensHandle>(null);
   const [term, setTerm] = useState<PointTerm | null>(null);
   const [failed, setFailed] = useState(false);
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
@@ -256,6 +256,7 @@ export function EveryByte() {
         const s = await sceneReady.current.promise;
         await numberBook();
         await s.idle();
+        await s.quiet();
         attach(slug);
         const before = book.current.meta.map((m) => `${m.key}:${m.local}`);
         raw.current[slug] = chapterRaw;
@@ -303,7 +304,7 @@ export function EveryByte() {
       setStop(clamped);
       setBeat(0);
       setPlaying(false);
-      setLens(null);
+      lens.current?.(null);
       scene.current?.goTo(clamped, 0, riffle);
       setUrl(clamped, push);
       preload(clamped);
@@ -539,7 +540,7 @@ export function EveryByte() {
             return composite;
           },
           onOverlay: setOverlay,
-          onLens: setLens,
+          onLens: (l) => lens.current?.(l),
           onTerm: setTerm,
           pageOf: (spread, side) => {
             const key = book.current.meta[spread]?.key;
@@ -564,6 +565,7 @@ export function EveryByte() {
       sceneReady.current.resolve(built);
       queue.current = queue.current.then(addModels);
       built.showClosed();
+      canvasEl.dataset.ready = "";
       if (!place.closed) void goKey(place.key, false, false, false, place.at);
     };
     void start();
@@ -582,16 +584,19 @@ export function EveryByte() {
     if (!hostEl) return;
     const onPage = (event: Event) => step((event as CustomEvent<"prev" | "next">).detail === "next" ? 1 : -1);
     const onCover = () => void goKey("start", false);
+    const onClose = () => closeBook();
     const onLink = (event: Event) => onLinkHref((event as CustomEvent<string>).detail);
     hostEl.addEventListener("bookpage", onPage);
     hostEl.addEventListener("bookcover", onCover);
+    hostEl.addEventListener("bookclose", onClose);
     hostEl.addEventListener("booklink", onLink);
     return () => {
       hostEl.removeEventListener("bookpage", onPage);
       hostEl.removeEventListener("bookcover", onCover);
+      hostEl.removeEventListener("bookclose", onClose);
       hostEl.removeEventListener("booklink", onLink);
     };
-  }, [step, goKey, onLinkHref]);
+  }, [step, goKey, onLinkHref, closeBook]);
 
   useEffect(() => {
     const onPop = () => {
@@ -718,7 +723,7 @@ export function EveryByte() {
       </div>
       <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
         <canvas ref={canvas} role="img" aria-label={open ? `3D book "Every Byte", open at ${title}. ${caption}` : "3D book \"Every Byte\", closed on the desk"} className="absolute inset-0 size-full" />
-        <Magnifier lens={lensOn ? lens : null} />
+        <Magnifier ref={lens} on={lensOn} />
         <PointGloss at={term} />
         <motion.nav
           aria-label="book"

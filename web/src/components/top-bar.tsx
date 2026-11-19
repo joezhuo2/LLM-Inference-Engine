@@ -6,12 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { type MouseEvent, type ReactNode, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-const bookIntro = "/every-byte/start";
+const bookCover = "/every-byte";
 const sweepEase = "cubic-bezier(0.65, 0, 0.35, 1)";
 
 function bookShown() {
-  const label = document.querySelector("main canvas[role='img']")?.getAttribute("aria-label");
-  return window.location.pathname.startsWith(bookIntro) && ((!!label && !label.endsWith("closed on the desk")) || !!document.querySelector("main h1")?.textContent?.includes("WebGL"));
+  return window.location.pathname.startsWith(bookCover) && (document.querySelector<HTMLElement>("main canvas[role='img']")?.dataset.ready !== undefined || !!document.querySelector("main h1")?.textContent?.includes("WebGL"));
 }
 
 const links = [
@@ -43,7 +42,7 @@ export function TopBar() {
     const host = document.querySelector("main canvas[role='img']")?.parentElement;
     if (inBook && host) {
       event.preventDefault();
-      host.dispatchEvent(new CustomEvent("bookcover"));
+      host.dispatchEvent(new CustomEvent("bookclose"));
       return;
     }
     if (opening) return event.preventDefault();
@@ -67,7 +66,7 @@ export function TopBar() {
     setOpening(true);
     name.animate({ opacity: [0, 1] }, { duration: 700, delay: 500, easing: sweepEase, fill: "forwards" });
     void sheet.animate({ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] }, { duration: 700, easing: sweepEase }).finished.then(() => {
-      router.push(bookIntro);
+      router.push(bookCover);
       const since = performance.now();
       const wait = () => {
         if (!bookShown() && performance.now() - since < 10000) return void requestAnimationFrame(wait);
@@ -101,7 +100,7 @@ export function TopBar() {
         </ul>
         <div className="flex items-center gap-1">
           <Tip label="read Every Byte, the 3D book">
-            <Link href={bookIntro} onClick={enterBook} aria-label="Every Byte, the 3D book" aria-current={inBook ? "page" : undefined} className={clsx("pressable rounded p-1.5 hover:text-text", inBook ? "text-text" : "text-muted")}>
+            <Link href={bookCover} onClick={enterBook} aria-label="Every Byte, the 3D book" aria-current={inBook ? "page" : undefined} className={clsx("pressable rounded p-1.5 hover:text-text", inBook ? "text-text" : "text-muted")}>
               <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-none stroke-current" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                 <path className={clsx("transition-opacity duration-300 ease-in-out motion-reduce:transition-none", bookOpen && "opacity-0")} d="M2.5 13V3.5A1.5 1.5 0 0 1 4 2h9.5v10H4a1.5 1.5 0 0 0 0 3h9.5" />
                 <path className={clsx("transition-opacity duration-300 ease-in-out motion-reduce:transition-none", !bookOpen && "opacity-0")} d="M8 4.5C6.5 3.3 4.3 3 1.5 3.2v9.3c2.8-.2 5 .1 6.5 1.3 1.5-1.2 3.7-1.5 6.5-1.3V3.2C11.7 3 9.5 3.3 8 4.5zM8 4.5v9.3" />

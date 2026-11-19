@@ -2513,3 +2513,15 @@
 - **a row pitch** => 
 - **a package mirror** => 
 - **a retry loop** => 
+
+## Book performance (Branch 163)
+
+- **a shader precompile** => 
+- **KHR_parallel_shader_compile** => 
+- **a GPU readback** => 
+- **willReadFrequently** => 
+- **a long task** => 
+- **an imperative handle** => 
+- **a text bounding box** => 
+- **a fit guard** => 
+- **a custom event** => 

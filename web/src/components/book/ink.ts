@@ -188,6 +188,16 @@ export function createCard(kit: Kit, width: number, height: number, draw: (ctx: 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 16;
+  const fill = ctx.fillText.bind(ctx);
+  const pad = Math.min(canvas.height * 0.1, canvas.width * 0.04);
+  ctx.fillText = (text: string, x: number, y: number, max?: number) => {
+    const m = ctx.measureText(text);
+    const k = Math.min(1, m.actualBoundingBoxLeft > 0 ? (x - pad) / m.actualBoundingBoxLeft : 1, m.actualBoundingBoxRight > 0 ? (canvas.width - pad - x) / m.actualBoundingBoxRight : 1);
+    const font = ctx.font;
+    if (k < 1 && k > 0) ctx.font = font.replace(/[\d.]+px/, (size) => `${parseFloat(size) * k}px`);
+    fill(text, x, Math.min(y, canvas.height - pad / 2 - m.actualBoundingBoxDescent * Math.min(1, Math.max(k, 0))), max);
+    ctx.font = font;
+  };
   const redraw = () => {
     ctx.fillStyle = kit.palette.paper;
     ctx.fillRect(0, 0, canvas.width, canvas.height);

@@ -31,7 +31,7 @@ export function createStationsExhibit(kit: Kit, fonts: Fonts, n: StationNumbers)
     const name = createCard(kit, pitch * 0.98, 0.044, (ctx, w, h) => {
       const write = pen(ctx, fonts, w, h);
       ctx.textAlign = "center";
-      write(s.label, 0.5, 0.7, 0.56, s.where === "GPU" ? kit.palette.blue : kit.palette.ink);
+      write(s.label, 0.5, 0.67, 0.42, s.where === "GPU" ? kit.palette.blue : kit.palette.ink);
       ctx.textAlign = "left";
     });
     name.group.position.set(centre(i), 0, Z + 0.1);

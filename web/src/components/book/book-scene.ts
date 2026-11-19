@@ -49,7 +49,7 @@ type SceneOptions = {
   reduced: boolean;
   buildModel: (kit: Kit) => BookModel;
   onOverlay: (rect: OverlayRect | null) => void;
-  onLens: (lens: { x: number; y: number; source: HTMLCanvasElement; u: number; v: number; lines: number[][]; color: string } | null) => void;
+  onLens: (lens: { x: number; y: number; source: HTMLCanvasElement; u: number; v: number; perPx: number; lines: number[][]; color: string } | null) => void;
   onFrameTime?: (ms: number) => void;
   onPageClick: (side: "prev" | "next") => void;
   coverFrame?: Frame;
@@ -66,6 +66,12 @@ const easeInOutSine = (t: number) => (1 - Math.cos(Math.PI * t)) / 2;
 const easeOutBack = (t: number) => 1 + 2.1 * Math.pow(t - 1, 3) + 1.1 * Math.pow(t - 1, 2);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 const rad = (deg: number) => (deg * Math.PI) / 180;
+
+function restWhenHidden(object: THREE.Object3D): void {
+  object.updateMatrixWorld = function (force?: boolean) {
+    if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force);
+  };
+}
 const defaultCoverFrame: Frame = { center: [0.45, 0, 0], width: 1.9, depth: 2, az: 12, el: 58 };
 
 const HURRY = 0.12;
@@ -128,6 +134,7 @@ class TextSide {
       const canvas = document.createElement("canvas");
       canvas.width = textureWidth;
       canvas.height = Math.round((textureWidth * PAGE_D) / PAGE_W);
+      canvas.getContext("2d", { willReadFrequently: true });
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = anisotropy;
@@ -207,6 +214,9 @@ export class BookScene {
   private terms = new WeakMap<Stop, { seen: Set<string>; left: TermBox[]; right: TermBox[] }>();
   private hovered: string | null = null;
   private underline: LinkUnderline;
+  private pointerAt = 0;
+  private lensPerPx = 0.002;
+  private prefetchTimer = 0;
   private lens: { x: number; y: number; u: number; v: number; side: "left" | "right" } | null = null;
   private target = { stop: 0, beat: 0 };
   private running = false;
@@ -353,6 +363,7 @@ export class BookScene {
       const canvas = document.createElement("canvas");
       canvas.width = textureWidth;
       canvas.height = Math.round((textureWidth * PAGE_D) / PAGE_W);
+      canvas.getContext("2d", { willReadFrequently: true });
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = anisotropy;
@@ -378,11 +389,22 @@ export class BookScene {
     for (const exhibit of this.model.exhibits) {
       exhibit.scale.y = 0.001;
       exhibit.visible = false;
+      restWhenHidden(exhibit);
       this.modelRoot.add(exhibit);
     }
 
     this.listen();
     this.resize();
+    this.warm();
+  }
+
+  warm(): void {
+    for (const exhibit of this.model.exhibits) exhibit.children.forEach(restWhenHidden);
+    void this.renderer.compileAsync(this.scene, this.camera).then(() =>
+      this.scene.traverse((object) => {
+        for (const material of [(object as THREE.Mesh).material].flat()) if (material) (this.renderer.properties.get(material) as { currentProgram?: { getUniforms(): unknown } }).currentProgram?.getUniforms();
+      }),
+    );
   }
 
   private listen(): void {
@@ -409,6 +431,7 @@ export class BookScene {
         return;
       }
       this.lastPointer = event;
+      this.pointerAt = performance.now();
       const handle = this.pickHandle(event);
       const term = handle ? null : this.termAt(event);
       const link = handle || term ? null : this.linkAt(event);
@@ -583,13 +606,17 @@ export class BookScene {
       return;
     }
     const rect = this.options.canvas.getBoundingClientRect();
+    this.pointer.x += 20 / rect.width;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const beside = this.raycaster.intersectObject(hit.object, false)[0]?.uv;
+    if (beside) this.lensPerPx = Math.abs(beside.x - hit.uv.x) / 10;
     this.showLens({ x: event.clientX - rect.left, y: event.clientY - rect.top, u: hit.uv.x, v, side });
   }
 
   private showLens(lens: { x: number; y: number; u: number; v: number; side: "left" | "right" } | null): void {
     if (!lens && !this.lens) return;
     this.lens = lens;
-    this.options.onLens(lens && { ...lens, source: (lens.side === "left" ? this.leftText : this.rightText).current, lines: this.underline.lines(lens.side), color: this.kit.palette.blue });
+    this.options.onLens(lens && { ...lens, perPx: this.lensPerPx, source: (lens.side === "left" ? this.leftText : this.rightText).current, lines: this.underline.lines(lens.side), color: this.kit.palette.blue });
   }
 
   private setVisible(visible: boolean): void {
@@ -821,10 +848,17 @@ export class BookScene {
     if (this.applied.stop >= 0) this.applied.stop = map(this.applied.stop);
     this.opening = map(this.opening);
     this.target.stop = map(this.target.stop);
+    this.warm();
   }
 
   async idle(): Promise<void> {
     while (this.running) await this.settling;
+  }
+
+  async quiet(): Promise<void> {
+    const rest = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    await rest(0);
+    for (let n = 0; n < 8 && (this.running || performance.now() - this.pointerAt < 300); n++) await rest(250);
   }
 
   private kick(): void {
@@ -859,13 +893,20 @@ export class BookScene {
 
   private prefetch(): void {
     if (this.running || !this.opened || !this.visible) return;
-    const here = this.options.stops[this.applied.stop];
+    if (performance.now() - this.pointerAt < 250) {
+      window.clearTimeout(this.prefetchTimer);
+      this.prefetchTimer = window.setTimeout(() => this.prefetch(), 250);
+      return;
+    }
     const next = this.options.stops[this.applied.stop + this.direction];
-    if (!here || !next || next.spread === here.spread) return;
+    if (!next) return;
     const left = this.leftText.prepare(next, (c) => this.drawLeft(c, next));
-    const right = this.rightText.prepare(next, (c) => this.drawRight(c, next));
     this.renderer.initTexture(this.leftText.textures[left]);
-    this.renderer.initTexture(this.rightText.textures[right]);
+    window.setTimeout(() => {
+      if (this.running || !this.opened || this.options.stops[this.applied.stop + this.direction] !== next) return;
+      const right = this.rightText.prepare(next, (c) => this.drawRight(c, next));
+      this.renderer.initTexture(this.rightText.textures[right]);
+    }, 50);
   }
 
   private waitForCamera(): Promise<void> {
