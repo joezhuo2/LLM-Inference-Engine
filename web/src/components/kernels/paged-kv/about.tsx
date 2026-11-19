@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import Link from "next/link";
 import { chapterNumber } from "@/content/book-order";
 import { kvReplay, modelShape } from "@/lib/data";
 import { Frame, Label } from "../frame";
@@ -37,9 +38,8 @@ export const pagedKvAbout: StoryStep = {
   body: (
     <>
       <p>
-        A transformer writes one token at a time, and each new token has to look back at every token before it. In each of the {kvAbout.layers} layers, attention turns every token into three
-        vectors: a query, a key and a value. The new token&apos;s query is compared with the key of every earlier token, and the scores decide how much of each earlier token&apos;s value goes into
-        its output.
+        A transformer writes one token at a time, and each new token looks back at every token before it: in each of the {kvAbout.layers} layers its query is scored against the key of every
+        earlier token, and the scores mix their values, as <Link href="/kernels/one-token" className="link-underline text-accent">chapter {chapterNumber("one-token")}</Link> showed.
       </p>
       <p>
         The keys and values of earlier tokens never change, so the engine keeps them instead of computing them again on every step. That store is the KV cache, K for keys and V for values. Each new

@@ -2395,3 +2395,5 @@
 - **decode** => 
 - **query, key and value** => 
 - **a causal mask** => 
+- **dot-product attention** => 
+- **softmax** => 

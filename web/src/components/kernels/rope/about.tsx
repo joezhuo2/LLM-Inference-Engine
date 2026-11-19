@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
+import Link from "next/link";
+import { chapterNumber } from "@/content/book-order";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 import { StickyStory, type StoryStep } from "../sticky-story";
@@ -21,8 +23,7 @@ export const ropeAbout: StoryStep = {
         instead.
       </p>
       <p>
-        In attention every token produces a query, what it is looking for, and a key, what it offers. The score between two
-        tokens is the dot product of one&apos;s query and the other&apos;s key: multiply them value by value and add up. A
+        As <Link href="/kernels/one-token" className="link-underline text-accent">chapter {chapterNumber("one-token")}</Link> showed, attention scores two tokens with the dot product of one&apos;s query and the other&apos;s key. A
         dot product only sees the numbers, so without help a query would give a key the same score whether that key&apos;s
         token came just before it or a thousand tokens back.
       </p>
