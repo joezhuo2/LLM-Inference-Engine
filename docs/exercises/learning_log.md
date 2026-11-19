@@ -2468,3 +2468,4 @@
 - **negative zero** => 
 - **floating-point subtraction error** => 
 - **an all-reduce** => 
+- **a single source of truth** => 
