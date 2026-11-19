@@ -1,6 +1,8 @@
 "use client";
 
-import { about } from "@/lib/round";
+import { published } from "@/content/published";
+import { bigSide, engineSide, scaleQuantities, scaleSources } from "@/content/scale";
+import { about, num } from "@/lib/round";
 import NumberFlow from "@number-flow/react";
 import { motion } from "motion/react";
 import { useState } from "react";
@@ -155,6 +157,7 @@ const gateUp = eagerLayer.find((k) => k.op === "gate_up");
 if (!gateUp) throw new Error("cuda-graphs: no gate_up kernel in the profiled layer");
 const gateUpUs = gateUp.end - gateUp.start;
 const shape = modelShape();
+const l3 = published.llama3;
 const walkedTo = thresholds[thresholds.length - 1].context;
 const kneePoint = sweepPoints.find((p) => p.batch === sweepKnee);
 const lastPoint = sweepPoints[sweepPoints.length - 1];
@@ -257,6 +260,9 @@ const steps: StoryStep[] = [
           {`${about(saved[2])} ms`} at 16: roughly a fixed amount per step, since every step has the same boundaries. It
           is a bigger share of a token from a lone request than of a token in a full batch. Prefill steps are not graphed.
         </p>
+        <p>
+          Llama 3 8B on an H100 runs the same kernels in each of {l3.layers} layers instead of {shape.layers}, about {num(l3.layers / shape.layers)} times the boundaries, while reading its weights takes about {num(bigSide.readFloorMs)} ms there against about {num(engineSide.readFloorMs)} ms here, since the H100 reads memory about {num(bigSide.bandwidth / engineSide.bandwidth)} times faster. If the gaps were as long there, they would be a larger share of the step, not a smaller one. The floors are calculated from published specs; launch gaps on an H100 were not measured.
+        </p>
       </>
     ),
   },
@@ -330,7 +336,7 @@ const captions = [
   `gap = start of a kernel minus the end of the one before it, over every decode step of both profiles (web/scripts/step-timeline.py); the gate/up GEMV runs ${fmt(gateUpUs)} µs, median gap ${trace.eager.gap_us.p50} µs; a step has ${eager.kernels - 1} boundaries, ${fmt(eager.span_us - eager.busy_us)} µs of gaps in all, and ${shortKernels} of the ${eagerLayer.length} kernels in a layer run under 3 µs`,
   "one layer of the 224 nodes drawn; the code is capture() in src/runtime/decode_graphs.cpp",
   `the token ids, positions and slots are made up; ${stageRequests} requests pad to ${stageRows.length} rows because the buckets at max batch ${graphMaxBatch} are ${list(buckets)} (calculated from the bucket rule); the layout is PagedRunner::stage's`,
-  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and ${trace.graphs.gap_us.p50} µs with the graph, idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in results.md (TPOT p50, 3 runs), measured with one bucket per power of two; the saving is ${list(saved.map((v) => v.toFixed(2)))} ms at batch 1, 4 and 16, ${savedShare}% of a batch-1 token (calculated)`,
+  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and ${trace.graphs.gap_us.p50} µs with the graph, idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in results.md (TPOT p50, 3 runs), measured with one bucket per power of two; the saving is ${list(saved.map((v) => v.toFixed(2)))} ms at batch 1, 4 and 16, ${savedShare}% of a batch-1 token (calculated); Llama 3 8B on an H100, calculated: ${l3.layers} layers against ${shape.layers}, read floor ${scaleQuantities.readFloor.text(bigSide.readFloorMs)} against ${scaleQuantities.readFloor.text(engineSide.readFloorMs)}; ${scaleSources.big}`,
   `graph sizes calculated with the rule of decode_graph_buckets in src/sched/graph_buckets.cpp, ${padding.steps} per power of two by default; ${padding.rows} requests at max batch ${padding.maxBatch}, 256 output tokens, TPOT p50, median of 5 short and noisy runs, from results.md, Batch size past 16: ${list(padding.runs.map((r) => r.tpot.toFixed(2)))} ms with ${list(padding.runs.map((r) => r.steps))} sizes per power of two; why 8 was slower was not profiled; the capture time and memory of the extra graphs were not measured`,
   `graph count calculated from the bucket rule and the split rule of attention_splits in src/sched/paged_batch.cpp: ${graphCount} graphs at max batch ${graphMaxBatch}, split counts ${list(splitCounts)}, contexts walked up to ${fmt(walkedTo)} tokens; ${longRun.before.toFixed(1)} ms per token before and ${longRun.after.toFixed(1)} after at the ${longPrompt.prompt}-token prompt, from profiling.md, Split attention in CUDA Graphs (engine bench at max batch 1, where there is one bucket, mean of two runs)`,
   `engine bench with twice as many requests as the max batch, all submitted at once (an offline workload, not a serving result), 64 prompt and 64 output tokens, median of 3 runs, from results.md, Batch size past 16, measured with one bucket per power of two; ${fmt(kneePoint.graphs)} tok/s at ${sweepKnee} rows; ${sweepKnee} to ${lastPoint.batch} rows add ${afterKnee}% (calculated); attention ${halfStep.share}% of the step at ${halfStep.batch} rows; step shares are medians per op from eager Nsight Systems profiles, so attention and the GEMMs can add up to slightly more than the step; one workload shape on one GPU`,

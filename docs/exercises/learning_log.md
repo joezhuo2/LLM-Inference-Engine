@@ -2461,3 +2461,5 @@
 - **idle share** => 
 - **acceptance rate** => 
 - **tokens per step** => 
+- **a read floor** => 
+- **kernel boundaries** => 
