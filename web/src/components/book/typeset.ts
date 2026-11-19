@@ -38,8 +38,18 @@ export function glossRuns(paragraphs: Run[][], seen: Set<string>): Run[][] {
 
 type Word = { text: string; accent: boolean; width: number; glue: boolean; term?: string };
 
+const widths = new Map<string, number>();
+
+function widthOf(ctx: CanvasRenderingContext2D, font: string, text: string): number {
+  const key = `${font}\n${text}`;
+  let width = widths.get(key);
+  if (width === undefined) widths.set(key, (width = ctx.measureText(text).width));
+  return width;
+}
+
 function layoutWords(ctx: CanvasRenderingContext2D, runs: Run[]): Word[] {
   const words: Word[] = [];
+  const font = ctx.font;
   let glue = false;
   for (const run of runs) {
     const parts = run.text.split(/(\s+)/);
@@ -49,7 +59,7 @@ function layoutWords(ctx: CanvasRenderingContext2D, runs: Run[]): Word[] {
         glue = false;
         continue;
       }
-      words.push({ text: part, accent: run.accent, width: ctx.measureText(part).width, glue, term: run.term });
+      words.push({ text: part, accent: run.accent, width: widthOf(ctx, font, part), glue, term: run.term });
       glue = true;
     }
   }
@@ -58,7 +68,7 @@ function layoutWords(ctx: CanvasRenderingContext2D, runs: Run[]): Word[] {
 
 function drawParagraph(ctx: CanvasRenderingContext2D, runs: Run[], x: number, y: number, width: number, lineHeight: number, ink: string, accent: string, dry: boolean, marks?: Marks): number {
   const words = layoutWords(ctx, runs);
-  const space = ctx.measureText(" ").width;
+  const space = widthOf(ctx, ctx.font, " ");
   let cx = x;
   let cy = y;
   for (const word of words) {

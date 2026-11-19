@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-perf
+
+- Part A: Every Byte stays smooth after a page turn: shaders compile ahead of use, the next spread and the next chapter's models wait for a still cursor, page canvases upload without a GPU readback, hidden exhibits skip the per-frame matrix pass, and the magnifier draws without a React render and shows the text at 1.8 times its size on screen (`web/src/components/book/`)
+
 ## web/every-byte-audit
 
 - Part A: say what to write in every NumPy stub's NotImplementedError message (`docs/exercises/numpy/`)
