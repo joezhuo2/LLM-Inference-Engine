@@ -2361,3 +2361,6 @@
 - **grouped-query attention** => 
 - **the LM head** => 
 - **argmax** => 
+- **memory bandwidth** => 
+- **cache size** => 
+- **bytes divided by bandwidth** => 
