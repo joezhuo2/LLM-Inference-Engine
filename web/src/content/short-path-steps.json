@@ -49,7 +49,7 @@
   ]
  },
  "attention-v2": {
-  "about": 253,
+  "about": 254,
   "steps": [
    {
     "id": "online",
@@ -76,7 +76,7 @@
     "id": "cap",
     "title": "keeping every score capped the context",
     "group": "how it got built",
-    "words": 88
+    "words": 89
    },
    {
     "id": "step",
@@ -144,7 +144,7 @@
    {
     "id": "stage",
     "title": "same addresses, new values",
-    "words": 121
+    "words": 122
    },
    {
     "id": "replay",
@@ -155,13 +155,13 @@
     "id": "buckets",
     "title": "finer buckets pad fewer rows",
     "group": "how it got built",
-    "words": 126
+    "words": 128
    },
    {
     "id": "splits",
     "title": "the frozen grid froze the split count",
     "group": "how it got built",
-    "words": 108
+    "words": 109
    },
    {
     "id": "sweep",
@@ -244,7 +244,7 @@
    {
     "id": "idea-memory",
     "title": "decode waits on memory",
-    "words": 111
+    "words": 150
    },
    {
     "id": "idea-cache",
@@ -254,7 +254,7 @@
    {
     "id": "idea-batch",
     "title": "batching shares the read",
-    "words": 86
+    "words": 87
    },
    {
     "id": "idea-budget",
@@ -284,7 +284,7 @@
    {
     "id": "roofline",
     "title": "the ridge splits memory from compute",
-    "words": 99
+    "words": 155
    },
    {
     "id": "measured",
@@ -309,7 +309,7 @@
    {
     "id": "job",
     "title": "most of a layer is matrix products",
-    "words": 106
+    "words": 107
    },
    {
     "id": "gemv",
@@ -319,7 +319,7 @@
    {
     "id": "roof",
     "title": "cuBLAS already reads at the roof",
-    "words": 86
+    "words": 108
    },
    {
     "id": "batch",
@@ -344,9 +344,49 @@
    }
   ]
  },
- "paged-attention": {
-  "about": 222,
+ "memory-budget": {
+  "about": 190,
   "steps": [
+   {
+    "id": "bytes",
+    "title": "a cached token costs 22,528 bytes, whatever it says",
+    "words": 162
+   },
+   {
+    "id": "budget",
+    "title": "batch size and context length share one pool",
+    "words": 188
+   },
+   {
+    "id": "bigger",
+    "title": "a larger model squeezes the pool from both sides",
+    "words": 173
+   }
+  ]
+ },
+ "one-token": {
+  "about": 175,
+  "steps": [
+   {
+    "id": "tokenize",
+    "title": "text becomes IDs on the host, once",
+    "words": 156
+   },
+   {
+    "id": "layers",
+    "title": "one ID goes through 22 layers, and that is the token's time",
+    "words": 194
+   },
+   {
+    "id": "head",
+    "title": "2,048 numbers become 32,000 scores, then one ID",
+    "words": 164
+   },
+   {
+    "id": "trip",
+    "title": "the whole trip, timed",
+    "words": 170
+   },
    {
     "id": "basics-qkv",
     "title": "three vectors per token",
@@ -355,7 +395,7 @@
    {
     "id": "basics-scores",
     "title": "score, weigh, sum",
-    "words": 102
+    "words": 107
    },
    {
     "id": "basics-past",
@@ -366,7 +406,12 @@
     "id": "basics-heads",
     "title": "heads, and heads that share",
     "words": 106
-   },
+   }
+  ]
+ },
+ "paged-attention": {
+  "about": 195,
+  "steps": [
    {
     "id": "prefill",
     "title": "prefill: the whole prompt at once",
@@ -390,7 +435,7 @@
    {
     "id": "job",
     "title": "one query against every cached key, every step",
-    "words": 50
+    "words": 51
    },
    {
     "id": "blocks",
@@ -417,7 +462,7 @@
   ]
  },
  "paged-kv": {
-  "about": 247,
+  "about": 224,
   "steps": [
    {
     "id": "why",
@@ -443,18 +488,18 @@
     "id": "write",
     "title": "write_kv is a pure copy, one thread per value",
     "group": "how it got built",
-    "words": 185
+    "words": 187
    },
    {
     "id": "replay",
-    "title": "a busy run held 66 of 12,915 blocks",
+    "title": "a busy run held 65 of 12,915 blocks",
     "group": "measured",
     "words": 141
    }
   ]
  },
  "rope": {
-  "about": 240,
+  "about": 219,
   "steps": [
    {
     "id": "job",
@@ -474,13 +519,13 @@
    {
     "id": "bits",
     "title": "position multiplies a last-bit error",
-    "words": 99
+    "words": 100
    },
    {
     "id": "serial",
     "title": "one thread per head leaves most idle",
     "group": "how it got built",
-    "words": 88
+    "words": 89
    },
    {
     "id": "measured",
@@ -491,7 +536,7 @@
   ]
  },
  "sampling": {
-  "about": 206,
+  "about": 207,
   "steps": [
    {
     "id": "greedy",
@@ -544,7 +589,7 @@
    {
     "id": "budget",
     "title": "every token costs 22,528 bytes of cache",
-    "words": 141
+    "words": 151
    },
    {
     "id": "fit",
@@ -559,7 +604,7 @@
    {
     "id": "admission",
     "title": "first come, first served, nothing skips ahead",
-    "words": 178
+    "words": 179
    },
    {
     "id": "preempt",
@@ -595,8 +640,38 @@
    }
   ]
  },
+ "speculative-decoding": {
+  "about": 163,
+  "steps": [
+   {
+    "id": "rows",
+    "title": "a step has rows to spare",
+    "words": 126
+   },
+   {
+    "id": "guess",
+    "title": "the guess is copied from the context",
+    "words": 180
+   },
+   {
+    "id": "check",
+    "title": "one step checks every guess",
+    "words": 248
+   },
+   {
+    "id": "truncate",
+    "title": "a wrong guess gives its cache slots back",
+    "words": 165
+   },
+   {
+    "id": "payoff",
+    "title": "it pays when the answer repeats the prompt",
+    "words": 312
+   }
+  ]
+ },
  "split-attention": {
-  "about": 245,
+  "about": 246,
   "steps": [
    {
     "id": "few",
@@ -645,17 +720,17 @@
   ]
  },
  "swiglu": {
-  "about": 272,
+  "about": 273,
   "steps": [
    {
     "id": "job",
     "title": "each output is silu(gate) times up",
-    "words": 95
+    "words": 96
    },
    {
     "id": "bits",
     "title": "keep PyTorch's two roundings",
-    "words": 125
+    "words": 126
    },
    {
     "id": "vector",
@@ -675,9 +750,49 @@
    },
    {
     "id": "measured",
-    "title": "1.6x to 2.1x, but 0.4% of a step",
+    "title": "1.6x to 2.1x, but 0.3% of a step",
     "group": "measured",
     "words": 121
+   }
+  ]
+ },
+ "tensor-parallelism": {
+  "about": 173,
+  "steps": [
+   {
+    "id": "heads",
+    "title": "attention is cut by heads",
+    "words": 170
+   },
+   {
+    "id": "channels",
+    "title": "the MLP is cut by channels",
+    "words": 123
+   },
+   {
+    "id": "sums",
+    "title": "two sums in every layer",
+    "words": 164
+   },
+   {
+    "id": "forward",
+    "title": "a forward pass on the shards",
+    "words": 209
+   },
+   {
+    "id": "bytes",
+    "title": "a rank holds more than its share",
+    "words": 151
+   },
+   {
+    "id": "load",
+    "title": "a column slice is one copy per row",
+    "words": 183
+   },
+   {
+    "id": "wire",
+    "title": "one GPU, and no wire",
+    "words": 131
    }
   ]
  },

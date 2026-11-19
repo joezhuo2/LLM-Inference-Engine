@@ -2397,3 +2397,5 @@
 - **a causal mask** => 
 - **dot-product attention** => 
 - **softmax** => 
+- **a reading path** => 
+- **a reading-time estimate** => 
