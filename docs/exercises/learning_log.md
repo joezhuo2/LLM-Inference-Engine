@@ -2435,3 +2435,4 @@
 - **a scale factor** => 
 - **a mantissa** => 
 - **an exponent** => 
+- **a stub exercise** => 
