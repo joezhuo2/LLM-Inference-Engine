@@ -2459,3 +2459,5 @@
 - **a top-k threshold search** => 
 - **a launch gap** => 
 - **idle share** => 
+- **acceptance rate** => 
+- **tokens per step** => 
