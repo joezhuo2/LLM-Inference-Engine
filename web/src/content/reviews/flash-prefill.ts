@@ -1,4 +1,5 @@
 import { flashFmt, flashKeyRows, flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashProfile, flashShape, flashSystems, flashTtft } from "@/content/kernels/flash-prefill";
+import { about } from "@/lib/round";
 import type { ChapterReview } from "./types";
 
 const n = flashNumbers;
@@ -12,13 +13,13 @@ export const review: ChapterReview = {
   why: "It shows that prefill attention is arithmetic on a small set of bytes, so the gain comes from which threads share a read. It keeps the rewrite that passed every test and was slower, and it says plainly which parts of the result were measured and which were not.",
   takeaways: [
     `With one walk per row, a ${flashLong}-token prompt reads ${flashFmt(flashKeyRows.perRow)} key rows per head; with one pass per ${s.tile} rows it reads ${flashFmt(flashKeyRows.tiled)} (calculated). The score and value products are the same number, and they move to the tensor cores.`,
-    `Tests prove a kernel right, not fast. The first kernel passed all ${s.tests} tests and took ${flashFmt(n.first)} ms where the path it replaced took ${flashFmt(pagedPath)} ms (measured), so it stayed behind a switch.`,
-    `The tiled kernel takes the same prompt from ${flashFmt(n.paged)} to ${flashFmt(n.tiled)} ms (measured) and keeps the cost per prompt token between ${n.perTokenLow} and ${n.perTokenHigh} ms. Nsight Compute, run later, found the tensor cores at ${flashProfile.step.tensor}% of their peak rate and DRAM at ${flashProfile.step.dram}% of its throughput (measured): neither is at its limit. Registers cap how many warps fit on an SM (measured); whether that is what holds the tensor cores back was not measured.`,
+    `Tests prove a kernel right, not fast. The first kernel passed all ${s.tests} tests and took ${about(n.first)} ms where the path it replaced took ${about(pagedPath)} ms (measured), so it stayed behind a switch.`,
+    `The tiled kernel takes the same prompt from ${about(n.paged)} to ${about(n.tiled)} ms (measured) and keeps the cost per prompt token between ${n.perTokenLow} and ${n.perTokenHigh} ms. Nsight Compute, run later, found the tensor cores at ${about(flashProfile.step.tensor)}% of their peak rate and DRAM at ${flashProfile.step.dram}% of its throughput (measured): neither is at its limit. Registers cap how many warps fit on an SM (measured); whether that is what holds the tensor cores back was not measured.`,
   ],
   questions: [
     {
       question: "The first kernel read the chunk's keys and values straight from the QKV buffer instead of through the block table. Why was prefill not faster?",
-      answer: `Because the walk did not change: ${flashFmt(n.first)} against ${flashFmt(pagedPath)} ms at ${flashLong} tokens, ${n.firstLoss.toFixed(0)}% slower.`,
+      answer: `Because the walk did not change: ${about(n.first)} against ${about(pagedPath)} ms at ${flashLong} tokens, ${n.firstLoss.toFixed(0)}% slower.`,
       why: "It still ran one thread block per row and query head, took the keys one at a time and waited at two barriers per key. Every row fetched every key of its context by itself, so the number of fetches was the same and only their address changed.",
     },
     {
