@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { firstSplit, loadHistory, mib, mostRanks, perCopySpan, rankCopies, rankShare, shardedForwardSentences, split, tpFmt, tpShape, whole } from "@/content/kernels/tensor-parallelism";
+import { firstSplit, loadHistory, mib, mostRanks, perCopySpan, rankCopies, rankShare, shardedForwardCaption, shardedForwardSentences, split, tpFmt, tpShape, whole } from "@/content/kernels/tensor-parallelism";
+import { about, msText } from "@/lib/round";
 import { expectAnswer, type Prediction, Predict } from "../predict";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { ForwardFigure, LoadFigure, MatrixFigure, RankBytesFigure, SumsFigure, WireFigure } from "./figures";
@@ -26,7 +27,7 @@ const prediction: Prediction = expectAnswer({
   question: `TinyLlama is cut across ${two.n} ranks. What share of the model's bytes does one rank hold?`,
   choices: ["less than half", "half", "more than half"],
   answer: two.calc.pct < half - 0.5 ? "less than half" : two.calc.pct > half + 0.5 ? "more than half" : "half",
-  why: `${fmt(two.mib, 1)} MiB of ${fmt(whole.mib, 1)}, ${fmt(two.calc.pct)}% (measured). The layer matrices halve, but the embedding and the LM head, ${mib(rankShare(1).embed)} each, are whole in both ranks.`,
+  why: `${about(two.mib)} of ${about(whole.mib)} MiB, ${fmt(two.calc.pct)}% (measured). The layer matrices halve, but the embedding and the LM head, ${mib(rankShare(1).embed)} each, are whole in both ranks.`,
 }, "more than half");
 
 const steps: StoryStep[] = [
@@ -98,10 +99,10 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Cutting the layers divides most of the bytes, not all of them. A rank of {two.n} holds {fmt(two.mib, 1)} MiB, <span className="text-accent">{fmt(two.calc.pct)}% of the model and not {fmt(half)}%</span>, and a rank of {last.n} holds {fmt(last.mib, 1)} MiB, {fmt(last.calc.pct)}% and not {fmt(100 / last.n)}% (measured).
+          Cutting the layers divides most of the bytes, not all of them. A rank of {two.n} holds {about(two.mib)} MiB, <span className="text-accent">{fmt(two.calc.pct)}% of the model and not {fmt(half)}%</span>, and a rank of {last.n} holds {about(last.mib)} MiB, {fmt(last.calc.pct)}% and not {fmt(100 / last.n)}% (measured).
         </p>
         <p>
-          The layer matrices do divide by N. The embedding and the LM head are each {fmt(s.vocab)} rows of {fmt(s.hidden)} numbers, {mib(rankShare(1).embed)}, and every rank holds both whole, so {mib(2 * rankShare(1).embed)} never shrinks. {two.n} ranks together hold {fmt(two.calc.together, 2)} times the model and {last.n} ranks {fmt(last.calc.together, 2)} times.
+          The layer matrices do divide by N. The embedding and the LM head are each {fmt(s.vocab)} rows of {fmt(s.hidden)} numbers, {mib(rankShare(1).embed)}, and every rank holds both whole, so {mib(2 * rankShare(1).embed)} never shrinks. {two.n} ranks together hold {about(two.calc.together)} times the model and {last.n} ranks {about(last.calc.together)} times.
         </p>
         <p>Counting the bytes of every tensor from the shapes gives the same MiB the engine allocated. In the forward pass here only rank 0 embeds and makes the logits, so the other ranks could drop both tables. They still load them.</p>
         <Predict {...prediction} />
@@ -117,10 +118,10 @@ const steps: StoryStep[] = [
           Loading a rank means copying its slices out of the file. A slice of rows is one piece of the file, one copy. A slice of columns is not: a matrix is stored row after row, so a rank&apos;s columns are a short piece of every row. wo and wdown have {fmt(s.hidden)} rows each, and a rank needs <span className="text-accent">{fmt(rankCopies(two.n))} copies</span> where the whole model needs {fmt(rankCopies(0))}.
         </p>
         <p>
-          The first upload_weights gave every copy its own copy into pinned memory, its own transfer and its own event. That cost per copy made a rank load in {fmt(perCopySpan.min / 1000, 1)} to {fmt(perCopySpan.max / 1000, 1)} s, about {fmt(twoLoad.perCopy / wholeLoad.perCopy)} times the {fmt(wholeLoad.perCopy)} ms the whole model took then, for a fraction of the bytes (measured at {loadHistory.before}).
+          The first upload_weights gave every copy its own copy into pinned memory, its own transfer and its own event. That cost per copy made a rank load in {fmt(perCopySpan.min / 1000, 1)} to {fmt(perCopySpan.max / 1000, 1)} s, about {fmt(twoLoad.perCopy / wholeLoad.perCopy)} times what the whole model took then, {msText(wholeLoad.perCopy)}, for a fraction of the bytes (measured at {loadHistory.before}).
         </p>
         <p>
-          The fix used the order of the copies: the row pieces of one tensor come one after another, and so do their destinations. upload_weights now fills one chunk with all of them and sends it in one call. A rank of {two.n} loads in {fmt(twoLoad.packed)} ms and a rank of {last.n} in {fmt(lastLoad.packed)} ms, against {fmt(wholeLoad.packed)} ms for the whole model (measured at {loadHistory.after}).
+          The fix used the order of the copies: the row pieces of one tensor come one after another, and so do their destinations. upload_weights now fills one chunk with all of them and sends it in one call. A rank of {two.n} loads in {msText(twoLoad.packed)} and a rank of {last.n} in {msText(lastLoad.packed)}, against {msText(wholeLoad.packed)} for the whole model (measured at {loadHistory.after}).
         </p>
       </>
     ),
@@ -147,8 +148,8 @@ const captions = [
   `rows and columns as plan_shard_layout() in src/loader/tensor_parallel.cpp picks them; TinyLlama's shapes from config.json; boxes not to scale`,
   `rows and columns as plan_shard_layout() picks them; ${fmt(s.intermediate)} channels, ${fmt(s.hidden)} wide; boxes not to scale`,
   "the order of one layer; PartialOutputsAddUpToTheFullLayer in tests/unit/test_tensor_parallel.cpp checks the sums in double precision",
-  "the structure of the sharded forward pass: what each rank keeps and where the two sums are",
-  `${source}: MiB on the device, every rank loaded onto the one GPU (measured); the parts calculated from the shapes`,
+  `the structure of the sharded forward pass: what each rank keeps and where the two sums are; ${shardedForwardCaption()}`,
+  `${source}: MiB on the device, every rank loaded onto the one GPU (measured); the parts calculated from the shapes; ${two.n} ranks together hold ${fmt(two.calc.together, 2)} times the model, ${last.n} ranks ${fmt(last.calc.together, 2)} times`,
   `${source}: upload ms, median of 21 uploads, one process per layout (measured at ${loadHistory.before} and ${loadHistory.after})`,
   `${s.layers} layers × 2 sums, calculated; the one GPU of hardware.md`,
 ];

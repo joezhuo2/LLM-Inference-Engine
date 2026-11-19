@@ -2467,3 +2467,4 @@
 - **shared React state** => 
 - **negative zero** => 
 - **floating-point subtraction error** => 
+- **an all-reduce** => 

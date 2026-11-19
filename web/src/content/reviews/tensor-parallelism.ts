@@ -1,4 +1,5 @@
 import { firstSplit, loadHistory, mib, mostRanks, rankCopies, rankShare, tpFmt, tpShape, whole } from "@/content/kernels/tensor-parallelism";
+import { about } from "@/lib/round";
 import type { ChapterReview } from "./types";
 
 const fmt = tpFmt;
@@ -12,8 +13,8 @@ export const review: ChapterReview = {
   why: "It is how a model larger than one GPU is served, and it shows which bytes divide across GPUs and which do not.",
   takeaways: [
     `Attention is cut by heads and the MLP by channels: rows of the fused QKV and gate and up weights, columns of wo and wdown. TinyLlama's ${s.kv_heads} K/V heads allow at most ${mostRanks} ranks.`,
-    `A rank of ${two.n} holds ${fmt(two.mib, 1)} MiB, ${fmt(two.calc.pct)}% of the model and not half (measured): the embedding and the LM head, ${mib(rankShare(1).embed)} each, stay whole in every rank.`,
-    `A column slice is one copy per row, ${fmt(rankCopies(two.n))} copies against ${fmt(rankCopies(0))}; packing the copies of one tensor into one chunk took a rank of ${two.n} from ${fmt(twoLoad.perCopy)} to ${fmt(twoLoad.packed)} ms (measured).`,
+    `A rank of ${two.n} holds ${about(two.mib)} MiB, ${fmt(two.calc.pct)}% of the model and not half (measured): the embedding and the LM head, ${mib(rankShare(1).embed)} each, stay whole in every rank.`,
+    `A column slice is one copy per row, ${fmt(rankCopies(two.n))} copies against ${fmt(rankCopies(0))}; packing the copies of one tensor into one chunk took a rank of ${two.n} from ${about(twoLoad.perCopy)} to ${about(twoLoad.packed)} ms (measured).`,
   ],
   questions: [
     {
