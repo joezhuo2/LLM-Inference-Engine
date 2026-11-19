@@ -6,7 +6,7 @@ import { servingAbout, servingAboutCaption } from "@/components/kernels/serving/
 import { LoadFigure, tightBlocks } from "@/components/kernels/serving/figures";
 import { queueConfig } from "@/components/kernels/serving/queue";
 import { replayFacts, ServingReplay } from "@/components/kernels/serving/replay";
-import { servingCaptions, servingSteps } from "@/components/kernels/serving/story";
+import { ServingScaleFigure, servingCaptions, servingSteps } from "@/components/kernels/serving/story";
 import { KvVisualizer } from "@/components/kernels/serving/visualizer";
 import { chapterNumber } from "@/content/book-order";
 import { blockTokens, fmt, fullContext, serving, sweepRows } from "@/content/kernels/serving";
@@ -57,6 +57,7 @@ const beats: Beat[][] = [
   gridBeats(`Static batching: ${lengths.length} requests in ${slots} slots`, "Close up: the pink slabs are slots that wait for the longest request"),
   gridBeats("Continuous batching: a free slot is refilled at once", "Close up: the waste is only at the end, when the queue is empty"),
   gridBeats(`A pool of ${tightBlocks} blocks: admission and preemption in the grid`, "Close up: pink cells are recomputed steps, pink balls are evictions"),
+  [flat("TinyLlama on this GPU against Llama 3 8B on an H100")],
   [flat("Goodput against the offered load")],
   [flat("Time per token against the offered load")],
   [flat("Allocate it yourself: the pool")],
@@ -73,6 +74,7 @@ const instructions = [
   "Drag the pink ball to step through; the pink slabs are wasted slot-steps.",
   "Watch a finished request's slot go to the front of the queue on the next step.",
   "Watch the pink balls: a full pool sends the newest request back to the queue.",
+  "Compare the rows: the pool grows, but each long request holds far more of it.",
 ];
 
 const workbench: WorkbenchPage[] = [
@@ -117,6 +119,7 @@ function ServingOverlay({ kind, target, narrow }: OverlayProps) {
       <KvVisualizer pages={{ pool: kind === "visualizer-pool" ? target : null, tables: kind === "visualizer-tables" ? target : null }} />
       <ServingReplay pages={{ replay: kind === "replay" ? target : null }} />
       {target && (kind === "goodput" || kind === "tpot") && createPortal(<div className={narrow ? "w-full" : "pt-10"}><LoadFigure kind={kind} /></div>, target)}
+      {target && kind === "scale" && createPortal(<div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}><ServingScaleFigure /></div>, target)}
     </>
   );
 }
@@ -128,8 +131,8 @@ const chapter: ChapterDef = {
   formula: serving.formula,
   steps: servingSteps,
   captions: servingCaptions,
-  exhibits: [0, 1, 1, 2, 2, 3, 3, 3, null, null],
-  overlays: [null, null, null, null, null, null, null, null, "goodput", "tpot"],
+  exhibits: [0, 1, 1, 2, 2, 3, 3, 3, null, null, null],
+  overlays: [null, null, null, null, null, null, null, null, "scale", "goodput", "tpot"],
   instructions,
   beats,
   workbench,

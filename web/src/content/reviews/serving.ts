@@ -1,10 +1,13 @@
 import { blockTokens, blocksFor, engineBest, fmt, loadPredatesFlash, fullBlocks, fullContext, loadPreemptions, maxBatch, peak, poolBlocks, reservedFit, tokenBytes, usableBlocks, vllm, worstCaseBlocks } from "@/content/kernels/serving";
 import { about } from "@/lib/round";
+import { published } from "../published";
+import { bigSide } from "../scale";
 import { chapterNumber } from "../book-order";
 import type { ChapterReview } from "./types";
 
 const half = 1024;
 const halfFit = Math.floor(usableBlocks / blocksFor(half));
+const bigWorst = maxBatch * bigSide.contextBlocks;
 
 export const review: ChapterReview = {
   lesson: "Count the memory requests hold, not what they might hold, and decide again before every step.",
@@ -30,6 +33,11 @@ export const review: ChapterReview = {
       answer: "Not necessarily, and it does not matter.",
       why: "Its old blocks went back to the pool and other requests may have taken them. The new prefill takes whatever blocks are free now and writes a new block table, and attention only ever finds tokens through that table.",
       recall: "paged-kv",
+    },
+    {
+      question: `${bigSide.model} on an ${bigSide.gpu} gets a pool of ${fmt(bigSide.poolBlocks)} blocks of ${blockTokens} tokens, and its context is ${fmt(bigSide.context)} tokens. Counting memory only, how many full contexts fit, and does max_batch ${maxBatch} still fill first?`,
+      answer: `${bigSide.fullContexts}, and yes: ${maxBatch} full contexts hold ${fmt(bigWorst)} blocks.`,
+      why: `${fmt(bigSide.context)} tokens are ${bigSide.contextBlocks} blocks, block 0 is the null block, and (${fmt(bigSide.poolBlocks)} − 1) ÷ ${bigSide.contextBlocks} rounds down to ${bigSide.fullContexts}, against ${reservedFit} for TinyLlama here. ${maxBatch} × ${bigSide.contextBlocks} = ${fmt(bigWorst)} blocks, ${about((100 * bigWorst) / bigSide.poolBlocks)}% of the pool, so the rows run out long before the memory. These are calculated from ${published.h100.vendor}'s and ${published.llama3.vendor}'s published specs; nothing was measured on that GPU.`,
     },
   ],
 };

@@ -2425,3 +2425,5 @@
 - **a published spec** => 
 - **HBM bandwidth** => 
 - **the ridge point** => 
+- **context length** => 
+- **KV pool sizing** => 

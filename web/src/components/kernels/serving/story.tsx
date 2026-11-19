@@ -3,8 +3,11 @@
 import { chapterNumber } from "@/content/book-order";
 import { blockBytes, blockTokens, budgetSystem, chatFit, engineBest, loadPredatesFlash, queueBound, vllmPreemptions, chatLengths, chatMean, engine, firstOverPool, fmt, fullBlocks, fullContext, heldBy, highRate, kvValues, loadConfigs, loadPreemptions, loadRates, lowRate, maxBatch, peak, poolBlocks, poolFraction, poolGb, poolTokens, reservedFit, slo, sloMet, sweepLast, sweepRows, tokenBytes, tpot, trace, ttftTail, usableBlocks, vllm, worstCaseBlocks, worstCasePct } from "@/content/kernels/serving";
 import { measured } from "@/content/kernels/types";
+import { published } from "@/content/published";
+import { bigSide, engineSide } from "@/content/scale";
 import { loadRun, modelShape } from "@/lib/data";
 import { about, bytesText, msText, num } from "@/lib/round";
+import { ScaleFigure } from "../scale-figure";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { BatchingFigure, BatchLimitFigure, batchGrids, BudgetFigure, FitFigure, LoadFigure, QueueFigure, tightBlocks } from "./figures";
 import { firstBlocked, firstEviction, queueBlocks, queueConfig, queueEvictions, queueRequests, queueRun, selfEviction } from "./queue";
@@ -22,6 +25,9 @@ const held100 = heldBy(reservedFit);
 const victim = queueRequests[queueRun[firstEviction].evicted[0]].name;
 const needy = queueRequests[queueRun[firstEviction].needy ?? 0].name;
 const blocked = queueRun[firstBlocked].wait;
+const l3 = published.llama3;
+const h100 = published.h100;
+const bigWorst = maxBatch * bigSide.contextBlocks;
 const self = selfEviction >= 0 ? queueRequests[queueRun[selfEviction].evicted[0]].name : "";
 
 export const servingRanges = {
@@ -162,6 +168,23 @@ export const servingSteps: StoryStep[] = [
     ),
   },
   {
+    id: "bigger",
+    title: `on an ${bigSide.gpu}, ${bigSide.model} fits ${bigSide.fullContexts} full contexts, not ${reservedFit}`,
+    body: (
+      <>
+        <p>
+          Carry the count to a model and a GPU people serve: {bigSide.model} in BF16 on an {bigSide.gpu} with {h100.memoryGB} GB. The weights take {bytesText(bigSide.weightBytes)}, and the engine&apos;s rule, {poolFraction}% of what is left, gives a pool of {bytesText(bigSide.poolBytes)}. A cached token costs 2 × {l3.layers} layers × {l3.kvHeads} KV heads × {l3.headDim} numbers × 2 bytes, <span className="text-accent">{fmt(bigSide.kvTokenBytes)} bytes</span>, {about(bigSide.kvTokenBytes / engineSide.kvTokenBytes)} times TinyLlama&apos;s: more layers, more KV heads, wider heads. So the pool is {about(bigSide.poolBlocks)} blocks, room for {about(bigSide.poolTokens)} tokens.
+        </p>
+        <p>
+          A full context is longer too, {fmt(bigSide.context)} tokens where TinyLlama stops at {fmt(fullContext)}: {bigSide.contextBlocks} blocks, {bytesText(bigSide.contextBytes)} for one request. Divide, and <span className="text-accent">{bigSide.fullContexts}</span> full contexts fit where TinyLlama&apos;s pool held {reservedFit}. The pool grew {about(bigSide.poolBytes / engineSide.poolBytes)} times, but what one long request holds grew {about(bigSide.contextBytes / engineSide.contextBytes)} times.
+        </p>
+        <p>
+          The rules do not change. With max_batch {maxBatch}, {maxBatch} full contexts hold {fmt(bigWorst)} blocks, {about((100 * bigWorst) / bigSide.poolBlocks)}% of this pool, so the row limit still fills first; with more than {bigSide.fullContexts} long requests running, the pool runs out and preemption is back. These numbers are calculated from published specs, and nothing was measured on an {bigSide.gpu} or with {bigSide.model}. A real pool would be a little smaller, since the CUDA context and the engine&apos;s own buffers take memory too.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "load",
     group: "measured",
     title: `goodput peaks at an offered ${engineBest.qps} requests a second`,
@@ -212,9 +235,14 @@ export const servingCaptions = [
   `illustrative request lengths in steps, ${gs.slots} slots; the same 10 requests in every figure; request 1 runs 9 steps, requests 0, 2 and 3 end by step 3; ${gs.steps} steps in all`,
   `illustrative lengths; a pool that never runs out; a prefill and a decode step are drawn as one cell; ${gr.steps} steps against static batching's ${gs.steps}`,
   `illustrative lengths; ${tightBlocks} blocks of 2 steps instead of ${blockTokens} tokens; ${gt.steps} steps and ${gt.wasted} wasted slot-steps against static batching's ${gs.wasted}; rules from src/sched/scheduler.cpp: first come first served up to max_batch, preempt from the back of the running list`,
+  `calculated, not measured: ${h100.source}; ${l3.source}, context ${fmt(l3.context)} tokens; weights ${fmt(bigSide.weightBytes)} bytes at 2 bytes each; pool ${poolFraction}% × (${h100.memoryGB} GB − weights) ÷ ${fmt(bigSide.blockBytes)} bytes = ${fmt(bigSide.poolBlocks)} blocks, ${fmt(bigSide.poolTokens)} tokens; (${fmt(bigSide.poolBlocks)} − 1) ÷ ${bigSide.contextBlocks} = ${bigSide.fullContexts}; TinyLlama's row is the measured pool above`,
   `results.md (Under load), measured ${run.date} at commit ${run.commit} on the ${run.gpu.replace("NVIDIA GeForce ", "")}: engine bench --max-batch ${maxBatch} --graphs, median of 3 runs, greedy; with 120 requests an overloaded run ends before its queue settles, so read the points past the peak as overloaded, not as stable values; offline throughput from results.md (Throughput and latency): ${fmt(tput(String(maxBatch)), 1)} tokens/s at max batch ${maxBatch}, ${fmt(tput("1"), 1)} at 1`,
   `the same sweep; vLLM 0.32.0 run as in baselines.md with --max-num-seqs ${maxBatch}, its times taken in the client over HTTP${trace ? `; from the trace of one engine run at ${trace.qps} per second: ${fmt(trace.prefill_steps)} prefill steps took ${trace.prefill_s} of ${trace.run_s} s, ${fmt(trace.decode_steps)} decode steps averaged ${trace.decode_ms} ms` : ""}; vLLM's attention backend there is FlashAttention 2`,
 ];
+
+export function ServingScaleFigure() {
+  return <ScaleFigure title={`the same count for ${bigSide.model} on an ${bigSide.gpu}`} quantities={["kvToken", "pool", "fullContexts"]} marks={{ fullContexts: { value: maxBatch, label: `max_batch ${maxBatch}` } }} />;
+}
 
 export function ServingStory() {
   return (
@@ -239,6 +267,8 @@ export function ServingStory() {
             return <BatchingFigure kind="roomy" />;
           case "rules":
             return <BatchingFigure kind="tight" />;
+          case "bigger":
+            return <ServingScaleFigure />;
           case "load":
             return <LoadFigure kind="goodput" />;
           default:
