@@ -46,6 +46,7 @@ const urlOf = (key: string, short: boolean) => {
   const [path, hash] = bookHref(key).split("#");
   return `${path}${short ? `?${shortPathQuery}` : ""}${hash ? `#${hash}` : ""}`;
 };
+const sectionName = (key: string) => (key === "start" ? "start here" : chapterSlugs.includes(key) ? chapterTitle(key) : key === "beyond" ? beyondTitle : key === "estimates" ? estimatesTitle : key === "errata" ? errataTitle : "contents");
 const shortInUrl = () => window.location.search.slice(1).split("&").includes(shortPathQuery);
 
 function parsePlace(): Place {
@@ -505,6 +506,11 @@ export function EveryByte() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, step, goKey]);
+
+  useEffect(() => {
+    if (!open && window.location.pathname.replace(/\/$/, "") !== BOOK) return;
+    document.title = `${open ? `${sectionName(segment)} · ` : ""}Every Byte · llm-inference-engine`;
+  }, [open, segment]);
 
   const beats = stops[stop]?.beats ?? [];
   const beatCount = beats.length;

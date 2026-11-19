@@ -2404,3 +2404,5 @@
 - **a responsive table** => 
 - **a permalink to a tag** => 
 - **a sampler chain** => 
+- **document.title** => 
+- **a metadata title template** => 
