@@ -97,7 +97,7 @@ const workbench: WorkbenchPage[] = [
       "The table runs both caches side by side on the same arrivals, whichever one the pool shows: requests running, requests waiting for room, blocks held of 63, slots written, slots held but empty, and preemptions.",
       "Under paged, the list shows each running request's block table: its logical blocks in order, each pointing to the physical block that holds it. A request's blocks are scattered wherever there was room when it grew.",
       "Under contiguous, each request holds one run of blocks, listed by its first and last block, and a waiting request needs that many blocks in a row: a pool with enough free blocks in all can still turn it away when they are scattered.",
-      "Use step to move one decode step at a time, or replay demo to start over. Compare the slots held but empty row: blocks of 16 keep it under one block per request, while a reservation keeps every slot a request might use.",
+      "The box at the top holds the pool page's own controls, bound to the same run: add a request, switch the cache, or use step to move one decode step at a time, and the table changes on this page. Compare the slots held but empty row: blocks of 16 keep it under one block per request, while a reservation keeps every slot a request might use.",
     ],
   },
   {
