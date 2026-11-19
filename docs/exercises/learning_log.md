@@ -2509,3 +2509,4 @@
 - **a page number** => 
 - **a generated file** => 
 - **an unreachable case** => 
+- **a caption fit** => 
