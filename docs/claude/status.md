@@ -421,3 +421,24 @@ Not done: no quantizer, no wiring, no accuracy or speed numbers (each spec lists
 Branch `docs/md-audit` (worktree ~/code/llm-inference-engine-mdaudit). Brought the markdown files up to the code on main 78780b2: README (what is built since the MVP, what is stubbed next, `/every-byte` and `/exercises`, SentencePiece), `reproduce.md` (the flags `generate`, `bench` and `serve` have now, vLLM setup, everything `reproduce.sh` runs and its skip flags), `ownership.md` (the planned table became what landed and who wrote it, from the changelog tags), `web/README.md`, and this folder's `README.md` and `working_rules.md` (tracked since c7c6633, per-branch worktrees, root paths).
 
 Not touched: the plans, `review_notes.md`, `technical_notes.md`, the branch summaries and the older entries here still name `docs/results.md` and the like; they are records of their day. The "about 10 minutes" of a full `reproduce.sh` run in `reproduce.md` and `results.md` predates the load, vLLM, prefill and on-chip parts and was not timed again. Joe's branch `kv/prefix-cache-impl` is in the main checkout with prefix caching in progress.
+
+
+## Snapshot 2026-11-19 (Every Byte for beginners: audit, fixes, new pages, new kernels index)
+
+Branch 162 `web/every-byte-audit` (worktree ~/code/llm-inference-engine-ebaudit), web and docs only, gated at the tip, not pushed. Joe asked for an audit of Every Byte as a tool for a beginner (`docs/claude/every_byte_audit.md`), then for everything under "needs fixing" and "good to have", a book icon in the top bar, an ideas-only toggle, and his prototype `Documents/gpu-animation` as the new `/kernels` index. Fourteen Claude subagents built it in their own worktrees (`~/code/llmie-eb-*`); the lead cherry-picked each commit and added the changelog and learning-log lines. Only the tip and a few points on the way were gated, not every commit alone.
+
+What is in it:
+- Top bar: a book icon left of GitHub with a themed hover text; a click sweeps the desk colour out from the icon and hands over to the cover opening on "start here".
+- Book: an ideas-only toggle in the action bar (`?view=ideas`, skips "how it got built", marks those steps as deep dives), the spread in the URL (`?at=`), the last spread saved and offered on the cover, the tab title follows the chapter.
+- Content: the attention primer moved to chapter 1; the nine "needs fixing" items; prose numbers rounded in 19 chapters with `web/src/lib/round.ts` (exact values stay in captions); "on a bigger model" steps for Llama 3 8B on an H100 from `web/src/content/scale.ts` in one-token, foundations, gemm, paged-kv, paged-attention, serving and where-the-time-went, and a sentence in add-rmsnorm and cuda-graphs; sandbox controls mirrored on their readout spreads (`kernels/mirror.tsx`).
+- New: chapter 20, quantization, calculated only because the FP8 kernels are stubs; three NumPy exercises (decode step, CPU bandwidth, Gumbel-max); a glossary page and glossary spreads; search on the kernels page; "where this lives in other engines" (vLLM v0.34.0, llama.cpp v1.0.0, every cell opened at the tag) on `/kernels/beyond`, on each chapter page and in the book.
+- `/kernels`: Joe's scroll-assembled machine ported into `web/src/components/kernels/machine.ts` and `atlas.tsx`, inked from the site's tokens in both themes, stories from the site's data (22), the old layer map and kernel cards removed. Ported from the prototype as it stood at 23:44 on 2026-11-18; later edits there are not in.
+
+Generated files: after a chapter's text changes, rebuild and run `node scripts/short-path.mjs` and `node scripts/search-index.mjs` in `web/`.
+
+Not done or not right yet:
+- At 390x844 the sandbox spreads of sampling (draw), chunked prefill (predict) and paged attention (step, check) still scroll inside the page; the mirrors added height. Needs a layout decision.
+- The quantization chapter's prose is not rounded. The book has no search. The NumPy bandwidth exercise and the engines map notes state a few facts from general knowledge (listed in the agents' reports under `~/.cache/llmie-web/agents/audit-*`).
+- RoPE's 3D exhibit says "fast kernel, one token 2.5 µs" where the prose and caption say 6.5 µs (two data columns); it was there before this round.
+- Not looked at by eye by the lead: glossary spreads, the quantization chapter, most rounded spreads, dark-theme book spreads. Nothing was checked in a real browser with a GPU: all checks ran in headless Chrome with software WebGL.
+- `next build` and `next dev` stop now and then with the Next.js 16.4.3 security notice and pass on the next run; the fix is the upgrade to 16.4.6.
