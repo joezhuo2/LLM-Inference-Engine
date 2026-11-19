@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { chapterNumber } from "@/content/book-order";
 import { measured } from "@/content/kernels/types";
+import { about } from "@/lib/round";
 import { ceilings, cellNumber, decodeSteps, modelShape } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { EasedBar } from "../eased-bar";
@@ -149,7 +150,7 @@ const steps: StoryStep[] = [
           launch, not arithmetic.
         </p>
         <p>
-          Here the fused kernel moves <span className="text-accent">{kbPerToken(fusedKb64)} KB</span> per token where the pair moves
+          Here the fused kernel moves <span className="text-accent">{about(fusedKb64 / fusionTokens)} KB</span> per token where the pair moves
           more (calculated from the bytes per launch), and a decode step runs fewer kernels (measured). Fewer bytes still did not make
           the first fused kernel faster: at one token it took about the same time as the pair. The errata entry &quot;
           <Link href="/kernels/dead-ends" className="link-underline text-accent">
@@ -175,7 +176,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           A fused kernel reads x, the residual and the weight once, writes the sum and the norm once, and keeps the sum on
-          the chip in between. The DRAM traffic falls to <span className="text-accent">{fusedKb64} KB</span> per launch, and one launch replaces two.
+          the chip in between. The DRAM traffic falls to <span className="text-accent">{about(fusedKb64)} KB</span> per launch, and one launch replaces two.
         </p>
       </>
     ),
@@ -192,7 +193,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           It moves a third fewer bytes, but takes the same time as the pair:{" "}
-          <span className="text-accent">{first1.toFixed(1)} µs</span> for one token. The memory traffic is a small part of
+          <span className="text-accent">{about(first1)} µs</span> for one token. The memory traffic is a small part of
           that; the rest is waiting on dependent loads and barriers.
         </p>
         <p>
@@ -261,7 +262,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The tuned kernel takes <span className="text-accent">{tuned1.toFixed(1)} µs</span> for one token, about a third of the pair&apos;s time, and stays near that up to the largest token count measured.
+          The tuned kernel takes <span className="text-accent">{about(tuned1)} µs</span> for one token, about a third of the pair&apos;s time, and stays near that up to the largest token count measured.
           Try the token counts on the right.
         </p>
         <p>

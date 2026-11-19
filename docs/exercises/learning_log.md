@@ -2450,3 +2450,4 @@
 - **progressive enhancement** => 
 - **an entry point** => 
 - **display rounding** => 
+- **DRAM bytes per launch** => 
