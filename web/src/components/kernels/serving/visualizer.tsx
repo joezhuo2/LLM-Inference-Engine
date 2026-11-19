@@ -533,7 +533,7 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
     <div className="space-y-2">
       <div className="text-muted">{mode === "paged" ? "block tables, logical block → physical block" : "reservations, prompt + 256 tokens each"}</div>
       <ul className={clsx("space-y-2", !pages && "max-h-72 overflow-y-auto pr-1")}>
-        {(pages ? pool.running.slice(0, 5) : pool.running).map((id) => {
+        {(pages ? pool.running.slice(0, 4) : pool.running).map((id) => {
           const s = pool.seqs.get(id)!;
           const k = kinds[s.kind];
           return (
@@ -562,7 +562,7 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
             </li>
           );
         })}
-        {pages && pool.running.length > 5 && <li className="text-muted">{`and ${pool.running.length - 5} more running`}</li>}
+        {pages && pool.running.length > 4 && <li className="text-muted">{`and ${pool.running.length - 4} more running`}</li>}
         {(pages ? pool.waiting.slice(0, 2) : pool.waiting).map((id) => {
           const s = pool.seqs.get(id)!;
           return (
