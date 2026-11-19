@@ -2433,3 +2433,5 @@
 - **quantization** => 
 - **FP8 E4M3** => 
 - **a scale factor** => 
+- **a mantissa** => 
+- **an exponent** => 
