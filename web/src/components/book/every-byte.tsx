@@ -40,16 +40,49 @@ const numberBook = () =>
   }));
 
 type Meta = { key: string; local: number; slug?: string; exhibit: number | null };
-type Place = { closed: true } | { closed: false; key: string; local: number };
+type Place = { closed: true } | { closed: false; key: string; at: string };
+type Saved = { key: string; at: string; page: number; name: string };
 
 const ideasQuery = "view=ideas";
 const ideasKey = "every-byte:view";
 const ideasName = "ideas only";
-const urlOf = (key: string, short: boolean, ideas: boolean) => {
+const placeKey = "every-byte:place";
+const urlOf = (key: string, short: boolean, ideas: boolean, at = "") => {
   const [path, hash] = bookHref(key).split("#");
-  const query = short ? shortPathQuery : ideas ? ideasQuery : "";
+  const query = [short ? shortPathQuery : ideas ? ideasQuery : "", at && `at=${encodeURIComponent(at)}`].filter(Boolean).join("&");
   return `${path}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
 };
+
+function atOf(m: Meta | undefined, def: ChapterDef | undefined): string {
+  if (!m) return "";
+  if (!m.slug) return m.local > 0 ? String(m.local + 1) : "";
+  if (!def || m.local < 0) return "";
+  const k = m.local - def.steps.length;
+  if (k < 0) return def.steps[m.local].id;
+  if (k < def.workbench.length) return `try-${k + 1}`;
+  const r = k - def.workbench.length - reviewCount(def.slug);
+  return r < 0 ? "review" : `build-${r + 1}`;
+}
+
+function localOf(key: string, at: string, def: ChapterDef | undefined): number | undefined {
+  if (!at) return undefined;
+  if (!chapterSlugs.includes(key)) return Number(at) - 1;
+  if (!def) return undefined;
+  const step = def.steps.findIndex((x) => x.id === at);
+  if (step >= 0) return step;
+  const [kind, n] = at.split("-");
+  const k = kind === "try" ? Number(n) - 1 : kind === "review" ? def.workbench.length : kind === "build" ? def.workbench.length + reviewCount(def.slug) + Number(n) - 1 : NaN;
+  return def.steps.length + k;
+}
+
+function readSaved(): Saved | undefined {
+  try {
+    const v = JSON.parse(localStorage.getItem(placeKey) ?? "null") as Partial<Saved> | null;
+    return v && typeof v.key === "string" && sectionKeys.includes(v.key) && typeof v.at === "string" && typeof v.page === "number" && typeof v.name === "string" ? (v as Saved) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 const sectionName = (key: string) => (key === "start" ? "start here" : chapterSlugs.includes(key) ? chapterTitle(key) : key === "beyond" ? beyondTitle : key === "estimates" ? estimatesTitle : key === "errata" ? errataTitle : "contents");
 const inUrl = (query: string) => window.location.search.slice(1).split("&").includes(query);
 const ideasSaved = () => {
@@ -64,10 +97,11 @@ function parsePlace(): Place {
   const path = window.location.pathname.replace(/\/$/, "");
   if (path === BOOK) return { closed: true };
   const slug = path.split("/")[2];
-  if (slug && chapterSlugs.includes(slug)) return { closed: false, key: slug, local: 0 };
-  if (slug === "start") return { closed: false, key: "start", local: 0 };
+  const at = new URLSearchParams(window.location.search).get("at") ?? "";
+  if (slug && chapterSlugs.includes(slug)) return { closed: false, key: slug, at };
+  if (slug === "start") return { closed: false, key: "start", at };
   const back = window.location.hash.slice(1);
-  return { closed: false, key: backKeys.includes(back) ? back : "contents", local: 0 };
+  return { closed: false, key: backKeys.includes(back) ? back : "contents", at };
 }
 
 function deferred<T>() {
@@ -140,6 +174,7 @@ export function EveryByte() {
   const [lensOn, setLensOn] = useState(true);
   const shortRef = useRef(false);
   const [ideas, setIdeas] = useState(false);
+  const [saved, setSaved] = useState<Saved>();
   const ideasRef = useRef(false);
 
   useEffect(() => void numberBook().then(setTotal), []);
@@ -173,6 +208,7 @@ export function EveryByte() {
     const sync = () => {
       setMode(inUrl(shortPathQuery));
       setIdeasMode(inUrl(ideasQuery) || ideasSaved());
+      setSaved(readSaved());
     };
     sync();
     window.addEventListener("popstate", sync);
@@ -239,10 +275,14 @@ export function EveryByte() {
   };
 
   const setUrl = useCallback((index: number, push: boolean) => {
-    const key = book.current.meta[index]?.key;
-    if (!key || !push) return;
-    const url = urlOf(key, shortRef.current, ideasRef.current);
-    if (window.location.pathname + window.location.search + window.location.hash !== url) window.history.pushState(null, "", url);
+    const m = book.current.meta[index];
+    if (!m) return;
+    const url = urlOf(m.key, shortRef.current, ideasRef.current, atOf(m, defsRef.current[m.key]));
+    const here = window.location;
+    if (here.pathname + here.search + here.hash === url) return;
+    const [path, hash] = bookHref(m.key).split("#");
+    const moved = here.pathname.replace(/\/$/, "") !== path || here.hash !== (hash ? `#${hash}` : "");
+    window.history[push && moved ? "pushState" : "replaceState"](null, "", url);
   }, []);
 
   const preload = useCallback(
@@ -270,9 +310,11 @@ export function EveryByte() {
   );
 
   const goKey = useCallback(
-    async (key: string, riffle: boolean, push = true, last = false) => {
+    async (key: string, riffle: boolean, push = true, last = false, at = "") => {
       await Promise.all([ensure(key), numberBook()]);
-      const index = firstOf(key, last);
+      const local = localOf(key, at, defsRef.current[key]);
+      const found = local === undefined ? -1 : book.current.meta.findIndex((m) => m.key === key && m.local === local);
+      const index = found >= 0 ? found : firstOf(key, last);
       if (scene.current && !scene.current.isOpen) {
         stopRef.current = index;
         setStop(index);
@@ -292,6 +334,7 @@ export function EveryByte() {
       if (!scene.current?.isOpen) return;
       setOpen(false);
       setPlaying(false);
+      setSaved(readSaved());
       stopRef.current = 0;
       setStop(0);
       void scene.current.close();
@@ -314,6 +357,24 @@ export function EveryByte() {
     [ensure, go],
   );
 
+  const resume = useCallback(
+    async (place: Saved) => {
+      await Promise.all([ensure(place.key), numberBook()]);
+      const local = localOf(place.key, place.at, defsRef.current[place.key]);
+      const found = book.current.meta.findIndex((m) => m.key === place.key && m.local === local);
+      const index = found >= 0 ? found : firstOf(place.key);
+      const s = scene.current;
+      if (!s) return;
+      if (!s.isOpen) {
+        stopRef.current = 0;
+        setOpen(true);
+        void s.open(0);
+      }
+      go(index, true);
+    },
+    [ensure, go],
+  );
+
   const enterShort = useCallback(() => {
     setMode(true);
     void goKey("start", true);
@@ -321,8 +382,8 @@ export function EveryByte() {
 
   const leaveShort = useCallback(() => {
     setMode(false);
-    window.history.replaceState(null, "", urlOf(book.current.meta[stopRef.current]?.key ?? "contents", false, ideasRef.current));
-  }, [setMode]);
+    setUrl(stopRef.current, false);
+  }, [setMode, setUrl]);
 
   const toggleIdeas = useCallback(
     (on: boolean) => {
@@ -331,13 +392,13 @@ export function EveryByte() {
         localStorage.setItem(ideasKey, on ? "ideas" : "all");
       } catch {}
       const m = book.current.meta[stopRef.current];
-      if (scene.current?.isOpen && m) window.history.replaceState(null, "", urlOf(m.key, shortRef.current, on));
+      if (scene.current?.isOpen) setUrl(stopRef.current, false);
       if (!on || shortRef.current || !m || !isDeep(m.key, m.local)) return;
       const to = routeStep(m.key, m.local, 1, ideasRoute());
       const index = to ? book.current.meta.findIndex((x) => x.key === to.key && x.local === to.local) : -1;
       if (index >= 0) go(index);
     },
-    [setIdeasMode, go],
+    [setIdeasMode, go, setUrl],
   );
 
   const step = useCallback(
@@ -501,7 +562,7 @@ export function EveryByte() {
       sceneReady.current.resolve(built);
       queue.current = queue.current.then(addModels);
       built.showClosed();
-      if (!place.closed) void goKey(place.key, false, false);
+      if (!place.closed) void goKey(place.key, false, false, false, place.at);
     };
     void start();
     return () => {
@@ -534,7 +595,7 @@ export function EveryByte() {
     const onPop = () => {
       const place = parsePlace();
       if (place.closed) closeBook(false);
-      else void goKey(place.key, true, false);
+      else void goKey(place.key, true, false, false, place.at);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -558,6 +619,14 @@ export function EveryByte() {
     if (!open && window.location.pathname.replace(/\/$/, "") !== BOOK) return;
     document.title = `${open ? `${sectionName(segment)} · ` : ""}Every Byte · llm-inference-engine`;
   }, [open, segment]);
+
+  useEffect(() => {
+    const m = layout.meta[stop];
+    if (!open || !m || total === 0) return;
+    try {
+      localStorage.setItem(placeKey, JSON.stringify({ key: m.key, at: atOf(m, defs[m.key]), page: Math.max(1, leftPage(page) ?? 1), name: sectionName(m.key) }));
+    } catch {}
+  }, [open, stop, layout, defs, page, total]);
 
   const beats = stops[stop]?.beats ?? [];
   const beatCount = beats.length;
@@ -602,7 +671,7 @@ export function EveryByte() {
   const review = def && reviewAt >= 0 && reviewAt < reviewCount(def.slug) ? chapterReview(def.slug) : undefined;
   const exercise = def && meta ? chapterExercises(def.slug)[reviewAt - reviewCount(def.slug)] : undefined;
   const exerciseNumpy = exercise ? numpyOf(exercise) : undefined;
-  const otherHref = def ? `/kernels/${def.slug}` : "/kernels";
+  const otherHref = def ? `/kernels/${def.slug}${chapterStep && meta && meta.local >= (def.lead ?? 0) ? `#step-${chapterStep.id}` : ""}` : "/kernels";
   const route = bookRoute();
   const shortOn = short && open && total > 0 && route.order.length > 0;
   const ideasOn = ideas && !short && open && total > 0;
@@ -672,7 +741,13 @@ export function EveryByte() {
               </span>
             )}
             <span className="min-w-0 max-w-[22rem] truncate">
-              <Scramble key={caption} text={caption} durationMs={900} />
+              {!open && saved ? (
+                <button type="button" data-continue onClick={() => void resume(saved)} className="link-underline max-w-full truncate text-left text-text">
+                  {`continue at page ${saved.page}, ${saved.name} →`}
+                </button>
+              ) : (
+                <Scramble key={caption} text={caption} durationMs={900} />
+              )}
             </span>
             <span className="flex shrink-0 items-center gap-0.5">
               {open &&

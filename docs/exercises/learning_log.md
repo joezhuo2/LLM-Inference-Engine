@@ -2409,3 +2409,6 @@
 - **aria-pressed** => 
 - **a canvas texture repaint** => 
 - **a route filter** => 
+- **history.replaceState** => 
+- **URLSearchParams** => 
+- **localStorage** => 
