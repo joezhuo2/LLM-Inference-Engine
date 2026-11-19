@@ -2399,3 +2399,5 @@
 - **softmax** => 
 - **a reading path** => 
 - **a reading-time estimate** => 
+- **a pinned release tag** => 
+- **a ggml backend** => 
