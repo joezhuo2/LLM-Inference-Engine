@@ -2415,3 +2415,6 @@
 - **index remapping** => 
 - **a race condition** => 
 - **a responsive breakpoint** => 
+- **text pagination** => 
+- **canvas measureText** => 
+- **a running head** => 

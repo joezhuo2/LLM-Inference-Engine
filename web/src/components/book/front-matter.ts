@@ -10,6 +10,7 @@ import { chapterReview } from "@/content/reviews";
 import { roundMinutes, shortPathName, shortRoute } from "@/content/short-path";
 import type { ChapterReview } from "@/content/reviews/types";
 import { loadSlo } from "@/lib/data";
+import { type GlossEntry, glossary, glossaryEntries } from "@/lib/glossary";
 import { type LinkLine, PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
@@ -24,14 +25,14 @@ const firstPage: Record<string, number> = {};
 export const chapterPage = (key: string): number | undefined => firstPage[key];
 export const leftPage = (spread: number | undefined) => (spread === undefined ? undefined : 2 * spread - 2);
 
-const sections = ["start", "contents", ...bookOrder, "beyond", "estimates", "errata"];
+const sections = ["start", "contents", ...bookOrder, "beyond", "estimates", "errata", "glossary"];
 let endPage = 0;
 
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
   for (const key of sections.filter((k) => !bookOrder.includes(k) || spreads[k] !== undefined)) {
     firstPage[key] = page;
-    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
+    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : key === "glossary" ? glossarySpreads.length : spreads[key];
   }
   endPage = page;
   return page - 1;
@@ -145,6 +146,7 @@ function contentsRows(parts: typeof bookParts, withErrata: boolean, scale = 1) {
     rows.push({ kind: "entry", y: y + 20 * scale, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
     rows.push({ kind: "entry", y: y + 20 * scale + pitch, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
     rows.push({ kind: "entry", y: y + 20 * scale + 2 * pitch, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+    rows.push({ kind: "entry", y: y + 20 * scale + 3 * pitch, text: glossaryTitle, page: chapterPage("glossary"), href: "#glossary" });
   }
   return rows;
 }
@@ -1210,4 +1212,124 @@ export function setBookRoute(defs: ChapterDef[]) {
     return [-1, ...Array.from({ length: lead }, (_, i) => i), ...c.picks.map((i) => i + lead)].map((local) => ({ key: c.slug, local }));
   };
   route = { order: [...Array.from({ length: startSpreads }, (_, local) => ({ key: "start", local })), ...found.chapters.flatMap(chapterStopsOf)], chapters: found.chapters.map((c) => c.slug), minutes: found.minutes };
+}
+
+type Measure = (text: string, px: number, family: "serif" | "sans") => number;
+export type GlossaryPage = { kind: "title" } | { kind: "terms"; keys: string[] } | { kind: "blank" };
+export type GlossarySpread = { left: GlossaryPage; right: GlossaryPage };
+
+export const glossaryTitle = "Glossary";
+export const glossaryIntro = [`The ${glossaryEntries.length} terms the chapters explain when you point at them, in alphabetical order. Each one gives what the abbreviation stands for or what the word means, then why it matters in this engine.`, "The scroll site has the same list at /kernels/glossary, with a filter and the chapter that first uses each term."];
+const glossarySorted = [...glossaryEntries].sort((a, b) => a.term.localeCompare(b.term, "en", { sensitivity: "base" }));
+const glossaryLetter = (term: string) => (/^[a-z]/i.test(term) ? term[0].toUpperCase() : "#");
+const GLOSSARY_TOP = 210;
+const GLOSSARY_BOTTOM = H - 170;
+const GLOSSARY_WIDTH = W - 300;
+
+function measureLines(measure: Measure, text: string, px: number, family: "serif" | "sans", width: number, first = width): string[] {
+  const out: string[] = [];
+  let line = "";
+  for (const word of text.split(/\s+/)) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && measure(next, px, family) > (out.length ? width : first)) {
+      out.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+function glossaryEntryLayout(measure: Measure, e: GlossEntry, s: number, width = GLOSSARY_WIDTH) {
+  const termWidth = measure(e.term, 46 * s, "serif");
+  const tail = width - termWidth - 24 * s;
+  const fullLines = measureLines(measure, e.full, 28 * s, "sans", width, tail);
+  const sameLine = measure(fullLines[0], 28 * s, "sans") <= tail;
+  const whyLines = measureLines(measure, e.why, 30 * s, "sans", width);
+  const height = 46 * s + (fullLines.length - (sameLine ? 1 : 0)) * 38 * s + 46 * s + (whyLines.length - 1) * 42 * s + 44 * s;
+  return { termWidth, fullLines, sameLine, whyLines, height };
+}
+
+const estimate: Measure = (text, px, family) => text.length * px * (family === "serif" ? 0.45 : 0.5);
+const GLOSSARY_LETTER_H = 96;
+
+const glossaryTermPages: string[][] = [];
+for (let k = 0, y = GLOSSARY_TOP, page: string[] = []; k < glossarySorted.length; k++) {
+  const e = glossarySorted[k];
+  const head = k === 0 || glossaryLetter(e.term) !== glossaryLetter(glossarySorted[k - 1].term) ? GLOSSARY_LETTER_H : 0;
+  const need = head + glossaryEntryLayout(estimate, e, 1).height;
+  if (page.length && y + need > GLOSSARY_BOTTOM) {
+    glossaryTermPages.push(page);
+    page = [];
+    y = GLOSSARY_TOP;
+  }
+  page.push(e.key);
+  y += need;
+  if (k === glossarySorted.length - 1) glossaryTermPages.push(page);
+}
+
+const glossaryPages: GlossaryPage[] = [{ kind: "title" }, ...glossaryTermPages.map((keys): GlossaryPage => ({ kind: "terms", keys }))];
+export const glossarySpreads: GlossarySpread[] = Array.from({ length: Math.ceil(glossaryPages.length / 2) }, (_, k) => ({ left: glossaryPages[2 * k], right: glossaryPages[2 * k + 1] ?? { kind: "blank" } }));
+
+function glossaryTermsPage(keys: string[], side: Side) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    const width = x1 - x0;
+    const family = (f: "serif" | "sans") => (f === "serif" ? fonts.serif : fonts.sans);
+    const measure: Measure = (text, px, f) => {
+      ctx.font = `${px}px ${family(f)}`;
+      return ctx.measureText(text).width;
+    };
+    const entries = keys.map((key) => glossary[key]);
+    const letters = [...new Set(entries.map((e) => glossaryLetter(e.term)))];
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`Every Byte · glossary · ${letters.length > 1 ? `${letters[0]} to ${letters.at(-1)}` : letters[0]}`, x0, 150);
+    fitLayout((s, draw) => {
+      let y = GLOSSARY_TOP;
+      entries.forEach((e, i) => {
+        const before = i === 0 ? glossarySorted[glossarySorted.indexOf(e) - 1] : entries[i - 1];
+        if (!before || glossaryLetter(before.term) !== glossaryLetter(e.term)) {
+          if (draw) {
+            ctx.fillStyle = palette.blue;
+            ctx.font = `${64 * s}px ${fonts.serif}`;
+            ctx.fillText(glossaryLetter(e.term), x0, y + 64 * s);
+          }
+          y += GLOSSARY_LETTER_H * s;
+        }
+        const l = glossaryEntryLayout(measure, e, s, width);
+        let base = y + 46 * s;
+        if (draw) {
+          ctx.fillStyle = palette.ink;
+          ctx.font = `${46 * s}px ${fonts.serif}`;
+          ctx.fillText(e.term, x0, base);
+          ctx.fillStyle = palette.faint;
+          ctx.font = `${28 * s}px ${fonts.sans}`;
+          l.fullLines.forEach((line, j) => {
+            if (j === 0 && l.sameLine) ctx.fillText(line, x0 + l.termWidth + 24 * s, base);
+            else ctx.fillText(line, x0, base + (j + (l.sameLine ? 0 : 1)) * 38 * s);
+          });
+          ctx.fillStyle = palette.ink;
+          ctx.font = `${30 * s}px ${fonts.sans}`;
+          const whyTop = base + (l.fullLines.length - (l.sameLine ? 1 : 0)) * 38 * s + 46 * s;
+          l.whyLines.forEach((line, j) => ctx.fillText(line, x0, whyTop + j * 42 * s));
+        }
+        base += l.height;
+        y = base - 46 * s;
+      });
+      return y - 44 * s + 12 * s;
+    }, GLOSSARY_BOTTOM);
+  };
+}
+
+export function glossaryStops(firstSpread: number): Stop[] {
+  return glossarySpreads.map((spread, k) => {
+    const paint = (page: GlossaryPage, side: Side) => (page.kind === "title" ? textPage(side, "Every Byte · glossary", glossaryTitle, glossaryIntro, 36) : page.kind === "terms" ? glossaryTermsPage(page.keys, side) : (canvas: HTMLCanvasElement) => void begin(canvas, side));
+    const terms = [spread.left, spread.right].flatMap((p) => (p.kind === "terms" ? p.keys.map((key) => glossary[key]) : []));
+    const caption = terms.length ? `Glossary: ${terms[0].term} to ${terms.at(-1)!.term}` : glossaryTitle;
+    return {
+      ...flatStop(firstSpread + k, caption, glossaryTitle, terms.length ? terms.map((e) => `${e.term}, ${e.full}. ${e.why}`) : glossaryIntro),
+      paint: { left: paint(spread.left, "left"), right: paint(spread.right, "right") },
+    };
+  });
 }
