@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { measured } from "@/content/kernels/types";
 import { modelShape, traces } from "@/lib/data";
+import { about } from "@/lib/round";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { V2LinkFigure } from "../attention-v2/figures";
 import { BlocksFigure, OverviewFigure, SplitFigure } from "./figures";
@@ -75,7 +76,7 @@ const steps: StoryStep[] = [
           a group of lanes and has no cap; its tests reach <span className="text-accent">8,192</span> tokens.
         </p>
         <p>
-          Attention per decode step: <span className="text-accent">{stepV2} µs</span>, down from v1&apos;s time in the caption. How the online softmax works is the chapter{" "}
+          Attention per decode step: <span className="text-accent">{about(stepV2)} µs</span>, down from v1&apos;s time in the caption. How the online softmax works is the chapter{" "}
           <Link href="/kernels/attention-v2" className="link-underline text-accent">
             attention v2
           </Link>
@@ -93,7 +94,7 @@ const steps: StoryStep[] = [
         <p>
           v2 still launches one block per row and query head, which at one row is a fifth of what the GPU holds at once. Cutting
           each context into ranges that run side by side, then merging them, took one row at a long context down to{" "}
-          <span className="text-accent">{split8} µs</span>. The runner picks a split count every step and runs v2 when it picks one.
+          <span className="text-accent">{about(split8)} µs</span>. The runner picks a split count every step and runs v2 when it picks one.
         </p>
         <p>
           The chapter{" "}

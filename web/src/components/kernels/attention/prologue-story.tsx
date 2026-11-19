@@ -1,6 +1,7 @@
 "use client";
 
 import { measured } from "@/content/kernels/types";
+import { about } from "@/lib/round";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { CacheHomeFigure, DecodeFigure, PrefillFigure, SideBySideFigure } from "./prologue-figures";
 
@@ -33,7 +34,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Time to first token is this pass. On this engine a long prompt takes{" "}
-          <span className="text-accent">{ttft2048.toLocaleString("en-US")} ms</span>, and a prompt token costs about the same in a long prompt as in a short one.
+          <span className="text-accent">{about(ttft2048)} ms</span>, and a prompt token costs about the same in a long prompt as in a short one.
         </p>
       </>
     ),
@@ -49,7 +50,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Counted from the model config, with one request in flight the engine reaches{" "}
-          <span className="text-accent">{percent}%</span> of the GPU&apos;s measured peak memory bandwidth: the step waits on memory, not
+          <span className="text-accent">{about(percent)}%</span> of the GPU&apos;s measured peak memory bandwidth: the step waits on memory, not
           on arithmetic.
         </p>
       </>
@@ -65,7 +66,7 @@ const steps: StoryStep[] = [
           Without the cache every new token would rerun the whole prefill over a context that grew by one.
         </p>
         <p>
-          One decode step at a context as long as the prompt took about <span className="text-accent">{ratio}x</span> less time than the prefill that built the cache. Both times are in the caption.
+          One decode step at a context as long as the prompt took about <span className="text-accent">{about(ratio, 2, "")}x</span> less time than the prefill that built the cache. Both times are in the caption.
         </p>
       </>
     ),
