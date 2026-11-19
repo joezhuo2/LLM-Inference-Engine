@@ -2401,3 +2401,5 @@
 - **a reading-time estimate** => 
 - **a pinned release tag** => 
 - **a ggml backend** => 
+- **a responsive table** => 
+- **a permalink to a tag** => 
