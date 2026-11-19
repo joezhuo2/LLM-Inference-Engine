@@ -2384,3 +2384,5 @@
 - **time per output token** => 
 - **a kernel span** => 
 - **host overhead** => 
+- **a scheduler** => 
+- **continuous batching** => 

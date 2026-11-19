@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { chapterNumber } from "@/content/book-order";
 import { cudaGraphs } from "@/content/kernels/cuda-graphs";
 import { stepProfile } from "@/content/kernels/one-token";
+import { serving } from "@/content/kernels/serving";
 import { ceilings, hardware, kvReplay, medianOf, modelShape } from "@/lib/data";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
@@ -92,7 +93,7 @@ const ideaSteps: StoryStep[] = [
         <p>
           The step gets only a little longer, because the arithmetic was nearly free. The output rises to <span className="text-accent">{int(b16.tps)} tokens per second</span>, many times what one request gets.
         </p>
-        <p>This is why serving engines batch everything they can, and why the scheduler in the paged KV cache chapter exists.</p>
+        <p>This is why serving engines batch everything they can, and why the scheduler of chapter {chapterNumber("serving")}, {serving.title}, exists.</p>
       </>
     ),
   },
