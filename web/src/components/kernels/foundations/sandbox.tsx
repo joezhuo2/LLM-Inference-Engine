@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SmoothRange } from "@/components/smooth-range";
+import { Mirror, MirrorRange } from "../mirror";
 import { glide as tween, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { ceilings, environment, modelShape, profilingTable } from "@/lib/data";
@@ -144,6 +145,26 @@ export function FoundationsSandbox({ pages }: { pages?: { one: HTMLElement | nul
     { label: "time at the ceiling", value: <NumberFlow value={a.timeUs} suffix=" µs" format={one} /> },
   ];
 
+  const opPicker = (compact: boolean) => (
+    <div role="group" aria-label="operation" className={clsx("flex flex-wrap items-center", compact ? "gap-1.5" : "gap-2")}>
+      <span className="text-muted">operation</span>
+      {ops.map((o) => (
+        <button
+          key={o}
+          type="button"
+          aria-pressed={op === o}
+          onClick={() => {
+            setOp(o);
+            setGuess(null);
+          }}
+          className={clsx("pressable rounded border", compact ? "px-1.5 py-0.5" : "px-2.5 py-1", op === o ? "border-accent bg-accent-dim text-accent" : "border-border text-text")}
+        >
+          {compact && o === "qkv" ? "QKV" : labels[o]}
+        </button>
+      ))}
+    </div>
+  );
+
   const partOne = (
       <div className="space-y-4">
         <div className="space-y-2 rounded border border-border p-3 leading-relaxed">
@@ -169,23 +190,7 @@ export function FoundationsSandbox({ pages }: { pages?: { one: HTMLElement | nul
           )}
         </div>
 
-        <div role="group" aria-label="operation" className="flex flex-wrap items-center gap-2">
-          <span className="text-muted">operation</span>
-          {ops.map((o) => (
-            <button
-              key={o}
-              type="button"
-              aria-pressed={op === o}
-              onClick={() => {
-                setOp(o);
-                setGuess(null);
-              }}
-              className={clsx("pressable rounded border px-2.5 py-1", op === o ? "border-accent bg-accent-dim text-accent" : "border-border text-text")}
-            >
-              {labels[o]}
-            </button>
-          ))}
-        </div>
+        {opPicker(false)}
 
         <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_5.5rem] sm:items-center">
           <label htmlFor="roofline-rows" className="text-muted">
@@ -286,7 +291,14 @@ export function FoundationsSandbox({ pages }: { pages?: { one: HTMLElement | nul
       </div>
   );
   const partTwo = (
-      <div className="space-y-5">
+      <div className={pages ? "space-y-3" : "space-y-5"}>
+        {pages && (
+          <Mirror from="the previous page">
+            {opPicker(true)}
+            <MirrorRange id="roofline-rows-mirror" label="rows" min={0} max={rowSteps} value={step} onValue={(v) => { stop(); setStep(v); }} text={`${rows} row${rows > 1 ? "s" : ""}`} />
+            <MirrorRange id="roofline-context-mirror" label="context" min={16} max={shape.max_positions} step={16} value={context} onValue={(v) => { stop(); setContext(v); }} text={`${context} tok`} disabled={op !== "attention"} />
+          </Mirror>
+        )}
         <div className="flex items-center justify-between gap-2">
           <span className="text-text">{`${labels[op]}, ${rows} row${rows > 1 ? "s" : ""}`}</span>
           <button type="button" onClick={reset} className="pressable rounded border border-border px-2.5 py-1 text-text">

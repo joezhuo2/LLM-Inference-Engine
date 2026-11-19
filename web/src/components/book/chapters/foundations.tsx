@@ -84,7 +84,7 @@ const workbench: WorkbenchPage[] = [
       "This page shows the numbers behind the ring for the op and the batch you set on the previous spread: the FLOPs and the bytes of one decode step over all the model's layers, their ratio, and the ridge that ratio has to beat.",
       "The two bars are the time the op would take if only memory or only compute limited it: bytes ÷ bandwidth and FLOPs ÷ compute. The longer bar is the op's time at the ceilings, and it names the bound.",
       "Below them is the measured row from the profiles on the same GPU: the time, the share of the bandwidth roof, and the bandwidth and compute it reached. Where nothing was measured the page says so, and only the computed numbers stand.",
-      "Go back a page, change the op or the batch, and come back: the sandbox keeps its state across both spreads, so these numbers always match the ring you placed.",
+      "The op, the rows and the context are mirrored at the top of the right page: change them there and the numbers below follow. Both spreads share one sandbox, so the ring on the previous spread moves with them.",
     ],
   },
 ];
