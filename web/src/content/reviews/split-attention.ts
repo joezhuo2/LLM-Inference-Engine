@@ -1,4 +1,5 @@
 import { measured } from "@/content/kernels/types";
+import { about } from "@/lib/round";
 import type { ChapterReview } from "./types";
 
 const occupancy = "split-attention-occupancy-branch-66";
@@ -30,7 +31,7 @@ export const review: ChapterReview = {
     {
       question: "One row, 2,048 tokens. Going from 2 to 4 splits cuts the time sharply, and 8 splits doubles the blocks again. Does 8 cut the time by a similar amount?",
       answer: "No, it barely moves.",
-      why: `4 splits make ${blocks4} blocks, which fit in one wave of ${slots} slots. 8 splits make ${blocks8}, so the last ${blocks8 - slots} wait for a second, mostly empty wave, and the time only goes from ${time4} to ${time8} µs.`,
+      why: `4 splits make ${blocks4} blocks, which fit in one wave of ${slots} slots. 8 splits make ${blocks8}, so the last ${blocks8 - slots} wait for a second, mostly empty wave, and the time only goes from ${about(time4, 3)} to ${about(time8, 3)} µs.`,
     },
     {
       question: "Splitting is wired into the decode step, but each CUDA graph was captured on a dummy batch with no context, where the rule picks 1 split. At a 1,984-token prompt, what do the replayed steps launch?",
