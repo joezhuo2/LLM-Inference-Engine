@@ -104,7 +104,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Most of a token is reading weights, so a token has a floor: the bytes a step reads divided by the bandwidth. Here a step reads every weight but the embedding table, of which it copies one row: {bytesText(engineSide.readBytes)}. At the measured {about(engineSide.bandwidth / 1e9)} GB/s that takes {msText(engineSide.readFloorMs)}, and the measured token takes <span className="text-accent">{tokenMs}</span>: the floor is {about((100 * engineSide.readFloorMs) / stepProfile.tpotMs)}% of the token.
+          Most of a token is reading weights, so a token has a floor: the bytes a step reads divided by the bandwidth. Here a step reads every weight but the embedding table, of which it copies one row: {bytesText(engineSide.readBytes)}. At {about(engineSide.bandwidth / 1e9)} GB/s, the measured bandwidth, that takes {msText(engineSide.readFloorMs)}, and the measured token takes <span className="text-accent">{tokenMs}</span>: the floor is {about((100 * engineSide.readFloorMs) / stepProfile.tpotMs)}% of the token.
         </p>
         <p>
           Carry it to a model and a GPU people serve: {bigSide.model} in BF16 on an {bigSide.gpu}. Its weights are {bytesText(bigSide.weightBytes)}, {about(bigSide.weightBytes / engineSide.weightBytes)} times TinyLlama&apos;s, and a step reads {bytesText(bigSide.readBytes)} of them. The H100 reads memory at {h100.bandwidthTBs} TB/s, {about(bigSide.bandwidth / engineSide.bandwidth)} times this laptop GPU, so its floor is <span className="text-accent">{msText(bigSide.readFloorMs)}</span>. A bigger model on a faster GPU, and the token is still set by the same division.

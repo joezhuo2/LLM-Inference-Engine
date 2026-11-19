@@ -2488,3 +2488,4 @@
 - **the compute-bound crossover** => 
 - **a launch-bound kernel** => 
 - **an overflow check** => 
+- **measured bandwidth** => 
