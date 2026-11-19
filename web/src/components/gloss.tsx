@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
 import { createContext, type CSSProperties, type ReactNode, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { type GlossEntry, glossary } from "@/lib/glossary";
@@ -60,7 +61,7 @@ const CLOSE_DELAY = 120;
 const GUTTER = 16;
 const CARD_W = 288;
 
-export function GlossCard({ entry, id, style, below = true }: { entry: GlossEntry; id?: string; style?: CSSProperties; below?: boolean }) {
+export function GlossCard({ entry, id, style, below = true, link = false }: { entry: GlossEntry; id?: string; style?: CSSProperties; below?: boolean; link?: boolean }) {
   const reduced = usePrefersReducedMotion();
   return (
     <motion.div
@@ -71,13 +72,18 @@ export function GlossCard({ entry, id, style, below = true }: { entry: GlossEntr
       exit={reduced ? { opacity: 0 } : { opacity: 0, y: below ? -2 : 2, scale: 0.99 }}
       transition={{ duration: reduced ? 0 : 0.32, ease }}
       style={{ width: CARD_W, maxWidth: `calc(100vw - ${GUTTER * 2}px)`, transformOrigin: below ? "top center" : "bottom center", ...style }}
-      className="pointer-events-none z-50 rounded-md border border-border bg-surface/95 px-3 py-2.5 text-left text-[13px] leading-snug shadow-lg shadow-black/15 backdrop-blur-md"
+      className={`${link ? "" : "pointer-events-none "}z-50 rounded-md border border-border bg-surface/95 px-3 py-2.5 text-left text-[13px] leading-snug shadow-lg shadow-black/15 backdrop-blur-md`}
     >
       <div className="text-text">
         <span className="font-medium">{entry.term}</span>
         <span className="text-muted">{` · ${entry.full}`}</span>
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted">{entry.why}</p>
+      {link && (
+        <Link href={`/kernels/glossary#${entry.key}`} onMouseDown={(e) => e.preventDefault()} onPointerUp={(e) => e.stopPropagation()} className="link-underline mt-1.5 inline-block text-xs text-accent">
+          glossary
+        </Link>
+      )}
     </motion.div>
   );
 }
@@ -165,7 +171,7 @@ export function Term({ k, children }: { k: string; children: ReactNode }) {
       onBlur={hide}
     >
       {children}
-      {createPortal(<AnimatePresence>{place && <GlossCard entry={entry} id={id} below={place.below} style={{ position: "fixed", left: place.left, top: place.top, translate: place.below ? undefined : "0 -100%" }} />}</AnimatePresence>, document.body)}
+      {createPortal(<AnimatePresence>{place && <GlossCard entry={entry} id={id} link below={place.below} style={{ position: "fixed", left: place.left, top: place.top, translate: place.below ? undefined : "0 -100%" }} />}</AnimatePresence>, document.body)}
     </span>
   );
 }

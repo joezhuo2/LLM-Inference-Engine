@@ -141,6 +141,8 @@ const entries: GlossEntry[] = [
   { key: "causal", term: "causal mask", full: "the rule that a token only attends to itself and the tokens before it", why: "In prefill every prompt token is a row, so each row has to stop at its own position. In decode the new token is last, so nothing needs hiding.", aliases: ["causal mask"] },
 ];
 
+export const glossaryEntries: readonly GlossEntry[] = entries;
+
 export const glossary: Record<string, GlossEntry> = Object.fromEntries(entries.map((e) => [e.key, e]));
 
 const byAlias = new Map<string, string>();

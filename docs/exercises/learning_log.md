@@ -2372,3 +2372,6 @@
 - **a static site search index** => 
 - **HTML text extraction** => 
 - **node:test** => 
+- **the CSS :target selector** => 
+- **useDeferredValue** => 
+- **sticky positioning** => 
