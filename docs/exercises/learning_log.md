@@ -2444,3 +2444,7 @@
 - **aria-current** => 
 - **a cross-fade** => 
 - **focus-visible** => 
+- **clip-path** => 
+- **the Web Animations API** => 
+- **client-side navigation** => 
+- **progressive enhancement** => 
