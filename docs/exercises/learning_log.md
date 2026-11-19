@@ -2422,3 +2422,6 @@
 - **canvas text fitting** => 
 - **significant figures** => 
 - **rounding error** => 
+- **a published spec** => 
+- **HBM bandwidth** => 
+- **the ridge point** => 
