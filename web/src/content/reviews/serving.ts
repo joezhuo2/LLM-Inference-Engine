@@ -1,4 +1,5 @@
 import { blockTokens, blocksFor, engineBest, fmt, loadPredatesFlash, fullBlocks, fullContext, loadPreemptions, maxBatch, peak, poolBlocks, reservedFit, tokenBytes, usableBlocks, vllm, worstCaseBlocks } from "@/content/kernels/serving";
+import { about } from "@/lib/round";
 import { chapterNumber } from "../book-order";
 import type { ChapterReview } from "./types";
 
@@ -9,9 +10,9 @@ export const review: ChapterReview = {
   lesson: "Count the memory requests hold, not what they might hold, and decide again before every step.",
   why: "It shows how a scheduler turns a fixed pool of cache and a cap on rows into the number of requests served at once, and that when the engine lost to vLLM under load, neither limit was the reason.",
   takeaways: [
-    `Every cached token costs ${fmt(tokenBytes)} bytes, a block is ${blockTokens} tokens and the pool is ${fmt(poolBlocks)} blocks. A request holds ceil(length / ${blockTokens}) of them, so ${reservedFit} requests fit if each reserves the full ${fmt(fullContext)} tokens and far more if each holds only what it has written.`,
+    `Every cached token costs ${fmt(tokenBytes)} bytes, a block is ${blockTokens} tokens and the pool is ${about(poolBlocks)} blocks. A request holds ceil(length / ${blockTokens}) of them, so ${reservedFit} requests fit if each reserves the full ${fmt(fullContext)} tokens and far more if each holds only what it has written.`,
     `Admission is first come, first served: the front of the queue starts when a row is free and blocks for its whole length are free, and nothing skips ahead. When a running request needs a block and none is free, the newest running request loses its cache, goes to the front of the queue and is recomputed from position 0.`,
-    `With max_batch ${maxBatch} the worst case is ${fmt(worstCaseBlocks)} blocks${worstCaseBlocks <= usableBlocks ? ", so the pool cannot fill," : ","} and the load runs recorded ${loadPreemptions} preemptions. The engine's best goodput was ${engineBest.value.toFixed(2)} requests per second against vLLM's ${peak(vllm).value.toFixed(2)}, with the same batching and the same cap${loadPredatesFlash ? ": the gap is kernel speed, mostly prefill." : "."}`,
+    `With max_batch ${maxBatch} the worst case is ${fmt(worstCaseBlocks)} blocks${worstCaseBlocks <= usableBlocks ? ", so the pool cannot fill," : ","} and the load runs recorded ${loadPreemptions} preemptions. The engine's best goodput was ${about(engineBest.value)} requests per second against vLLM's ${about(peak(vllm).value)}, with the same batching and the same cap${loadPredatesFlash ? ": the gap is kernel speed, mostly prefill." : "."}`,
   ],
   questions: [
     {

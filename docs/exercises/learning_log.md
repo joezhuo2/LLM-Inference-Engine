@@ -2420,3 +2420,5 @@
 - **a running head** => 
 - **back matter** => 
 - **canvas text fitting** => 
+- **significant figures** => 
+- **rounding error** => 

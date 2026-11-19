@@ -11,6 +11,7 @@ import { KvVisualizer } from "@/components/kernels/serving/visualizer";
 import { chapterNumber } from "@/content/book-order";
 import { blockTokens, fmt, fullContext, serving, sweepRows } from "@/content/kernels/serving";
 import { kvDemo } from "@/lib/data";
+import { about } from "@/lib/round";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createServingAboutModel } from "./serving-about-model";
@@ -102,9 +103,9 @@ const workbench: WorkbenchPage[] = [
     overlay: "replay",
     caption: "Replay a recorded run",
     paragraphs: [
-      replayFacts ? `This is a run the engine recorded with engine bench --trace: ${replayFacts.requests} chat requests arriving at ${replayFacts.rate} per second, ${fmt(replayFacts.steps)} scheduler steps. Press play, or drag the slider to any step.` : "The engine can record a run with engine bench --trace and replay it here, step by step.",
+      replayFacts ? `This is a run the engine recorded with engine bench --trace: ${replayFacts.requests} chat requests arriving at ${replayFacts.rate} per second, ${about(replayFacts.steps)} scheduler steps. Press play, or drag the slider to any step.` : "The engine can record a run with engine bench --trace and replay it here, step by step.",
       "The batch timeline has one row per step. Its length is the time the step took, its colour says whether the step was a prefill of newly admitted requests or a decode step of everyone running, and the dots beside it are the requests in the step. Watch a long prefill row appear each time a request arrives, with the decoders waiting for it.",
-      replayFacts ? `The pool shows which blocks each request holds, a colour per request. At most ${replayFacts.seen} requests ran at once here, under a max_batch of ${replayFacts.maxBatch}, and they never held more than a sliver of the ${fmt(replayFacts.blocks)} blocks: this run was limited by how fast requests arrived, not by rows or memory.` : "The pool shows which blocks each request holds, a colour per request.",
+      replayFacts ? `The pool shows which blocks each request holds, a colour per request. At most ${replayFacts.seen} requests ran at once here, under a max_batch of ${replayFacts.maxBatch}, and they never held more than a sliver of the ${about(replayFacts.blocks)} blocks: this run was limited by how fast requests arrived, not by rows or memory.` : "The pool shows which blocks each request holds, a colour per request.",
       "Step through the end of a request: its blocks all go back at once, and the next request that needs one takes the lowest free block.",
     ],
   },
