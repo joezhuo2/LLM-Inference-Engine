@@ -1203,7 +1203,7 @@ export function beyondStops(firstSpread: number): Stop[] {
 }
 
 export function engineStops(firstSpread: number): Stop[] {
-  const perPage = [4, 5, 5, 5];
+  const perPage = [4, 5, 5, 6];
   const tags = `${engineKeys.map((k) => `${engines[k].name} ${engines[k].tag}`).join(" · ")} · checked ${enginesChecked}`;
   const page = (p: number) => {
     const side: Side = p % 2 === 0 ? "left" : "right";

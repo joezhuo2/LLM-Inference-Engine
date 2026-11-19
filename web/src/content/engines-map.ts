@@ -132,6 +132,12 @@ export const engineRows: EngineRow[] = [
     vllm: { path: "vllm/profiler/wrapper.py", line: 682, symbol: "CudaProfilerWrapper", note: "Starts and stops the CUDA profiler around a window so Nsight Systems records only that part. TorchProfilerWrapper in the same file uses the PyTorch profiler." },
     llamacpp: { path: "src/llama-context.cpp", line: 5117, symbol: "llama_perf_context_print", note: "Prints prompt and generation time per token. There is no per-kernel breakdown in the code: Nsight Systems run from outside is the way to get one." },
   },
+  {
+    slug: "quantization",
+    idea: "fewer bytes per weight, with a scale to undo it",
+    vllm: { path: "vllm/model_executor/layers/quantization/fp8.py", line: 230, symbol: "Fp8LinearMethod", note: "Fp8Config reads the checkpoint's quantization settings. Each FP8 weight gets a per-tensor weight_scale, and init_fp8_linear_kernel picks the scaled matrix-product kernel. FP8 KV cache scales (k_scale, v_scale) are in kv_cache.py next to it." },
+    llamacpp: { path: "ggml/src/ggml-cuda/mmvq.cu", line: 1452, symbol: "ggml_cuda_mul_mat_vec_q", note: "At decode the CUDA backend's matrix-vector product takes the quantized blocks as its input, such as block_q4_0: 32 weights and one scale d (ggml/src/ggml-common.h). The types, F8_E4M3 among them, are enum ggml_type in ggml.h; llama-quantize writes them (src/llama-quant.cpp)." },
+  },
 ];
 
 export const engineRow = (slug: string) => engineRows.find((r) => r.slug === slug);
