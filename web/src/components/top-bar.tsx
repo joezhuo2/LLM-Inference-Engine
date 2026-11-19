@@ -26,6 +26,7 @@ function Tip({ label, children }: { label: ReactNode; children: ReactNode }) {
 
 export function TopBar() {
   const pathname = usePathname();
+  const inBook = pathname.startsWith("/every-byte");
   return (
     <header style={{ viewTransitionName: "site-header" }} className="sticky top-0 z-10 border-b border-border bg-bg/90 backdrop-blur">
       <nav className="mx-auto flex h-12 w-full max-w-5xl items-center gap-4 px-4 tabular-nums text-[13px] sm:gap-6 sm:text-sm sm:px-6">
@@ -49,6 +50,14 @@ export function TopBar() {
           })}
         </ul>
         <div className="flex items-center gap-1">
+          <Tip label="read Every Byte, the 3D book">
+            <Link href="/every-byte/start" aria-label="Every Byte, the 3D book" aria-current={inBook ? "page" : undefined} className={clsx("pressable rounded p-1.5 hover:text-text", inBook ? "text-text" : "text-muted")}>
+              <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-none stroke-current" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path className={clsx("transition-opacity duration-300 ease-in-out motion-reduce:transition-none", inBook && "opacity-0")} d="M2.5 13V3.5A1.5 1.5 0 0 1 4 2h9.5v10H4a1.5 1.5 0 0 0 0 3h9.5" />
+                <path className={clsx("transition-opacity duration-300 ease-in-out motion-reduce:transition-none", !inBook && "opacity-0")} d="M8 4.5C6.5 3.3 4.3 3 1.5 3.2v9.3c2.8-.2 5 .1 6.5 1.3 1.5-1.2 3.7-1.5 6.5-1.3V3.2C11.7 3 9.5 3.3 8 4.5zM8 4.5v9.3" />
+              </svg>
+            </Link>
+          </Tip>
           <Tip label="view the code on GitHub">
             <a href="https://github.com/joezhuo2/LLM-Inference-Engine" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository" className="pressable rounded p-1.5 text-muted hover:text-text">
               <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-current">

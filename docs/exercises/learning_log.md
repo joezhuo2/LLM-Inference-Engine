@@ -2441,3 +2441,6 @@
 - **label clearance** => 
 - **scale overhead** => 
 - **a quantized block** => 
+- **aria-current** => 
+- **a cross-fade** => 
+- **focus-visible** => 
