@@ -149,7 +149,7 @@ export function ReplayPicker() {
 }
 
 const fmt = (v: number, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
-const saved = ["1", "4", "16"].map((b) => tpot("engine", b) - tpot("engine + graphs", b));
+const saved = ["1", "4", "16"].map((b) => Number((tpot("engine", b) - tpot("engine + graphs", b)).toFixed(2)));
 const savedShare = Math.round((100 * saved[0]) / tpot("engine", "1"));
 const layersAhead = Math.round(trace.eager.cpu_ahead_us / layerUs(eagerLayer));
 const shortKernels = eagerLayer.filter((k) => k.end - k.start < 3).length;
