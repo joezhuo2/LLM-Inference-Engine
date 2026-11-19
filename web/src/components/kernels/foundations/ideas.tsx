@@ -1,6 +1,9 @@
 "use client";
 
 import { motion } from "motion/react";
+import { chapterNumber } from "@/content/book-order";
+import { cudaGraphs } from "@/content/kernels/cuda-graphs";
+import { stepProfile } from "@/content/kernels/one-token";
 import { ceilings, hardware, kvReplay, medianOf, modelShape } from "@/lib/data";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
@@ -53,6 +56,9 @@ const ideaSteps: StoryStep[] = [
         </p>
         <p>
           The arithmetic on those weights would take a small fraction of a millisecond if the numbers were already there. So the measured step, {ms(b1.tpot)} ms, is almost all waiting for bytes. Making the maths faster would change nothing; moving fewer bytes, or using each byte for more work, is what helps.
+        </p>
+        <p>
+          Chapter {chapterNumber("one-token")} timed its token at {ms(stepProfile.tpotMs, 2)} ms. That step was launched kernel by kernel while a profiler recorded it; this one is replayed from a CUDA graph, with no profiler. Chapter {chapterNumber("cuda-graphs")}, {cudaGraphs.title}, is about the difference.
         </p>
         <p>The rest of this chapter builds this into the roofline, and every later chapter is judged against it.</p>
       </>

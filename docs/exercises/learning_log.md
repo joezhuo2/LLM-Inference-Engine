@@ -2379,3 +2379,6 @@
 - **aria-activedescendant** => 
 - **dynamic import code splitting** => 
 - **@starting-style** => 
+- **CUDA graph replay** => 
+- **profiler overhead** => 
+- **time per output token** => 
