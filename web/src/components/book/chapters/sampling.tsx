@@ -81,7 +81,7 @@ const workbench: WorkbenchPage[] = [
     overlay: "sandbox-two",
     caption: "Sample it yourself: draw and predict",
     paragraphs: [
-      "Press sample to draw one token with the engine's Gumbel-max rule, or sample 20 to draw a run of them. The draws run on a seed and a step, like the kernel's Philox noise, so a new seed gives a new sequence and the same seed repeats it.",
+      "The prompt and the three knobs of the previous page are mirrored at the top of the right page, so you can change them here. Press sample to draw one token with the engine's Gumbel-max rule, or sample 20 to draw a run of them. The draws run on a seed and a step, like the kernel's Philox noise, so a new seed gives a new sequence and the same seed repeats it.",
       "The table counts the candidates left after top-k and top-p, the entropy of what is left, the share of the likeliest token and how much mass the cuts removed.",
       "Predict first, in the box under the table: set the knobs it names, raise the temperature, and say whether the candidates left grow, shrink or stay the same. Answer, then set it and check.",
       "Flatter odds spread the mass over more tokens, so the top-p line sits further down the list. The answer under the buttons gives the counts for the prompt you picked.",

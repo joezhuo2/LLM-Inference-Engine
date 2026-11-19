@@ -2463,3 +2463,5 @@
 - **tokens per step** => 
 - **a read floor** => 
 - **kernel boundaries** => 
+- **a mirrored control** => 
+- **shared React state** => 

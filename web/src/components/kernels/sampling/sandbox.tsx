@@ -9,6 +9,7 @@ import { glide as tween, type Tween } from "@/lib/glide";
 import { samplingLogits } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
+import { Mirror } from "../mirror";
 import { Toggle } from "../toggle";
 import { buildGroups, draw, type Group, type Knobs, stages, type Stages } from "./sampler";
 
@@ -316,7 +317,10 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
         {pages.two &&
           createPortal(
             <div className="space-y-4 tabular-nums text-xs">
-              {sliderPart}
+              <Mirror from="the previous page">
+                <Toggle label="prompt" choices={names} value={ctx} onChange={pickContext} />
+                {sliderPart}
+              </Mirror>
               {drawPart}
               {sidePart}
             </div>,
