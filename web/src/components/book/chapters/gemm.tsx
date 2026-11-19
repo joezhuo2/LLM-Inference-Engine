@@ -8,6 +8,7 @@ import { GemmStream } from "@/components/kernels/gemm/stream";
 import { gemmAbout, gemmAboutCaption } from "@/components/kernels/gemm/about";
 import { gemm, prefillRoof } from "@/content/kernels/gemm";
 import { hardware } from "@/lib/data";
+import { about } from "@/lib/round";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createGemmAboutModel } from "./gemm-about-model";
@@ -75,7 +76,7 @@ const workbench: WorkbenchPage[] = [
     caption: "Stream it yourself: the bytes and the ceilings",
     paragraphs: [
       `Answer the prediction first. The table then counts one whole decode step for the matrix you picked at all three batch sizes: the weight bytes of one layer, the x and y bytes, the bytes of the step across all ${gemmNumbers.projections[0].per} layers (the LM head is read once), and the FLOPs.`,
-      `FLOPs divided by bytes is the arithmetic intensity. The ridge at ${Math.round(gemmNumbers.ridge)} FLOP per byte is where the two measured ceilings meet, the bandwidth and the compute peak: under it the bytes set the time, over it the tensor cores do.`,
+      `FLOPs divided by bytes is the arithmetic intensity. The ridge at ${about(gemmNumbers.ridge)} FLOP per byte is where the two measured ceilings meet, the bandwidth and the compute peak: under it the bytes set the time, over it the tensor cores do.`,
       "Each weight feeds one FLOP per byte for every row of x, so the intensity is about M. For one row and a small batch that is far under the ridge, and the measured time per step barely moves: 16 tokens for the price of one.",
       "For a long prompt the compute bar passes the memory bar and the matrix is compute bound. The profiles only measured the two smaller batches, so the table says not measured there; the two roof times are computed from the measured ceilings.",
     ],

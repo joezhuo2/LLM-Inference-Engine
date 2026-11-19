@@ -2482,3 +2482,5 @@
 - **a published peak** => 
 - **the memory wall** => 
 - **shared sandbox state** => 
+- **a GEMV floor** => 
+- **arithmetic intensity** => 
