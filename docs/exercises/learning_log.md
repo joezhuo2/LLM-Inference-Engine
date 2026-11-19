@@ -2455,3 +2455,5 @@
 - **a latency-bound kernel** => 
 - **a scalar path** => 
 - **vector loads** => 
+- **the FP64 pipe** => 
+- **a top-k threshold search** => 
