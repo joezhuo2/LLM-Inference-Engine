@@ -239,7 +239,7 @@ export const pagedKvSteps: StoryStep[] = [
   },
   {
     id: "bigger",
-    title: `on ${bigSide.model} a cached token is ${fmt(bigSide.kvTokenBytes)} bytes, a full context ${bigSide.contextBlocks} blocks`,
+    title: `on ${bigSide.model} a cached token is ${fmt(bigSide.kvTokenBytes)} bytes`,
     body: (
       <>
         <p>
