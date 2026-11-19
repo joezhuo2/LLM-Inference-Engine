@@ -565,6 +565,7 @@ export function EveryByte() {
       sceneReady.current.resolve(built);
       queue.current = queue.current.then(addModels);
       built.showClosed();
+      canvasEl.dataset.ready = "";
       if (!place.closed) void goKey(place.key, false, false, false, place.at);
     };
     void start();
@@ -583,16 +584,19 @@ export function EveryByte() {
     if (!hostEl) return;
     const onPage = (event: Event) => step((event as CustomEvent<"prev" | "next">).detail === "next" ? 1 : -1);
     const onCover = () => void goKey("start", false);
+    const onClose = () => closeBook();
     const onLink = (event: Event) => onLinkHref((event as CustomEvent<string>).detail);
     hostEl.addEventListener("bookpage", onPage);
     hostEl.addEventListener("bookcover", onCover);
+    hostEl.addEventListener("bookclose", onClose);
     hostEl.addEventListener("booklink", onLink);
     return () => {
       hostEl.removeEventListener("bookpage", onPage);
       hostEl.removeEventListener("bookcover", onCover);
+      hostEl.removeEventListener("bookclose", onClose);
       hostEl.removeEventListener("booklink", onLink);
     };
-  }, [step, goKey, onLinkHref]);
+  }, [step, goKey, onLinkHref, closeBook]);
 
   useEffect(() => {
     const onPop = () => {
