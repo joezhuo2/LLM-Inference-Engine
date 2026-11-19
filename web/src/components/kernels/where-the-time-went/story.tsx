@@ -52,7 +52,7 @@ const steps: StoryStep[] = [
         </p>
         {noisy.length > 0 && (
           <p>
-            One capture reads oddly: on {noisy[0].date} the gaps were {about(noisy[0].idlePct)}% of the span, where today&apos;s are {about(eagerStage.idlePct)}%. Gaps depend on what else the machine is doing. Kernel time is the steadier number.
+            One capture reads oddly: on {noisy[0].date} the gaps were {`${about(noisy[0].idlePct)}%`} of the span, where today&apos;s are {`${about(eagerStage.idlePct)}%`}. Gaps depend on what else the machine is doing. Kernel time is the steadier number.
           </p>
         )}
       </>
@@ -125,10 +125,10 @@ const steps: StoryStep[] = [
           First, serve more than {next.loadBatch} sequences at once. With every request submitted together the engine goes from {about(next.throughputAtLoad)} to <span className="text-accent">{about(next.throughputAtKnee)}</span> tokens per second between {next.loadBatch} and {next.kneeBatch} rows, and the KV cache is not what stops it. That run has not been made under load, or against vLLM at its own default.
         </p>
         <p>
-          Second, read K and V once per KV head. At {next.kneeBatch} rows attention is <span className="text-accent">{fmt(next.attentionShare)}%</span> of the step and grows in proportion to the rows: each row reads its own keys and values, and the {next.group} query heads that share a KV head each read them again. The prefill kernel does the same: it asks the caches for {about(next.requestedMb)} MB per layer to use {about(next.neededMb)} MB, with its tensor cores at {about(next.tensorPct)}% of their peak.
+          Second, read K and V once per KV head. At {next.kneeBatch} rows attention is <span className="text-accent">{fmt(next.attentionShare)}%</span> of the step and grows in proportion to the rows: each row reads its own keys and values, and the {next.group} query heads that share a KV head each read them again. The prefill kernel does the same: it asks the caches for {about(next.requestedMb)} MB per layer to use {about(next.neededMb)} MB, with its tensor cores at {`${about(next.tensorPct)}%`} of their peak.
         </p>
         <p>
-          Third, prepare the next step while this one runs. {about(next.hostMs)} ms of every batch-1 token, <span className="text-accent">{fmt(next.hostPct)}%</span>, pass between two steps. Without them a token would sit at {fmt(next.roofWithout)}% of the bandwidth roof where it sits at {fmt(next.roofNow)}% (calculated).
+          Third, prepare the next step while this one runs. {sentence(about(next.hostMs))} ms of every batch-1 token, <span className="text-accent">{fmt(next.hostPct)}%</span>, pass between two steps. Without them a token would sit at {fmt(next.roofWithout)}% of the bandwidth roof where it sits at {fmt(next.roofNow)}% (calculated).
         </p>
         <p>
           Two smaller ones were left out: a token budget of {next.chunkBudget} still costs a lone long prompt {next.chunkCostPct}%, and float Gumbel noise would cut a sampled draw from {about(next.gumbelUs)} µs to under {num(Math.ceil(next.gumbelFloatHigh))} µs but changes the tokens of a fixed seed. None of the three reads fewer bytes. That is the other way past the floor, and{" "}
@@ -146,10 +146,10 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Carry the floor to a model and a GPU people serve: {bigSide.model} in BF16 on an {bigSide.gpu}. A decode step reads every weight but the embedding table, {about(bigSide.readBytes / 1e9)} GB, and the {bigSide.gpu}&apos;s memory is published at {h100.bandwidthTBs} TB/s, so a token cannot take less than <span className="text-accent">{about(bigSide.readFloorMs)} ms</span>. Here the floor is {about(engineSide.readFloorMs)} ms: a model that reads {about(bigSide.readBytes / engineSide.readBytes)} times the bytes, on memory {about(bigSide.bandwidth / engineSide.bandwidth)} times as fast, still waits on the same division.
+          Carry the floor to a model and a GPU people serve: {bigSide.model} in BF16 on an {bigSide.gpu}. A decode step reads every weight but the embedding table, {about(bigSide.readBytes / 1e9)} GB, and the {bigSide.gpu}&apos;s memory is published at {`${h100.bandwidthTBs}\u00a0TB/s`}, so a token cannot take less than <span className="text-accent">{about(bigSide.readFloorMs)} ms</span>. Here the floor is {about(engineSide.readFloorMs)} ms: a model that reads {about(bigSide.readBytes / engineSide.readBytes)} times the bytes, on memory {about(bigSide.bandwidth / engineSide.bandwidth)} times as fast, still waits on the same division.
         </p>
         <p>
-          What the rest of a token would cost there is not known. Here everything above the floor, the kernels, the launch gaps and the time between steps, adds up to {about(aboveFloor)} ms. If the kernels on the {bigSide.gpu} also reached the floor and that part stayed the same, the floor would be <span className="text-accent">{about(bigShare)}%</span> of a token against {fmt(token.floorPct)}% here: a fixed cost weighs more as the read gets shorter. That is an assumption, not a measurement.
+          What the rest of a token would cost there is not known. Here everything above the floor, the kernels, the launch gaps and the time between steps, adds up to {about(aboveFloor)} ms. If the kernels on the {bigSide.gpu} also reached the floor and that part stayed the same, the floor would be <span className="text-accent">{`${about(bigShare)}%`}</span> of a token against {fmt(token.floorPct)}% here: a fixed cost weighs more as the read gets shorter. That is an assumption, not a measurement.
         </p>
         <p>
           These numbers are calculated from published specs. The {bigSide.gpu} has no measured step to compare: nothing in this book ran on one or with {bigSide.model}. What carries over is the order of the work: divide the bytes by the bandwidth first, then measure what is left.
@@ -165,14 +165,14 @@ const captions = [
   `results.md, FlashAttention prefill kernels for the chart (one session on 2026-11-10, median of 5 runs, llama.cpp with -ub 512; the first kernel measured at its own commit) and Prefill against prompt length for the text (one request per run, median of 3 runs, another session); attention and GEMM shares from profiling.md, FlashAttention prefill in chunks, a later session, so compare them with each other only; in the text: ${fmt(prefill.paged, 1)} ms one walk per row, ${fmt(prefill.first, 1)} ms the first flash kernel, ${fmt(prefill.tiled, 1)} ms tiled, ${fmt(prefill.llama, 1)} ms llama.cpp; attention ${fmt(prefill.attentionMs, 1)} of ${fmt(prefill.spanMs, 1)} ms`,
   `results.md, Under load: engine runs measured ${load.date} at commit ${load.commit} on the ${load.gpu}; Poisson arrivals at each rate, medians of the runs; SLO: TTFT at most ${fmt(load.slo.ttft_ms)} ms and TPOT at most ${fmt(load.slo.tpot_ms)} ms; past saturation a run ends before the queue is steady, so read those points as overloaded, not as stable values; how vLLM was run: baselines.md; at an offered ${load.tailRate}: TTFT p99 ${fmt(load.tailEngine)} ms for the engine and ${fmt(load.tailVllm)} ms for vLLM${whole && chunkedGap ? `, largest gap ${fmt(whole.largest)} ms with whole prompts and ${fmt(chunkedGap.largest)} ms with a budget` : ""}`,
   `the bars are not one unit: ${fmt(next.throughputGain, 2)}x is tokens per second at ${next.kneeBatch} rows over ${next.loadBatch}, offline, and ${fmt(next.attentionShare)}% attention's share of an eager ${next.kneeBatch}-row step (results.md, Batch size past 16); ${fmt(next.hostPct)}% is time per token minus span; none of the three is built, so each is an upper bound read from a measurement; ${fmt(next.throughputAtLoad)} tokens/s at ${next.loadBatch} rows and ${fmt(next.throughputAtKnee)} at ${next.kneeBatch}; the prefill kernel asks for ${fmt(next.requestedMb, 1)} MB per layer to use ${fmt(next.neededMb, 1)} MB, tensor cores at ${next.tensorPct}%; open issues #94 (attention at batch 16 and more) and #122 (overlap host work with GPU work)`,
-  `calculated, not measured: ${scaleSources.big}; read per token (${fmt(l3.params)} − ${fmt(l3.vocab)} × ${fmt(l3.hidden)}) × 2 = ${fmt(bigSide.readBytes)} bytes, ÷ ${h100.bandwidthTBs} TB/s = ${fmt(bigSide.readFloorMs, 2)} ms; above the floor here ${fmt(token.ms, 2)} − ${fmt(token.floorMs, 2)} = ${fmt(aboveFloor, 2)} ms (measured minus calculated); ${fmt(bigSide.readFloorMs, 2)} ÷ (${fmt(bigSide.readFloorMs, 2)} + ${fmt(aboveFloor, 2)}) = ${fmt(bigShare, 1)}%, if that part stayed the same`,
+  `calculated, not measured: ${scaleSources.big}; read per token (${fmt(l3.params)} − ${fmt(l3.vocab)} × ${fmt(l3.hidden)}) × 2 = ${fmt(bigSide.readBytes)} bytes, ÷ ${h100.bandwidthTBs} TB/s = ${fmt(bigSide.readFloorMs, 2)} ms; above the floor here ${fmt(token.ms, 2)} − ${fmt(token.floorMs, 2)} = ${fmt(aboveFloor, 2)} ms (measured minus calculated); ${fmt(bigSide.readFloorMs, 2)} ÷ (${fmt(bigSide.readFloorMs, 2)} + ${fmt(aboveFloor, 2)}) = ${fmt(bigShare, 1)}%, if that part stayed the same; the dashed line is one token measured here, ${fmt(token.ms, 2)} ms`,
 ];
 
 export const timeSteps = steps;
 export const timeCaptions = captions;
 
 export function TimeScaleFigure() {
-  return <ScaleFigure title={`the floor for ${bigSide.model} on an ${bigSide.gpu}`} quantities={["readFloor"]} marks={{ readFloor: { value: token.ms, label: `one token measured here, ${fmt(token.ms, 2)} ms` } }} />;
+  return <ScaleFigure title={`the floor for ${bigSide.model} on an ${bigSide.gpu}`} quantities={["readFloor"]} marks={{ readFloor: { value: token.ms, label: `token, ${fmt(token.ms, 2)} ms` } }} />;
 }
 
 const figures = [StagesFigure, FloorFigure, PrefillFigure, LoadFigure, NextFigure, TimeScaleFigure];
