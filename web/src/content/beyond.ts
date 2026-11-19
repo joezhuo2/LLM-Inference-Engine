@@ -41,7 +41,7 @@ export const beyondTopics: BeyondTopic[] = [
     title: "quantization",
     unit: "fewer bytes per weight",
     paragraphs: [
-      `Quantization stores each weight in fewer bits, so a decode step reads fewer bytes and the batch-1 floor falls with them. It has its own chapter: chapter ${chapterNumber("quantization")}, ${title("quantization")}, works out what FP8 and 4-bit weights do to the floor, the arithmetic and the KV cache, and what the engine's FP8 stubs promise. None of it is measured yet.`,
+      `Quantization stores each weight in fewer bits, so a decode step reads fewer bytes and the batch-1 floor falls with them. It has its own chapter: chapter ${chapterNumber("quantization")}, ${title("quantization")}, works out what FP8 and 4-bit weights do to the floor, the arithmetic and the KV cache, and what the engine's FP8 stubs promise. None of it is measured yet. A real 4-bit file is a little larger than bits times weights, because each small block of weights also stores its scale.`,
       `Estimate ${estimateNumber} works one case on this book's GPU. ${f.model} is ${f.bf16} in BF16 and does not fit in ${f.vram} of VRAM. At ${f.lowBits} bits it is ${f.low}, and at the measured ${f.bandwidth} the floor is ${f.floorLow} per token, ${f.rateLow} tokens per second (calculated, not run).`,
       "GPTQ is one method for choosing the rounded values: it quantizes a trained model one layer at a time, using second-order information from a small set of calibration data, with no retraining.",
     ],
