@@ -2364,3 +2364,6 @@
 - **memory bandwidth** => 
 - **cache size** => 
 - **bytes divided by bandwidth** => 
+- **the Gumbel-max trick** => 
+- **temperature** => 
+- **a top-k threshold** => 
