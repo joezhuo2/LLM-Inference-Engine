@@ -1,6 +1,10 @@
 import { pagedAttention } from "@/content/kernels/paged-attention";
 import { measured } from "@/content/kernels/types";
 import { kvReplay } from "@/lib/data";
+import { about } from "@/lib/round";
+import { maxBatch } from "@/content/kernels/serving";
+import { published } from "../published";
+import { bigSide } from "../scale";
 import type { ChapterReview } from "./types";
 
 const split = "split-context-attention-branch-40";
@@ -12,6 +16,9 @@ const requestTokens = 37;
 const keyToken = requestTokens - 1;
 const keyEntry = Math.floor(keyToken / blockSize);
 const keySlot = keyToken % blockSize;
+const l3 = published.llama3;
+const fmt = (v: number) => v.toLocaleString("en-US");
+const fullBatch = maxBatch * bigSide.contextBytes;
 
 export const review: ChapterReview = {
   lesson: "A block table lets attention read a context scattered anywhere in the pool.",
@@ -37,6 +44,11 @@ export const review: ChapterReview = {
       question: `Blocks hold ${blockSize} tokens, and the paged KV chapter wrote a ${requestTokens}-token request through its block table. When attention scores its last token, token ${keyToken}, which block table entry does the kernel look up, and which slot of that block does it read?`,
       answer: `Entry ${keyEntry}, slot ${keySlot}.`,
       why: `Reading uses the same rule as writing: ${keyToken} / ${blockSize} rounded down is entry ${keyEntry}, and ${keyToken} mod ${blockSize} is slot ${keySlot}. The table entry names the physical block, wherever it sits in the pool, so the kernel finds exactly the key that write_kv stored.`,
+    },
+    {
+      question: `${bigSide.model} caches ${fmt(bigSide.kvTokenBytes)} bytes of K and V per token and has ${fmt(bigSide.weightBytes)} bytes of BF16 weights. At its full context of ${fmt(bigSide.context)} tokens, how many bytes of K and V does one decode step read for one request, and for ${maxBatch} such requests, counting each cached byte once? Which is more than the weights?`,
+      answer: `${fmt(bigSide.contextBytes)} bytes for one, ${fmt(fullBatch)} for ${maxBatch}; only the ${maxBatch} are more than the weights.`,
+      why: `${fmt(bigSide.context)} × ${fmt(bigSide.kvTokenBytes)} = ${fmt(bigSide.contextBytes)}, ${about((100 * bigSide.contextBytes) / bigSide.weightBytes)}% of the weights; the weights are read once a step for the whole batch, the cache once per request, so ${maxBatch} × ${fmt(bigSide.contextBytes)} = ${fmt(fullBatch)}. Calculated from ${l3.vendor}'s published specs; the kernel was never run on that model.`,
     },
   ],
 };

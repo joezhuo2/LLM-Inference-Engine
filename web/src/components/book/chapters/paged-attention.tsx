@@ -1,13 +1,14 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { chapterNumber } from "@/content/book-order";
 import { modelShape } from "@/lib/data";
 import { pagedAttentionAbout, pagedAttentionAboutCaption } from "@/components/kernels/attention/about";
 import { prologueCaptions, prologueNumbers, prologueSteps } from "@/components/kernels/attention/prologue-story";
 import { PagedAttentionSandbox } from "@/components/kernels/attention/sandbox";
-import { attentionCaptions, attentionNumbers, attentionSteps } from "@/components/kernels/attention/story";
+import { attentionCaptions, attentionNumbers, attentionSteps, PagedAttentionScaleFigure } from "@/components/kernels/attention/story";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createPagedAttentionAboutModel } from "./paged-attention-about-model";
 import { createPagedAttentionModel } from "./paged-attention-model";
 
@@ -51,6 +52,7 @@ const beats: Beat[][] = [
     close("Close up: one table entry for all 16 keys of a block", [0.5, 0.04, -0.4], 1.12, 0.50, -18, 36),
     close("From the side: the jumps fall between blocks", [0.52, 0.03, -0.08], 1.12, 0.56, 24, 32),
   ],
+  [flat("One step's K and V reads at the full context, against the weights")],
   [
     overview("v1 held every score; v2 streams chunks with no cap"),
     close("Close up: v1 keeps every score and passes three times", [0.5, 0.03, -0.48], 1.12, 0.45, -18, 36),
@@ -73,6 +75,7 @@ const instructions = [
   "Watch the scores fill one key at a time, then the softmax weigh them all.",
   "Drag the pink ball along the sequence to pick a token.",
   "Drag the pink ball within one block: every token there follows the same table entry.",
+  "Compare the rows: one request's cache stays under the weights, a full batch does not.",
   "Watch v1 pass over its full tray three times while v2 streams chunks.",
   "Watch the context run as one range, then as eight at once.",
 ];
@@ -116,11 +119,16 @@ const workbench: WorkbenchPage[] = [
   },
 ];
 
-function PagedAttentionOverlay({ kind, target }: OverlayProps) {
-  return <PagedAttentionSandbox pages={{ table: kind === "sandbox-table" ? target : null, step: kind === "sandbox-step" ? target : null, check: kind === "sandbox-check" ? target : null }} />;
+function PagedAttentionOverlay({ kind, target, narrow }: OverlayProps) {
+  return (
+    <>
+      <PagedAttentionSandbox pages={{ table: kind === "sandbox-table" ? target : null, step: kind === "sandbox-step" ? target : null, check: kind === "sandbox-check" ? target : null }} />
+      {target && kind === "scale" && createPortal(<div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}><PagedAttentionScaleFigure /></div>, target)}
+    </>
+  );
 }
 
-const ownExhibits = [0, 1, 2, 3, 4, 5, 5, 6, 7];
+const ownExhibits = [0, 1, 2, 3, 4, 5, 5, null, 6, 7];
 
 const chapter: ChapterDef = {
   slug: "paged-attention",
@@ -130,7 +138,7 @@ const chapter: ChapterDef = {
   steps: [...prologueSteps, ...attentionSteps],
   captions: [...prologueCaptions, ...attentionCaptions],
   exhibits: ownExhibits,
-  overlays: ownExhibits.map(() => null),
+  overlays: ownExhibits.map((e) => (e === null ? "scale" : null)),
   instructions,
   beats,
   workbench,
