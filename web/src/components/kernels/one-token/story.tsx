@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { gemmUs, hostTimes, journey, layerKernels, layerOps, layerUs, layersUs, share, stage, stepProfile, tokenFmt, tokenUs, tripSum, widest } from "@/content/kernels/one-token";
+import { gloss } from "../../glossed";
+import { AttentionBasicsStory, basicsSection } from "../attention/basics";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { HeadFigure, LayerFigure, TokenizeFigure, TripFigure } from "./figures";
 
@@ -46,7 +48,7 @@ const steps: StoryStep[] = [
           On the GPU the ID first becomes a row of {fmt(journey.hidden)} numbers: the embedding kernel copies row {journey.inputId} of a table, in {us(stage("embedding").us)}. That row is the token&apos;s stream. Every layer reads it, adds something to it and passes it on.
         </p>
         <p>
-          A layer is the same ten operations each time. Attention lets the token look at the tokens before it: a matrix product makes its query, key and value, RoPE marks them with the position, write_kv stores the key and the value, and {chapter("paged-attention", "paged attention")} scores the query against all {journey.inputPosition + 1} keys in the cache. Then an MLP works on the token alone: widen, gate, narrow. Before each half, {chapter("add-rmsnorm", "add + RMSNorm")} folds the last result into the stream.
+          A layer is the same ten operations each time. Attention lets the token look at the tokens before it: a matrix product makes its query, key and value, RoPE marks them with the position, write_kv stores the key and the value, and {chapter("paged-attention", "paged attention")} scores the query against all {journey.inputPosition + 1} keys in the cache. Then an MLP works on the token alone: widen, gate, narrow. Before each half, {chapter("add-rmsnorm", "add + RMSNorm")} folds the last result into the stream. The last pages of this chapter take attention apart step by step.
         </p>
         <p>
           One layer takes <span className="text-accent">{us(layerUs)}</span>, and {journey.layers} of them {us(layersUs)} in {fmt(layerKernels)} kernels. The four matrix products hold {fmt((gemmUs / layersUs) * 100)}% of that, and the widest alone, the {widest.label}, {fmt((widest.step / layersUs) * 100)}%. They are slow for one reason: each reads its whole weight matrix from memory for a single token. {chapter("gemm", "The GEMM chapter")} explains it. Attention, the famous part, is {attention ? us(attention.layer) : ""} per layer.
@@ -106,13 +108,22 @@ const figures = [TokenizeFigure, LayerFigure, HeadFigure, TripFigure];
 
 export function OneTokenStory() {
   return (
-    <StickyStory
-      steps={steps}
-      caption={(i) => captions[i]}
-      figure={(i) => {
-        const Figure = figures[i] ?? TripFigure;
-        return <Figure />;
-      }}
-    />
+    <>
+      <StickyStory
+        steps={steps}
+        caption={(i) => captions[i]}
+        figure={(i) => {
+          const Figure = figures[i] ?? TripFigure;
+          return <Figure />;
+        }}
+      />
+      <section aria-labelledby="ideas" className="space-y-6 pt-14">
+        <h2 id="ideas" className="font-serif text-3xl text-text">
+          {basicsSection.title}
+        </h2>
+        <p className="max-w-2xl text-muted">{gloss(basicsSection.intro)}</p>
+        <AttentionBasicsStory />
+      </section>
+    </>
   );
 }

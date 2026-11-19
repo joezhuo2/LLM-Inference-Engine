@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { attentionBasics, BasicsFigure, basicsCaptions, basicsInstructions } from "@/components/kernels/attention/basics";
 import { tokenAbout, tokenAboutCaption } from "@/components/kernels/one-token/about";
 import { HeadFigure, TokenizeFigure } from "@/components/kernels/one-token/figures";
 import { tokenCaptions, tokenSteps } from "@/components/kernels/one-token/story";
@@ -31,6 +32,7 @@ const beats: Beat[][] = [
     close("From the side: the slivers at the end of the step", [0.74, 0.03, -0.1], 0.5, 0.3, 24, 30),
     close("The rail: drag to pick a stage", [0.5, 0.02, 0.2], 0.9, 0.34, 0, 46),
   ],
+  ...attentionBasics.map((step) => [flat(`Attention basics: ${step.title}`)]),
 ];
 
 const instructions = [
@@ -38,6 +40,7 @@ const instructions = [
   "Drag the pink ball to pick an operation: its block rises, and the card gives its time in one layer and in all of them.",
   "Read the bars from the top: the first one wins by a wide margin.",
   "Drag the pink ball along the stages of a token, and compare each with the bar above.",
+  ...basicsInstructions,
 ];
 
 const figures: Record<string, () => ReactNode> = {
@@ -47,7 +50,7 @@ const figures: Record<string, () => ReactNode> = {
 
 function TokenOverlay({ kind, target, narrow }: OverlayProps) {
   if (!target || !kind) return null;
-  const figure = figures[kind];
+  const figure = kind.startsWith("basics-") ? () => <BasicsFigure index={Number(kind.slice(7))} /> : figures[kind];
   if (!figure) return null;
   return createPortal(<div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>{figure()}</div>, target);
 }
@@ -57,10 +60,10 @@ const chapter: ChapterDef = {
   number: chapterNumber("one-token"),
   title: "one token, end to end",
   formula: oneToken.formula,
-  steps: tokenSteps,
-  captions: tokenCaptions,
-  exhibits: [null, 0, null, 1],
-  overlays: ["tokenize", null, "head", null],
+  steps: [...tokenSteps, ...attentionBasics],
+  captions: [...tokenCaptions, ...basicsCaptions],
+  exhibits: [null, 0, null, 1, ...attentionBasics.map(() => null)],
+  overlays: ["tokenize", null, "head", null, ...attentionBasics.map((_, k) => `basics-${k}`)],
   instructions,
   beats,
   workbench: [],

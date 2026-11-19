@@ -2393,3 +2393,5 @@
 - **token slots** => 
 - **prefill** => 
 - **decode** => 
+- **query, key and value** => 
+- **a causal mask** => 

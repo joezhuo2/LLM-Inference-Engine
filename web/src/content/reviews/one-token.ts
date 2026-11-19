@@ -11,6 +11,7 @@ export const review: ChapterReview = {
     `Text becomes IDs once per request on the host: ${journey.promptCount} tokens in ${us(hostTimes.encode)} (measured), ${fmt((hostTimes.encode / tokenUs) * 100, 1)}% of one decoded token.`,
     `A decode step takes one ID in and gives one ID out. Its ${journey.layers} layers take ${us(layersUs)} of the ${fmt(stepProfile.tpotMs, 2)} ms (measured), and the four matrix products are ${fmt((gemmUs / layersUs) * 100)}% of that.`,
     `The LM head turns ${fmt(journey.hidden)} numbers into ${fmt(journey.vocab)} logits in ${us(stage("lm-head").us)}, and the greedy sampler keeps one ID in ${us(stage("sample").us)} (measured).`,
+    "Attention gives each token a query, a key and a value. The newest token's query is scored against every key so far, a softmax turns the scores into weights, and the output is the values summed with them.",
   ],
   questions: [
     {
@@ -27,6 +28,11 @@ export const review: ChapterReview = {
       question: `The step's kernels are done after the sampler writes ID ${journey.chosenId}. Why does the user wait ${us(stage("host").us)} more before the next step starts?`,
       answer: "The host reads the ID back, checks whether the answer has ended, and builds the next step.",
       why: "That work is between two steps, outside the span of the kernels, so no kernel change can remove it.",
+    },
+    {
+      question: "A decode step adds one token. The engine caches every earlier token's key and value. Why not its query too?",
+      answer: "Only the newest token's query is ever used: it is scored against every key so far. Old queries are never needed again, while every old key and value is read again at every step.",
+      why: "Decode adds one row to the triangle of scores, one query against all the keys, so K and V are what is worth keeping.",
     },
   ],
 };

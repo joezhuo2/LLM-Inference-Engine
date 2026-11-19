@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
+import { chapterNumber } from "@/content/book-order";
+import { pagedAttention } from "@/content/kernels/paged-attention";
 import { poolTokens } from "@/content/kernels/serving";
 import { kvReplay, modelShape } from "@/lib/data";
 import { Frame, Label } from "../frame";
@@ -58,7 +60,7 @@ const steps: StoryStep[] = [
         <p>
           Softmax turns the scores into weights that are all positive and add up to 1, so the best match gets the largest share: here &quot;{words[top]}&quot; gets <span className="text-accent">{Math.round(weights[top] * 100)}%</span>. The output is the values added up with those weights, one vector per head.
         </p>
-        <p>That is the whole formula, out = softmax(q · Kᵀ / √d) · V. Everything later in this chapter is about reading K and V fast.</p>
+        <p>That is the whole formula, out = softmax(q · Kᵀ / √d) · V. Chapter {chapterNumber("paged-attention")}, {pagedAttention.title}, and the attention chapters after it are about reading K and V fast.</p>
       </>
     ),
   },
@@ -339,6 +341,10 @@ export function BasicsFigure({ index }: { index: number }) {
 }
 
 export const attentionBasics = steps;
+export const basicsSection = {
+  title: "attention, step by step",
+  intro: "What attention computes for one token before any of it is a kernel: the three vectors, the scores and the weighted sum, why decode needs only one row of scores, and how heads that share keys and values shrink the KV cache. Sizes are TinyLlama's; the small examples are illustrative.",
+};
 
 export function AttentionBasicsStory() {
   return <StickyStory steps={steps} kicker="attention basics" caption={(i) => basicsCaptions[i]} figure={(i) => <BasicsFigure index={i} />} />;
