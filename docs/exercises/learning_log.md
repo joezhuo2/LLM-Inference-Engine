@@ -2490,3 +2490,5 @@
 - **an overflow check** => 
 - **measured bandwidth** => 
 - **a label fit** => 
+- **a canvas 2D isometric projection** => 
+- **a piecewise-linear scroll remap** => 
