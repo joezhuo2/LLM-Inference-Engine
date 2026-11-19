@@ -19,7 +19,7 @@ const setBeats = (what: string, side: string, rail: string): Beat[] => [
   overview(what),
   close(`Close up: ${side}`, [0.5, 0.03, -0.14], 0.9, 0.36, -14, 40),
   close("From the side: the picked block, risen in pink", [0.72, 0.03, -0.1], 0.5, 0.3, 24, 30),
-  close(`The rail: ${rail}`, [0.5, 0.02, 0.2], 0.9, 0.34, 0, 46),
+  close(`The rail: ${rail}`, [0.5, 0.02, 0.24], 0.9, 0.34, 0, 46),
 ];
 
 const beats: Beat[][] = [
