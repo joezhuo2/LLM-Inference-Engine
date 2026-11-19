@@ -2477,3 +2477,4 @@
 - **an SVG label** => 
 - **schedule_chunked** => 
 - **a caption** => 
+- **HBM bandwidth** => 

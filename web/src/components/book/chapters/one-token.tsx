@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { attentionBasics, BasicsFigure, basicsCaptions, basicsInstructions } from "@/components/kernels/attention/basics";
 import { tokenAbout, tokenAboutCaption } from "@/components/kernels/one-token/about";
 import { HeadFigure, TokenizeFigure } from "@/components/kernels/one-token/figures";
-import { tokenCaptions, tokenSteps } from "@/components/kernels/one-token/story";
+import { OneTokenScaleFigure, tokenCaptions, tokenSteps } from "@/components/kernels/one-token/story";
 import { chapterNumber } from "@/content/book-order";
 import { hostTimes, journey, layerOps, layerUs, layersUs, oneToken, shareText, stations, stepProfile, tokenFmt, tokenUs, trip, tripSum } from "@/content/kernels/one-token";
 import type { Beat } from "../book-scene";
@@ -32,6 +32,7 @@ const beats: Beat[][] = [
     close("From the side: the slivers at the end of the step", [0.74, 0.03, -0.1], 0.5, 0.3, 24, 30),
     close("The rail: drag to pick a stage", [0.5, 0.02, 0.2], 0.9, 0.34, 0, 46),
   ],
+  [flat("TinyLlama on this GPU against Llama 3 8B on an H100")],
   ...attentionBasics.map((step) => [flat(`Attention basics: ${step.title}`)]),
 ];
 
@@ -40,12 +41,14 @@ const instructions = [
   "Drag the pink ball to pick an operation: its block rises, and the card gives its time in one layer and in all of them.",
   "Read the bars from the top: the first one wins by a wide margin.",
   "Drag the pink ball along the stages of a token, and compare each with the bar above.",
+  "Compare the two floors, then find the dashed mark of the measured token.",
   ...basicsInstructions,
 ];
 
 const figures: Record<string, () => ReactNode> = {
   tokenize: () => <TokenizeFigure />,
   head: () => <HeadFigure />,
+  scale: () => <OneTokenScaleFigure />,
 };
 
 function TokenOverlay({ kind, target, narrow }: OverlayProps) {
@@ -62,8 +65,8 @@ const chapter: ChapterDef = {
   formula: oneToken.formula,
   steps: [...tokenSteps, ...attentionBasics],
   captions: [...tokenCaptions, ...basicsCaptions],
-  exhibits: [null, 0, null, 1, ...attentionBasics.map(() => null)],
-  overlays: ["tokenize", null, "head", null, ...attentionBasics.map((_, k) => `basics-${k}`)],
+  exhibits: [null, 0, null, 1, null, ...attentionBasics.map(() => null)],
+  overlays: ["tokenize", null, "head", null, "scale", ...attentionBasics.map((_, k) => `basics-${k}`)],
   instructions,
   beats,
   workbench: [],

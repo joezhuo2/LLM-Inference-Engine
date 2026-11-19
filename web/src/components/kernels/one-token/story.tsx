@@ -2,13 +2,21 @@
 
 import Link from "next/link";
 import { gemmUs, hostTimes, journey, layerKernels, layerOps, layerUs, layersUs, share, stage, stepProfile, tokenFmt, tokenUs, tripSum, widest } from "@/content/kernels/one-token";
+import { published } from "@/content/published";
+import { bigSide, engineSide, scaleSources } from "@/content/scale";
+import { about, bytesText, msText, num } from "@/lib/round";
 import { gloss } from "../../glossed";
 import { AttentionBasicsStory, basicsSection } from "../attention/basics";
+import { ScaleFigure } from "../scale-figure";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { HeadFigure, LayerFigure, TokenizeFigure, TripFigure } from "./figures";
 
 const fmt = tokenFmt;
 const us = (v: number) => `${fmt(v, v < 100 ? 1 : 0)} µs`;
+const rus = (v: number) => msText(v / 1000);
+const tokenMs = msText(stepProfile.tpotMs);
+const h100 = published.h100;
+const logitFigures = num(journey.top[0].logit) === num(journey.top[1].logit) ? 3 : 2;
 const chapter = (slug: string, text: string) => (
   <Link href={`/kernels/${slug}`} className="link-underline text-accent">
     {text}
@@ -31,7 +39,7 @@ const steps: StoryStep[] = [
           The model has never seen a letter. It knows {fmt(journey.vocab)} tokens, each with a number, and the tokenizer&apos;s job is to cut text into them. First the chat template wraps the question in the markers TinyLlama was trained with. Then SentencePiece cuts the result into <span className="text-accent">{journey.promptCount} pieces</span> and looks up the ID of each.
         </p>
         <p>
-          This runs on the CPU and it is cheap: {us(hostTimes.encode)} for the whole prompt, measured. It also happens only once per request, before the first step. Against a decoded token of {fmt(stepProfile.tpotMs, 2)} ms it is {fmt((hostTimes.encode / tokenUs) * 100, 1)}%.
+          This runs on the CPU and it is cheap: {rus(hostTimes.encode)} for the whole prompt, measured. It also happens only once per request, before the first step. Against a decoded token of {tokenMs} it is {about((hostTimes.encode / tokenUs) * 100)}%.
         </p>
         <p>
           The {journey.promptCount} IDs then go through the model together in one step, the prefill, which fills the cache that every later step reads. {chapter("flash-prefill", "FlashAttention prefill")} is about that step. After it the engine decodes: one token in, one token out. Five tokens into the answer the text so far is &quot;{journey.soFar}&quot;, and the token going in is &quot;{journey.inputText.trim()}&quot;, ID {journey.inputId}.
@@ -45,13 +53,13 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          On the GPU the ID first becomes a row of {fmt(journey.hidden)} numbers: the embedding kernel copies row {journey.inputId} of a table, in {us(stage("embedding").us)}. That row is the token&apos;s stream. Every layer reads it, adds something to it and passes it on.
+          On the GPU the ID first becomes a row of {fmt(journey.hidden)} numbers: the embedding kernel copies row {journey.inputId} of a table, in {rus(stage("embedding").us)}. That row is the token&apos;s stream. Every layer reads it, adds something to it and passes it on.
         </p>
         <p>
           A layer is the same ten operations each time. Attention lets the token look at the tokens before it: a matrix product makes its query, key and value, RoPE marks them with the position, write_kv stores the key and the value, and {chapter("paged-attention", "paged attention")} scores the query against all {journey.inputPosition + 1} keys in the cache. Then an MLP works on the token alone: widen, gate, narrow. Before each half, {chapter("add-rmsnorm", "add + RMSNorm")} folds the last result into the stream. The last pages of this chapter take attention apart step by step.
         </p>
         <p>
-          One layer takes <span className="text-accent">{us(layerUs)}</span>, and {journey.layers} of them {us(layersUs)} in {fmt(layerKernels)} kernels. The four matrix products hold {fmt((gemmUs / layersUs) * 100)}% of that, and the widest alone, the {widest.label}, {fmt((widest.step / layersUs) * 100)}%. They are slow for one reason: each reads its whole weight matrix from memory for a single token. {chapter("gemm", "The GEMM chapter")} explains it. Attention, the famous part, is {attention ? us(attention.layer) : ""} per layer.
+          One layer takes <span className="text-accent">{rus(layerUs)}</span>, and {journey.layers} of them {rus(layersUs)} in {fmt(layerKernels)} kernels. The four matrix products hold {fmt((gemmUs / layersUs) * 100)}% of that, and the widest alone, the {widest.label}, {fmt((widest.step / layersUs) * 100)}%. They are slow for one reason: each reads its whole weight matrix from memory for a single token. {chapter("gemm", "The GEMM chapter")} explains it. Attention, the famous part, is {attention ? rus(attention.layer) : ""} per layer.
         </p>
       </>
     ),
@@ -62,13 +70,13 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          After the last layer the stream is still {fmt(journey.hidden)} numbers. One more norm rescales it ({us(stage("final-norm").us)}). Then the LM head multiplies it by a matrix with one row per token of the vocabulary and gives {fmt(journey.vocab)} scores, the logits. It is one more matrix product: <span className="text-accent">{us(head.us)}</span>.
+          After the last layer the stream is still {fmt(journey.hidden)} numbers. One more norm rescales it ({rus(stage("final-norm").us)}). Then the LM head multiplies it by a matrix with one row per token of the vocabulary and gives {fmt(journey.vocab)} scores, the logits. It is one more matrix product: <span className="text-accent">{rus(head.us)}</span>.
         </p>
         <p>
-          Here the model has an opinion. After &quot;{journey.soFar}&quot; the largest logit is {journey.top[0].logit} for &quot;{plain(journey.top[0].token)}&quot;. The next is {journey.top[1].logit} for &quot;{plain(journey.top[1].token)}&quot;. A gap of {journey.lead.toFixed(2)} in logits is a factor of about {fmt(Math.exp(journey.lead))} between the two probabilities, so this step is not a close call.
+          Here the model has an opinion. After &quot;{journey.soFar}&quot; the largest logit is {about(journey.top[0].logit, logitFigures)} for &quot;{plain(journey.top[0].token)}&quot;. The next is {about(journey.top[1].logit, logitFigures)} for &quot;{plain(journey.top[1].token)}&quot;. A gap of {about(journey.lead, 2, "")} in logits is a factor of about {num(Math.exp(journey.lead))} between the two probabilities, so this step is not a close call.
         </p>
         <p>
-          The sampler turns the scores into one choice. This run is greedy: one kernel finds the largest logit and writes its index, {journey.chosenId}, in {us(sample.us)}. With a temperature it would draw from the scores instead; {chapter("sampling", "the sampling chapter")} covers how. The host reads the ID back and turns it into text, &quot;{journey.chosenText}&quot;, in a few microseconds. The same ID is the input of the next step.
+          The sampler turns the scores into one choice. This run is greedy: one kernel finds the largest logit and writes its index, {journey.chosenId}, in {rus(sample.us)}. With a temperature it would draw from the scores instead; {chapter("sampling", "the sampling chapter")} covers how. The host reads the ID back and turns it into text, &quot;{journey.chosenText}&quot;, in a few microseconds. The same ID is the input of the next step.
         </p>
       </>
     ),
@@ -79,13 +87,30 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Put the stages on one line and to one scale. A token takes {fmt(stepProfile.tpotMs, 2)} ms. The {journey.layers} layers are <span className="text-accent">{fmt(share(layersUs))}%</span> of it and the LM head {fmt(share(head.us), 1)}%. The embedding, the final norm and the sampler together are {fmt(share(stage("embedding").us + stage("final-norm").us + sample.us), 1)}%: you cannot see them on the bar.
+          Put the stages on one line and to one scale. A token takes {tokenMs}. The {journey.layers} layers are <span className="text-accent">{about(share(layersUs))}%</span> of it and the LM head {about(share(head.us))}%. The embedding, the final norm and the sampler together are {about(share(stage("embedding").us + stage("final-norm").us + sample.us))}%: you cannot see them on the bar.
         </p>
         <p>
-          Two parts are not kernels at all. The GPU waits a few microseconds before each kernel it is handed, and with {fmt(stepProfile.kernels)} kernels in a step those gaps add up to {us(gaps.us)}, {fmt(share(gaps.us))}%. {chapter("cuda-graphs", "CUDA Graphs")} removes most of them. And between two steps the host reads the token back, checks for the end and builds the next step: {us(hostStage.us)}, {fmt(share(hostStage.us))}%.
+          Two parts are not kernels at all. The GPU waits a few microseconds before each kernel it is handed, and with {fmt(stepProfile.kernels)} kernels in a step those gaps add up to {rus(gaps.us)}, {about(share(gaps.us))}%. {chapter("cuda-graphs", "CUDA Graphs")} removes most of them. And between two steps the host reads the token back, checks for the end and builds the next step: {rus(hostStage.us)}, {about(share(hostStage.us))}%.
         </p>
         <p>
           So the tokenizer and the sampler, the two ends people picture first, are not where a token&apos;s time goes. The time is in reading weights, layer after layer. The next chapter, {chapter("foundations", "foundations")}, says why that read cannot be made much faster, and the last one, {chapter("where-the-time-went", "where the time went")}, comes back to this bar after every kernel in the book has changed.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "bigger",
+    title: `on an ${bigSide.gpu}, ${bigSide.model} needs ${bigSide.readFloorMs.toFixed(2)} ms at least`,
+    body: (
+      <>
+        <p>
+          Most of a token is reading weights, so a token has a floor: the bytes a step reads divided by the bandwidth. Here a step reads every weight but the embedding table, of which it copies one row: {bytesText(engineSide.readBytes)}. At the measured {about(engineSide.bandwidth / 1e9)} GB/s that takes {msText(engineSide.readFloorMs)}, and the measured token takes <span className="text-accent">{tokenMs}</span>: the floor is {about((100 * engineSide.readFloorMs) / stepProfile.tpotMs)}% of the token.
+        </p>
+        <p>
+          Carry it to a model and a GPU people serve: {bigSide.model} in BF16 on an {bigSide.gpu}. Its weights are {bytesText(bigSide.weightBytes)}, {about(bigSide.weightBytes / engineSide.weightBytes)} times TinyLlama&apos;s, and a step reads {bytesText(bigSide.readBytes)} of them. The H100 reads memory at {h100.bandwidthTBs} TB/s, {about(bigSide.bandwidth / engineSide.bandwidth)} times this laptop GPU, so its floor is <span className="text-accent">{msText(bigSide.readFloorMs)}</span>. A bigger model on a faster GPU, and the token is still set by the same division.
+        </p>
+        <p>
+          These numbers are calculated from published specs; nothing was measured on an {bigSide.gpu} or with {bigSide.model}. A real token there would take longer than its floor, as it does here, by an amount this engine never measured.
         </p>
       </>
     ),
@@ -96,15 +121,20 @@ const profile = `results/decode_step.md, the profile results.md shows: batch 1, 
 
 const captions = [
   `prompt tokens from the recorded run in results/kv_demo.json; host times from profiling.md, Tokenizer on the host: median of 2,001 calls on the CPU alone (scripts/tokenizer_bench.cpp); the bars are to the scale of one decoded token`,
-  `${profile}; time per op is a mean over the steps, divided by ${journey.layers} for one layer; the first layer has a norm without an add and the last an add without a norm, counted with add + RMSNorm`,
+  `${profile}; time per op is a mean over the steps, divided by ${journey.layers} for one layer; the first layer has a norm without an add and the last an add without a norm, counted with add + RMSNorm; the embedding copy before the first layer ${us(stage("embedding").us)}`,
   `logits: the Hugging Face reference in BF16 on the same context (scripts/dump_logits.py), top 5 of ${fmt(journey.vocab)}; IDs printed by scripts/tokenizer_bench.cpp; kernel times from ${profile}; the sampler is the greedy sample kernel, measured outside the step's span`,
   `${profile}; kernel times are means and the span and the time per token medians, so the parts add up to ${fmt(tripSum)} of the ${fmt(tokenUs)} µs; gaps are span minus busy time; host is the time per token minus span and sampler`,
+  `calculated, not measured: ${scaleSources.big}; bytes read = (parameters − vocabulary × hidden) × 2 = ${fmt(bigSide.readBytes)} bytes, ÷ ${h100.bandwidthTBs} TB/s = ${bigSide.readFloorMs.toFixed(2)} ms; TinyLlama ${fmt(engineSide.readBytes)} bytes ÷ ${engineSide.bandwidth / 1e9} GB/s measured = ${engineSide.readFloorMs.toFixed(2)} ms, against ${fmt(stepProfile.tpotMs, 2)} ms measured per token`,
 ];
 
 export const tokenSteps = steps;
 export const tokenCaptions = captions;
 
-const figures = [TokenizeFigure, LayerFigure, HeadFigure, TripFigure];
+export function OneTokenScaleFigure() {
+  return <ScaleFigure title={`the floor of one token on an ${bigSide.gpu}`} quantities={["weights", "readFloor"]} marks={{ readFloor: { value: stepProfile.tpotMs, label: "measured token" } }} />;
+}
+
+const figures = [TokenizeFigure, LayerFigure, HeadFigure, TripFigure, OneTokenScaleFigure];
 
 export function OneTokenStory() {
   return (
