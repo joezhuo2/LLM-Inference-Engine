@@ -89,7 +89,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "kv",
-    title: "the KV cache halves too, and the pool holds twice the tokens",
+    title: "an FP8 cache holds twice the tokens",
     body: (
       <>
         <p>
@@ -106,7 +106,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "plan",
-    title: "the plan: one dtype and three kernels, each with tests",
+    title: "the plan: a dtype and three kernels",
     body: (
       <>
         <p>
