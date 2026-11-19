@@ -2451,3 +2451,5 @@
 - **an entry point** => 
 - **display rounding** => 
 - **DRAM bytes per launch** => 
+- **hidden size** => 
+- **a latency-bound kernel** => 
