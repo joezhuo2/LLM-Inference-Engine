@@ -2357,3 +2357,7 @@
 - **NotImplementedError** => 
 - **vectorisation** => 
 - **a reference implementation** => 
+- **a pre-norm residual** => 
+- **grouped-query attention** => 
+- **the LM head** => 
+- **argmax** => 
