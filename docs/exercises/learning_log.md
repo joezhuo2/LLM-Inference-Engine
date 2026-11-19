@@ -2457,3 +2457,5 @@
 - **vector loads** => 
 - **the FP64 pipe** => 
 - **a top-k threshold search** => 
+- **a launch gap** => 
+- **idle share** => 
