@@ -51,6 +51,9 @@ import { SwigluAboutStory } from "./swiglu/about";
 import { SwigluStory } from "./swiglu/story";
 import { TimeAboutStory } from "./where-the-time-went/about";
 import { TimeStory } from "./where-the-time-went/story";
+import { QuantAboutStory } from "./quantization/about";
+import { QuantSandbox } from "./quantization/sandbox";
+import { QuantStory } from "./quantization/story";
 
 export function KernelStoryView({ slug }: { slug: string }) {
   switch (slug) {
@@ -92,6 +95,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <SpeculativeStory />;
     case "tensor-parallelism":
       return <TensorStory />;
+    case "quantization":
+      return <QuantStory />;
     default:
       return null;
   }
@@ -148,6 +153,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <SpeculativeAboutStory />;
     case "tensor-parallelism":
       return <TensorAboutStory />;
+    case "quantization":
+      return <QuantAboutStory />;
     default:
       return null;
   }
@@ -191,6 +198,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <SpeculativeSandbox />;
     case "tensor-parallelism":
       return <TensorSandbox />;
+    case "quantization":
+      return <QuantSandbox />;
     default:
       return null;
   }

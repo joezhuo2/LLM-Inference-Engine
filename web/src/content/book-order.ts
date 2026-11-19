@@ -3,7 +3,7 @@ export const bookParts = [
   { numeral: "II", title: "one layer", slugs: ["gemm", "rope", "paged-kv", "paged-attention", "attention-v2", "split-attention", "flash-prefill", "add-rmsnorm", "swiglu"] },
   { numeral: "III", title: "one step", slugs: ["sampling", "cuda-graphs", "speculative-decoding", "tensor-parallelism"] },
   { numeral: "IV", title: "many requests", slugs: ["memory-budget", "serving", "chunked-prefill"] },
-  { numeral: "V", title: "the whole picture", slugs: ["where-the-time-went"] },
+  { numeral: "V", title: "the whole picture", slugs: ["where-the-time-went", "quantization"] },
 ];
 
 export const bookOrder = bookParts.flatMap((p) => p.slugs);

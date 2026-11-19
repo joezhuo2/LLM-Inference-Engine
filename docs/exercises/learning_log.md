@@ -2430,3 +2430,6 @@
 - **a bound control** => 
 - **progressive disclosure** => 
 - **page fit** => 
+- **quantization** => 
+- **FP8 E4M3** => 
+- **a scale factor** => 

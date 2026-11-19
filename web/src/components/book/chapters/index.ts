@@ -20,4 +20,5 @@ export const bookChapters: Record<string, () => Promise<ChapterDef>> = {
   sampling: () => import("./sampling").then((m) => m.samplingChapter),
   "add-rmsnorm": () => import("./add-rmsnorm").then((m) => m.addRmsnormChapter),
   "where-the-time-went": () => import("./where-the-time-went").then((m) => m.whereTheTimeWentChapter),
+  quantization: () => import("./quantization").then((m) => m.quantizationChapter),
 };
