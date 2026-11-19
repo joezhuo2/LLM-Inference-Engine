@@ -2453,3 +2453,5 @@
 - **DRAM bytes per launch** => 
 - **hidden size** => 
 - **a latency-bound kernel** => 
+- **a scalar path** => 
+- **vector loads** => 

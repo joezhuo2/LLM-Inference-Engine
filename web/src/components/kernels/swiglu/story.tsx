@@ -1,5 +1,6 @@
 "use client";
 
+import { about } from "@/lib/round";
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { chapterNumber } from "@/content/book-order";
@@ -188,7 +189,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           With enough tokens that is what the kernel is limited by. At the largest size it takes{" "}
-          <span className="text-accent">{vectorBig.toFixed(0)} µs</span>, well under naive&apos;s time, which is the GPU&apos;s measured
+          <span className="text-accent">{about(vectorBig)} µs</span>, well under naive&apos;s time, which is the GPU&apos;s measured
           peak bandwidth: there is no faster way to move those bytes.
         </p>
       </>
@@ -207,7 +208,7 @@ const steps: StoryStep[] = [
         <p>
           So the kernel counts its work first: below half a block per SM, a handful of tokens here, it takes the scalar path,
           one thread per value, whose blocks spread the same chains over most of the GPU. At one token that is{" "}
-          <span className="text-accent">{smallFast.toFixed(2)} µs</span>, faster than the vector kernel in the same session.
+          <span className="text-accent">{about(smallFast)} µs</span>, faster than the vector kernel in the same session.
         </p>
       </>
     ),
@@ -220,7 +221,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           <Author story="Joe's first draft" book="The first draft" /> kept the naive kernel&apos;s work split, one thread per output value, on a 2D grid: blocks of threads along a row, and the row on blockIdx.y. It was bit-identical from the start and a
-          little faster than naive at every size, <span className="text-accent">{draft1.toFixed(1)} µs</span> at one token.
+          little faster than naive at every size, <span className="text-accent">{about(draft1)} µs</span> at one token.
         </p>
         <p>
           The 2D grid had a ceiling: gridDim.y stops at 65,535, so a batch with more rows would not launch. The engine never
@@ -255,7 +256,7 @@ const captions = [
   `the hidden state has ${hiddenText} values and each half of the row ${ffText}; 16 of ${ffText} values per half drawn; the silu curve is exact`,
   `the example is computed with the kernel's arithmetic; any g and u with the same roundings would do; the naive kernel matched Hugging Face's act tensor on all ${shape.layers} layers`,
   `µs and DRAM bytes from Nsight Compute at 4,096 tokens: vector ${vectorBig.toFixed(0)}, naive ${naiveBig.toFixed(0)}; each value is ${bf16} bytes, so the scalar path issues ${scalarInstructions} memory instructions for ${vecWidth} outputs and the vector path 3; up sits ${ffText} values (${gateToUpBytes} bytes) after gate, a multiple of ${vecWidth}; the peak from the bandwidth test in results.md`,
-  `µs per launch for one token, Nsight Compute, five runs: the vector kernel took ${smallVector.toFixed(2)} µs; ${ffText} values make ${vectors} vectors, ${smallBlocks} blocks on ${sms} SMs with ${vecWidth} chains per thread; the scalar path runs ${rowBlocks} blocks and takes ${smallTokens} tokens or fewer; chain bars illustrative`,
+  `µs per launch for one token, Nsight Compute, five runs: the vector kernel took ${smallVector.toFixed(2)} µs and the scalar path ${smallFast.toFixed(2)} µs; ${ffText} values make ${vectors} vectors, ${smallBlocks} blocks on ${sms} SMs with ${vecWidth} chains per thread; the scalar path runs ${rowBlocks} blocks and takes ${smallTokens} tokens or fewer; chain bars illustrative`,
   `µs per launch for one token, Nsight Compute: naive ${naive1.toFixed(1)}, first draft ${draft1.toFixed(1)}; ${rowBlocks} blocks of ${threads} threads cover a row of ${ffText}, and the tests launch 70,000 rows; 4 of the rows drawn`,
   `Nsight Compute, RTX 5060 Laptop GPU, median of three launches after thirty warm-ups; ${gainLow}x to ${gainHigh}x is naive time over vector time at ${gainTokens.map((t) => fmtInt(Number(t))).join(", ")} tokens (calculated); DRAM bytes of the vector kernel at 1 and 16 tokens: ${smallKb.join(" KB and ")} KB (measured); ${stepShare}% is the share of kernel time in a batch-1 decode step (measured); the row written and read back is ${roundTripKb} KB per layer at one token, ${roundTripShare}% of the ${weightsMb} MB of gate and up weights (calculated from config.json)`,
 ];
