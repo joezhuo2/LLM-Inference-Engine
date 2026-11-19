@@ -1,5 +1,7 @@
 import { ceilings, modelShape } from "@/lib/data";
 import { about, num } from "@/lib/round";
+import { published } from "../published";
+import { bigSide } from "../scale";
 import type { ChapterReview } from "./types";
 
 const m = modelShape();
@@ -10,6 +12,7 @@ const readBytes = (m.layers * layerParams + m.vocab * m.hidden) * 2;
 const floorMs = (readBytes / (peak.gbs * 1e9)) * 1e3;
 const ridge = (peak.tflops * 1e12) / (peak.gbs * 1e9);
 const promptTokens = 512;
+const h100 = published.h100;
 
 export const review: ChapterReview = {
   lesson: "Decode is limited by the bytes it moves, not by the arithmetic it does.",
@@ -35,6 +38,11 @@ export const review: ChapterReview = {
       answer: `About ${(readBytes / promptTokens / 1e6).toFixed(1)} MB each, against the full ${(readBytes / 1e9).toFixed(2)} GB.`,
       why: `All ${promptTokens} rows share one read of the same weights, so the read is split ${promptTokens} ways. A decoded token is a single row, so it pays for the whole read, a floor of about ${floorMs.toFixed(1)} ms (calculated).`,
       recall: "start",
+    },
+    {
+      question: `An ${bigSide.gpu} is published at ${h100.bf16TFlops} TFLOP/s of dense BF16 and ${h100.bandwidthTBs} TB/s. Where is its ridge, and roughly how many rows must share one weight read before a decode GEMV reaches it?`,
+      answer: `${Math.round(bigSide.ridge)} FLOP per byte, so about ${Math.round(bigSide.ridge)} rows, against about ${Math.round(ridge)} on this GPU.`,
+      why: `${h100.bf16TFlops} × 10¹² ÷ (${h100.bandwidthTBs} × 10¹²) = ${bigSide.ridge.toFixed(1)}. A GEMV does about 1 FLOP per weight byte at any size of GPU, and each extra row adds about one more, so batch-1 decode sits even further left of this ridge than of the ${Math.round(ridge)} here. Calculated from ${h100.vendor}'s published peaks, not a measured roofline.`,
     },
   ],
 };

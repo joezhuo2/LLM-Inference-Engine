@@ -6,10 +6,13 @@ import { useState } from "react";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { measured } from "@/content/kernels/types";
 import { ceilings, hardware, onchip, onchipRun } from "@/lib/data";
-import { about, msText } from "@/lib/round";
+import { published } from "@/content/published";
+import { bigSide, engineSide, scaleSources } from "@/content/scale";
+import { about, bytesText, msText, num } from "@/lib/round";
 import { Author } from "../authorship";
 import { EasedBar } from "../eased-bar";
 import { embeddingNumbers, EmbeddingPanel } from "../embedding-lookup";
+import { ScaleFigure } from "../scale-figure";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ContrastFigure, FusionFigure, HierarchyFigure, type Lane, MemoryFigure, RooflineFigure, type Tier } from "./figures";
@@ -52,6 +55,7 @@ const fusion = {
 };
 
 const lookup = embeddingNumbers;
+const h100 = published.h100;
 
 const mb = (kb: number) => `${(kb / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 })} MB`;
 
@@ -297,6 +301,23 @@ const steps: StoryStep[] = [
       </>
     ),
   },
+  {
+    id: "bigger",
+    title: `on an ${bigSide.gpu}, the ridge moves to ${Math.round(bigSide.ridge)}`,
+    body: (
+      <>
+        <p>
+          The roofline carries to any GPU: its ridge is the compute peak divided by the bandwidth. Here that is {about(ridge)} FLOP per byte. An {bigSide.gpu} is published at {h100.bf16TFlops} TFLOP/s of dense BF16 and {h100.bandwidthTBs} TB/s, so its ridge sits at <span className="text-accent">{about(bigSide.ridge)}</span>, {about(bigSide.ridge / ridge)} times as far right. Its slope is higher too: {bigSide.model}&apos;s {bytesText(bigSide.readBytes)} of weights read in {msText(bigSide.readFloorMs)}, where TinyLlama needs {msText(engineSide.readFloorMs)} here.
+        </p>
+        <p>
+          Decode does not move. A matrix times one vector does about one FLOP per weight byte on any GPU, because that ratio comes from the model, not the hardware. So batch-1 decode is even further left of the H100&apos;s ridge: about {num(bigSide.ridge)} rows would have to share each weight read to reach it, against about {num(ridge)} here. A faster GPU makes the memory wall taller, not lower.
+        </p>
+        <p>
+          These numbers are calculated from published specs, and nothing was measured on an {bigSide.gpu}. Its ridge is a ratio of two peaks from a spec sheet, not a measured roofline like this chapter&apos;s, whose ceilings came from tests on this GPU; measured ceilings would likely sit below both peaks, as this GPU&apos;s bandwidth does below its rated speed.
+        </p>
+      </>
+    ),
+  },
 ];
 
 const captions = [
@@ -307,6 +328,7 @@ const captions = [
   `results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU; the whole decode step with CUDA Graphs at ${wholeStep("1")}% of the roof`,
   `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, profiling.md: ${fusion.unfusedKb} KB unfused, ${fusion.fusedKb} KB fused; SwiGLU's vector loads are 16 bytes; each packet stands for a whole tensor, not to scale`,
   `results.md, Kernels; a decode step copies one row per sequence, a ${lookup.prefillTokens.toLocaleString("en-US")}-token prefill step one row per prompt token; ${lookup.naiveLoads} loads per naive thread computed from the ${lookup.hidden.toLocaleString("en-US")}-value row and its ${lookup.naiveThreads} threads`,
+  `calculated, not measured: ${scaleSources.big}; ridge ${h100.bf16TFlops} TFLOP/s ÷ ${h100.bandwidthTBs} TB/s = ${bigSide.ridge.toFixed(1)} FLOP/byte, against ${peak.tflops} ÷ ${peak.gbs} = ${ridge.toFixed(1)} from this GPU's measured ceilings; floor ${whole(bigSide.readBytes)} bytes ÷ ${h100.bandwidthTBs} TB/s = ${bigSide.readFloorMs.toFixed(2)} ms, against ${engineSide.readFloorMs.toFixed(2)} ms here`,
 ];
 
 export const foundationsSteps = steps;
@@ -327,6 +349,10 @@ export const foundationsNumbers = {
   measured: measuredRows.map((rows) => ({ rows: Number(rows), x: roofline("gate_up", rows, "FLOP/byte"), y: roofline("gate_up", rows, "TFLOP/s") })),
   fusion,
 };
+
+export function FoundationsScaleFigure() {
+  return <ScaleFigure title={`the roofline on an ${bigSide.gpu}`} quantities={["ridge", "readFloor"]} marks={{ ridge: { value: 1, label: "batch-1 decode" } }} />;
+}
 
 export function FoundationsStory() {
   return (
@@ -357,6 +383,8 @@ export function FoundationsStory() {
             return <RowsPicker />;
           case 5:
             return <FusionFigure numbers={fusion} />;
+          case 7:
+            return <FoundationsScaleFigure />;
           default:
             return <EmbeddingPanel compact />;
         }

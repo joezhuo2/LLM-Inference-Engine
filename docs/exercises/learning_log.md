@@ -2479,3 +2479,5 @@
 - **a caption** => 
 - **HBM bandwidth** => 
 - **a rounding rule** => 
+- **a published peak** => 
+- **the memory wall** => 
