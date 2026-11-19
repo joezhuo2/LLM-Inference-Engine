@@ -118,7 +118,7 @@ export type ScaleQuantity = { label: string; value: (s: ScaleSide) => number; te
 export const scaleQuantities = {
   weights: { label: "weights in BF16", value: (s) => s.weightBytes, text: (v) => `${dec(v / 1e9, 2)} GB` },
   readFloor: { label: "read floor of one decode step, weights ÷ bandwidth", value: (s) => s.readFloorMs, text: (v) => `${dec(v, 2)} ms` },
-  ridge: { label: "ridge, compute ÷ bandwidth", value: (s) => s.ridge, text: (v) => `${int(v)} FLOP per byte` },
+  ridge: { label: "ridge, compute ÷ bandwidth", value: (s) => s.ridge, text: (v) => `${int(v)} FLOP/byte` },
   kvToken: { label: "KV cache per token", value: (s) => s.kvTokenBytes, text: (v) => `${int(v)} bytes` },
   pool: { label: "KV pool beside the weights", value: (s) => s.poolBytes, text: (v) => `${dec(v / 1e9, 2)} GB` },
   poolTokens: { label: "tokens the KV pool holds", value: (s) => s.poolTokens, text: (v) => int(v) },
