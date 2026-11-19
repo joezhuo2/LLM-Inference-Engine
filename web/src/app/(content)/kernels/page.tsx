@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { KernelCards } from "@/components/kernels/kernel-cards";
+import { KernelSearch } from "@/components/kernels/kernel-search";
 import { LayerMap } from "@/components/kernels/layer-map";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
@@ -20,6 +21,7 @@ export default function Kernels() {
           <Link href="/kernels/glossary" transitionTypes={["nav-forward"]} className="link-underline inline-block text-sm text-accent">
             glossary: every term the chapters explain
           </Link>
+          <KernelSearch />
         </header>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
           <LayerMap />
