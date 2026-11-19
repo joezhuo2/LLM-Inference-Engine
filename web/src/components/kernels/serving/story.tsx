@@ -39,7 +39,7 @@ export const servingSteps: StoryStep[] = [
           <span className="text-accent">{fmt(tokenBytes)} bytes</span> a token. The cache is handed out in blocks of {blockTokens} tokens, {fmt(blockBytes)} bytes each.
         </p>
         <p>
-          At startup the engine takes {poolFraction}% of the memory left after the weights as one pool: <span className="text-text">{fmt(poolBlocks)}</span> blocks on this GPU, {fmt(poolGb, 2)} GB, room for {fmt(poolTokens)} tokens. That is the budget. Nothing adds to it while the server runs.
+          At startup the engine takes {poolFraction}% of the memory left after the weights as one pool: <span className="text-text">{fmt(poolBlocks)}</span> blocks on this GPU, {fmt(poolGb, 2)} GB, room for {fmt(poolTokens)} tokens once block 0 is kept back as the null block. That is the budget. Nothing adds to it while the server runs.
         </p>
         <p>
           A request of length L holds ceil(L / {blockTokens}) blocks: enough for its prompt when it starts, then one more each time its length reaches a multiple of {blockTokens}. So a request has no fixed price. It starts small, grows by a block every {blockTokens} decode steps, and gives everything back when it finishes.

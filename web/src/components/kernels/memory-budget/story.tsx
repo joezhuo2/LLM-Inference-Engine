@@ -43,7 +43,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The pool holds {fmt(budget.poolTokens)} tokens. It does not care whose they are. One request with a long context and many requests with short ones draw on the same blocks, so the two numbers people ask about, how many requests and how long each, are one budget: <span className="text-accent">batch × context ≤ {fmt(budget.poolTokens)}</span>.
+          The pool holds {fmt(budget.poolTokens)} tokens, in every block but block 0, the null block that is never handed out. It does not care whose they are. One request with a long context and many requests with short ones draw on the same blocks, so the two numbers people ask about, how many requests and how long each, are one budget: <span className="text-accent">batch × context ≤ {fmt(budget.poolTokens)}</span>.
         </p>
         <p>
           For TinyLlama on this GPU the budget is generous. The model itself stops at {fmt(budget.fullContext)} positions, and {budget.reservedFit} requests could each reach that before the pool ran out. {at16 ? `At the ${budget.maxBatch} requests the benchmarks run, full contexts would use ${fmt(at16.poolPct)}% of the pool.` : ""} Past {budget.reservedFit} the pool becomes the limit: {lastRow.batch} requests can each reach {fmt(lastRow.context)} tokens, not {fmt(budget.fullContext)}.

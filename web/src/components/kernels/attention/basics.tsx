@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { poolTokens } from "@/content/kernels/serving";
 import { kvReplay, modelShape } from "@/lib/data";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
@@ -15,7 +16,6 @@ const group = m.heads / m.kv_heads;
 const kvLayer = 2 * kvDim * 2;
 const kvToken = m.layers * kvLayer;
 const mhaToken = kvToken * group;
-const poolTokens = pool.kv_blocks * pool.block_size;
 const poolBytes = poolTokens * kvToken;
 const mhaPoolTokens = Math.floor(poolBytes / mhaToken);
 const scale = Math.sqrt(headDim);
@@ -97,7 +97,7 @@ export const basicsCaptions = [
   `sizes from config.json: the query ${int(m.hidden)} values (${m.heads} heads of ${headDim}), the key and the value ${int(kvDim)} each (${m.kv_heads} heads), ${int(qkvRow)} in all; bars drawn to scale`,
   `illustrative: six tokens and made-up scores; the softmax and the sum are computed from them; the divisor is √${headDim} = ${scale}, and each head outputs ${headDim} numbers`,
   "illustrative: an 8-token prompt, then one decode step",
-  `${int(kvToken)} bytes = ${m.layers} layers × K and V × ${m.kv_heads} heads × ${headDim} values × 2 bytes (${int(kvLayer)} per layer), against ${int(mhaToken)} with one key head per query head; the query is ${m.heads} heads × ${headDim} values = ${int(m.hidden)}; the pool is the ${int(pool.kv_blocks)} blocks of ${pool.block_size} tokens of the recorded chat run, ${int(poolTokens)} tokens shared against ${int(mhaPoolTokens)} without sharing`,
+  `${int(kvToken)} bytes = ${m.layers} layers × K and V × ${m.kv_heads} heads × ${headDim} values × 2 bytes (${int(kvLayer)} per layer), against ${int(mhaToken)} with one key head per query head; the query is ${m.heads} heads × ${headDim} values = ${int(m.hidden)}; the pool is the ${int(pool.kv_blocks)} blocks of ${pool.block_size} tokens of the recorded chat run less the null block, ${int(poolTokens)} tokens shared against ${int(mhaPoolTokens)} without sharing`,
 ];
 
 export const basicsInstructions = [

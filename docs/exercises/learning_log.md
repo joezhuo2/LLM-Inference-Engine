@@ -2388,3 +2388,6 @@
 - **continuous batching** => 
 - **the bandwidth roof** => 
 - **theoretical and effective bandwidth** => 
+- **the null block** => 
+- **a block pool** => 
+- **token slots** => 
