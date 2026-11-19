@@ -2382,3 +2382,5 @@
 - **CUDA graph replay** => 
 - **profiler overhead** => 
 - **time per output token** => 
+- **a kernel span** => 
+- **host overhead** => 
