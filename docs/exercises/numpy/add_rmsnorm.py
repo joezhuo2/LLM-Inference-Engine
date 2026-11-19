@@ -10,7 +10,9 @@ TOLERANCE = 1e-4
 
 
 def add_rmsnorm(x, residual, weight, eps):
-    raise NotImplementedError
+    raise NotImplementedError(
+        "Write add_rmsnorm with NumPy operations on whole rows, with no Python loop over the values. reference() below is the slow version your result is checked against; the spec is on this exercise's card on the exercises page."
+    )
 
 
 def reference(x, residual, weight, eps):

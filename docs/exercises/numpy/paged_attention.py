@@ -8,7 +8,9 @@ TOLERANCE = 1e-3
 
 
 def paged_attention(qkv, k_cache, v_cache, block_tables, context_lens, heads):
-    raise NotImplementedError
+    raise NotImplementedError(
+        "Write paged attention in NumPy: for each row and head, gather its keys and values through the block table and score them as whole arrays, with no Python loop over positions. reference_attention() in common.py is the slow version your result is checked against; the spec is on this exercise's card on the exercises page."
+    )
 
 
 def check(fn=None):

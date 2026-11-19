@@ -11,7 +11,9 @@ TOLERANCE = 1e-4
 
 
 def swiglu(gate_up):
-    raise NotImplementedError
+    raise NotImplementedError(
+        "Write swiglu with NumPy operations on whole rows, with no Python loop over the values. reference() below is the slow version your result is checked against; the spec is on this exercise's card on the exercises page."
+    )
 
 
 def reference(gate_up):

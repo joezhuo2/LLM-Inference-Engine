@@ -2,6 +2,10 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/every-byte-audit
+
+- Part A: say what to write in every NumPy stub's NotImplementedError message (`docs/exercises/numpy/`)
+
 ## docs/md-audit
 - Part A: the markdown files brought up to the code on main. README: the intro and "Beyond the MVP" name what was built since the MVP (chunked prefill, FlashAttention prefill, finer graph buckets, speculative decoding, tensor parallelism) and what is stubbed next (grouped decode attention, prefix caching, FP8), the site section has `/every-byte` and `/exercises`, SentencePiece is in the dependencies, and the pointer to the ceilings goes to `reproduce.md`. `reproduce.md`: `generate --tensor-parallel`, `bench --speculate-adaptive`, `--draft-model`, `--prefill-attention`, `--trace` and `--profile`, `serve --speculate-adaptive`, `scripts/setup_vllm.sh`, and everything `reproduce.sh` runs now with its seven skip flags. `ownership.md`: the "Planned components" table is now "Components after M1", with who wrote each piece taken from the tags in this file, and `compare_logits.py`, which never existed, is `dump_logits.py`. `web/README.md`: the build's inputs after the move of the docs to the root, and the pages to open. `docs/claude/README.md`, `working_rules.md` and the head of `status.md`: the folder is tracked, worktrees are per branch, and the root paths.
 

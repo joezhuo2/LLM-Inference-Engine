@@ -2351,3 +2351,9 @@
 - **pinned (page-locked) host memory** => 
 - **a causal mask** => 
 - **a test oracle** => 
+
+## Every Byte audit round (Branch 162)
+
+- **NotImplementedError** => 
+- **vectorisation** => 
+- **a reference implementation** => 

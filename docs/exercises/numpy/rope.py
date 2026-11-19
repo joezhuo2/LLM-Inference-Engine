@@ -11,7 +11,9 @@ TOLERANCE = 2e-3
 
 
 def rope(qkv, positions, heads, kv_heads, theta):
-    raise NotImplementedError
+    raise NotImplementedError(
+        "Write rope with NumPy operations on whole arrays, with no Python loop over positions, heads or pairs. reference() below is the slow version your result is checked against; the spec is on this exercise's card on the exercises page."
+    )
 
 
 def reference(qkv, positions, heads, kv_heads, theta):
