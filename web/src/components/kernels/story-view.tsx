@@ -3,7 +3,6 @@
 import { AddRmsnormAboutStory } from "./add-rmsnorm/about";
 import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PagedAttentionAboutStory } from "./attention/about";
-import { AttentionBasicsStory } from "./attention/basics";
 import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionSandbox } from "./attention/sandbox";
 import { PagedAttentionStory } from "./attention/story";
@@ -106,8 +105,6 @@ export function KernelIdeasView({ slug }: { slug: string }) {
   switch (slug) {
     case "foundations":
       return <FoundationsIdeasStory />;
-    case "paged-attention":
-      return <AttentionBasicsStory />;
     default:
       return null;
   }
