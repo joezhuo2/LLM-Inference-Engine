@@ -3,7 +3,6 @@
 import { AddRmsnormAboutStory } from "./add-rmsnorm/about";
 import { AddRmsnormStory } from "./add-rmsnorm/story";
 import { PagedAttentionAboutStory } from "./attention/about";
-import { AttentionBasicsStory } from "./attention/basics";
 import { PrologueStory } from "./attention/prologue-story";
 import { PagedAttentionSandbox } from "./attention/sandbox";
 import { PagedAttentionStory } from "./attention/story";
@@ -51,6 +50,9 @@ import { SwigluAboutStory } from "./swiglu/about";
 import { SwigluStory } from "./swiglu/story";
 import { TimeAboutStory } from "./where-the-time-went/about";
 import { TimeStory } from "./where-the-time-went/story";
+import { QuantAboutStory } from "./quantization/about";
+import { QuantSandbox } from "./quantization/sandbox";
+import { QuantStory } from "./quantization/story";
 
 export function KernelStoryView({ slug }: { slug: string }) {
   switch (slug) {
@@ -92,6 +94,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <SpeculativeStory />;
     case "tensor-parallelism":
       return <TensorStory />;
+    case "quantization":
+      return <QuantStory />;
     default:
       return null;
   }
@@ -101,8 +105,6 @@ export function KernelIdeasView({ slug }: { slug: string }) {
   switch (slug) {
     case "foundations":
       return <FoundationsIdeasStory />;
-    case "paged-attention":
-      return <AttentionBasicsStory />;
     default:
       return null;
   }
@@ -148,6 +150,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <SpeculativeAboutStory />;
     case "tensor-parallelism":
       return <TensorAboutStory />;
+    case "quantization":
+      return <QuantAboutStory />;
     default:
       return null;
   }
@@ -191,6 +195,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <SpeculativeSandbox />;
     case "tensor-parallelism":
       return <TensorSandbox />;
+    case "quantization":
+      return <QuantSandbox />;
     default:
       return null;
   }

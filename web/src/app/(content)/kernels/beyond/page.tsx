@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { gloss } from "@/components/glossed";
+import { EnginesMap } from "@/components/kernels/engines-map";
 import { BeyondFigure } from "@/components/kernels/page-figures";
 import { StoryNav } from "@/components/kernels/story-nav";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
 import { bookHref } from "@/components/book/paths";
 import { beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
+import { enginesTitle } from "@/content/engines-map";
 import { estimates } from "@/content/estimates";
 
 const description = "What this engine leaves out, in the book's own unit of bytes per token: quantization, a draft model that pays for speculative decoding, prefix caching and multiple GPUs. Only the draft model was tried and measured here, and the split of the weights for several GPUs.";
@@ -39,6 +41,12 @@ export default function Beyond() {
                 <span className="text-muted">{t.unit}</span>
               </li>
             ))}
+            <li className="flex flex-wrap gap-x-3">
+              <a href="#engines" className="link-underline text-accent">
+                {enginesTitle}
+              </a>
+              <span className="text-muted">what to open next in vLLM and llama.cpp</span>
+            </li>
           </ul>
           <Link href={bookHref("beyond")} className="link-underline inline-block text-sm text-accent">
             read this in Every Byte, the 3D book
@@ -74,6 +82,7 @@ export default function Beyond() {
             </section>
           );
         })}
+        <EnginesMap />
         <StoryNav slug="beyond" />
       </article>
     </PageTransition>

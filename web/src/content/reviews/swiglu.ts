@@ -1,13 +1,14 @@
 import { chapterNumber } from "../book-order";
 import { modelShape } from "@/lib/data";
+import { num } from "@/lib/round";
 import type { ChapterReview } from "./types";
 
 const shape = modelShape();
 const rowBytes = 2 * shape.intermediate * 2;
 const weightBytes = shape.hidden * rowBytes;
-const roundTripKb = ((2 * rowBytes) / 1024).toFixed(1);
+const roundTripKb = num((2 * rowBytes) / 1024);
 const roundTripShare = (((2 * rowBytes) / weightBytes) * 100).toFixed(1);
-const weightsMb = (weightBytes / 1024 ** 2).toFixed(1);
+const weightsMb = num(weightBytes / 1024 ** 2);
 
 export const review: ChapterReview = {
   lesson: "SwiGLU keeps PyTorch's two roundings, then wins with wide loads on big inputs and scalar threads on small ones.",

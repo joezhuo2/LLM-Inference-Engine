@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
 import { modelShape, profilingTable } from "@/lib/data";
+import { about } from "@/lib/round";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -174,7 +175,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Each thread also computes a whole dot product alone. One row at a long context:{" "}
-          <span className="text-accent">{v1At2048} µs</span>.
+          <span className="text-accent">{about(v1At2048)} µs</span>.
         </p>
       </>
     ),
@@ -205,7 +206,7 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Wired into the runner, attention per decode step fell to <span className="text-accent">{stepAfter} µs</span> on
+          Wired into the runner, attention per decode step fell to <span className="text-accent">{about(stepAfter)} µs</span> on
           short contexts. The figure shows v1&apos;s time beside it.
         </p>
         <p>

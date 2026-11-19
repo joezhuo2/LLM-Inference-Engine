@@ -8,6 +8,7 @@ import { SmoothRange } from "@/components/smooth-range";
 import { glide, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
+import { Mirror, MirrorRange } from "../mirror";
 import { Toggle } from "../toggle";
 import { START_MAX, directAttention, makeProblem, maxDiff, pagedAttention } from "./online-softmax";
 
@@ -97,6 +98,17 @@ export function PagedAttentionSandbox({ pages }: { pages?: SandboxPages } = {}) 
         </span>
       </label>
       <Toggle label="block" choices={sizes} value={block} onChange={(v) => change(() => setBlock(v))} />
+    </div>
+  );
+  const mirror = (id: string) => (
+    <Mirror from="the block table page">
+      <MirrorRange id={`pa-${id}-context`} label="context" min={1} max={256} value={context} onValue={(v) => change(() => setContext(v))} text={`${context} tokens`} />
+      <Toggle label="block" choices={sizes} value={block} onChange={(v) => change(() => setBlock(v))} />
+    </Mirror>
+  );
+  const update = (
+    <div className="text-muted" aria-live="polite">
+      {now ? `block ${now.logical}: m ${now.logical === 0 ? "set by the first block" : now.grew ? "raised" : "unchanged"}, so l and acc × ${now.rescale.toFixed(3)} before its weights are added` : "no block read yet"}
     </div>
   );
   const buttons = (
@@ -340,6 +352,7 @@ export function PagedAttentionSandbox({ pages }: { pages?: SandboxPages } = {}) 
         {page(
           pages.step,
           <>
+            {mirror("step")}
             {buttons}
             {detail}
             {stats}
@@ -348,8 +361,10 @@ export function PagedAttentionSandbox({ pages }: { pages?: SandboxPages } = {}) 
         {page(
           pages.check,
           <>
+            {mirror("check")}
             {buttons}
             {predict}
+            {update}
             {compare}
           </>,
         )}

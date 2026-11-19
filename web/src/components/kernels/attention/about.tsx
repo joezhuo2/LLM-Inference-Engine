@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
+import Link from "next/link";
+import { chapterNumber } from "@/content/book-order";
 import { Frame, Label } from "../frame";
 import { useLoop } from "../loop";
 import { StickyStory, type StoryStep } from "../sticky-story";
@@ -25,7 +27,7 @@ export const pagedAttentionAbout: StoryStep = {
         Attention is the one place in a transformer where tokens look at each other. Each of TinyLlama&apos;s 22 layers has one, between a normalization and the MLP, and everything else in a layer works on every token alone.
       </p>
       <p>
-        Three learned matrices turn each token into a query, a key and a value: what the token is looking for, what it offers, and what it hands over. The newest token&apos;s query is scored against every key in the cache, its own included, as a dot product divided by √d, where d is the 64 dimensions of a head. A softmax turns the scores into weights that add up to 1, and the output is the values summed with those weights.
+        <Link href="/kernels/one-token" className="link-underline text-accent">Chapter {chapterNumber("one-token")}</Link> takes attention apart step by step. In short: each token becomes a query, a key and a value; the newest token&apos;s query is scored against every key in the cache, its own included; a softmax turns the scores into weights; and the output is the values summed with those weights.
       </p>
       <p>
         Paged is borrowed from operating systems, where virtual memory cuts a program&apos;s memory into fixed-size pages that can sit anywhere and are found through a page table. Paged attention, introduced with vLLM in 2023, does the same with the KV cache: keys and values live in blocks, a block table says where each of a sequence&apos;s blocks sits, and the kernel looks every key up there before scoring it. The arithmetic is unchanged; only where each key is read from changes.

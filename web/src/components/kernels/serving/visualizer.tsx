@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { kvDemo, kvReplay } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { expectAnswer, type Prediction, Predict } from "../predict";
+import { Mirror } from "../mirror";
 import { Toggle } from "../toggle";
 import { type Cell, type Mode, Pool } from "./allocator";
 
@@ -411,9 +412,9 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
   const tipAt = hover === null ? null : corners(g, hover, cells[hover] ? 1 : 0).T;
   const tipW = Math.min(288, g.width - 16);
 
-  const adders = (
+  const adders = (compact = false) => (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-muted">add a request</span>
+      <span className={compact ? "w-14 shrink-0 text-muted" : "text-muted"}>{compact ? "add" : "add a request"}</span>
       {kinds.map((k, i) => (
         <button
           key={k.label}
@@ -427,7 +428,7 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
           className="pressable flex items-center gap-1.5 rounded border border-border px-2.5 py-1 text-text"
         >
           <span aria-hidden className="size-2 rounded-sm" style={{ background: `var(${seriesVar[i]})` }} />
-          {`+ ${k.label} · ${k.shape.prompt + k.shape.output} tokens`}
+          {compact ? `+ ${k.label}` : `+ ${k.label} · ${k.shape.prompt + k.shape.output} tokens`}
         </button>
       ))}
     </div>
@@ -532,7 +533,7 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
     <div className="space-y-2">
       <div className="text-muted">{mode === "paged" ? "block tables, logical block → physical block" : "reservations, prompt + 256 tokens each"}</div>
       <ul className={clsx("space-y-2", !pages && "max-h-72 overflow-y-auto pr-1")}>
-        {pool.running.map((id) => {
+        {(pages ? pool.running.slice(0, 4) : pool.running).map((id) => {
           const s = pool.seqs.get(id)!;
           const k = kinds[s.kind];
           return (
@@ -561,7 +562,8 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
             </li>
           );
         })}
-        {pool.waiting.map((id) => {
+        {pages && pool.running.length > 4 && <li className="text-muted">{`and ${pool.running.length - 4} more running`}</li>}
+        {(pages ? pool.waiting.slice(0, 2) : pool.waiting).map((id) => {
           const s = pool.seqs.get(id)!;
           return (
             <li key={id} className="text-warn">
@@ -569,6 +571,7 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
             </li>
           );
         })}
+        {pages && pool.waiting.length > 2 && <li className="text-warn">{`and ${pool.waiting.length - 2} more waiting`}</li>}
         {!pool.running.length && !pool.waiting.length && <li className="text-muted">nothing running; add a request</li>}
       </ul>
     </div>
@@ -580,7 +583,7 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
         {pages.pool &&
           createPortal(
             <div className="space-y-3 tabular-nums text-xs">
-              {adders}
+              {adders()}
               {controls}
               {poolView}
               {legend}
@@ -590,7 +593,10 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
         {pages.tables &&
           createPortal(
             <div className="space-y-5 tabular-nums text-xs">
-              {controls}
+              <Mirror from="the pool page">
+                {adders(true)}
+                {controls}
+              </Mirror>
               {table}
               {tables}
             </div>,
@@ -602,7 +608,7 @@ export function KvVisualizer({ pages }: { pages?: { pool: HTMLElement | null; ta
   return (
     <div className="grid gap-6 tabular-nums text-xs lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="space-y-3">
-        {adders}
+        {adders()}
         {controls}
         {poolView}
         {legend}

@@ -1,4 +1,5 @@
 import { measured } from "@/content/kernels/types";
+import { about } from "@/lib/round";
 import { profilingTable } from "@/lib/data";
 import type { ChapterReview } from "./types";
 
@@ -18,7 +19,7 @@ const tokensPerSecond = (column: string) => {
 };
 const before = tokensPerSecond("before (e07c022)");
 const after = tokensPerSecond("after (79c1f91)");
-const gain = (i: number) => ((after[i] / before[i] - 1) * 100).toFixed(1);
+const gain = (i: number) => about((after[i] / before[i] - 1) * 100);
 
 export const review: ChapterReview = {
   lesson: "Change how a kernel keeps its state, and the same math can run several times faster.",

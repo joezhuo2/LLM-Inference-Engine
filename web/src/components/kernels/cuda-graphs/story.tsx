@@ -1,5 +1,8 @@
 "use client";
 
+import { published } from "@/content/published";
+import { bigSide, engineSide, scaleQuantities, scaleSources } from "@/content/scale";
+import { about, num } from "@/lib/round";
 import NumberFlow from "@number-flow/react";
 import { motion } from "motion/react";
 import { useState } from "react";
@@ -146,7 +149,7 @@ export function ReplayPicker() {
 }
 
 const fmt = (v: number, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
-const saved = ["1", "4", "16"].map((b) => tpot("engine", b) - tpot("engine + graphs", b));
+const saved = ["1", "4", "16"].map((b) => Number((tpot("engine", b) - tpot("engine + graphs", b)).toFixed(2)));
 const savedShare = Math.round((100 * saved[0]) / tpot("engine", "1"));
 const layersAhead = Math.round(trace.eager.cpu_ahead_us / layerUs(eagerLayer));
 const shortKernels = eagerLayer.filter((k) => k.end - k.start < 3).length;
@@ -154,6 +157,7 @@ const gateUp = eagerLayer.find((k) => k.op === "gate_up");
 if (!gateUp) throw new Error("cuda-graphs: no gate_up kernel in the profiled layer");
 const gateUpUs = gateUp.end - gateUp.start;
 const shape = modelShape();
+const l3 = published.llama3;
 const walkedTo = thresholds[thresholds.length - 1].context;
 const kneePoint = sweepPoints.find((p) => p.batch === sweepKnee);
 const lastPoint = sweepPoints[sweepPoints.length - 1];
@@ -176,7 +180,7 @@ const steps: StoryStep[] = [
         <p>
           The CPU keeps up easily: in the middle of a step it is well ahead, launching
           kernels several layers further on. And still the GPU is idle for{" "}
-          <span className="text-warn">{`${eager.idle_pct}%`}</span> of the step.
+          <span className="text-warn">{`${about(eager.idle_pct)}%`}</span> of the step.
         </p>
       </>
     ),
@@ -190,12 +194,12 @@ const steps: StoryStep[] = [
           Zoomed in, the idle time is a few microseconds before every kernel. Between two kernels launched one by one on a
           stream, the GPU lets the first finish completely, then takes the next launch from the queue and sets up its grid
           before its first block runs. The median gap is{" "}
-          <span className="text-warn">{`${trace.eager.gap_us.p50} µs`}</span>, whatever the CPU is doing.
+          <span className="text-warn">{`${about(trace.eager.gap_us.p50)} µs`}</span>, whatever the CPU is doing.
         </p>
         <p>
           A few microseconds is nothing next to a long gate/up GEMV, but a step has hundreds of these
           boundaries, and several of the kernels in a layer run for only a few microseconds. Together they come to{" "}
-          <span className="text-warn">{`${fmt(eager.span_us - eager.busy_us)} µs`}</span> per step. Faster kernels
+          <span className="text-warn">{`${about(eager.span_us - eager.busy_us)} µs`}</span> per step. Faster kernels
           would not touch it; fewer launches would.
         </p>
       </>
@@ -246,15 +250,18 @@ const steps: StoryStep[] = [
       <>
         <p>
           Switch the step on the right: the same kernels, from the two profiles, close up. The median gap drops to{" "}
-          <span className="text-accent">{`${trace.graphs.gap_us.p50} µs`}</span>,
+          <span className="text-accent">{`${about(trace.graphs.gap_us.p50)} µs`}</span>,
           and the GPU is idle for far less of the step. The kernels themselves take
           the same time.
         </p>
         <p>
           Without the profiler the saving is{" "}
-          <span className="text-accent">{`${saved.map((s) => s.toFixed(2)).join(", ")} ms`}</span> per token at the
-          three batch sizes in the readout: roughly a fixed amount per step, since every step has the same boundaries. It
+          <span className="text-accent">{`${about(saved[0])} ms`}</span> per token at batch 1 and{" "}
+          {`${about(saved[2])} ms`} at 16: roughly a fixed amount per step, since every step has the same boundaries. It
           is a bigger share of a token from a lone request than of a token in a full batch. Prefill steps are not graphed.
+        </p>
+        <p>
+          Llama 3 8B on an H100 runs the same kernels in each of {l3.layers} layers instead of {shape.layers}, about {num(l3.layers / shape.layers)} times the boundaries, while reading its weights takes about {num(bigSide.readFloorMs)} ms there against about {num(engineSide.readFloorMs)} ms here, since the H100 reads memory about {num(bigSide.bandwidth / engineSide.bandwidth)} times faster. If the gaps were as long there, they would be a larger share of the step, not a smaller one. The floors are calculated from published specs; launch gaps on an H100 were not measured.
         </p>
       </>
     ),
@@ -295,7 +302,7 @@ const steps: StoryStep[] = [
         <p>
           Now the constructor walks the contexts up to the longest it serves and captures again whenever a bucket&apos;s split count
           changes, so there are more graphs. A replay picks its graph from the batch&apos;s longest context, and at a long
-          prompt the time per token falls to <span className="text-accent">{`${longRun.after.toFixed(1)} ms`}</span>.
+          prompt the time per token falls to <span className="text-accent">{`${about(longRun.after)} ms`}</span>.
         </p>
       </>
     ),
@@ -309,12 +316,12 @@ const steps: StoryStep[] = [
         <p>
           Every number so far stops at {graphMaxBatch} rows. Raise the max batch, submit twice that many requests at once,
           and the throughput with graphs keeps climbing up to {sweepKnee} rows:{" "}
-          <span className="text-accent">{`${fmt(kneePoint.graphs)} tok/s`}</span> (measured). After that it nearly stops:{" "}
+          <span className="text-accent">{`${about(kneePoint.graphs)} tok/s`}</span> (measured). After that it nearly stops:{" "}
           {lastPoint.batch / sweepKnee} times the rows add little.
         </p>
         <p>
           Two things change there. Attention reads each row&apos;s own keys and values, so its time grows with the rows,
-          and by {halfStep.batch} rows it is <span className="text-warn">{`${halfStep.share}%`}</span> of the step. And the
+          and by {halfStep.batch} rows it is <span className="text-warn">{`${about(halfStep.share)}%`}</span> of the step. And the
           GEMMs of chapter {chapterNumber("gemm")} stop being one read of the weights that every row shares: past the ridge
           they are compute bound, and their time grows with the rows too. From then on a step with twice the rows takes
           about twice as long, and a bigger batch buys almost nothing.
@@ -325,14 +332,14 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `one decode step from the batch-1 Nsight Systems profile behind results/decode_step.md (commit ${trace.commit}): real start and end times, layer ${layerIndex} drawn; ${eagerLayer.length} kernels in a layer, ${shape.layers} layers; cudaLaunchKernel median ${fmt(trace.eager.launches.cudaLaunchKernel.median_us)} µs on the CPU; mid-step the CPU is ${fmt(trace.eager.cpu_ahead_us / 1000, 1)} ms ahead, about ${layersAhead} layers`,
-  `gap = start of a kernel minus the end of the one before it, over every decode step of both profiles (web/scripts/step-timeline.py); the gate/up GEMV runs ${fmt(gateUpUs)} µs, a step has ${eager.kernels - 1} boundaries, and ${shortKernels} of the ${eagerLayer.length} kernels in a layer run under 3 µs`,
+  `one decode step from the batch-1 Nsight Systems profile behind results/decode_step.md (commit ${trace.commit}): real start and end times, layer ${layerIndex} drawn; ${eagerLayer.length} kernels in a layer, ${shape.layers} layers; cudaLaunchKernel median ${fmt(trace.eager.launches.cudaLaunchKernel.median_us)} µs on the CPU; mid-step the CPU is ${fmt(trace.eager.cpu_ahead_us / 1000, 1)} ms ahead, about ${layersAhead} layers; the GPU idles ${eager.idle_pct}% of the step`,
+  `gap = start of a kernel minus the end of the one before it, over every decode step of both profiles (web/scripts/step-timeline.py); the gate/up GEMV runs ${fmt(gateUpUs)} µs, median gap ${trace.eager.gap_us.p50} µs; a step has ${eager.kernels - 1} boundaries, ${fmt(eager.span_us - eager.busy_us)} µs of gaps in all, and ${shortKernels} of the ${eagerLayer.length} kernels in a layer run under 3 µs`,
   "one layer of the 224 nodes drawn; the code is capture() in src/runtime/decode_graphs.cpp",
   `the token ids, positions and slots are made up; ${stageRequests} requests pad to ${stageRows.length} rows because the buckets at max batch ${graphMaxBatch} are ${list(buckets)} (calculated from the bucket rule); the layout is PagedRunner::stage's`,
-  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in results.md (TPOT p50, 3 runs), measured with one bucket per power of two; the saving is ${savedShare}% of a batch-1 token (calculated)`,
+  `layer from the two profiles; median gap ${trace.eager.gap_us.p50} µs eager and ${trace.graphs.gap_us.p50} µs with the graph, idle share ${eager.idle_pct}% against ${replay.idle_pct}% with the graph, from results/decode_step*.md; ms per token from engine bench in results.md (TPOT p50, 3 runs), measured with one bucket per power of two; the saving is ${list(saved.map((v) => v.toFixed(2)))} ms at batch 1, 4 and 16, ${savedShare}% of a batch-1 token (calculated); Llama 3 8B on an H100, calculated: ${l3.layers} layers against ${shape.layers}, read floor ${scaleQuantities.readFloor.text(bigSide.readFloorMs)} against ${scaleQuantities.readFloor.text(engineSide.readFloorMs)}; ${scaleSources.big}`,
   `graph sizes calculated with the rule of decode_graph_buckets in src/sched/graph_buckets.cpp, ${padding.steps} per power of two by default; ${padding.rows} requests at max batch ${padding.maxBatch}, 256 output tokens, TPOT p50, median of 5 short and noisy runs, from results.md, Batch size past 16: ${list(padding.runs.map((r) => r.tpot.toFixed(2)))} ms with ${list(padding.runs.map((r) => r.steps))} sizes per power of two; why 8 was slower was not profiled; the capture time and memory of the extra graphs were not measured`,
   `graph count calculated from the bucket rule and the split rule of attention_splits in src/sched/paged_batch.cpp: ${graphCount} graphs at max batch ${graphMaxBatch}, split counts ${list(splitCounts)}, contexts walked up to ${fmt(walkedTo)} tokens; ${longRun.before.toFixed(1)} ms per token before and ${longRun.after.toFixed(1)} after at the ${longPrompt.prompt}-token prompt, from profiling.md, Split attention in CUDA Graphs (engine bench at max batch 1, where there is one bucket, mean of two runs)`,
-  `engine bench with twice as many requests as the max batch, all submitted at once (an offline workload, not a serving result), 64 prompt and 64 output tokens, median of 3 runs, from results.md, Batch size past 16, measured with one bucket per power of two; ${sweepKnee} to ${lastPoint.batch} rows add ${afterKnee}% (calculated); step shares are medians per op from eager Nsight Systems profiles, so attention and the GEMMs can add up to slightly more than the step; one workload shape on one GPU`,
+  `engine bench with twice as many requests as the max batch, all submitted at once (an offline workload, not a serving result), 64 prompt and 64 output tokens, median of 3 runs, from results.md, Batch size past 16, measured with one bucket per power of two; ${fmt(kneePoint.graphs)} tok/s at ${sweepKnee} rows; ${sweepKnee} to ${lastPoint.batch} rows add ${afterKnee}% (calculated); attention ${halfStep.share}% of the step at ${halfStep.batch} rows; step shares are medians per op from eager Nsight Systems profiles, so attention and the GEMMs can add up to slightly more than the step; one workload shape on one GPU`,
 ];
 
 export const cudaGraphsSteps = steps;

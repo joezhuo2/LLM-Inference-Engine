@@ -1,6 +1,7 @@
 import { sampling } from "@/content/kernels/sampling";
 import { measured } from "@/content/kernels/types";
 import { hardware } from "@/lib/data";
+import { about } from "@/lib/round";
 import { chapterNumber } from "../book-order";
 import type { ChapterReview } from "./types";
 
@@ -28,7 +29,7 @@ export const review: ChapterReview = {
     {
       question: `Chapter ${chapterNumber("split-attention")} added blocks to a batch-1 launch because most SMs sat idle. Sampling launches one block per row. Why does temperature sampling take about the same time at 16 rows as at 1?`,
       answer: "The extra rows run on SMs that were idle.",
-      why: `At 1 row the launch is one block on one of the ${hardware().sms} SMs, the under-filled launch that split attention fixed by adding blocks. Each extra row is another block on an idle SM, so the call takes ${temperature("1")} µs at 1 row and ${temperature("16")} µs at 16 (measured, first of two runs).`,
+      why: `At 1 row the launch is one block on one of the ${hardware().sms} SMs, the under-filled launch that split attention fixed by adding blocks. Each extra row is another block on an idle SM, so the call takes ${about(temperature("1"), 3)} µs at 1 row and ${about(temperature("16"), 3)} µs at 16 (measured, first of two runs).`,
       recall: "split-attention",
     },
   ],

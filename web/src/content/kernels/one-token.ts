@@ -122,7 +122,7 @@ export const oneToken: KernelStory = {
   book: true,
   about: true,
   title: "one token, end to end",
-  short: `One token followed through the whole engine, from the text of a question to the ID ${journey.chosenId}, with the measured time of every stage on the way.`,
+  short: `One token followed through the whole engine, from the text of a question to the ID ${journey.chosenId}, with the measured time of every stage on the way, and attention taken apart step by step.`,
   formula: "text → IDs → 22 layers → logits → one ID → text",
   headline: {
     value: `${tokenFmt(share(layersUs))}%`,

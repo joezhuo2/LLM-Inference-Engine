@@ -1,13 +1,14 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { chapterNumber } from "@/content/book-order";
 import { pagedKvAbout, pagedKvAboutCaption } from "@/components/kernels/paged-kv/about";
 import { first, fullContext, lookup } from "@/components/kernels/paged-kv/figures";
-import { pagedKvCaptions, pagedKvSteps } from "@/components/kernels/paged-kv/story";
+import { PagedKvScaleFigure, pagedKvCaptions, pagedKvSteps } from "@/components/kernels/paged-kv/story";
 import { pagedKv } from "@/content/kernels/paged-kv";
 import { kvReplay } from "@/lib/data";
 import type { Beat } from "../book-scene";
-import { type ChapterDef, close, overview, withLead } from "../chapter";
+import { type ChapterDef, close, flat, type OverlayProps, overview, withLead } from "../chapter";
 import { createPagedKvAboutModel } from "./paged-kv-about-model";
 import { createPagedKvModel } from "./paged-kv-model";
 
@@ -35,6 +36,7 @@ const beats: Beat[][] = [
     close("Close up: blue sinks, pink rises in the same place", [0.53, 0.03, -0.4], 0.86, 0.4, -16, 54),
     close("From the side: a full pool gives back its newest request", [0.53, 0.02, 0.1], 0.86, 0.32, 18, 58),
   ],
+  [flat("TinyLlama against Llama 3 8B: a token, and a full context")],
   [
     overview("write_kv: the K and V heads of one token go to one row"),
     close("Close up: K and V at the end of the QKV row", [0.75, 0.03, -0.5], 0.5, 0.26, 20, 52),
@@ -52,9 +54,15 @@ const instructions = [
   "Drag the pink ball to pick a position and follow its table entry into the pool.",
   `Drag the pink ball: a new block appears only at a multiple of ${B}.`,
   "Watch the freed blocks go to the next requests, then the newest request give its blocks back.",
+  "Compare the rows: a token costs more, and a reserved context far more.",
   `Watch each key and value land in row ${lookup.row} of its head's tile.`,
   "Drag the pink ball along the run to stop at any step.",
 ];
+
+function PagedKvOverlay({ kind, target, narrow }: OverlayProps) {
+  if (!target || kind !== "scale") return null;
+  return createPortal(<div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}><PagedKvScaleFigure /></div>, target);
+}
 
 const chapter: ChapterDef = {
   slug: "paged-kv",
@@ -63,12 +71,13 @@ const chapter: ChapterDef = {
   formula: pagedKv.formula,
   steps: pagedKvSteps,
   captions: pagedKvCaptions,
-  exhibits: [0, 1, 3, 4, 2, 5],
-  overlays: [null, null, null, null, null, null],
+  exhibits: [0, 1, 3, 4, null, 2, 5],
+  overlays: [null, null, null, null, "scale", null, null],
   instructions,
   beats,
   workbench: [],
   buildModel: createPagedKvModel,
+  Overlay: PagedKvOverlay,
 };
 
 export const pagedKvChapter = withLead(chapter, {

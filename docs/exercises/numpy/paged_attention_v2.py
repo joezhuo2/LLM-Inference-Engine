@@ -8,7 +8,9 @@ TOLERANCE = 1e-3
 
 
 def paged_attention_v2(qkv, k_cache, v_cache, block_tables, context_lens, heads, chunk):
-    raise NotImplementedError
+    raise NotImplementedError(
+        "Write attention v2 in NumPy: walk each row's context chunk by chunk with a running maximum and sum, scoring a whole chunk at once, with no Python loop over single positions. reference_attention() in common.py is the slow version your result is checked against; the spec is on this exercise's card on the exercises page."
+    )
 
 
 def check(fn=None):

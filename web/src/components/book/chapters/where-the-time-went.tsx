@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { timeAbout, timeAboutCaption } from "@/components/kernels/where-the-time-went/about";
 import { FloorFigure, NextFigure } from "@/components/kernels/where-the-time-went/figures";
-import { timeCaptions, timeSteps } from "@/components/kernels/where-the-time-went/story";
+import { TimeScaleFigure, timeCaptions, timeSteps } from "@/components/kernels/where-the-time-went/story";
 import { chapterNumber } from "@/content/book-order";
 import { eagerStage, load, prefillLengths, prefillPaths, prefillPerToken, stepGroups, stepStages, whereTheTimeWent } from "@/content/kernels/where-the-time-went";
 import type { Beat } from "../book-scene";
@@ -33,6 +33,7 @@ const beats: Beat[][] = [
     close("The rail: drag the offered load", [0.5, 0.03, 0.14], 0.9, 0.44, 0, 46),
   ],
   [flat("Three next steps, and what each could move")],
+  [flat("The read floor on this GPU against Llama 3 8B on an H100")],
 ];
 
 const instructions = [
@@ -41,11 +42,13 @@ const instructions = [
   "Drag the pink ball to change the prompt length: two bars grow, two stay level.",
   "Drag the pink ball along the offered load and read the card.",
   "Compare the three bars, then read what each would move.",
+  "Compare the two floors: only this GPU has a measured token beside its bar.",
 ];
 
 const figures: Record<string, () => ReactNode> = {
   floor: () => <FloorFigure />,
   next: () => <NextFigure />,
+  scale: () => <TimeScaleFigure />,
 };
 
 function TimeOverlay({ kind, target, narrow }: OverlayProps) {
@@ -62,8 +65,8 @@ const chapter: ChapterDef = {
   formula: whereTheTimeWent.formula,
   steps: timeSteps,
   captions: timeCaptions,
-  exhibits: [0, null, 1, 2, null],
-  overlays: [null, "floor", null, null, "next"],
+  exhibits: [0, null, 1, 2, null, null],
+  overlays: [null, "floor", null, null, "next", "scale"],
   instructions,
   beats,
   workbench: [],

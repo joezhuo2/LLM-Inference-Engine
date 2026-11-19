@@ -2,6 +2,104 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/every-byte-audit
+
+- Part A: say what to write in every NumPy stub's NotImplementedError message (`docs/exercises/numpy/`)
+- Part A: chapter 1 exercise, one decode step in NumPy against a looped reference (`docs/exercises/numpy/decode_step.py`)
+- Part A: chapter 2 exercise, measure your own memory bandwidth roof on a CPU with NumPy (`docs/exercises/numpy/bandwidth.py`)
+- Part A: chapter 12 exercise, Gumbel-max sampling with a top-k threshold in NumPy (`docs/exercises/numpy/gumbel_max.py`)
+- Part A: NumPy-only exercises on the exercises page, the chapter pages and Every Byte, with the counts kept true
+- Part A: a search index of every chapter's text, built from the static pages (`web/scripts/search-index.mjs`, `web/src/content/search-index.json`)
+- Part A: a glossary page at /kernels/glossary with a filter, the chapter that first uses each term, and a glossary link in every hover card
+- Part A: search of every chapter and the glossary on the kernels index, loaded on first focus, with keyboard control
+- Part A: foundations ties chapter 1's profiled token time to its graph-replayed step and points at the CUDA Graphs chapter
+- Part A: the foundations lead-in caption says its step time is the kernel span of a step, not the time per token
+- Part A: foundations' batching step names the serving chapter's scheduler by its title
+- Part A: foundations and GEMM say the bandwidth roof is a measured test kernel, not a physical limit
+- Part A: the KV pool counts its token slots without the null block everywhere, with a clause where block counts sit beside them
+- Part A: paged attention's token lifecycle heading is lower case like the rest
+- Part A: "attention, step by step" moves to chapter 1, after the map of a token, in the book and on the scroll page
+- Part A: the RoPE, paged KV and paged attention lead-ins recall chapter 1's primer instead of teaching query, key and value again
+- Part A: the one-hour path starts with chapter 1's map of a token and its attention primer, still about 60 minutes
+- Part A: engines map data, where each chapter's idea lives in vLLM v0.34.0 and llama.cpp v1.0.0, every file opened at the tag, with a shape test (`web/src/content/engines-map.ts`)
+- Part A: /kernels/beyond gains "where this lives in other engines": a table at desktop width, stacked cards on phones, tags and date in the caption
+- Part A: every chapter's scroll page ends with an "in other engines" line naming the vLLM and llama.cpp symbol
+- Part A: the Every Byte tab title follows the chapter the book is open at
+- Part A: an "ideas only" toggle in the Every Byte action bar skips the how-it-got-built spreads, and every chapter list marks them as deep dives
+- Part A: Every Byte keeps the reader's place: the spread is in the URL, the last spread is saved, and the cover offers "continue at page N"
+- Part A: fix the book drawing a stale page when chapters finish loading while it opens
+- Part A: hide the magnifier on phones so the action bar fits the new toggle
+- Part A: glossary spreads in Every Byte's back matter, with a contents row
+- Part A: two back-matter spreads in Every Byte with the engines map after "beyond this engine", and a contents row for them
+- Part A: serving prose rounds measured and calculated numbers to two significant figures with a shared helper (`web/src/lib/round.ts`); the exact values moved to the captions
+- Part A: a shared scale module and figure for redoing a chapter's calculation for Llama 3 8B on an H100, from published specs (`web/src/content/scale.ts`)
+- Part A: serving gets an "on a bigger model" step: Llama 3 8B on an H100 fits 53 full 8,192-token contexts against TinyLlama's 100, with a review question
+- Part A: serving's tables spread mirrors the pool page's controls (shared Mirror component), so a request added there shows in the table on the same screen
+- Part A: serving's tables spread caps its block-table list in the book so it never scrolls
+- Part A: serving's tables spread shows at most four block tables
+- Part A: a quantization chapter, the last of the book: the floor, the ridge, the scale, the rounding, the FP8 cache and the plan, all calculated, with the kernels still stubs
+- Part A: glossary terms for the quantization chapter: FP8 E4M3, scale factor, mantissa, exponent, GGUF
+- Part A: the three FP8 stubs as build-it-yourself exercises of the quantization chapter
+- Part A: beyond and the memory budget point to the quantization chapter
+- Part A: two quantization step titles shortened so the contents list keeps its size
+- Part A: the quantization exhibits' rows spaced so a risen block never covers the label above it
+- Part A: beyond's quantization pointer keeps the scale overhead its figure caption relies on
+- Part A: the engines map gains the quantization chapter's row (vLLM `Fp8LinearMethod`, llama.cpp `ggml_cuda_mul_mat_vec_q`), and its last book page holds six rows
+- Part A: a book icon in the top bar, left of GitHub, links to Every Byte with a themed tooltip and turns into an open book while you are reading it
+- Part A: clicking the book icon sweeps the desk colour out from the icon and hands over to the cover opening on "start here"; modified clicks, reduced motion and clicks from inside the book skip the sweep
+- Part A: the kernels index links Every Byte and the one-hour path again, just under its intro
+- Part A: quantization exhibit subtitles and rail labels fit their cards, and half a step reads 0.0625
+- Part A: add-rmsnorm prose numbers rounded, exact values kept in the captions
+- Part A: add-rmsnorm's measured step says what carries over to Llama 3 8B: about 2.9 times the bytes against 7.3 times the weights, calculated
+- Part A: swiglu prose numbers rounded, exact values kept in the captions and figures
+- Part A: sampling prose numbers rounded, exact values kept in the captions and figures
+- Part A: cuda-graphs prose numbers rounded, exact values kept in the captions and figures
+- Part A: speculative-decoding prose numbers rounded, exact values kept in the captions and figures
+- Part A: cuda-graphs' replay step says what carries over to Llama 3 8B on an H100: more kernel boundaries and a shorter read floor, gaps not measured
+- Part A: the sampling prompt and knobs are mirrored on the draw spread, so the draws and their controls share a screen
+- Part A: the sampling draw spread fits closer to one screen, and the mass-cut readout no longer shows negative zero
+- Part A: cuda-graphs' per-token saving keeps the precision of its data
+- Part A: tensor parallelism prose rounded to two significant figures, exact MiB, ms and ratios kept in captions and figures
+- Part A: the memory budget's larger-model pools come from the scale module's formulas, block 0 reserved as in the engine
+- Part A: memory budget prose rounded, and its larger-model step points to the H100 count in serving
+- Part A: chunked prefill prose rounded, exact first-token and gap times in the first caption
+- Part A: where the time went prose rounded, exact values in captions, and no negative time above the floor
+- Part A: where the time went gets an "on a bigger model" step: Llama 3 8B's read floor on an H100, calculated only
+- Part A: where the time went: a sentence capitalised, rounded percents kept on one line, the floor mark label fits
+- Part A: chunked prefill's drop controls are mirrored on the predict page, cause and effect on one spread
+- Part A: the memory budget's larger-model caption shortened to stay above the action bar
+- Part A: one-token prose rounded, with an "on a bigger model" step: the read floor of Llama 3 8B on an H100, calculated
+- Part A: foundations prose rounded, exact values kept in its captions
+- Part A: foundations gets an "on a bigger model" step: the H100's ridge near 295 FLOP per byte, decode far left of it
+- Part A: the roofline sandbox's op, rows and context are mirrored on foundations' numbers spread, and the text no longer sends the reader back a page
+- Part A: gemm prose rounded, exact values kept in its captions
+- Part A: gemm gets an "on a bigger model" step: on an H100 a projection needs about 295 rows to turn compute bound
+- Part A: rope prose times rounded, exact values kept in its captions
+- Part A: foundations' mirrored numbers spread fits a phone: two-column readouts, reset in the mirror
+- Part A: one-token's bigger-model step says the measured bandwidth plainly
+- Part A: the scale figure's ridge value reads FLOP/byte so it stays inside its bar
+- Part A: the kernels machine drawing ported from Joe's prototype into a typed module, inked from the site's theme tokens (`web/src/components/kernels/machine.ts`)
+- Part A: one content file lists the 22 kernels stories with their one-line descriptions (`web/src/content/kernels-atlas.ts`)
+- Part A: /kernels is now Joe's scroll-assembled machine with a chapter index dialog, wheel glide, both themes, reduced motion and a no-script list
+- Part A: removed the layer map and kernel cards that only the old kernels index used
+- Part A: paged KV prose rounded, with an "on a bigger model" step: Llama 3 8B's bytes per cached token and full context, calculated
+- Part A: paged attention prose rounded
+- Part A: paged attention gets an "on a bigger model" step: one step's K and V reads for Llama 3 8B against its weights
+- Part A: attention v2 prose rounded
+- Part A: split attention prose rounded, exact values kept in its captions
+- Part A: FlashAttention prefill prose rounded
+- Part A: the paged attention sandbox's context and block controls are mirrored on its step and check spreads
+- Part A: the paged KV bigger-model step's title shortened to keep the page's title size
+- Part A: the exact attention times of the wider chunk stay in the FlashAttention prefill blocks caption
+- Part A: the paged KV pool caption trimmed so its instruction line clears the page number
+- Part A: the one-hour path's word counts and the search index regenerated from the built pages after the chapter changes
+- Part A: removed the paged attention ideas case that nothing reaches since the primer moved to chapter 1
+- Part A: the split attention graphs caption drops the graph times its figure already labels, so the instruction line fits
+- Part A: the engines map's six-row book page tightens its rows so no path runs into the next title
+- Part A: hand-off snapshot for this round in `docs/claude/status.md`
+- Part A: the audit this round answers, `docs/claude/every_byte_audit.md`
+- Part A: CI retries the package install in the CUDA image up to four times, keeping what already downloaded (`.github/workflows/ci.yml`)
+
 ## docs/md-audit
 - Part A: the markdown files brought up to the code on main. README: the intro and "Beyond the MVP" name what was built since the MVP (chunked prefill, FlashAttention prefill, finer graph buckets, speculative decoding, tensor parallelism) and what is stubbed next (grouped decode attention, prefix caching, FP8), the site section has `/every-byte` and `/exercises`, SentencePiece is in the dependencies, and the pointer to the ceilings goes to `reproduce.md`. `reproduce.md`: `generate --tensor-parallel`, `bench --speculate-adaptive`, `--draft-model`, `--prefill-attention`, `--trace` and `--profile`, `serve --speculate-adaptive`, `scripts/setup_vllm.sh`, and everything `reproduce.sh` runs now with its seven skip flags. `ownership.md`: the "Planned components" table is now "Components after M1", with who wrote each piece taken from the tags in this file, and `compare_logits.py`, which never existed, is `dump_logits.py`. `web/README.md`: the build's inputs after the move of the docs to the root, and the pages to open. `docs/claude/README.md`, `working_rules.md` and the head of `status.md`: the folder is tracked, worktrees are per branch, and the root paths.
 

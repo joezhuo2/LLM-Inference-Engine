@@ -7,6 +7,10 @@ import { SmoothRange } from "@/components/smooth-range";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { useLoop } from "../loop";
 import { chapterNumber } from "@/content/book-order";
+import { published } from "@/content/published";
+import { bigSide, engineSide } from "@/content/scale";
+import { about, bytesText } from "@/lib/round";
+import { ScaleFigure } from "../scale-figure";
 import { AppendFigure, first, fullContext, heldAt, lookup, reqs, ReuseFigure, TableFigure, WhyBlocksFigure, WriteKvFigure, writeShare, writeUs } from "./figures";
 
 const replay = kvReplay();
@@ -163,6 +167,9 @@ function ReplayPlayer() {
 }
 
 const reqBlocks = first.blocks.length;
+const l3 = published.llama3;
+const fourBlocks = reqs.slice(0, 4).reduce((n, q) => n + q.blocks.length, 0);
+const fourReserved = 4 * bigSide.contextBlocks;
 
 export const pagedKvSteps: StoryStep[] = [
   {
@@ -188,7 +195,7 @@ export const pagedKvSteps: StoryStep[] = [
     body: (
       <>
         <p>
-          At startup the engine takes a large share of the GPU in one allocation: <span className="text-text">{fmt(replay.meta.kv_blocks)}</span> blocks, each a block of tokens&apos; keys and
+          At startup the engine takes a large share of the GPU in one allocation: <span className="text-text">{about(replay.meta.kv_blocks)}</span> blocks, each a block of tokens&apos; keys and
           values for every layer. The first block is never handed out, so a table entry that points at it can mean &quot;nothing here&quot;.
         </p>
         <p>
@@ -231,6 +238,23 @@ export const pagedKvSteps: StoryStep[] = [
     ),
   },
   {
+    id: "bigger",
+    title: `on ${bigSide.model} a cached token is ${fmt(bigSide.kvTokenBytes)} bytes`,
+    body: (
+      <>
+        <p>
+          Carry the cache to a model people serve: {bigSide.model} in BF16. A cached token costs 2 × {l3.layers} layers × {l3.kvHeads} KV heads × {l3.headDim} numbers × 2 bytes, <span className="text-accent">{fmt(bigSide.kvTokenBytes)} bytes</span>, {about(bigSide.kvTokenBytes / engineSide.kvTokenBytes)} times TinyLlama&apos;s {fmt(engineSide.kvTokenBytes)}. A block of {B} tokens grows from {bytesText(engineSide.blockBytes)} to {bytesText(bigSide.blockBytes)}.
+        </p>
+        <p>
+          Its full context is {fmt(bigSide.context)} tokens, {bigSide.context / fullContext} times TinyLlama&apos;s {fmt(fullContext)}, so a cache that reserves the worst case holds {bigSide.contextBlocks} blocks, {bytesText(bigSide.contextBytes)}, for every request however short it stays. The first four requests of the recorded run, at the same lengths in tokens, would hold {fmt(fourReserved)} blocks that way, {bytesText(fourReserved * bigSide.blockBytes)}. Paged, they hold the same <span className="text-accent">{fourBlocks}</span> blocks as before, {bytesText(fourBlocks * bigSide.blockBytes)}: the reservation grew {bigSide.context / fullContext} times, what they use did not.
+        </p>
+        <p>
+          The bound on waste does not change either: a request leaves at most {B - 1} slots of its last block empty, {bytesText((B - 1) * bigSide.kvTokenBytes)} here. These numbers are calculated from published specs; nothing was run with {bigSide.model}.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "write",
     group: "how it got built",
     title: "write_kv is a pure copy, one thread per value",
@@ -242,7 +266,7 @@ export const pagedKvSteps: StoryStep[] = [
         </p>
         <p>
           The cache is laid out by block, then KV head, then token, then dimension, so one head&apos;s keys in a block are one contiguous tile, which is what the attention kernel reads. Padding rows get
-          an empty slot and write nothing. It is a pure copy: <span className="text-accent">{`${fmt(writeUs, 1)} µs`}</span> per single-request decode step over one launch per layer, a small share of the kernel
+          an empty slot and write nothing. It is a pure copy: <span className="text-accent">{`${about(writeUs)} µs`}</span> per single-request decode step over one launch per layer, a small share of the kernel
           time.
         </p>
         <p>
@@ -273,12 +297,17 @@ export const pagedKvSteps: StoryStep[] = [
 
 export const pagedKvCaptions = [
   `the four requests' real lengths from ${replay.file}; blocks are ${B} tokens; ${layers} layers; an answer can stop after 9 tokens; reserving ${fmt(fullContext)} tokens each, the four would hold ${4 * (fullContext / B)} blocks`,
-  `block table of request ${first.id} and the pool at that step, both from the build-time replay of ${replay.file}: position ${lookup.pos} is logical block ${lookup.logical}, physical block ${lookup.phys}, among the request's ${reqBlocks} blocks; the pool is ${fmt(poolGb, 1)} GB, ${fmt(blockBytes)} bytes and ${B} tokens a block, block 0 the null block`,
+  `block table of request ${first.id} and the pool at that step, from the replay of ${replay.file}: position ${lookup.pos} is logical block ${lookup.logical}, physical block ${lookup.phys}; the pool is ${fmt(replay.meta.kv_blocks)} blocks, ${fmt(poolGb, 1)} GB, ${fmt(blockBytes)} bytes and ${B} tokens a block, block 0 the null block`,
   `request ${first.id}'s real prompt and blocks: its ${first.prompt} prompt tokens fill blocks ${first.blocks.slice(0, Math.ceil(first.prompt / B)).map((b) => b.id).join(", ")}, then ${first.final_length - first.prompt} decode steps; at most ${B - 1} slots stay empty; the slots filled over time are drawn, not timed`,
   `block reuse from the replay: request ${first.id}'s fourth block had served another request, and all ${replay.meta.num_requests} requests stayed within blocks 1 to ${replay.max_block}; the preemption test, ForcedPreemptionKeepsTheOutputsOfEveryRequest in tests/gpu/test_serve.cpp, puts 16 requests in 56 blocks and forces 6 preemptions`,
-  `TinyLlama: 32 query heads and 4 KV heads of 64 dims, laid out [block, KV head, ${B}, 64] per layer, a 2 KB tile per head and block; the slot picks row slot mod ${B} of block slot / ${B}, padding rows get slot -1; time from results/decode_step.md (GPU time per op), ${layers} launches, ${writeShare}% of the kernel time`,
+  `calculated, not measured: ${l3.source}; ${l3.shapeSource}; 2 × ${l3.layers} × ${l3.kvHeads} × ${l3.headDim} × 2 = ${fmt(bigSide.kvTokenBytes)} bytes a token, ${fmt(bigSide.blockBytes)} a block; ${fmt(bigSide.context)} tokens are ${bigSide.contextBlocks} blocks, ${fmt(bigSide.contextBytes)} bytes; the first four requests: ${fourBlocks} blocks, ${fmt(fourBlocks * bigSide.blockBytes)} bytes, against ${fmt(fourReserved)} blocks, ${fmt(fourReserved * bigSide.blockBytes)} bytes reserved; TinyLlama's row from its config.json`,
+  `TinyLlama: 32 query heads and 4 KV heads of 64 dims, laid out [block, KV head, ${B}, 64] per layer, a 2 KB tile per head and block; the slot picks row slot mod ${B} of block slot / ${B}, padding rows get slot -1; time from results/decode_step.md (GPU time per op), ${fmt(writeUs, 1)} µs over ${layers} launches, ${writeShare}% of the kernel time`,
   `${replay.file}, recorded ${replay.meta.date.slice(0, 10)} on the ${replay.meta.gpu.replace("NVIDIA GeForce ", "")}: ${replay.meta.num_requests} requests at ${replay.meta.request_rate} per second, peak ${replay.peak.blocks} of ${fmt(replay.meta.kv_blocks)} blocks, the pool 90% of the memory left after the weights; measured ${fmt(tput("16"))} tokens/s at batch 16 against ${fmt(tput("1"))} at batch 1; every step's free block count checked against the trace at build time`,
 ];
+
+export function PagedKvScaleFigure() {
+  return <ScaleFigure title={`the same cache for ${bigSide.model}`} quantities={["kvToken", "context"]} />;
+}
 
 export function PagedKvStory() {
   return (
@@ -291,6 +320,8 @@ export function PagedKvStory() {
             return <WhyBlocksFigure />;
           case "pool":
             return <TableFigure />;
+          case "bigger":
+            return <PagedKvScaleFigure />;
           case "write":
             return <WriteKvFigure launchUs={writeUs} share={writeShare} />;
           case "append":

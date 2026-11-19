@@ -6,6 +6,10 @@ import { useState } from "react";
 import { gemmOps, prefillCurve, prefillRoof, roofline } from "@/content/kernels/gemm";
 import { measured } from "@/content/kernels/types";
 import { ceilings, cellNumber, decodeSteps } from "@/lib/data";
+import { published } from "@/content/published";
+import { bigSide, scaleSources } from "@/content/scale";
+import { about, bytesText, msText, num } from "@/lib/round";
+import { ScaleFigure } from "../scale-figure";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { useLoop } from "../loop";
@@ -58,6 +62,9 @@ const fmt = (v: number) => v.toLocaleString("en-US");
 const prefillRows = fmt(prefillRoof.rows);
 const prefillTimes = prefillRoof.intensity / ridge;
 const curve = prefillCurve();
+const l3 = published.llama3;
+const h100 = published.h100;
+const batchRows = 16;
 const choices = ["1", "16", "prefill"];
 
 const prediction: Prediction = {
@@ -209,7 +216,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Every token reads all the weights, which sets a floor of{" "}
-          <span className="text-accent">{`${(weightBytes / (peak.gbs * 1e6)).toFixed(2)} ms`}</span> per token on
+          <span className="text-accent">{msText(weightBytes / (peak.gbs * 1e6))}</span> per token on
           this GPU (calculated). cuBLAS sees the single row and runs a dedicated gemv kernel instead of a GEMM.
         </p>
       </>
@@ -223,12 +230,12 @@ const steps: StoryStep[] = [
         <p>
           Dividing the bytes each projection reads by its time in the profile gives its bandwidth. All five reach{" "}
           <span className="text-accent">{`${Math.min(...roofRows.slice(0, 5).map((r) => r.pct))} to ${Math.max(...roofRows.slice(0, 5).map((r) => r.pct))}%`}</span>{" "}
-          of the bandwidth a plain copy kernel measures on this GPU. A hand-written GEMV could not do better: it has to
+          of the bandwidth a plain copy kernel measures on this GPU. That test is a measurement, not a physical limit, so a kernel that streams its bytes a little better can pass 100%. A hand-written GEMV could not do better: it has to
           read the same bytes through the same memory.
         </p>
         <p>
           That is why the engine&apos;s own kernels went elsewhere. The projections are{" "}
-          <span className="text-text">{`${share.toFixed(1)}%`}</span> of a decode step&apos;s GPU time and already
+          <span className="text-text">{`${about(share)}%`}</span> of a decode step&apos;s GPU time and already
           at the roof; the gains were in the launch gaps (CUDA Graphs) and in attention.
         </p>
       </>
@@ -243,7 +250,7 @@ const steps: StoryStep[] = [
           With a batch of requests decoding together, x has a row for each. Each weight row is still read once, but now it meets
           every one of those input rows, so the FLOPs per byte grow with the batch. That is still far left of the ridge, so the GPU is still waiting on memory, and the
           projections take about the same time as for one row:{" "}
-          <span className="text-accent">{`${Math.round(sum("16")).toLocaleString("en-US")} µs`}</span> per step.
+          <span className="text-accent">{msText(sum("16") / 1e3)}</span> per step.
         </p>
         <p>
           Sixteen tokens for the price of one is where batching gets its throughput. cuBLAS switches to tensor-core GEMM
@@ -259,7 +266,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           A prompt&apos;s tokens go through the projections together, so a weight byte meets every row of the prompt. In the largest-batch profile the prefill step is several prompts together, far past the ridge in FLOPs per byte (calculated from config.json). Its projection GEMMs reach{" "}
-          <span className="text-accent">{`${Math.round(prefillRoof.pct)}%`}</span> of the compute roof, from their measured time.
+          <span className="text-accent">{`${about(prefillRoof.pct)}%`}</span> of the compute roof, from their measured time.
         </p>
         <p>
           The GPU now waits on arithmetic, not on bytes. That is why prefill needs the tensor cores, and why prefill and decode want different things from a scheduler: a
@@ -267,7 +274,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Time to first token shows the same split. At a short prompt the engine&apos;s prefill costs{" "}
-          <span className="text-accent">{`${curve.engineShort} ms`}</span> per prompt token, a small fraction of what a single-request decode step costs per token. It stays almost flat per token as prompts grow, as it does for llama.cpp, whose TTFT works out to a high TFLOP/s rate (calculated). That was not always so: prefill
+          <span className="text-accent">{msText(curve.engineShort)}</span> per prompt token, a small fraction of what a single-request decode step costs per token. It stays almost flat per token as prompts grow, as it does for llama.cpp, whose TTFT works out to a high TFLOP/s rate (calculated). That was not always so: prefill
           used to run paged decode attention once per row, so the KV reads grew with the square of the length and the cost per token climbed. The FlashAttention prefill chapter replaces that attention with a kernel that runs on the tensor cores too.
         </p>
       </>
@@ -284,7 +291,24 @@ const steps: StoryStep[] = [
           the projections slide up the slope, attention moves up only a little, because every row reads its own keys and values, and the prefill projections sit on the flat part.
         </p>
         <p>
-          Nothing in a decode step gets near the ridge at <span className="text-accent">{Math.round(ridge)} FLOP/byte</span>, so no decode op is compute bound. A long prefill is compute bound, far to its right. The way past the roof in decode is fewer bytes per token: quantized weights, or more rows sharing each weight read.
+          Nothing in a decode step gets near the ridge at <span className="text-accent">{about(ridge)} FLOP/byte</span>, so no decode op is compute bound. A long prefill is compute bound, far to its right. The way past the roof in decode is fewer bytes per token: quantized weights, or more rows sharing each weight read.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "bigger",
+    title: `on an ${bigSide.gpu}, a GEMM needs ${Math.round(bigSide.ridge)} rows to pass the ridge`,
+    body: (
+      <>
+        <p>
+          Carry the projections to {bigSide.model} in BF16 on an {bigSide.gpu}. Its hidden state is {fmt(l3.hidden)} numbers where TinyLlama&apos;s is {fmt(projections[1].in)}, and it has {l3.layers} layers, so one decode step at one row reads {bytesText(bigSide.readBytes)} of weights, every weight but the embedding table, where TinyLlama reads {bytesText(weightBytes)}. Each weight still feeds one multiply-add: two FLOPs for two bytes, one FLOP per byte. Bigger matrices do not change that ratio; only the rows do.
+        </p>
+        <p>
+          With M rows sharing each read, a projection does about M FLOPs per weight byte, so the ridge can be read as a row count. The {bigSide.gpu}&apos;s ridge is <span className="text-accent">{about(bigSide.ridge)}</span> FLOP per byte, so a projection there turns compute bound at about {num(bigSide.ridge)} rows, against about {num(ridge)} on this GPU. A batch of {batchRows} sits at about {batchRows} FLOP per byte on both, far left of either ridge: on the bigger GPU a decode batch waits on memory even more.
+        </p>
+        <p>
+          These are ideal ratios calculated from published specs. This chapter&apos;s measured times come from cuBLAS on this GPU; nothing was run on an {bigSide.gpu} or with {bigSide.model}, so where a real kernel turns compute bound there is not measured.
         </p>
       </>
     ),
@@ -312,11 +336,12 @@ const steps: StoryStep[] = [
 
 const captions = [
   "bytes from the weight shapes in config.json; GPU time per op from the batch-1 Nsight Systems profile in results/decode_step.md",
-  `12 of 2,560 QKV rows drawn; the floor is ${(weightBytes / 1e9).toFixed(2)} GB ÷ the measured ${peak.gbs} GB/s, calculated, against a ridge of ${Math.round(ridge)} FLOP/byte; time per token from results.md`,
-  `GB/s from scripts/roofline.py over the batch-1 profile; the peak, ${peak.gbs} GB/s, from the bandwidth test in results.md`,
+  `12 of 2,560 QKV rows drawn; the floor is ${(weightBytes / 1e9).toFixed(2)} GB ÷ the measured ${peak.gbs} GB/s = ${(weightBytes / (peak.gbs * 1e6)).toFixed(2)} ms, calculated, against a ridge of ${Math.round(ridge)} FLOP/byte; time per token from results.md`,
+  `GB/s from scripts/roofline.py over the batch-1 profile; the peak, ${peak.gbs} GB/s, from the bandwidth test in results.md; the projections are ${share.toFixed(1)}% of the batch-1 step's GPU time`,
   `16 rows meet each weight byte: 16 FLOP per byte against a ridge of ${Math.round(ridge)} (calculated); µs per step from the batch-1 profile (${Math.round(sum("1")).toLocaleString("en-US")} µs) and the batch-16 profile; TFLOP/s from scripts/roofline.py`,
-  `results/decode_step_b16.md: ${prefillRows} rows are ${prefillRoof.maxBatch} prompts of ${prefillRoof.promptTokens} tokens, ${prefillTimes.toFixed(1)}x the ridge (FLOPs and bytes calculated from config.json); the ${prefillRoof.count} GEMMs took ${prefillRoof.ms} ms (measured). Per prompt token, results.md: engine ${curve.engineShort} ms at ${curve.short} tokens and ${curve.engineLong} at ${curve.long} (${curve.perRowLong} with the per-row attention it replaced), llama.cpp ${curve.llamaLow} to ${curve.llamaHigh} (${curve.llamaTflops.toFixed(1)} TFLOP/s at ${curve.long}, calculated), decode ${(tpotGraphs / 1000).toFixed(2)} ms, ${Math.round(tpotGraphs / 1000 / curve.engineShort)}x the short-prompt cost`,
-  "results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU; the prefill point is the calculated and measured one from results/decode_step_b16.md",
+  `results/decode_step_b16.md: ${prefillRows} rows are ${prefillRoof.maxBatch} prompts of ${prefillRoof.promptTokens} tokens, ${prefillTimes.toFixed(1)}x the ridge (FLOPs and bytes calculated from config.json); the ${prefillRoof.count} GEMMs took ${prefillRoof.ms} ms (measured), ${prefillRoof.pct.toFixed(1)}% of the compute roof. Per prompt token, results.md: engine ${curve.engineShort} ms at ${curve.short} tokens and ${curve.engineLong} at ${curve.long} (${curve.perRowLong} with the per-row attention it replaced), llama.cpp ${curve.llamaLow} to ${curve.llamaHigh} (${curve.llamaTflops.toFixed(1)} TFLOP/s at ${curve.long}, calculated), decode ${(tpotGraphs / 1000).toFixed(2)} ms, ${Math.round(tpotGraphs / 1000 / curve.engineShort)}x the short-prompt cost`,
+  `results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU, ridge ${ridge.toFixed(1)} FLOP/byte; the prefill point is the calculated and measured one from results/decode_step_b16.md`,
+  `calculated, not measured: ${scaleSources.big}; bytes read at one row = (parameters − vocabulary × hidden) × 2 = ${fmt(bigSide.readBytes)}, against ${fmt(weightBytes)} for TinyLlama's five projections; ridge ${h100.bf16TFlops} TFLOP/s ÷ ${h100.bandwidthTBs} TB/s = ${bigSide.ridge.toFixed(1)} FLOP/byte, against ${peak.tflops} ÷ ${peak.gbs} = ${ridge.toFixed(1)} from this GPU's measured ceilings; M rows do 2·M FLOPs per 2-byte weight`,
   "a 3 × 4 W drawn; the engine's real call has out = 2,560 to 32,000 and in = 2,048 or 5,632",
 ];
 
@@ -344,6 +369,10 @@ export const gemmNumbers = {
 };
 export type GemmNumbers = typeof gemmNumbers;
 
+export function GemmScaleFigure() {
+  return <ScaleFigure title={`the ridge as rows on an ${bigSide.gpu}`} quantities={["ridge"]} marks={{ ridge: { value: batchRows, label: `${batchRows} rows` } }} />;
+}
+
 export function GemmStory() {
   return (
     <StickyStory
@@ -363,6 +392,8 @@ export function GemmStory() {
             return <RooflinePicker initial="prefill" />;
           case 5:
             return <RooflinePicker />;
+          case 6:
+            return <GemmScaleFigure />;
           default:
             return <TransposeFigure />;
         }

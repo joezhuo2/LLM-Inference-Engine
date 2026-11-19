@@ -8,7 +8,9 @@ import common as c
 
 
 def write_kv(k_cache, v_cache, qkv, slot_mapping):
-    raise NotImplementedError
+    raise NotImplementedError(
+        "Write write_kv with NumPy indexing that stores every token's key and value at once, with no Python loop over tokens or heads. reference() below is the slow version your result is checked against; the spec is on this exercise's card on the exercises page."
+    )
 
 
 def reference(k_cache, v_cache, qkv, slot_mapping):

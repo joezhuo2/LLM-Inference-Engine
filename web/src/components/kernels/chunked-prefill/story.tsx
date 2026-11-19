@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { chapterNumber } from "@/content/book-order";
 import { chunkBudget, chunked, chunkedSteps, fmt, largestGap, medianGap, peakGoodput, perRowPrefill, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
+import { about, msText } from "@/lib/round";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { AllPrefillFigure, BudgetBarFigure, PreemptFigure, SampledFigure, SpreadFigure } from "./figures";
@@ -47,15 +48,15 @@ const steps: StoryStep[] = [
         <p>
           The scheduler of chapter {chapterNumber("serving")} makes every step all prefill or all decode, and prefill goes first. A long prompt is one step, and
           every running sequence waits for it: alone, the long prompt takes{" "}
-          <span className="text-warn">{fmt(alone)} ms</span>.
+          <span className="text-warn">{msText(alone)}</span>.
         </p>
         <p>
           Measured under Poisson arrivals, the longest wait between two tokens of one request is{" "}
-          <span className="text-warn">{largestGap("engine + graphs", "4")} ms</span> with whole-prompt steps, many times the
+          <span className="text-warn">{msText(largestGap("engine + graphs", "4"))}</span> with whole-prompt steps, many times the
           median gap.
         </p>
         <p>
-          The FlashAttention prefill kernel of Part II already shortened that step: with per-row prefill attention the same prompt took {fmt(aloneBefore)} ms. Every load number in this chapter is measured with the new kernel.
+          The FlashAttention prefill kernel of Part II already shortened that step: with per-row prefill attention the same prompt took {msText(aloneBefore)}. Every load number in this chapter is measured with the new kernel.
         </p>
       </>
     ),
@@ -88,11 +89,11 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Measured with a long prompt arriving among decoding requests, a budget cuts the longest gap to{" "}
-          <span className="text-accent">{fmt(stallMs(chunkBudget, "largest gap ms"))} ms</span>, and the prompt&apos;s first
+          <span className="text-accent">{msText(stallMs(chunkBudget, "largest gap ms"))}</span>, and the prompt&apos;s first
           token comes later.
         </p>
         <p>
-          Under load the same budget raises peak goodput to <span className="text-accent">{peakGoodput(chunked).value.toFixed(2)}</span> requests
+          Under load the same budget raises peak goodput to <span className="text-accent">{about(peakGoodput(chunked).value)}</span> requests
           per second, still below vLLM, so the stalls were only part of the gap. Pick a budget on the right; the prompt and the
           decoders there are an example, not a benchmark.
         </p>
@@ -137,7 +138,7 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `TTFT of one ${aloneTokens}-token prompt alone and the largest gap in the QPS sweep at 4 requests per second, results.md, against a median gap of ${medianGap("engine + graphs", "4")} ms; with per-row prefill attention the same prompt alone took ${fmt(aloneBefore)} ms; step widths are drawn, not measured`,
+  `TTFT of one ${aloneTokens}-token prompt alone, ${fmt(alone)} ms, and the largest gap in the QPS sweep at 4 requests per second, ${largestGap("engine + graphs", "4")} ms, results.md, against a median gap of ${medianGap("engine + graphs", "4")} ms; with per-row prefill attention the same prompt alone took ${fmt(aloneBefore)} ms; step widths are drawn, not measured`,
   "an illustrative step of 16 token slots; the engine's budget is a parameter",
   `an example of ${decoders} decoders and a ${prompt}-token prompt, computed by the same rule as the scheduler; measured, results.md: a ${fmt(stallPrompt)}-token prompt arriving among ${stallDecoding} decoding requests has a longest gap of ${fmt(stallMs("none", "largest gap ms"))} ms and a first token after ${fmt(stallMs("none", "TTFT of the long prompt ms"))} ms with no budget, and ${fmt(stallMs(chunkBudget, "largest gap ms"))} ms and ${fmt(stallMs(chunkBudget, "TTFT of the long prompt ms"))} ms with a budget of ${chunkBudget}; peak goodput in requests per second is ${peakGoodput("engine + graphs").value.toFixed(2)} for the engine, ${peakGoodput(chunked).value.toFixed(2)} with that budget and ${peakGoodput("vLLM").value.toFixed(2)} for vLLM`,
   "the running list and waiting queue of Scheduler; the sizes are a sketch",

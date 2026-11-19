@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { samplingAbout, samplingAboutCaption } from "@/components/kernels/sampling/about";
 import { SamplingSandbox } from "@/components/kernels/sampling/sandbox";
 import { ModePicker, samplingCaptions, samplingNumbers, samplingSteps } from "@/components/kernels/sampling/story";
+import { samplingLogits } from "@/lib/data";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createSamplingAboutModel } from "./sampling-about-model";
@@ -64,6 +65,8 @@ const instructions = [
   "Switch between 1 and 16 rows: the bars barely move.",
 ];
 
+const logits = samplingLogits();
+
 const workbench: WorkbenchPage[] = [
   {
     title: "turn the knobs",
@@ -73,7 +76,7 @@ const workbench: WorkbenchPage[] = [
       "Pick a prompt and drag the knobs on the right. The bars are the next-token logits TinyLlama produced for real contexts: the twelve likeliest tokens and the rest grouped together.",
       "Switch the stage to watch the engine's steps in order: the raw logits, divide by the temperature, keep the top-k, then keep the smallest set of those whose probability reaches top-p. Grey bars are cut. The thin bar under each token is the running total of what top-k left, and the line across it is top-p.",
       "Drag T toward zero and the top bar takes nearly all the mass; drag it up and the odds flatten. At a T of zero the engine is greedy and ignores top-k and top-p, as the greedy kernel does.",
-      "The logits are the BF16 output of TinyLlama on the CPU, the largest ones kept and the rest in bins. The steps are the engine's sample kernel's, in the same order.",
+      `The logits are the BF16 output of TinyLlama on the CPU (${logits.commit}, ${logits.date.slice(0, 10)}), the ${logits.top} largest kept and the rest in bins of ${logits.bin}. The steps are the engine's sample kernel's, in the same order.`,
     ],
   },
   {
@@ -81,7 +84,7 @@ const workbench: WorkbenchPage[] = [
     overlay: "sandbox-two",
     caption: "Sample it yourself: draw and predict",
     paragraphs: [
-      "Press sample to draw one token with the engine's Gumbel-max rule, or sample 20 to draw a run of them. The draws run on a seed and a step, like the kernel's Philox noise, so a new seed gives a new sequence and the same seed repeats it.",
+      "The prompt and the three knobs of the previous page are mirrored at the top of the right page, so you can change them here. Press sample to draw one token with the engine's Gumbel-max rule, or sample 20 to draw a run of them. The draws run on a seed and a step, like the kernel's Philox noise, so a new seed gives a new sequence and the same seed repeats it.",
       "The table counts the candidates left after top-k and top-p, the entropy of what is left, the share of the likeliest token and how much mass the cuts removed.",
       "Predict first, in the box under the table: set the knobs it names, raise the temperature, and say whether the candidates left grow, shrink or stay the same. Answer, then set it and check.",
       "Flatter odds spread the mass over more tokens, so the top-p line sits further down the list. The answer under the buttons gives the counts for the prompt you picked.",

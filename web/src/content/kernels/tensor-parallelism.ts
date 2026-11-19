@@ -1,4 +1,5 @@
 import { cellNumber, modelShape, profilingTable } from "@/lib/data";
+import { msText } from "@/lib/round";
 import type { KernelStory } from "./types";
 
 const forwardRows = profilingTable("tensor-parallelism-a-forward-pass-on-the-shards", 0, "results");
@@ -30,8 +31,12 @@ export function shardedForwardSentences(): string[] {
   const run = shardedForward();
   return [
     `With one rank the logits are the whole model's bit for bit. With 2 and 4 ranks they came within ${run.maxLogitDiff} of them, and every greedy token was the same (measured).`,
-    `A token took ${run.ranks.map((n, i) => `${tpFmt(run.msPerToken[i], 2)} ms with ${n} ${n === 1 ? "rank" : "ranks"}`).join(", ")}, against ${tpFmt(run.wholeMsPerToken, 2)} ms for the whole model (measured). The ranks take turns on the one GPU, so more ranks is slower here.`,
+    `A token took ${msText(run.wholeMsPerToken)} with the whole model and ${msText(run.msPerToken[run.msPerToken.length - 1])} with ${run.ranks[run.ranks.length - 1]} ranks (measured). The ranks take turns on the one GPU, so more ranks is slower here.`,
   ];
+}
+export function shardedForwardCaption(): string {
+  const run = shardedForward();
+  return `measured, results.md: ms per decode step ${run.ranks.map((n, i) => `${tpFmt(run.msPerToken[i], 2)} with ${n} ${n === 1 ? "rank" : "ranks"}`).join(", ")}, ${tpFmt(run.wholeMsPerToken, 2)} for the whole model; largest logit difference ${run.maxLogitDiff}`;
 }
 
 export const tpFmt = (v: number, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });

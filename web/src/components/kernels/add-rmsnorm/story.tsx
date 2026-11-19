@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { chapterNumber } from "@/content/book-order";
 import { measured } from "@/content/kernels/types";
+import { published } from "@/content/published";
+import { bigSide, engineSide, scaleSources } from "@/content/scale";
+import { about, bytesText, num } from "@/lib/round";
 import { ceilings, cellNumber, decodeSteps, modelShape } from "@/lib/data";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { EasedBar } from "../eased-bar";
@@ -31,6 +34,9 @@ const kernelsNaive = stepKernels("naive kernels, eager");
 const kernelsFast = stepKernels("fast kernels, eager");
 const shape = modelShape();
 const peak = ceilings();
+const l3 = published.llama3;
+const bytesGrowth = (l3.layers * l3.hidden) / (shape.layers * shape.hidden);
+const readGrowth = bigSide.readBytes / engineSide.readBytes;
 const memoryUs = (measured(fused, at(String(fusionTokens)), "fast DRAM (KB)") * 1024 * 1e6) / (peak.gbs * 1e9);
 
 const stepOps = (() => {
@@ -149,7 +155,7 @@ const steps: StoryStep[] = [
           launch, not arithmetic.
         </p>
         <p>
-          Here the fused kernel moves <span className="text-accent">{kbPerToken(fusedKb64)} KB</span> per token where the pair moves
+          Here the fused kernel moves <span className="text-accent">{about(fusedKb64 / fusionTokens)} KB</span> per token where the pair moves
           more (calculated from the bytes per launch), and a decode step runs fewer kernels (measured). Fewer bytes still did not make
           the first fused kernel faster: at one token it took about the same time as the pair. The errata entry &quot;
           <Link href="/kernels/dead-ends" className="link-underline text-accent">
@@ -175,7 +181,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           A fused kernel reads x, the residual and the weight once, writes the sum and the norm once, and keeps the sum on
-          the chip in between. The DRAM traffic falls to <span className="text-accent">{fusedKb64} KB</span> per launch, and one launch replaces two.
+          the chip in between. The DRAM traffic falls to <span className="text-accent">{about(fusedKb64)} KB</span> per launch, and one launch replaces two.
         </p>
       </>
     ),
@@ -192,7 +198,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           It moves a third fewer bytes, but takes the same time as the pair:{" "}
-          <span className="text-accent">{first1.toFixed(1)} µs</span> for one token. The memory traffic is a small part of
+          <span className="text-accent">{about(first1)} µs</span> for one token. The memory traffic is a small part of
           that; the rest is waiting on dependent loads and barriers.
         </p>
         <p>
@@ -261,12 +267,15 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          The tuned kernel takes <span className="text-accent">{tuned1.toFixed(1)} µs</span> for one token, about a third of the pair&apos;s time, and stays near that up to the largest token count measured.
+          The tuned kernel takes <span className="text-accent">{about(tuned1)} µs</span> for one token, about a third of the pair&apos;s time, and stays near that up to the largest token count measured.
           Try the token counts on the right.
         </p>
         <p>
           In a decode step, the add + RMSNorm launches are now about 1% of the time. The gain only became real once the
           kernel was faster than the pair it replaced, not just one launch fewer.
+        </p>
+        <p>
+          On Llama 3 8B a row has {l3.hidden.toLocaleString("en-US")} values instead of {shape.hidden.toLocaleString("en-US")}, in {l3.layers} layers instead of {shape.layers}, so these launches move about {num(bytesGrowth)} times the bytes per token, while the weights a step reads grow about {num(readGrowth)} times, from {bytesText(engineSide.readBytes)} to {bytesText(bigSide.readBytes)}: their share of the bytes falls. Their time here is set more by waits than by bytes, and nothing was measured on an H100; the numbers are calculated from published specs.
         </p>
       </>
     ),
@@ -281,7 +290,7 @@ const captions = [
   "the order of operations required by the spec and checked by the tests",
   `a row of ${shape.hidden.toLocaleString("en-US")} BF16 values is ${(shape.hidden * 2) / 16} pieces of 16 bytes; 8 threads of 256 shown; one load = 8 values = 16 bytes, where 2-byte loads would take 8`,
   "8 lanes and 3 swaps shown; a warp has 32 lanes and does 5; a block of 256 threads is 8 warps",
-  `Nsight Compute, hidden 2048, RTX 5060 Laptop GPU; times and bytes from two separate runs; at one token the pair takes ${tunedPair1.toFixed(1)} µs, and the tuned kernel stays near ${tuned1.toFixed(1)} µs up to 64 rows`,
+  `Nsight Compute, hidden 2048, RTX 5060 Laptop GPU; times and bytes from two separate runs; at one token the pair takes ${tunedPair1.toFixed(1)} µs, and the tuned kernel stays near ${tuned1.toFixed(1)} µs up to 64 rows; Llama 3 8B, calculated: ${l3.layers} × ${l3.hidden} against ${shape.layers} × ${shape.hidden} values per token, ${bytesGrowth.toFixed(3)}x; weights read per step ${(bigSide.readBytes / 1e9).toFixed(2)} GB against ${(engineSide.readBytes / 1e9).toFixed(2)} GB, ${readGrowth.toFixed(3)}x; ${scaleSources.big}`,
 ];
 
 export const addRmsnormSteps = steps;

@@ -62,7 +62,8 @@ const workbench: WorkbenchPage[] = [
     caption: "Try it yourself: predict, then compare the two rules",
     paragraphs: [
       `Some sequences are already decoding. You drop a long prompt, and the engine runs schedule_chunked() with a budget of ${n.chunkBudget} tokens. Before you press run it, pick how many steps you think the prompt waits for its first token, and how many steps the decoders go without a row under schedule().`,
-      "The sandbox runs the same arrivals under both rules at once, with a TypeScript port of Scheduler::schedule() and Scheduler::schedule_chunked() from src/sched/scheduler.cpp. The table below the controls keeps one column per rule, so you can compare the first-token step, the longest decode stall and the biggest step side by side.",
+      "The sandbox runs the same arrivals under both rules at once, with a TypeScript port of Scheduler::schedule() and Scheduler::schedule_chunked() from src/sched/scheduler.cpp. The table keeps one column per rule, so you can compare the first-token step, the longest decode stall and the biggest step side by side.",
+      "The controls of the next page are mirrored at the top of this one: drop more prompts, or change the budget, the rule or the KV pool, and the table and the latest step follow on the same page.",
       `Look at the biggest step. schedule() gives the prompt its first token sooner, because the whole prompt runs in one step, but that one step is the size of the prompt, and every decoder waits for it. With the budget no step is larger than ${n.chunkBudget} tokens, so the decoders never lose their row.`,
       "The model counts steps and tokens; it does not time anything. The milliseconds at the bottom of the page are measured on the engine, results.md: a step's cost grows with its tokens, which is why one large step is the long wait the decoders feel.",
     ],
