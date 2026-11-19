@@ -12,7 +12,7 @@ import { createQuantModel, type QuantNumbers, setExhibit } from "./quantization-
 import { joinParts } from "./segments";
 
 const fmt = qFmt;
-const num = (v: number) => fmt(v, 3).replace(/0+$/, "").replace(/\.$/, "");
+const num = (v: number) => fmt(v, 4).replace(/0+$/, "").replace(/\.$/, "");
 const rowsText = (rows: number) => `${rows} ${rows === 1 ? "row" : "rows"}`;
 
 const setBeats = (what: string, side: string, rail: string): Beat[] => [
@@ -107,7 +107,7 @@ const numbers: QuantNumbers = {
   },
   pool: {
     title: "the same pool, two widths of cache",
-    sub: "to scale in tokens; the pool as the engine allocated it (measured), the FP8 count calculated",
+    sub: "to scale in tokens; the pool measured, the FP8 count calculated",
     refs: [{ label: "the pool, the same bytes either way", text: qGb(kvPool.bytes), value: kvPool.fp8, tone: "glass" }],
     row: { label: "the tokens it holds", text: `${fmt(kvPool.fp8)} in FP8` },
     segments: [
@@ -123,10 +123,10 @@ const numbers: QuantNumbers = {
     refs: [{ label: "stubs that throw, each with a spec and tests", text: "#126, #104", value: 3, tone: "blue", count: 3 }],
     row: { label: "the pieces of FP8 in the engine", text: "pick one" },
     segments: [
-      { label: "write_kv_fp8", value: 1, tone: "blue", headline: "write_kv_fp8: new keys and values in", lines: [`byte = e4m3(x ÷ scale), nearest, held at ±${e4m3.max}`, "one scale for all keys, one for all values"] },
-      { label: "paged_attention_decode_fp8", value: 1, tone: "blue", headline: "paged_attention_decode_fp8: read back", lines: ["value = byte × scale, exact in FP32", "then attention, to the paged kernels' tolerance"] },
-      { label: "gemm_fp8", value: 1, tone: "blue", headline: "gemm_fp8: BF16 activations, FP8 weights", lines: ["y = bf16(row_scale × Σ x · w), summed in FP32", "one scale per output row"] },
-      { label: "DType::F8E4M3", value: 1, tone: "ink", headline: "DType::F8E4M3: one byte per element", lines: ["named F8_E4M3, as safetensors spells it", "done and tested: the one piece that is"] },
+      { label: "the write", value: 1, tone: "blue", headline: "write_kv_fp8: new keys and values in", lines: [`byte = e4m3(x ÷ scale), nearest, held at ±${e4m3.max}`, "one scale for all keys, one for all values"] },
+      { label: "the read", value: 1, tone: "blue", headline: "paged_attention_decode_fp8: read back", lines: ["value = byte × scale, exact in FP32", "then attention, to the paged kernels' tolerance"] },
+      { label: "the product", value: 1, tone: "blue", headline: "gemm_fp8: BF16 activations, FP8 weights", lines: ["y = bf16(row_scale × Σ x · w), summed in FP32", "one scale per output row"] },
+      { label: "the dtype", value: 1, tone: "ink", headline: "DType::F8E4M3: one byte per element", lines: ["named F8_E4M3, as safetensors spells it", "done and tested: the one piece that is"] },
       { label: "the wiring", value: 1, tone: "glass", headline: "the wiring: not started", lines: ["scales written at load, a flag, the cache's dtype", "then measured: bytes, step time, logit error"] },
     ],
     rail: "which piece",

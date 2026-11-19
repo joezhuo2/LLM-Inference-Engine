@@ -2449,3 +2449,4 @@
 - **client-side navigation** => 
 - **progressive enhancement** => 
 - **an entry point** => 
+- **display rounding** => 

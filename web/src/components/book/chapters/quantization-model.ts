@@ -81,7 +81,7 @@ function ridgeExhibit(kit: Kit, fonts: Fonts, n: QuantNumbers["ridge"]): Part {
   const wash = washPlane(kit.palette.blue, 0.9, 0.4, 0.1);
   wash.position.set(0.5, 0.002, -0.22);
   root.add(wash);
-  titleCard(kit, fonts, root, "FLOP per byte of weights, against the ridge", "the bar is the work each byte of weights does; past the ridge the math would set the time (calculated)");
+  titleCard(kit, fonts, root, "FLOP per byte of weights, against the ridge", "the bar is the work per byte of weights; past the ridge, math sets the time (calculated)");
   tagCard(kit, fonts, root, Z1, "the ridge: measured peak ÷ measured bandwidth", n.text, kit.palette.ink);
   const ridge = block(kit, "glass");
   lay(ridge, X0, W, H, Z1, D);
