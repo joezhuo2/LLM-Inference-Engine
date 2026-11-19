@@ -2472,3 +2472,5 @@
 - **4-bit weights** => 
 - **a token budget** => 
 - **a span** => 
+- **the H100 SXM** => 
+- **Llama 3 8B** => 

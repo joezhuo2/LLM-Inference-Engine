@@ -1,10 +1,14 @@
 import { eagerStage, firstStage, load, loadVerdict, next, nowStage, prefill, stageById, timeFmt, token } from "@/content/kernels/where-the-time-went";
 import { about } from "@/lib/round";
+import { published } from "../published";
+import { bigSide } from "../scale";
 import type { ChapterReview } from "./types";
 
 const fmt = timeFmt;
 const before = stageById("fast");
 const after = stageById("v2");
+const above = token.ms - token.floorMs;
+const bigShare = (100 * bigSide.readFloorMs) / (bigSide.readFloorMs + above);
 
 export const review: ChapterReview = {
   lesson: "Measure where the time is before choosing what to change: most of a token was never in the kernels this book rewrote.",
@@ -30,6 +34,11 @@ export const review: ChapterReview = {
       question: `Which of the three next steps could change a batch-1 token, and by how much at most?`,
       answer: `Preparing the next step while this one runs: ${fmt(next.hostMs, 2)} ms, ${fmt(next.hostPct)}% of the token (calculated).`,
       why: `The other two act on steps with many rows or on prompts. At batch 1 attention is a few percent of the step and the load limit does not apply, so what is left above the floor is mostly the time between steps.`,
+    },
+    {
+      question: `${bigSide.model} reads ${fmt(bigSide.readBytes)} bytes per decode step and an ${bigSide.gpu} delivers ${published.h100.bandwidthTBs} TB/s. What is the floor per token, and what share of a token would it be if the ${fmt(above, 2)} ms above the floor measured here stayed the same?`,
+      answer: `${fmt(bigSide.readFloorMs, 2)} ms, and about ${fmt(bigShare)}% of a token.`,
+      why: `${fmt(bigSide.readBytes)} bytes ÷ ${published.h100.bandwidthTBs} TB/s = ${fmt(bigSide.readFloorMs, 2)} ms; ${fmt(bigSide.readFloorMs, 2)} ÷ (${fmt(bigSide.readFloorMs, 2)} + ${fmt(above, 2)}) = ${fmt(bigShare)}%. Calculated from published specs: nothing was measured on an ${bigSide.gpu}, and the part above the floor there is an assumption.`,
     },
   ],
 };
