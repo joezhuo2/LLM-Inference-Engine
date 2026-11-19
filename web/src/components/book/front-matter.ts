@@ -2,6 +2,7 @@ import { bookOrder, bookParts, chapterNumber } from "@/content/book-order";
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, openTag, runsLabel } from "@/content/exercises";
 import { type BeyondTopic, beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
+import { engineHref, engineKeys, engineRows, engines, enginesChecked, enginesIntro, enginesTitle } from "@/content/engines-map";
 import { type Estimate, estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { kernelStory, layerOps } from "@/content/kernels";
 import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
@@ -25,14 +26,14 @@ const firstPage: Record<string, number> = {};
 export const chapterPage = (key: string): number | undefined => firstPage[key];
 export const leftPage = (spread: number | undefined) => (spread === undefined ? undefined : 2 * spread - 2);
 
-const sections = ["start", "contents", ...bookOrder, "beyond", "estimates", "errata", "glossary"];
+const sections = ["start", "contents", ...bookOrder, "beyond", "engines", "estimates", "errata", "glossary"];
 let endPage = 0;
 
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
   for (const key of sections.filter((k) => !bookOrder.includes(k) || spreads[k] !== undefined)) {
     firstPage[key] = page;
-    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : key === "glossary" ? glossarySpreads.length : spreads[key];
+    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "engines" ? 2 : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : key === "glossary" ? glossarySpreads.length : spreads[key];
   }
   endPage = page;
   return page - 1;
@@ -144,9 +145,10 @@ function contentsRows(parts: typeof bookParts, withErrata: boolean, scale = 1) {
   }
   if (withErrata) {
     rows.push({ kind: "entry", y: y + 20 * scale, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
-    rows.push({ kind: "entry", y: y + 20 * scale + pitch, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
-    rows.push({ kind: "entry", y: y + 20 * scale + 2 * pitch, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
-    rows.push({ kind: "entry", y: y + 20 * scale + 3 * pitch, text: glossaryTitle, page: chapterPage("glossary"), href: "#glossary" });
+    rows.push({ kind: "entry", y: y + 20 * scale + pitch, text: "Where this lives in other engines", page: chapterPage("engines"), href: "#engines" });
+    rows.push({ kind: "entry", y: y + 20 * scale + 2 * pitch, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
+    rows.push({ kind: "entry", y: y + 20 * scale + 3 * pitch, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+    rows.push({ kind: "entry", y: y + 20 * scale + 4 * pitch, text: glossaryTitle, page: chapterPage("glossary"), href: "#glossary" });
   }
   return rows;
 }
@@ -1196,6 +1198,92 @@ export function beyondStops(firstSpread: number): Stop[] {
       ...flatStop(firstSpread + k, `Beyond this engine: ${topics.map((t) => t.title).join(" and ")}`, title, topics.flatMap((t) => t.paragraphs)),
       paint: { left: sides[0].paint, right: sides[1].paint },
       links: [...sides[0].links, ...sides[1].links],
+    };
+  });
+}
+
+export function engineStops(firstSpread: number): Stop[] {
+  const perPage = [4, 5, 5, 5];
+  const tags = `${engineKeys.map((k) => `${engines[k].name} ${engines[k].tag}`).join(" · ")} · checked ${enginesChecked}`;
+  const page = (p: number) => {
+    const side: Side = p % 2 === 0 ? "left" : "right";
+    const x0 = side === "left" ? 130 : 170;
+    const x1 = side === "left" ? W - 170 : W - 130;
+    const start = perPage.slice(0, p).reduce((a, b) => a + b, 0);
+    const rows = engineRows.slice(start, start + perPage[p]);
+    const top = p === 0 ? 560 : 300;
+    const pitch = Math.min(236, (H - 170 - 176 - top) / (rows.length - 1));
+    const tx = x0 + 60;
+    const sx = x0 + 200;
+    const links: PageLink[] = rows.flatMap((r, i) => {
+      const y = top + i * pitch;
+      const chapter: PageLink = { side, box: toBox(tx - 60, x1, y, 60), href: bookHref(r.slug), label: `chapter ${chapterNumber(r.slug)}, ${chapterTitle(r.slug)}` };
+      const cells = engineKeys.flatMap((k, j): PageLink[] => {
+        const href = engineHref(k, r[k]);
+        const sy = y + 80 + j * 68;
+        return href ? [{ side, box: [sx / W, (sy - 32) / H, x1 / W, (sy + 36) / H], href, label: `${engines[k].name}: ${"none" in r[k] ? "" : r[k].symbol}` }] : [];
+      });
+      return [chapter, ...cells];
+    });
+    const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+      const { ctx } = begin(canvas, side);
+      ctx.fillStyle = palette.faint;
+      ctx.font = `26px ${fonts.sans}`;
+      ctx.fillText(p === 0 ? `Every Byte · ${beyondTitle}` : enginesTitle, x0, 150);
+      if (p === 0) {
+        ctx.fillStyle = palette.ink;
+        fitFont(ctx, enginesTitle, 92, x1 - x0, fonts.serif);
+        ctx.fillText(enginesTitle, x0, 260);
+        ctx.font = `30px ${fonts.sans}`;
+        const y = paragraph(ctx, "For each chapter, the file and the function to open next in vLLM and llama.cpp. The links open the code at the version named here.", x0, 350, x1 - x0, 44);
+        ctx.fillStyle = palette.faint;
+        fitFont(ctx, tags, 24, x1 - x0, fonts.sans);
+        ctx.fillText(tags, x0, y + 20);
+      }
+      let linkAt = 0;
+      rows.forEach((r, i) => {
+        const y = top + i * pitch;
+        ctx.fillStyle = palette.faint;
+        ctx.font = `34px ${fonts.serif}`;
+        ctx.fillText(String(chapterNumber(r.slug)), x0, y);
+        ctx.fillStyle = palette.ink;
+        fitFont(ctx, chapterTitle(r.slug), 40, x1 - tx, fonts.serif);
+        ctx.fillText(chapterTitle(r.slug), tx, y);
+        links[linkAt++].lines = [under(ctx, chapterTitle(r.slug), tx, y, 40)];
+        ctx.fillStyle = palette.faint;
+        fitFont(ctx, r.idea, 25, x1 - tx, fonts.sans);
+        ctx.fillText(r.idea, tx, y + 36);
+        engineKeys.forEach((k, j) => {
+          const cell = r[k];
+          const sy = y + 80 + j * 68;
+          ctx.fillStyle = palette.faint;
+          ctx.font = `23px ${fonts.sans}`;
+          ctx.fillText(engines[k].name, tx, sy);
+          if ("none" in cell) {
+            fitFont(ctx, cell.none, 24, x1 - sx, fonts.sans);
+            ctx.fillText(cell.none, sx, sy);
+            return;
+          }
+          ctx.fillStyle = palette.blue;
+          fitFont(ctx, cell.symbol, 27, x1 - sx, fonts.mono);
+          ctx.fillText(cell.symbol, sx, sy);
+          links[linkAt++].lines = [under(ctx, cell.symbol, sx, sy, 27)];
+          ctx.fillStyle = palette.faint;
+          const path = `${cell.path}:${cell.line}`;
+          fitFont(ctx, path, 20, x1 - sx, fonts.mono);
+          ctx.fillText(path, sx, sy + 28);
+        });
+      });
+    };
+    return { paint, links, rows };
+  };
+  return [0, 1].map((k) => {
+    const [left, right] = [page(2 * k), page(2 * k + 1)];
+    const shown = [...left.rows, ...right.rows];
+    return {
+      ...flatStop(firstSpread + k, `${enginesTitle}: chapters ${chapterNumber(shown[0].slug)} to ${chapterNumber(shown.at(-1)!.slug)}`, enginesTitle, k === 0 ? enginesIntro : shown.map((r) => `${chapterTitle(r.slug)}: ${r.idea}`)),
+      paint: { left: left.paint, right: right.paint },
+      links: [...left.links, ...right.links],
     };
   });
 }

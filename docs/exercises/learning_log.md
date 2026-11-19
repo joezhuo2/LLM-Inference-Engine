@@ -2418,3 +2418,5 @@
 - **text pagination** => 
 - **canvas measureText** => 
 - **a running head** => 
+- **back matter** => 
+- **canvas text fitting** => 

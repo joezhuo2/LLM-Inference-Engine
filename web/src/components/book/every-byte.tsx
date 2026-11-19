@@ -10,6 +10,7 @@ import type { Group, Object3D } from "three";
 import { GlossProvider, type PointTerm, PointGloss } from "@/components/gloss";
 import { gloss } from "@/components/glossed";
 import { BookText } from "@/components/kernels/authorship";
+import { EnginesList } from "@/components/kernels/engines-map";
 import { Scramble } from "@/components/scramble";
 import { beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
 import { kindLabel } from "@/content/dead-ends";
@@ -24,13 +25,13 @@ import { GlossaryArticle } from "./glossary-article";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, ideasRoute, isDeep, setIdeasView, deepGroup, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText, glossarySpreads, glossaryStops, glossaryTitle } from "./front-matter";
+import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, ideasRoute, isDeep, setIdeasView, deepGroup, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText, glossarySpreads, glossaryStops, glossaryTitle, engineStops } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
 
 const chapterSlugs = bookOrder.filter((slug) => slug in bookChapters);
-const backKeys = ["beyond", "estimates", "errata", "glossary"];
+const backKeys = ["beyond", "engines", "estimates", "errata", "glossary"];
 const sectionKeys = ["start", "contents", ...chapterSlugs, ...backKeys];
 const beatMs = 6500;
 let numbered: Promise<number> | undefined;
@@ -133,7 +134,7 @@ function compose(raw: Record<string, Stop[]>) {
   return { stops, meta };
 }
 
-const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], beyond: beyondStops(0), estimates: estimateStops(0), errata: errataStops(0), glossary: glossaryStops(0) };
+const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], beyond: beyondStops(0), engines: engineStops(0), estimates: estimateStops(0), errata: errataStops(0), glossary: glossaryStops(0) };
 const initial = compose(base);
 
 export function EveryByte() {
@@ -1067,6 +1068,8 @@ export function EveryByte() {
             </>
           ) : segment === "glossary" && meta ? (
             <GlossaryArticle spread={glossarySpreads[meta.local]} />
+          ) : segment === "engines" ? (
+            <EnginesList />
           ) : spread ? (
             <>
               {!spread.left && (
@@ -1117,6 +1120,10 @@ export function EveryByte() {
               <button type="button" data-book-link="#beyond" onClick={() => void goKey("beyond", true)} className="link-underline mt-2 flex w-full text-text">
                 Beyond this engine
                 <span className="ml-auto tabular-nums text-muted">{leftPage(chapterPage("beyond"))}</span>
+              </button>
+              <button type="button" data-book-link="#engines" onClick={() => void goKey("engines", true)} className="link-underline mt-2 flex w-full text-text">
+                Where this lives in other engines
+                <span className="ml-auto tabular-nums text-muted">{leftPage(chapterPage("engines"))}</span>
               </button>
               <button type="button" data-book-link="#estimates" onClick={() => void goKey("estimates", true)} className="link-underline mt-2 flex w-full text-text">
                 Estimate it yourself
