@@ -218,6 +218,9 @@ const steps: StoryStep[] = [
           of the ridge an operation is memory bound, right of it compute bound.
         </p>
         <p>
+          The bandwidth roof is not a law of physics. It is the {peak.gbs} GB/s that a plain kernel adding two large arrays into a third reached in a bandwidth test on this GPU, some way below the memory&apos;s rated speed, so a kernel that streams its bytes a little better can read above 100% of it.
+        </p>
+        <p>
           Rows that share one read of the weights set the position: FLOP/byte is about the number of rows. The ring climbs the
           slope as the batch grows and flattens at the ridge. The dots are measured: gate/up at the two smallest row counts, on the slope.
         </p>

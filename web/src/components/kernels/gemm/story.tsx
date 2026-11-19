@@ -223,7 +223,7 @@ const steps: StoryStep[] = [
         <p>
           Dividing the bytes each projection reads by its time in the profile gives its bandwidth. All five reach{" "}
           <span className="text-accent">{`${Math.min(...roofRows.slice(0, 5).map((r) => r.pct))} to ${Math.max(...roofRows.slice(0, 5).map((r) => r.pct))}%`}</span>{" "}
-          of the bandwidth a plain copy kernel measures on this GPU. A hand-written GEMV could not do better: it has to
+          of the bandwidth a plain copy kernel measures on this GPU. That test is a measurement, not a physical limit, so a kernel that streams its bytes a little better can pass 100%. A hand-written GEMV could not do better: it has to
           read the same bytes through the same memory.
         </p>
         <p>

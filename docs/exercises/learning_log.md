@@ -2386,3 +2386,5 @@
 - **host overhead** => 
 - **a scheduler** => 
 - **continuous batching** => 
+- **the bandwidth roof** => 
+- **theoretical and effective bandwidth** => 
