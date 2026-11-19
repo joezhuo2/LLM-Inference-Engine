@@ -1213,6 +1213,7 @@ export function engineStops(firstSpread: number): Stop[] {
     const rows = engineRows.slice(start, start + perPage[p]);
     const top = p === 0 ? 560 : 300;
     const pitch = Math.min(236, (H - 170 - 176 - top) / (rows.length - 1));
+    const fit = pitch / 236;
     const tx = x0 + 60;
     const sx = x0 + 200;
     const links: PageLink[] = rows.flatMap((r, i) => {
@@ -1220,7 +1221,7 @@ export function engineStops(firstSpread: number): Stop[] {
       const chapter: PageLink = { side, box: toBox(tx - 60, x1, y, 60), href: bookHref(r.slug), label: `chapter ${chapterNumber(r.slug)}, ${chapterTitle(r.slug)}` };
       const cells = engineKeys.flatMap((k, j): PageLink[] => {
         const href = engineHref(k, r[k]);
-        const sy = y + 80 + j * 68;
+        const sy = y + (80 + j * 68) * fit;
         return href ? [{ side, box: [sx / W, (sy - 32) / H, x1 / W, (sy + 36) / H], href, label: `${engines[k].name}: ${"none" in r[k] ? "" : r[k].symbol}` }] : [];
       });
       return [chapter, ...cells];
@@ -1252,10 +1253,10 @@ export function engineStops(firstSpread: number): Stop[] {
         links[linkAt++].lines = [under(ctx, chapterTitle(r.slug), tx, y, 40)];
         ctx.fillStyle = palette.faint;
         fitFont(ctx, r.idea, 25, x1 - tx, fonts.sans);
-        ctx.fillText(r.idea, tx, y + 36);
+        ctx.fillText(r.idea, tx, y + 36 * fit);
         engineKeys.forEach((k, j) => {
           const cell = r[k];
-          const sy = y + 80 + j * 68;
+          const sy = y + (80 + j * 68) * fit;
           ctx.fillStyle = palette.faint;
           ctx.font = `23px ${fonts.sans}`;
           ctx.fillText(engines[k].name, tx, sy);
@@ -1271,7 +1272,7 @@ export function engineStops(firstSpread: number): Stop[] {
           ctx.fillStyle = palette.faint;
           const path = `${cell.path}:${cell.line}`;
           fitFont(ctx, path, 20, x1 - sx, fonts.mono);
-          ctx.fillText(path, sx, sy + 28);
+          ctx.fillText(path, sx, sy + 28 * fit);
         });
       });
     };
