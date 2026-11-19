@@ -66,7 +66,7 @@ const steps: StoryStep[] = [
           Store each weight in 4 bits and they take {gb(low.weights, 1)}. Now there is a pool, but a smaller one, {gb(low.pool, 1)}, and each token costs more, {fmt(low.perToken)} bytes, because the model has more layers, more KV heads and wider heads. The pool holds {fmt(low.tokens)} tokens: {fmt(low.contexts)} contexts of {fmt(budget.fullContext)} tokens where TinyLlama had {budget.reservedFit}. Both sides of the budget moved against the batch.
         </p>
         <p>
-          {l2.model} shows what the head count is worth. Its weights are a little smaller, but every query head has its own key and value, so a token costs {fmt(wide.perToken)} bytes, {fmt(wide.perToken / low.perToken)} times as much, and {fmt(wide.contexts)} contexts fit. That is one reason later models share KV heads. {chapter("beyond", "Beyond this engine")} comes back to storing weights in fewer bits.
+          {l2.model} shows what the head count is worth. Its weights are a little smaller, but every query head has its own key and value, so a token costs {fmt(wide.perToken)} bytes, {fmt(wide.perToken / low.perToken)} times as much, and {fmt(wide.contexts)} contexts fit. That is one reason later models share KV heads. {chapter("quantization", "Quantization")} comes back to storing weights in fewer bits.
         </p>
       </>
     ),
