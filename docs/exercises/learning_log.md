@@ -2391,3 +2391,5 @@
 - **the null block** => 
 - **a block pool** => 
 - **token slots** => 
+- **prefill** => 
+- **decode** => 
