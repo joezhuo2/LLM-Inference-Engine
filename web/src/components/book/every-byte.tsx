@@ -23,7 +23,7 @@ import { ReviewPage } from "./review-page";
 import { FitPage, type Lens, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
+import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, ideasRoute, isDeep, setIdeasView, deepGroup, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
@@ -42,12 +42,23 @@ const numberBook = () =>
 type Meta = { key: string; local: number; slug?: string; exhibit: number | null };
 type Place = { closed: true } | { closed: false; key: string; local: number };
 
-const urlOf = (key: string, short: boolean) => {
+const ideasQuery = "view=ideas";
+const ideasKey = "every-byte:view";
+const ideasName = "ideas only";
+const urlOf = (key: string, short: boolean, ideas: boolean) => {
   const [path, hash] = bookHref(key).split("#");
-  return `${path}${short ? `?${shortPathQuery}` : ""}${hash ? `#${hash}` : ""}`;
+  const query = short ? shortPathQuery : ideas ? ideasQuery : "";
+  return `${path}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
 };
 const sectionName = (key: string) => (key === "start" ? "start here" : chapterSlugs.includes(key) ? chapterTitle(key) : key === "beyond" ? beyondTitle : key === "estimates" ? estimatesTitle : key === "errata" ? errataTitle : "contents");
-const shortInUrl = () => window.location.search.slice(1).split("&").includes(shortPathQuery);
+const inUrl = (query: string) => window.location.search.slice(1).split("&").includes(query);
+const ideasSaved = () => {
+  try {
+    return localStorage.getItem(ideasKey) === "ideas";
+  } catch {
+    return false;
+  }
+};
 
 function parsePlace(): Place {
   const path = window.location.pathname.replace(/\/$/, "");
@@ -128,6 +139,8 @@ export function EveryByte() {
   const [short, setShort] = useState(false);
   const [lensOn, setLensOn] = useState(true);
   const shortRef = useRef(false);
+  const [ideas, setIdeas] = useState(false);
+  const ideasRef = useRef(false);
 
   useEffect(() => void numberBook().then(setTotal), []);
 
@@ -149,12 +162,22 @@ export function EveryByte() {
     setShort(on);
   }, []);
 
+  const setIdeasMode = useCallback((on: boolean) => {
+    ideasRef.current = on;
+    setIdeas(on);
+    setIdeasView(on);
+    scene.current?.repaint();
+  }, []);
+
   useEffect(() => {
-    const sync = () => setMode(shortInUrl());
+    const sync = () => {
+      setMode(inUrl(shortPathQuery));
+      setIdeasMode(inUrl(ideasQuery) || ideasSaved());
+    };
     sync();
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
-  }, [setMode]);
+  }, [setMode, setIdeasMode]);
 
   const attach = useCallback((slug: string) => {
     const c = defsRef.current[slug];
@@ -218,7 +241,7 @@ export function EveryByte() {
   const setUrl = useCallback((index: number, push: boolean) => {
     const key = book.current.meta[index]?.key;
     if (!key || !push) return;
-    const url = urlOf(key, shortRef.current);
+    const url = urlOf(key, shortRef.current, ideasRef.current);
     if (window.location.pathname + window.location.search + window.location.hash !== url) window.history.pushState(null, "", url);
   }, []);
 
@@ -298,15 +321,32 @@ export function EveryByte() {
 
   const leaveShort = useCallback(() => {
     setMode(false);
-    window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+    window.history.replaceState(null, "", urlOf(book.current.meta[stopRef.current]?.key ?? "contents", false, ideasRef.current));
   }, [setMode]);
+
+  const toggleIdeas = useCallback(
+    (on: boolean) => {
+      setIdeasMode(on);
+      try {
+        localStorage.setItem(ideasKey, on ? "ideas" : "all");
+      } catch {}
+      const m = book.current.meta[stopRef.current];
+      if (scene.current?.isOpen && m) window.history.replaceState(null, "", urlOf(m.key, shortRef.current, on));
+      if (!on || shortRef.current || !m || !isDeep(m.key, m.local)) return;
+      const to = routeStep(m.key, m.local, 1, ideasRoute());
+      const index = to ? book.current.meta.findIndex((x) => x.key === to.key && x.local === to.local) : -1;
+      if (index >= 0) go(index);
+    },
+    [setIdeasMode, go],
+  );
 
   const step = useCallback(
     (delta: 1 | -1) => {
       const i = stopRef.current;
       const m = book.current.meta[i];
-      if (shortRef.current && bookRoute().order.length) {
-        const to = routeStep(m.key, m.local, delta);
+      const order = shortRef.current ? bookRoute().order : ideasRef.current ? ideasRoute() : [];
+      if (order.length) {
+        const to = routeStep(m.key, m.local, delta, order);
         if (to) void goStop(to.key, to.local);
         else if (i === 0 && delta < 0) closeBook();
         return;
@@ -355,7 +395,14 @@ export function EveryByte() {
     return () => observer.disconnect();
   }, []);
 
-  const turnTo = useCallback((slug: string, k: number) => go(firstOf(slug) + 1 + k, k > 0), [go]);
+  const turnTo = useCallback(
+    (slug: string, k: number) => {
+      const to = ideasRef.current && !shortRef.current && isDeep(slug, k) ? routeStep(slug, k, 1, ideasRoute()) : undefined;
+      if (to) void goStop(to.key, to.local);
+      else go(firstOf(slug) + 1 + k, k > 0);
+    },
+    [go, goStop],
+  );
 
   const focusLink = useCallback((target: Element) => {
     const el = target.closest<HTMLElement>("[data-book-link]");
@@ -557,9 +604,12 @@ export function EveryByte() {
   const exerciseNumpy = exercise ? numpyOf(exercise) : undefined;
   const otherHref = def ? `/kernels/${def.slug}` : "/kernels";
   const route = bookRoute();
-  const routeAt = meta ? routeIndex(meta.key, meta.local) : -1;
   const shortOn = short && open && total > 0 && route.order.length > 0;
-  const lastPage = shortOn && meta ? !routeStep(meta.key, meta.local, 1) : stop === stops.length - 1;
+  const ideasOn = ideas && !short && open && total > 0;
+  const order = shortOn ? route.order : ideasOn ? ideasRoute() : [];
+  const routeAt = meta ? routeIndex(meta.key, meta.local, order) : -1;
+  const lastPage = order.length && meta ? !routeStep(meta.key, meta.local, 1, order) : stop === stops.length - 1;
+  const ideasTip = short ? `the ${shortPathName} is on: leave it to read ${ideasName}` : ideas ? "show every page" : `${ideasName}: skip ${deepGroup}`;
   const hourButton = (
     <button type="button" data-book-link="#path" onClick={enterShort} className="link-underline mt-2 block text-left text-text">
       {`If you have an hour: read the ${shortPathName} →`}
@@ -646,6 +696,24 @@ export function EveryByte() {
               <button type="button" aria-label="magnifier" {...tipProps("magnifier")} aria-pressed={lensOn} onClick={() => setLensOn((on) => !on)} className={clsx("pressable rounded-full p-1.5 hover:text-text", lensOn && "text-accent")}>
                 <Icon d="M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 1 0 0-9zM10.3 10.3 14 14" />
               </button>
+              <button
+                type="button"
+                aria-label={ideasName}
+                aria-pressed={ideas && !short}
+                aria-disabled={short || undefined}
+                {...tipProps(ideasTip)}
+                onClick={(e) => {
+                  if (short) return;
+                  toggleIdeas(!ideas);
+                  if (e.currentTarget.matches(":hover, :focus-visible")) setTip((t) => t && { ...t, label: ideas ? `${ideasName}: skip ${deepGroup}` : "show every page" });
+                }}
+                className={clsx("pressable rounded-full p-1.5 transition-[color,opacity] duration-500 ease-in-out motion-reduce:transition-none", short ? "cursor-default opacity-30" : "hover:text-text", ideas && !short && "text-accent")}
+              >
+                <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-none stroke-current" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6.5 14h3M6 12h4M8 3.5a3.5 3.5 0 0 0-2 6.4V12h4V9.9a3.5 3.5 0 0 0-2-6.4z" />
+                  <path data-rays d="M8 .8v.9M3 5.8h.9M12.1 5.8h.9M4.3 2.3l.6.6M11.7 2.3l-.6.6" className={clsx("origin-center transition-[opacity,scale] duration-500 ease-in-out motion-reduce:transition-none", ideas && !short ? "scale-100 opacity-100" : "scale-50 opacity-0")} />
+                </svg>
+              </button>
               <Link href={otherHref} aria-label={def ? "reading view" : "list view"} {...tipProps(def ? "reading view" : "list view")} className="pressable rounded-full p-1.5 hover:text-text max-sm:hidden">
                 <Icon d={def ? "M4 2.5h8v11H4zM6 5.5h4M6 8h4M6 10.5h2.5" : "M6 4h8M6 8h8M6 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"} />
               </Link>
@@ -660,26 +728,28 @@ export function EveryByte() {
           {tip?.label}
         </span>
         <AnimatePresence>
-          {shortOn && (
+          {(shortOn || ideasOn) && (
             <motion.div
-              data-short-path
-              aria-label={shortPathName}
+              key={shortOn ? "short" : "ideas"}
+              data-short-path={shortOn || undefined}
+              data-ideas-only={ideasOn || undefined}
+              aria-label={shortOn ? shortPathName : ideasName}
               initial={{ opacity: 0, y: reduced ? 0 : -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: reduced ? 0 : -10 }}
               transition={{ duration: reduced ? 0 : 0.7, ease: "easeInOut" }}
               className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--pill-edge)] bg-surface/55 py-1 pl-4 pr-1.5 tabular-nums text-xs text-muted shadow-lg shadow-[color:var(--pill-shadow)] backdrop-blur-xl backdrop-saturate-150"
             >
-              <span className="text-text">{shortPathName}</span>
-              <span>{routeAt >= 0 ? `${routeAt + 1} of ${route.order.length}` : "off the path, turn the page to rejoin"}</span>
-              <button type="button" onClick={leaveShort} className="pressable rounded-full border-l border-border px-2.5 py-0.5 hover:text-text">
-                leave
+              <span className="text-text">{shortOn ? shortPathName : ideasName}</span>
+              <span>{routeAt >= 0 ? `${routeAt + 1} of ${order.length}` : shortOn ? "off the path, turn the page to rejoin" : "a deep dive, turn the page to skip it"}</span>
+              <button type="button" onClick={shortOn ? leaveShort : () => toggleIdeas(false)} className="pressable rounded-full border-l border-border px-2.5 py-0.5 hover:text-text">
+                {shortOn ? "leave" : "show every page"}
               </button>
             </motion.div>
           )}
         </AnimatePresence>
         {overlay && narrow && (
-          <div data-theme="light" className={clsx("book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]", shortOn && "pt-14")}>
+          <div data-theme="light" className={clsx("book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]", (shortOn || ideasOn) && "pt-14")}>
             <div ref={setPageEl} />
           </div>
         )}

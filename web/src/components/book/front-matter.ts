@@ -25,6 +25,7 @@ export const chapterPage = (key: string): number | undefined => firstPage[key];
 export const leftPage = (spread: number | undefined) => (spread === undefined ? undefined : 2 * spread - 2);
 
 const sections = ["start", "contents", ...bookOrder, "beyond", "estimates", "errata"];
+let endPage = 0;
 
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
@@ -32,6 +33,7 @@ export function numberPages(spreads: Record<string, number>): number {
     firstPage[key] = page;
     page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
   }
+  endPage = page;
   return page - 1;
 }
 
@@ -90,12 +92,12 @@ export const startRouteLink = `The ${shortPathName} →`;
 export const bookRoute = () => route;
 export const routeLine = () => `${route.chapters.length} chapters, ${route.order.length} spreads, about ${roundMinutes(route.minutes)} minutes`;
 const rank = (key: string, local: number) => sections.indexOf(key) * 1000 + local + 1;
-export const routeIndex = (key: string, local: number) => route.order.findIndex((o) => o.key === key && o.local === local);
+export const routeIndex = (key: string, local: number, order = route.order) => order.findIndex((o) => o.key === key && o.local === local);
 export const routePage = (key: string, local: number) => (chapterPage(key) ?? 0) + local + (bookOrder.includes(key) ? 1 : 0);
 
-export function routeStep(key: string, local: number, delta: 1 | -1): RouteStop | undefined {
+export function routeStep(key: string, local: number, delta: 1 | -1, order = route.order): RouteStop | undefined {
   const here = rank(key, local);
-  const side = route.order.filter((o) => (delta > 0 ? rank(o.key, o.local) > here : rank(o.key, o.local) < here));
+  const side = order.filter((o) => (delta > 0 ? rank(o.key, o.local) > here : rank(o.key, o.local) < here));
   return delta > 0 ? side[0] : side[side.length - 1];
 }
 
@@ -103,6 +105,17 @@ export function routeSection(key: string, delta: 1 | -1, short: boolean): string
   const here = sections.indexOf(key);
   const side = sections.filter((k) => (delta > 0 ? sections.indexOf(k) > here : sections.indexOf(k) < here) && (bookOrder.includes(k) ? chapterPage(k) !== undefined : true) && (!short || k === "start" || route.chapters.includes(k)));
   return delta > 0 ? side[0] : side[side.length - 1];
+}
+
+export const deepGroup = "how it got built";
+const deepNote = "deep dive, skip on a first read";
+let deep = new Set<string>();
+let ideasView = false;
+export const setIdeasView = (on: boolean) => void (ideasView = on);
+export const isDeep = (key: string, local: number) => deep.has(`${key}:${local}`);
+export function ideasRoute(): RouteStop[] {
+  const keys = sections.filter((k) => firstPage[k] !== undefined);
+  return keys.flatMap((key, i) => Array.from({ length: (firstPage[keys[i + 1]] ?? endPage) - firstPage[key] }, (_, j) => ({ key, local: bookOrder.includes(key) ? j - 1 : j }))).filter((o) => !isDeep(o.key, o.local));
 }
 
 function routeDot(ctx: Ctx, x: number, y: number, palette: BookPalette) {
@@ -185,7 +198,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean, 
     if (side === "right") {
       ctx.fillStyle = palette.blue;
       ctx.font = `40px ${fonts.serif}`;
-      paragraph(ctx, "Click a chapter to open it.", x0, Math.max(H - 250, rows[rows.length - 1].y + 110), x1 - x0, 48);
+      paragraph(ctx, ideasView ? "Click a chapter to open it. Ideas only is on: the deep dives are turned for you." : "Click a chapter to open it.", x0, Math.max(H - 250, rows[rows.length - 1].y + 110), x1 - x0, 48);
     }
     if (side === "left" && route.chapters.length) {
       routeDot(ctx, x0 + 8, H - 249, palette);
@@ -365,8 +378,13 @@ export function introStop(def: ChapterDef): Stop {
         ctx.fillStyle = palette.faint;
         ctx.font = `26px ${fonts.sans}`;
         ctx.fillText(row.text, x0, row.y);
+        if (row.text === deepGroup) {
+          ctx.fillStyle = palette.blue;
+          ctx.fillText(`· ${deepNote}`, x0 + ctx.measureText(`${row.text} `).width, row.y);
+        }
         continue;
       }
+      ctx.globalAlpha = ideasView && isDeep(def.slug, row.k) ? 0.35 : 1;
       ctx.fillStyle = palette.faint;
       ctx.font = `${Math.round(titleSize * 0.86)}px ${fonts.serif}`;
       if (row.number) ctx.fillText(row.number, x0, row.y);
@@ -383,6 +401,7 @@ export function introStop(def: ChapterDef): Stop {
       links[entry++].lines = [under(ctx, row.text, tx, row.y, size)];
       ctx.fillStyle = palette.faint;
       for (let x = tx + ctx.measureText(row.text).width + 18; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
+      ctx.globalAlpha = 1;
     }
     ctx.fillStyle = palette.blue;
     ctx.font = `40px ${fonts.serif}`;
@@ -1184,6 +1203,7 @@ export const startWords = countWords([...forWho, ...needFirst, ...tokenLife, ...
 export const startSpreadCount = startSpreads;
 
 export function setBookRoute(defs: ChapterDef[]) {
+  deep = new Set(defs.flatMap((d) => d.steps.flatMap((s, i) => (s.group === deepGroup ? [`${d.slug}:${i}`] : []))));
   const found = shortRoute(defs.map((d) => ({ slug: d.slug, steps: d.steps.slice(d.lead ?? 0) })), startWords, startSpreads);
   const chapterStopsOf = (c: { slug: string; picks: number[] }) => {
     const lead = defs.find((d) => d.slug === c.slug)?.lead ?? 0;

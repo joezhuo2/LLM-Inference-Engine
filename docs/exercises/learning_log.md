@@ -2406,3 +2406,6 @@
 - **a sampler chain** => 
 - **document.title** => 
 - **a metadata title template** => 
+- **aria-pressed** => 
+- **a canvas texture repaint** => 
+- **a route filter** => 

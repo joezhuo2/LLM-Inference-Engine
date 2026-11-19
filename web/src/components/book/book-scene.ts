@@ -166,6 +166,12 @@ class TextSide {
   commit(next: number): void {
     this.active = next;
   }
+
+  redraw(draw: (canvas: HTMLCanvasElement) => void): void {
+    draw(this.current);
+    this.textures[this.active].needsUpdate = true;
+    this.drawn[1 - this.active] = null;
+  }
 }
 
 export class BookScene {
@@ -797,6 +803,15 @@ export class BookScene {
 
   private moved(stop: number, beat: number): boolean {
     return this.target.stop !== stop || this.target.beat !== beat;
+  }
+
+  repaint(): void {
+    const stop = this.options.stops[this.applied.stop];
+    if (!stop) return;
+    this.leftText.redraw((c) => this.drawLeft(c, stop));
+    this.rightText.redraw((c) => this.drawRight(c, stop));
+    this.frozen = false;
+    if (!this.raf) this.raf = requestAnimationFrame(this.tick);
   }
 
   setStops(stops: Stop[], map: (index: number) => number): void {
