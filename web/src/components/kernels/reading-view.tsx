@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { EnginesLine } from "@/components/kernels/engines-map";
 import { KernelTimeline } from "@/components/kernels/kernel-timeline";
 import { StoryNav } from "@/components/kernels/story-nav";
 import { KernelAboutView, KernelIdeasView, KernelLeadView, KernelPrologueView, KernelSandboxView, KernelStoryView } from "@/components/kernels/story-view";
@@ -238,6 +239,7 @@ export async function ReadingView({ slug }: { slug: string }) {
           </Section>
         )}
 
+        <EnginesLine slug={story.slug} />
         <StoryNav slug={story.slug} />
       </article>
     </PageTransition>
