@@ -768,7 +768,7 @@ export function EveryByte() {
               <button type="button" aria-label="table of contents" {...tipProps("table of contents")} onClick={() => void goKey("contents", true)} className="pressable rounded-full p-1.5 hover:text-text">
                 <Icon d="M8 4.5C6.5 3.5 4.5 3 2 3v9.5c2.5 0 4.5.5 6 1.5 1.5-1 3.5-1.5 6-1.5V3c-2.5 0-4.5.5-6 1.5zM8 4.5V14" />
               </button>
-              <button type="button" aria-label="magnifier" {...tipProps("magnifier")} aria-pressed={lensOn} onClick={() => setLensOn((on) => !on)} className={clsx("pressable rounded-full p-1.5 hover:text-text", lensOn && "text-accent")}>
+              <button type="button" aria-label="magnifier" {...tipProps("magnifier")} aria-pressed={lensOn} onClick={() => setLensOn((on) => !on)} className={clsx("pressable rounded-full p-1.5 hover:text-text max-sm:hidden", lensOn && "text-accent")}>
                 <Icon d="M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 1 0 0-9zM10.3 10.3 14 14" />
               </button>
               <button
