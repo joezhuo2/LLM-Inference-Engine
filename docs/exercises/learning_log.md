@@ -2486,3 +2486,4 @@
 - **arithmetic intensity** => 
 - **rows per weight read** => 
 - **the compute-bound crossover** => 
+- **a launch-bound kernel** => 

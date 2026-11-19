@@ -4,6 +4,7 @@ import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
 import { cellNumber, decodeSteps, modelShape } from "@/lib/data";
+import { about, msText } from "@/lib/round";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
@@ -153,7 +154,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           That is far fewer sines and cosines per token than one for every head and pair, and{" "}
-          <span className="text-accent">{fast1.toFixed(1)} µs</span> for one token. Neighbouring threads read
+          <span className="text-accent">{msText(fast1 / 1e3)}</span> for one token. Neighbouring threads read
           neighbouring pairs, so a warp&apos;s narrow loads already coalesce into a few contiguous sectors; the wide vector loads of the
           spec were never needed.
         </p>
@@ -190,7 +191,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Correct once the frequencies came from the host, but flat at about{" "}
-          <span className="text-accent">{draft1.toFixed(0)} µs</span> at every token count, slower than the naive kernel at one token. The time
+          <span className="text-accent">{about(draft1, 2, "")} µs</span> at every token count, slower than the naive kernel at one token. The time
           was the chain of pairs each thread walked, not the memory: only at the largest token count did the naive kernel get slower.
         </p>
       </>
@@ -205,7 +206,7 @@ const steps: StoryStep[] = [
         <p>
           For small token counts the fast kernel stays near its one-token time: a few hundred KB at most, far from the memory
           limit, so the launch and one chain of load, sine and store set the time. At the largest count it is{" "}
-          <span className="text-accent">{fast512.toFixed(1)} µs</span>, half the naive kernel&apos;s. Try the
+          <span className="text-accent">{msText(fast512 / 1e3)}</span>, half the naive kernel&apos;s. Try the
           token counts on the right.
         </p>
         <p>
@@ -220,7 +221,7 @@ const steps: StoryStep[] = [
 const captions = [
   `8 of the ${pairs} pairs of one head of ${headDim} values, at their real rates; the vector lengths are illustrative`,
   `TinyLlama's layout: a row of ${qkvWidth.toLocaleString("en-US")} values per token, ${shape.heads} query and ${shape.kv_heads} key/value heads of ${headDim}; RoPE turns the ${qkHeads} Q and K heads`,
-  `µs per launch for one token, Nsight Compute; ${pairs} threads per head group, ${groups} groups, each thread on ${Math.floor(qkHeads / groups)} or ${Math.ceil(qkHeads / groups)} heads; sin and cos counts from the code, ${fastThreads} per token instead of ${draftTrig.toLocaleString("en-US")} with one per head and pair; the loads are 2 bytes, where the spec asked for 128-bit`,
+  `µs per launch for one token, Nsight Compute; ${pairs} threads per head group, ${groups} groups, each thread on ${Math.floor(qkHeads / groups)} or ${Math.ceil(qkHeads / groups)} heads; the fast kernel ${fast1.toFixed(1)} µs; sin and cos counts from the code, ${fastThreads} per token instead of ${draftTrig.toLocaleString("en-US")} with one per head and pair; the loads are 2 bytes, where the spec asked for 128-bit`,
   `the chain of the bug found while writing the naive kernel: the device powf differed in the last bit for 2 of the ${pairs} frequencies; bit patterns illustrative`,
   `µs per launch, Nsight Compute: first draft ${draftFlat} at ${tokenChoices.join(" / ")} tokens, naive ${naive1.toFixed(1)} µs at one token and ${naive512.toFixed(1)} at 512, draft ${draft512.toFixed(1)}; the draft ran ${draftThreads} threads per token, ${qkHeads} with a head, ${pairs} pairs each; the pair segments are an illustration, not measured`,
   `Nsight Compute, RTX 5060 Laptop GPU, one launch after ten warm-ups; the fast kernel takes ${fast1.toFixed(1)} µs at one token and ${fast512.toFixed(1)} at 512, the naive ${naive512.toFixed(1)}`,
