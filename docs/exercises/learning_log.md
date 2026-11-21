@@ -2532,3 +2532,5 @@
 - **an LRU list with a stored iterator per entry, for removal in constant time** => 
 - **why a hash hit still compares the tokens** => 
 - **checking for room before changing anything, so a failed call leaves no trace** => 
+- **why a rollback must not cut into a published block** => 
+- **refusing a call that would write into a block another sequence holds** => 

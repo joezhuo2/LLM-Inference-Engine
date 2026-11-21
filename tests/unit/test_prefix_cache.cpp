@@ -461,6 +461,42 @@ TEST(PrefixCache, GeneratedTokensCanBePublished) {
     EXPECT_EQ(bm.num_cached(), 3);
 }
 
+TEST(PrefixCache, TruncateInsideAPublishedBlockUnpublishesIt) {
+    BlockManager bm(8, kBlock);
+    const Tokens a = run(40, 100);
+    bm.allocate_tokens(1, a);
+    bm.publish(1, a);
+    bm.truncate(1, 32);
+    EXPECT_EQ(bm.match_prefix(a), 32);
+    bm.truncate(1, 20);
+    EXPECT_EQ(bm.match_prefix(a), 16);
+    EXPECT_EQ(bm.allocate_tokens(2, a), 16);
+    EXPECT_NE(bm.table(2)[1], bm.table(1)[1]);
+    bm.append_slot(1);
+    bm.free(1);
+    EXPECT_EQ(bm.num_cached(), 0);
+    EXPECT_EQ(bm.match_prefix(a), 16);
+}
+
+TEST(PrefixCache, TruncateInsideASharedBlockIsRejected) {
+    BlockManager bm(8, kBlock);
+    const Tokens a = run(40, 100);
+    bm.allocate_tokens(1, a);
+    bm.publish(1, a);
+    ASSERT_EQ(bm.allocate_tokens(2, a), 32);
+    const int free_before = bm.num_free();
+    EXPECT_THROW(bm.truncate(2, 20), std::invalid_argument);
+    EXPECT_THROW(bm.truncate(1, 17), std::invalid_argument);
+    EXPECT_EQ(bm.length(2), 40);
+    EXPECT_EQ(bm.table(2).size(), 3u);
+    EXPECT_EQ(bm.num_free(), free_before);
+    EXPECT_EQ(bm.ref_count(bm.table(2)[1]), 2);
+    EXPECT_EQ(bm.match_prefix(a), 32);
+    bm.truncate(2, 32);
+    EXPECT_EQ(bm.length(2), 32);
+    EXPECT_EQ(bm.match_prefix(a), 32);
+}
+
 TEST(PrefixCache, BlocksFromPlainAllocateCanBePublished) {
     BlockManager bm(8, kBlock);
     const Tokens a = run(40, 100);

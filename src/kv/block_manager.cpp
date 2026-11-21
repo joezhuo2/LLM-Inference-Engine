@@ -208,6 +208,22 @@ void BlockManager::truncate(SeqId seq, int length) {
         return;
     }
 
+    if (length % block_size_ != 0) {
+        auto& meta = block_meta_[seq_data.table[length / block_size_]];
+
+        if (meta.ref_count > 1) {
+            throw std::invalid_argument("[BlockManager] cannot truncate sequence " +
+                                        std::to_string(seq) + " to " + std::to_string(length) +
+                                        " inside a block other sequences share");
+        }
+
+        if (meta.published) {
+            prefix_to_block_.erase(meta.key);
+            meta.published = false;
+            meta.key = PrefixKey{};
+        }
+    }
+
     int new_blocks = (length + block_size_ - 1) / block_size_;
 
     while (static_cast<int>(seq_data.table.size()) > new_blocks) {
