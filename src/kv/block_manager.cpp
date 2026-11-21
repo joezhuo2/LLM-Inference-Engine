@@ -317,88 +317,88 @@ int BlockManager::allocate_tokens(SeqId seq, std::span<const int32_t> tokens) {
         throw std::invalid_argument("[BlockManager] sequence id " + std::to_string(seq) +
                                     " is already registered.");
     }
-    
+
     std::vector<int> matched;
     int leading = match_blocks(tokens, &matched);
-    
+
     int cached = 0;
-    
+
     for (int block_id : matched) {
         if (block_meta_[block_id].ref_count == 0) {
             ++cached;
         }
     }
-    
+
     const int total = (static_cast<int>(tokens.size()) + block_size_ - 1) / block_size_;
     const int needed = total - leading;
     const int available = free_count_ - cached;
-    
-    if (available < leading) {
+
+    if (available < needed) {
         throw std::invalid_argument(
             "[BlockManager] out of memory. Insufficient free blocks for sequence " +
             std::to_string(seq) + " (requested tokens: " + std::to_string(tokens.size()) + ")");
     }
-    
+
     for (int block_id : matched) {
         auto& meta = block_meta_[block_id];
         if (meta.ref_count == 0) {
             lru_cached_.erase(meta.lru_it);
             --free_count_;
         }
-        
+
         ++meta.ref_count;
     }
-    
+
     Sequence seq_data;
     seq_data.length = static_cast<int>(tokens.size());
     seq_data.table.reserve(total);
     seq_data.table.insert(seq_data.table.end(), matched.begin(), matched.end());
-    
+
     for (int i = 0; i < needed; ++i) {
         seq_data.table.push_back(allocate_block());
     }
-    
+
     sequences_[seq] = std::move(seq_data);
     return leading * block_size_;
 }
 
 void BlockManager::publish(SeqId seq, std::span<const int32_t> tokens) {
     const auto& seq_data = get_sequence(seq);
-    
-    if (static_cast<int>(tokens.size()) != seq_data.length) {
-        throw std::invalid_argument(
-            "[BlockManager] Token count (" + std::to_string(tokens.size()) +
-            ") does not match sequence length (" + std::to_string(seq_data.length) + ")");
+
+    if (static_cast<int>(tokens.size()) > seq_data.length) {
+        throw std::invalid_argument("[BlockManager] Token count (" + std::to_string(tokens.size()) +
+                                    ") does not match sequence length (" +
+                                    std::to_string(seq_data.length) + ")");
     }
-    
-    const int full_blocks = seq_data.length / block_size_;
-    
+
+    const int full_blocks = static_cast<int>(tokens.size()) / block_size_;
+
     if (full_blocks <= 0) {
         return;
     }
-    
+
     PrefixKey key;
     key.hash = 0;
     key.tokens.reserve(static_cast<std::size_t>(full_blocks) * block_size_);
-    
+
     for (int b = 0; b < full_blocks; ++b) {
         const int start = b * block_size_;
-        
+
         for (int j = 0; j < block_size_; ++j) {
             const int32_t tok = tokens[start + j];
             key.hash = hash_combine_token(key.hash, tok);
             key.tokens.push_back(tok);
         }
-        
+
         const int block_id = seq_data.table[b];
         auto& meta = block_meta_[block_id];
-        
+
         if (meta.published) {
             continue;
         }
-        
+
         auto [it, inserted] = prefix_to_block_.emplace(key, block_id);
-        
+
         if (inserted) {
             meta.published = true;
             meta.key = key;
