@@ -2,6 +2,254 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/book-perf
+
+- Part A: the book icon in the top bar opens Every Byte at its cover, and closes the book to the cover when it is open (`web/src/components/top-bar.tsx`)
+- Part A: every text on a diagram card now shrinks to stay inside its card, and the seven station labels of chapter 1 share one size that fits (`web/src/components/book/ink.ts`)
+- Part A: Every Byte stays smooth after a page turn: shaders compile ahead of use, the next spread and the next chapter's models wait for a still cursor, page canvases upload without a GPU readback, hidden exhibits skip the per-frame matrix pass, and the magnifier draws without a React render and shows the text at 1.8 times its size on screen (`web/src/components/book/`)
+
+## web/every-byte-audit
+
+- Part A: say what to write in every NumPy stub's NotImplementedError message (`docs/exercises/numpy/`)
+- Part A: chapter 1 exercise, one decode step in NumPy against a looped reference (`docs/exercises/numpy/decode_step.py`)
+- Part A: chapter 2 exercise, measure your own memory bandwidth roof on a CPU with NumPy (`docs/exercises/numpy/bandwidth.py`)
+- Part A: chapter 12 exercise, Gumbel-max sampling with a top-k threshold in NumPy (`docs/exercises/numpy/gumbel_max.py`)
+- Part A: NumPy-only exercises on the exercises page, the chapter pages and Every Byte, with the counts kept true
+- Part A: a search index of every chapter's text, built from the static pages (`web/scripts/search-index.mjs`, `web/src/content/search-index.json`)
+- Part A: a glossary page at /kernels/glossary with a filter, the chapter that first uses each term, and a glossary link in every hover card
+- Part A: search of every chapter and the glossary on the kernels index, loaded on first focus, with keyboard control
+- Part A: foundations ties chapter 1's profiled token time to its graph-replayed step and points at the CUDA Graphs chapter
+- Part A: the foundations lead-in caption says its step time is the kernel span of a step, not the time per token
+- Part A: foundations' batching step names the serving chapter's scheduler by its title
+- Part A: foundations and GEMM say the bandwidth roof is a measured test kernel, not a physical limit
+- Part A: the KV pool counts its token slots without the null block everywhere, with a clause where block counts sit beside them
+- Part A: paged attention's token lifecycle heading is lower case like the rest
+- Part A: "attention, step by step" moves to chapter 1, after the map of a token, in the book and on the scroll page
+- Part A: the RoPE, paged KV and paged attention lead-ins recall chapter 1's primer instead of teaching query, key and value again
+- Part A: the one-hour path starts with chapter 1's map of a token and its attention primer, still about 60 minutes
+- Part A: engines map data, where each chapter's idea lives in vLLM v0.34.0 and llama.cpp v1.0.0, every file opened at the tag, with a shape test (`web/src/content/engines-map.ts`)
+- Part A: /kernels/beyond gains "where this lives in other engines": a table at desktop width, stacked cards on phones, tags and date in the caption
+- Part A: every chapter's scroll page ends with an "in other engines" line naming the vLLM and llama.cpp symbol
+- Part A: the Every Byte tab title follows the chapter the book is open at
+- Part A: an "ideas only" toggle in the Every Byte action bar skips the how-it-got-built spreads, and every chapter list marks them as deep dives
+- Part A: Every Byte keeps the reader's place: the spread is in the URL, the last spread is saved, and the cover offers "continue at page N"
+- Part A: fix the book drawing a stale page when chapters finish loading while it opens
+- Part A: hide the magnifier on phones so the action bar fits the new toggle
+- Part A: glossary spreads in Every Byte's back matter, with a contents row
+- Part A: two back-matter spreads in Every Byte with the engines map after "beyond this engine", and a contents row for them
+- Part A: serving prose rounds measured and calculated numbers to two significant figures with a shared helper (`web/src/lib/round.ts`); the exact values moved to the captions
+- Part A: a shared scale module and figure for redoing a chapter's calculation for Llama 3 8B on an H100, from published specs (`web/src/content/scale.ts`)
+- Part A: serving gets an "on a bigger model" step: Llama 3 8B on an H100 fits 53 full 8,192-token contexts against TinyLlama's 100, with a review question
+- Part A: serving's tables spread mirrors the pool page's controls (shared Mirror component), so a request added there shows in the table on the same screen
+- Part A: serving's tables spread caps its block-table list in the book so it never scrolls
+- Part A: serving's tables spread shows at most four block tables
+- Part A: a quantization chapter, the last of the book: the floor, the ridge, the scale, the rounding, the FP8 cache and the plan, all calculated, with the kernels still stubs
+- Part A: glossary terms for the quantization chapter: FP8 E4M3, scale factor, mantissa, exponent, GGUF
+- Part A: the three FP8 stubs as build-it-yourself exercises of the quantization chapter
+- Part A: beyond and the memory budget point to the quantization chapter
+- Part A: two quantization step titles shortened so the contents list keeps its size
+- Part A: the quantization exhibits' rows spaced so a risen block never covers the label above it
+- Part A: beyond's quantization pointer keeps the scale overhead its figure caption relies on
+- Part A: the engines map gains the quantization chapter's row (vLLM `Fp8LinearMethod`, llama.cpp `ggml_cuda_mul_mat_vec_q`), and its last book page holds six rows
+- Part A: a book icon in the top bar, left of GitHub, links to Every Byte with a themed tooltip and turns into an open book while you are reading it
+- Part A: clicking the book icon sweeps the desk colour out from the icon and hands over to the cover opening on "start here"; modified clicks, reduced motion and clicks from inside the book skip the sweep
+- Part A: the kernels index links Every Byte and the one-hour path again, just under its intro
+- Part A: quantization exhibit subtitles and rail labels fit their cards, and half a step reads 0.0625
+- Part A: add-rmsnorm prose numbers rounded, exact values kept in the captions
+- Part A: add-rmsnorm's measured step says what carries over to Llama 3 8B: about 2.9 times the bytes against 7.3 times the weights, calculated
+- Part A: swiglu prose numbers rounded, exact values kept in the captions and figures
+- Part A: sampling prose numbers rounded, exact values kept in the captions and figures
+- Part A: cuda-graphs prose numbers rounded, exact values kept in the captions and figures
+- Part A: speculative-decoding prose numbers rounded, exact values kept in the captions and figures
+- Part A: cuda-graphs' replay step says what carries over to Llama 3 8B on an H100: more kernel boundaries and a shorter read floor, gaps not measured
+- Part A: the sampling prompt and knobs are mirrored on the draw spread, so the draws and their controls share a screen
+- Part A: the sampling draw spread fits closer to one screen, and the mass-cut readout no longer shows negative zero
+- Part A: cuda-graphs' per-token saving keeps the precision of its data
+- Part A: tensor parallelism prose rounded to two significant figures, exact MiB, ms and ratios kept in captions and figures
+- Part A: the memory budget's larger-model pools come from the scale module's formulas, block 0 reserved as in the engine
+- Part A: memory budget prose rounded, and its larger-model step points to the H100 count in serving
+- Part A: chunked prefill prose rounded, exact first-token and gap times in the first caption
+- Part A: where the time went prose rounded, exact values in captions, and no negative time above the floor
+- Part A: where the time went gets an "on a bigger model" step: Llama 3 8B's read floor on an H100, calculated only
+- Part A: where the time went: a sentence capitalised, rounded percents kept on one line, the floor mark label fits
+- Part A: chunked prefill's drop controls are mirrored on the predict page, cause and effect on one spread
+- Part A: the memory budget's larger-model caption shortened to stay above the action bar
+- Part A: one-token prose rounded, with an "on a bigger model" step: the read floor of Llama 3 8B on an H100, calculated
+- Part A: foundations prose rounded, exact values kept in its captions
+- Part A: foundations gets an "on a bigger model" step: the H100's ridge near 295 FLOP per byte, decode far left of it
+- Part A: the roofline sandbox's op, rows and context are mirrored on foundations' numbers spread, and the text no longer sends the reader back a page
+- Part A: gemm prose rounded, exact values kept in its captions
+- Part A: gemm gets an "on a bigger model" step: on an H100 a projection needs about 295 rows to turn compute bound
+- Part A: rope prose times rounded, exact values kept in its captions
+- Part A: foundations' mirrored numbers spread fits a phone: two-column readouts, reset in the mirror
+- Part A: one-token's bigger-model step says the measured bandwidth plainly
+- Part A: the scale figure's ridge value reads FLOP/byte so it stays inside its bar
+- Part A: the kernels machine drawing ported from Joe's prototype into a typed module, inked from the site's theme tokens (`web/src/components/kernels/machine.ts`)
+- Part A: one content file lists the 22 kernels stories with their one-line descriptions (`web/src/content/kernels-atlas.ts`)
+- Part A: /kernels is now Joe's scroll-assembled machine with a chapter index dialog, wheel glide, both themes, reduced motion and a no-script list
+- Part A: removed the layer map and kernel cards that only the old kernels index used
+- Part A: paged KV prose rounded, with an "on a bigger model" step: Llama 3 8B's bytes per cached token and full context, calculated
+- Part A: paged attention prose rounded
+- Part A: paged attention gets an "on a bigger model" step: one step's K and V reads for Llama 3 8B against its weights
+- Part A: attention v2 prose rounded
+- Part A: split attention prose rounded, exact values kept in its captions
+- Part A: FlashAttention prefill prose rounded
+- Part A: the paged attention sandbox's context and block controls are mirrored on its step and check spreads
+- Part A: the paged KV bigger-model step's title shortened to keep the page's title size
+- Part A: the exact attention times of the wider chunk stay in the FlashAttention prefill blocks caption
+- Part A: the paged KV pool caption trimmed so its instruction line clears the page number
+- Part A: the one-hour path's word counts and the search index regenerated from the built pages after the chapter changes
+- Part A: removed the paged attention ideas case that nothing reaches since the primer moved to chapter 1
+- Part A: the split attention graphs caption drops the graph times its figure already labels, so the instruction line fits
+- Part A: the engines map's six-row book page tightens its rows so no path runs into the next title
+- Part A: hand-off snapshot for this round in `docs/claude/status.md`
+- Part A: the audit this round answers, `docs/claude/every_byte_audit.md`
+- Part A: CI retries the package install in the CUDA image up to four times, keeping what already downloaded (`.github/workflows/ci.yml`)
+
+## docs/md-audit
+- Part A: the markdown files brought up to the code on main. README: the intro and "Beyond the MVP" name what was built since the MVP (chunked prefill, FlashAttention prefill, finer graph buckets, speculative decoding, tensor parallelism) and what is stubbed next (grouped decode attention, prefix caching, FP8), the site section has `/every-byte` and `/exercises`, SentencePiece is in the dependencies, and the pointer to the ceilings goes to `reproduce.md`. `reproduce.md`: `generate --tensor-parallel`, `bench --speculate-adaptive`, `--draft-model`, `--prefill-attention`, `--trace` and `--profile`, `serve --speculate-adaptive`, `scripts/setup_vllm.sh`, and everything `reproduce.sh` runs now with its seven skip flags. `ownership.md`: the "Planned components" table is now "Components after M1", with who wrote each piece taken from the tags in this file, and `compare_logits.py`, which never existed, is `dump_logits.py`. `web/README.md`: the build's inputs after the move of the docs to the root, and the pages to open. `docs/claude/README.md`, `working_rules.md` and the head of `status.md`: the folder is tracked, worktrees are per branch, and the root paths.
+
+## web/glossary-terms
+
+- Part A: ten more glossary terms with hover cards: floor, knee, shard, oracle, free list, SLO, SSE, safetensors, pinned memory and causal mask (`web/src/lib/glossary.ts`)
+
+## kernel/fp8-batch16-stubs
+
+- Part C (stub): `paged_attention_decode_grouped` for #94, decode attention with one block per row and KV head that serves every query head of the group from one load of the keys and values (`include/engine/kernels/paged_attention_grouped.h`, `src/kernels/paged_attention_grouped.cu` with the TODO(JOE) spec). It throws until Joe writes it. 28 todo_joe tests in `tests/todo/gpu/test_paged_attention_grouped.cpp`: the tests `paged_attention_decode_v2` passes, with head dims that are multiples of 16
+
+- Part C (stub): `gemm_fp8` for #104, a matrix product that reads FP8 E4M3 weights with one scale per output row and BF16 activations (`include/engine/kernels/gemm_fp8.h`, `src/kernels/gemm_fp8.cu` with the TODO(JOE) spec). It throws until Joe writes it. 29 todo_joe tests in `tests/todo/gpu/test_gemm_fp8.cpp`, checked against a throwaway implementation and mutants of it
+
+- Part C (stub): `write_kv_fp8` and `paged_attention_decode_fp8` for #126, an FP8 E4M3 KV cache with one scale for the keys and one for the values (`include/engine/kernels/fp8_kv.h`, `src/kernels/fp8_kv.cu` with the TODO(JOE) spec). Both throw until Joe writes them. 33 todo_joe tests in `tests/todo/gpu/test_fp8_kv.cpp` (target `todo_gpu_tests`), checked against a throwaway implementation and mutants of it; `tests/support/fp8.h` converts on the host with `cuda_fp8.h`
+
+- Part A: `DType::F8E4M3`, one byte per element, named `F8_E4M3` as safetensors spells it (`include/engine/core/tensor.h`), for the FP8 stubs of #126 and #104
+
+## docs/root-files
+
+- Part A: `LICENSE`: the MIT license, chosen by Joe, linked from the README's Documentation list
+
+- Part A: community files: `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md` (what the unauthenticated server is and is not, private reporting through GitHub), issue templates for a bug, a result that does not reproduce and an idea or question (`.github/ISSUE_TEMPLATE/`), and the pull request template moves from `.github/workflows/`, where GitHub never read it, to `.github/pull_request_template.md`
+
+- Part A: the main documents move to the repo root: `results.md`, `profiling.md`, `baselines.md`, `hardware.md` and `ownership.md` leave `docs/` (which keeps `api.md`, the exercises and the working notes), and every reference follows (`scripts/reproduce.sh`, `scripts/make_results.py`, the site's `sync-data.mjs`, its tests, labels and links). The README's Architecture and Design decisions sections become `architecture.md` and its Running and Reproducing the results sections become `reproduce.md`; the README links both and gets a Documentation list. Older changelog entries keep the paths they were written with
+
+## web/motion-pass
+
+- Part A: animated figures on the pages that had none (`components/kernels/page-figures.tsx`): one per topic on `/kernels/beyond` (quantization to scale from the fit estimate, a draft round and a shared prefix as illustrations, the rank shares figure for multiple GPUs), the dead ends as branches off one line by kind, the one-hour path across the book's chapters with each stop's minutes, the stub to tests to compare loop on `/exercises`, and a dot on the `/kernels` layer map that stays on each kernel for about its share of the step
+
+- Part A: more motion in four kernel stories. `useLoop` gets `draw` (a line draws itself). The residual add and RMSNorm lead-in figure had fades only: its bars now rise and a dot runs from the stream to each norm and from each block back to the stream. Speculative decoding: the guess travels from where it was found to the end of the context (it moved by 0 before), sampled tokens slide out of their inputs, rejected cache slots drop away, the row bars grow. Tensor parallelism: bars grow, the input and the partial results travel to the sum, a cursor runs along each rank, packets cross the links between GPUs. Memory budget: the ladder bars grow and the budget curve draws
+
+- Part A: the Every Byte bar and the one-hour pill take their edge and shadow from the theme (`--pill-edge`, `--pill-shadow` in `globals.css`) in place of a fixed white border and black shadow, and the table of contents, magnifier and reading view buttons show a themed hover text above the bar in place of the browser's `title` tooltip (`every-byte.tsx`, `book-view.tsx`)
+
+## results/refresh-2026-11-16
+
+- Part A: status notes for the refresh (`docs/claude/status.md`).
+
+- Part A: five more stub exercises from the Part C stubs that have landed since: `Scheduler::cancel`, `decode_graph_buckets`, `flash_attention_prefill`, prompt lookup (`propose_prompt_lookup`, `count_accepted`, `BlockManager::truncate`) and `plan_shard_layout`, each with the commit just before Joe's implementation, its tests and its TODO(JOE) spec (`exercise-specs.mjs`).
+
+- Part A: the site follows the rerun: `step-history.json` gets the 2026-11-16 profiles, the dashboard's recording label says how many sequences the run reached (8) next to its max batch (16), the timeline's prefill scene and the closing chapter's prefill chart take llama.cpp from the 2026-11-10 kernel table so every bar is from one session, the prefill captions say median of 3, and the KV replay test reads the step count from the trace instead of a fixed 751.
+
+- Part A: rerun `scripts/reproduce.sh` (everything but the load sweep, vLLM and the on-chip benchmarks, which were measured on 2026-11-11 and 2026-11-04) at eaddcb7 on 2026-11-16, and re-record the chat trace the dashboard replays: batch 1 with graphs 144.9 tokens/s (6.86 ms, 302 GB/s = 93% of the peak, was 127.3), batch 16 with graphs 1738.5 (12.0x, was 11.0x), prefill of 2,048 tokens 164.3 ms against llama.cpp's 186.0; the hand-written paragraphs of `docs/results.md`, the README table and the trace description in `docs/api.md` follow the new numbers, and the 2026-11-10 FlashAttention kernel table keeps llama.cpp's row from its own session. llama.cpp is faster too (125.8 against 110.1 tokens/s at batch 1, driver 591.84 against 617.42) while the measured DRAM bandwidth is still 323 GB/s.
+
+- Part A: the overview says how many weeks the build took from the dates of the timeline (seven, Sep 24 to Nov 14) instead of a fixed "five weeks".
+
+- Part A: `/kernels` lists the chapters in book order and numbers them like Every Byte (chapter 1 to 19, then beyond and what didn't work), so a card, a story page and the book give a chapter the same number; `content/kernels/index.ts` throws when a story has no place in `bookOrder`.
+
+- Part A: the fused add + RMSNorm figure of the foundations chapter no longer gives two packets the same React key (`x-0`, `r-1`, `sum-2` were logged on every render).
+
+- Part A: `scripts/make_results.py` adds "(CUDA Graphs)" to the headings of the graph profile block, so `docs/results.md` no longer has two sections with the same id.
+
+## web/every-byte-fixes
+
+- Part A: clicking the every byte tab while the book is open closes it back to the cover (page 1); the book watches the path because a URL changed by pushState keeps the same page mounted (#215).
+
+- Part A: the book bar has a table of contents button and a magnifier toggle (on by default), and the list view or reading view link is an icon with a tooltip (#215).
+
+- Part A: every byte numbers each page: the left page of a spread is even and the right page odd, after the cover as page 1; the scene draws both numbers for every spread, and the contents, the in-this-chapter lists and the bar follow (#215).
+
+- Part A: glossary terms in the book answer the pointer a little outside the word (0.4 of the term box height to each side, 0.15 above and below), and the nearest term wins where two areas overlap (#215).
+
+- Part A: the magnifier works on the right page as well: anywhere on a painted page, and on a figure page only over the caption below the model (#215).
+
+- Part A: the closed book has a rounded spine joining the two boards, and it follows the cover as the book opens and closes (#215).
+
+- Part A: once a turn settles, every byte draws the next spread (in the direction of the last turn) into the spare page canvases and uploads them while idle; the next turn reuses them and starts without a long frame (#215).
+
+- Part A: the turning leaf samples the page textures already on the GPU and lays them on paper in its shader, instead of copying two full-size canvases and uploading them at the start of every turn (#215).
+
+- Part A: every byte turns a page from its outer edge first (going forward the edge now leads by 0.4 of the turn, as it already did going back) and eases the leaf with a sine curve, so the edge lifts about 0.2 s after a click instead of about 0.75 s (#215).
+
+## web/nav-trim
+
+- Part A: scrolling down from the hero no longer plays the glitch effect; the GlitchExit component is gone.
+
+- Part A: switching between light and dark reveals the new theme in a circle that grows from the toggle over 0.7 s (a view transition with a clip-path animation); without view transitions or with reduced motion it switches at once.
+
+- Part A: wheel scrolling on the whole site eases toward its target (smoothScroll copied from Crystal Design's smooth-scroll package, writing with behavior instant so the CSS smooth scroll for anchors does not fight it); nested scrollers and reduced motion keep native scrolling.
+
+- Part A: the links to Every Byte and the one-hour path moved from the kernels page into the footer, hidden for now with the hidden attribute.
+
+- Part A: the top bar no longer links every byte and exercises; both pages still exist at their URLs.
+
+- Part A: the theme toggle in the top bar is a sun or moon icon, a GitHub icon next to it opens the repository in a new tab, and both show a themed tooltip on hover or keyboard focus.
+
+## web/timeline-scenes
+
+- Part A: the in-this-chapter list of every byte runs lower on the page (to H-270, the click line at H-180), so long lists get larger type.
+
+- Part A: the entry on the forward pass on the shards has its own scene: 2 ranks computing their partial results in turn, for attention and then the MLP, each pair summed into the residual stream, a lane of the one GPU in time below, and the measured ms per token, logit difference and sums per token from the same accessors as the text.
+
+- Part A: the entry on the weights of one rank has its own scene: one layer's fused QKV weight cut by rows and the output projection by columns for 2 ranks, each rank lit in turn, and a rank of 2 against the whole model to scale, the embedding and the LM head whole in it; the percent is the one the entry text reads from `docs/results.md`.
+
+- Part A: the speculative decoding entry of the main timeline has its own scene: the recorded step whose guesses go partly wrong, the guesses copied from earlier in the context into the spare rows, the rows kept up to the first wrong guess and the rest dropped, and the tokens the step writes, all read from `results/speculative_example.json` and `docs/results.md`.
+## web/book-fit
+
+- Part A: page titles drawn on canvas shrink to the text width through one helper, `fitFont` in `typeset.ts`, used by the step pages, the exercise, estimate and start pages and now the Beyond spreads and the Beyond units list. "speculative decoding with a draft model" ran past the right page edge; the step page titles also measured against the page edge instead of the right margin, so a long one could reach the spine.
+
+- Part A: the "in this chapter" list sizes its step titles from the row pitch (0.8 of it, at most 46 px) instead of half of it, and spreads the rows down to just above "Click a step to turn to it.". On paged attention (20 rows), FlashAttention prefill and how many requests fit the titles were drawn at about 60% of the page numbers beside them with the bottom of the page empty. `listRows` in `web/src/components/book/fit.ts` lays the rows and group headings out, with a test in `web/scripts/book-fit.test.mjs`.
+
+- Part A: the contents spread fits its list on the page for any number of entries: one scale for both pages shrinks the row pitch, the part gaps and the type of the entries together so the last row stays above the "Click a chapter to open it." line, and the hit boxes follow the scaled pitch. Errata was cut off below the page edge since chapters were added.
+
+## runtime/tensor-parallel-forward
+
+- Part A: the timeline entry of the forward pass links its pull request, #213.
+
+- Part A: `docs/claude/status.md` has a snapshot of what joined the branch: the late uploads, the chapter, the timeline and Beyond.
+
+- Part A: the Beyond page and spread say the split of the weights now runs, every share taking turns on the one GPU, with the logit difference and the time per token read from `docs/results.md`.
+
+- Part A: the main timeline has three more entries: speculative decoding (#210, #211), the layout of one rank (#212) and the forward pass on the shards with the explanation of the late upload calls.
+
+- Part A: the tensor parallelism chapter states the measured forward pass: `shardedForward()` reads the new table of `docs/results.md` and fails the build when one rank stops matching bit for bit, a greedy token differs or the ranks on one GPU stop being slower.
+
+- Part A: `docs/claude/status.md` has a snapshot of the branch: the five commits and their gates, what review of the inherited code found, the numbers, and what is open (the Beyond page still says no forward pass runs on the shares).
+
+- Part A: the forward pass on the shards, measured. `scripts/sharded_forward_bench.cu` runs `ModelRunner` on the whole model and `ShardedRunner` with 1, 2 and 4 ranks, one per process; `docs/results.md` has the new section "Tensor parallelism: a forward pass on the shards" and `results/tensor_parallel/sharded_forward.md` the three runs. One rank gives the logits of the whole model bit for bit; 2 and 4 ranks differ by at most 0.75 and 0.64 over three prompts and 64 decode steps each, and every greedy token is the same (192 of 192). All ranks together take 2,474 and 2,978 MiB against 2,222, the extra copies of the embedding and the LM head. A decode step takes 8.34, 11.21 and 17.89 ms against 8.27 for `ModelRunner`, since the ranks run one after another on the one GPU: a check of the split, not a speedup. The section above no longer says no forward pass runs on the shards.
+
+- Part A: `engine generate --tensor-parallel N` loads N shards and answers through `ShardedRunner`; 0, the default, is off. It is rejected together with `--speculate`, before anything loads. `tests/gpu/test_generate_command.cpp` runs the built `engine`: with `--tensor-parallel 2` the greedy text is the same as without, and with `--speculate` it exits with the message. `gpu_tests` now depends on `engine` and knows its path as `ENGINE_BINARY`.
+
+- Part B: `ShardedRunner` (`src/runtime/sharded_runner.cpp`, `src/runtime/sharded_layer.cpp`) runs the forward pass of every rank of a tensor parallel split on the one GPU, one rank after another. Each rank has its own weights (`load_shard_weights`, `src/runtime/weights.cpp`, the layout of `plan_shard_layout` uploaded and bound with the config of `shard_config`), its own K/V cache and its own scratch buffers; a layer runs the attention of every rank on the shared normed input, sums the partial outputs of o_proj into the residual stream with `all_reduce_add`, then the MLP of every rank and a second `all_reduce_add` for down_proj. Rank 0's embedding, final norm and LM head make the logits. `generate` takes a `ShardedRunner` too. `tests/gpu/test_sharded_runner.cpp` compares it with `ModelRunner` on TinyLlama for 1, 2 and 4 ranks: one rank gives the same logits bit for bit; 2 and 4 ranks stay within 1.0 of the whole model's logits over a 47-token prefill and 8 decode steps (measured 0.25 and 0.64) with the same next token, and 32 greedy tokens are the same. The constructor rejects a rank count that does not divide the model, weights of another split, a missing layer and bad sizes.
+
+- Part B: `all_reduce_add(x, partials, stream)` (`src/kernels/all_reduce.cu`) adds the partial results of 1 to 8 ranks to the residual stream in place: each element sums the partials in float in rank order, adds the old value of x and rounds to BF16 once. With one GPU the partials of every rank already sit in its memory, so this kernel stands for the all-reduce two GPUs would do over a link; with one rank it gives exactly what the residual add of `ModelRunner` gives. `AllReduce.MatchesAHostSum` checks 1, 2, 4 and 8 partials of 1, 3 and 512 rows against the same sum on the host, bit for bit, and `AllReduce.RejectsBadPartials` the rejections (no partial, more than 8, another shape or type).
+
+- Part A: `shard_config(config, num_ranks)` (`src/loader/tensor_parallel.cpp`) gives the config of one rank: the heads, the KV heads and the MLP width divided by the number of ranks, everything else unchanged, so the kernels of the whole model run on a shard as if it were a smaller model. It rejects a rank count below 1 and one that does not divide the KV heads, the heads or the MLP, each with its own message, and two unit tests pin the values for 1, 2 and 4 ranks of TinyLlama and every rejection. `ModelConfig::q_dim()` names the width of the query heads, which is the hidden size in the whole model and not in a shard, and `qkv_dim()` uses it. The three whole tensors of `plan_shard_layout` (embedding, final norm, LM head) are held by value, which ends three `-Wdangling-reference` warnings of GCC in the cpu preset.
+## loader/upload-late-calls
+
+- Part A: the late upload calls explained in `docs/results.md`, new subsection "Late uploads in one process: the GPU lowers its clocks". From about the eleventh call in one process `upload_weights` took 130 to 180 ms more because the GPU drops to P5 (SM 180 to 352 MHz, memory 810 MHz) after 5.6 to 9.9 s in which it is busy for only about 100 ms out of every 370; the idle time is the 185 ms of `cudaMallocHost` and 80 ms of `cudaFreeHost` of each call. Keeping the pinned buffers and calling back to back never slowed down in 120 calls, while keeping them and sleeping 270 ms instead slowed down at the same time, and a program without engine code shows the same drop from 14.5 to 3.7 GB/s. Page faults, device memory, events, the count of calls and the layout are ruled out with numbers. No engine code changes: a real load uploads once, before the clocks drop.
+## web/tensor-parallel-chapter
+
+- Part A: an open exercise for the tensor parallelism chapter (`web/src/content/exercises.ts`, "load every rank and add them up"): load the four ranks of 4 and the whole model with `scripts/shard_load_bench.cu`, one process each, and check that the ranks hold the same bytes, that together they hold the chapter's ratio of the model, and that each loads faster than the whole model.
+- Part A: a new chapter, tensor parallelism, closes Part III of every byte (chapter 15), on the book side and as the scroll page `/kernels/tensor-parallelism`. Idea first (a model cut so each GPU, a rank, holds a piece of every layer; two sums per layer), then the mechanism from `plan_shard_layout` (attention cut by heads: rows of the fused QKV weight and columns of wo; the MLP cut by channels: rows of gate and up and columns of wdown; norms, embedding and LM head whole), the structure of a forward pass on the shards (each rank its own K/V cache and scratch buffers, the shared RMSNorm, the two all-reduces into the residual stream, ranks taking turns on the one GPU), then the numbers of `docs/results.md`, "Tensor parallelism: the weights of one rank": a rank of 2 holds 56% of the model, the column slices are one copy per row, and the packed upload. Four 3D figures (the GPUs and what each holds, the two cut matrices of attention and of the MLP, one layer stage by stage, one rank against the whole model), three drawn figures (the forward pass, the load before and after, where the sums happen), a sandbox that cuts one layer for 1, 2 or 4 ranks from the model's shapes, a prediction and a review. `web/src/content/kernels/tensor-parallelism.ts` calculates every rank's bytes and copy count from the shapes and fails the build when they stop matching the measured MiB and copies, or when a rank no longer holds more than its share, loads faster than the whole model, or took ten times as long with one call per copy. The measured numbers of the forward pass are not in `docs/results.md` yet: `shardedForward()` at the top of that file (marked `TODO(lead)`) returns null, and the sentences that need its numbers are left out until it returns a run. The chapter says plainly that this engine has one GPU and no NCCL, so nothing between two devices is measured.
+- Part A: five glossary terms for the tensor parallelism chapter in `web/src/lib/glossary.ts`: tensor parallelism, rank, all-reduce, partial result and NCCL, each with its hover card on its first use in a spread. `rank` matches only the singular, so the verb "ranks" in another chapter's review gets no card.
+
+## loader/tensor-parallel-wire
+
+- Part A: the multiple GPUs topic of the Beyond page and spread follows the new measurement: one share of 2 loads in 139 ms against 228 for the whole model, and the sentence about copying a slice one row at a time is gone. The guard in `web/src/content/beyond.ts` now fails the build when a share stops loading faster than the whole model.
+- Part A: the load of one rank, measured again with the packed upload. A rank of 2 loads in 139 ms and a rank of 4 in 88 ms against 228 ms for the whole model, 8.4 to 8.9 GB/s against 9.7, where a rank took 4.5 to 5.0 s before. `scripts/shard_load_bench.cu` now runs one layout per process (arguments: number of ranks, rank), because from about the eleventh upload in one process some uploads take 130 to 180 ms more inside the CUDA calls, which is not explained and not what a real load does. `docs/results.md` has the new table, the before and after, and both findings; `results/tensor_parallel/shard_load.md` keeps the runs of both commits.
+- Part B: `upload_weights` packs the copies of one tensor into one staging chunk when their destinations follow each other. A copy used to be at least one `cudaMemcpyAsync` and one event of its own; now the pinned buffer fills across copies that read the same tensor until it is full or the next piece lands somewhere else on the device, and goes up in one call. The copy list, `CopyOp` and `plan_shard_layout` are unchanged: the one-row copies of a column slice arrive sorted by source with destinations one after the other, so a whole slice of o_proj or down_proj rides in one chunk. A new tensor always starts a new chunk, which keeps the full layout exactly as it was: packing across tensors as well (the whole model in 64 MiB chunks) loaded the full model 10% slower in an A/B of three rounds (227 against 205 ms), so it was dropped. The existing upload tests cover it (chunks of 1, 7 and 64 bytes and 1 MiB on the full layout; 64-byte chunks on both ranks of a split, where rows of 16 bytes pack four to a chunk and rows of 12 bytes straddle two).
+- Part A: the Beyond page and the Beyond spread of the book say what the engine now has of multiple GPUs. The topic gets a third paragraph (one share of 2 is 56% of the model and not half, it loads in 4.7 s against 0.22 s, no forward pass on the shares yet) whose numbers `web/src/content/beyond.ts` reads from the new table of `docs/results.md`, and the build fails when the share stops being more than half or the load stops being many times slower. The introduction no longer says multiple GPUs are not implemented, and the note under the four units says none is measured in bytes per token.
+- Part A: the load of one rank, measured. `scripts/shard_load_bench.cu` plans and uploads the full layout and every rank of 1, 2 and 4 on the one GPU; `docs/results.md` has the new section "Tensor parallelism: the weights of one rank" and `results/tensor_parallel/shard_load.md` the three runs. A rank of 2 holds 1,174.2 MiB (56% of the model, since every rank keeps the embedding and the LM head whole) and a rank of 4 holds 712.2 MiB (34%). A rank takes 4.5 to 5.0 s to load against 0.22 s for the whole model: the column slices of o_proj and down_proj are one copy per row, 90,269 copies in place of 201, at about 50 us per copy. That is the timing the spec asked for before a strided copy; the strided copy itself is not on this branch, and no forward pass runs on the shards yet.
+- Part A: a GPU test for a shard going through the upload unchanged. `WeightUpload.AShardUploadsThroughTheSameCopies` (`tests/gpu/test_weight_upload.cpp`) plans both ranks of a 2-rank split of a fake checkpoint, uploads each with `upload_weights` in 64-byte chunks and reads the device buffer back: every copy, the one-row copies of the column slices included, holds the bytes of its place in the file.
+- Part C, written by Joe, finished by Claude at Joe's request: `plan_shard_layout` (#202) passes its 15 tests, which move from `tests/todo/unit/` to `tests/unit/test_tensor_parallel.cpp` and from `todo_unit_tests` to `unit_tests`. Joe wrote the function in `src/loader/tensor_parallel.cpp` (branch `loader/tensor-parallel-impl`): the checks of the arguments and of every tensor, the regions in the order of `plan_weight_layout`, one copy per slice of rows and one copy per row for a slice of columns, sorted by `src`. Claude's part is the last failing test and the cleanup: the rejections of a bad checkpoint now carry the messages of `plan_weight_layout` (`weights: missing tensor <name>`, `<name> must be BF16`, `<name> has shape [..], expected [..]`, `unexpected tensor <name>`, `tied embeddings are not supported`), the helpers lose the file data offset they no longer use (a `TensorEntry` offset is already counted from the start of the file), and `total_bytes` is the end of the last region as in the full layout, not rounded up to the alignment.
+
 ## sched/speculative-wire
 
 - Part A: the speculative decoding chapter and the Beyond page say what the new measurements found. The last step of the chapter gives the full batch (fixed limit slower than plain, adaptive level), the load run, sampling and the draft model; Beyond says the draft model was tried and why it lost. `more` in `web/src/content/kernels/speculative-decoding.ts` reads the numbers from tables 4 to 7 of the section in `docs/results.md` and stops the build when one of those claims no longer holds.

@@ -8,6 +8,7 @@
 
 #include "engine/loader/mapped_file.h"
 #include "engine/loader/safetensors.h"
+#include "engine/loader/tensor_parallel.h"
 #include "engine/runtime/pinned_buffer.h"
 #include "kernels/cuda_check.h"
 
@@ -37,19 +38,35 @@ UploadStats upload_weights(std::span<const std::byte> file, const WeightLayout& 
     UploadStats stats;
     const auto start = std::chrono::steady_clock::now();
     size_t chunk = 0;
+    size_t staged = 0;
+    uint64_t staged_dst = 0;
+    const auto flush = [&] {
+        if (staged == 0) return;
+        CUDA_CHECK(cudaMemcpyAsync(dst + staged_dst, staging[chunk % 2].data(), staged,
+                                   cudaMemcpyHostToDevice, stream));
+        CUDA_CHECK(cudaEventRecord(drained[chunk % 2].event, stream));
+        ++chunk;
+        staged = 0;
+    };
+    const CopyOp* previous = nullptr;
     for (const CopyOp& c : layout.copies) {
-        for (uint64_t off = 0; off < c.bytes; off += chunk_bytes, ++chunk) {
-            const size_t n = size_t(std::min<uint64_t>(chunk_bytes, c.bytes - off));
-            PinnedBuffer& buf = staging[chunk % 2];
-            cudaEvent_t ready = drained[chunk % 2].event;
-            CUDA_CHECK(cudaEventSynchronize(ready));
-            std::memcpy(buf.data(), file.data() + c.src + off, n);
-            CUDA_CHECK(
-                cudaMemcpyAsync(dst + c.dst + off, buf.data(), n, cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK(cudaEventRecord(ready, stream));
+        if (previous && previous->name != c.name) flush();
+        previous = &c;
+        for (uint64_t off = 0; off < c.bytes;) {
+            if (staged == chunk_bytes || staged_dst + staged != c.dst + off) flush();
+            if (staged == 0) {
+                CUDA_CHECK(cudaEventSynchronize(drained[chunk % 2].event));
+                staged_dst = c.dst + off;
+            }
+            const size_t n = size_t(std::min<uint64_t>(chunk_bytes - staged, c.bytes - off));
+            std::memcpy(static_cast<std::byte*>(staging[chunk % 2].data()) + staged,
+                        file.data() + c.src + off, n);
+            staged += n;
+            off += n;
         }
         stats.bytes += c.bytes;
     }
+    flush();
     CUDA_CHECK(cudaStreamSynchronize(stream));
     stats.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
     return stats;
@@ -60,6 +77,19 @@ DeviceWeights load_weights(const std::filesystem::path& model_dir, Stream stream
     w.config = load_config(model_dir / "config.json");
     const MappedFile file(model_dir / "model.safetensors");
     w.layout = plan_weight_layout(w.config, parse_safetensors_header(file.bytes()));
+    w.buffer = DeviceBuffer(w.layout.total_bytes);
+    w.stats = upload_weights(file.bytes(), w.layout, w.buffer.data(), stream);
+    w.weights = bind_weights(w.layout, w.buffer.data());
+    return w;
+}
+
+DeviceWeights load_shard_weights(const std::filesystem::path& model_dir, int rank, int num_ranks,
+                                 Stream stream) {
+    DeviceWeights w;
+    const ModelConfig config = load_config(model_dir / "config.json");
+    w.config = shard_config(config, num_ranks);
+    const MappedFile file(model_dir / "model.safetensors");
+    w.layout = plan_shard_layout(config, parse_safetensors_header(file.bytes()), rank, num_ranks);
     w.buffer = DeviceBuffer(w.layout.total_bytes);
     w.stats = upload_weights(file.bytes(), w.layout, w.buffer.data(), stream);
     w.weights = bind_weights(w.layout, w.buffer.data());

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { type BookPalette, createKit, inkShared, type Kit, readBookPalette } from "./ink";
-import { drawCaptionPage, drawTextPage, type Fonts, type PageText, type TermBox } from "./typeset";
+import { captionTop, drawCaptionPage, drawTextPage, type Fonts, type PageText, type TermBox } from "./typeset";
 import { LinkUnderline } from "./underline";
 
 export const PAGE_W = 1;
@@ -20,7 +20,6 @@ export type Stop = {
   figure: string;
   caption: string;
   instruction?: string;
-  folio: string;
   overlay: OverlayKind;
   beats: Beat[];
   paint?: { left?: PagePainter; right?: PagePainter };
@@ -50,21 +49,29 @@ type SceneOptions = {
   reduced: boolean;
   buildModel: (kit: Kit) => BookModel;
   onOverlay: (rect: OverlayRect | null) => void;
-  onLens: (lens: { x: number; y: number; source: HTMLCanvasElement; u: number; v: number; lines: number[][]; color: string } | null) => void;
+  onLens: (lens: { x: number; y: number; source: HTMLCanvasElement; u: number; v: number; perPx: number; lines: number[][]; color: string } | null) => void;
   onFrameTime?: (ms: number) => void;
   onPageClick: (side: "prev" | "next") => void;
   coverFrame?: Frame;
   onCoverClick?: () => void;
   onLink?: (link: PageLink) => void;
   onTerm?: (term: TermHit | null) => void;
+  pageOf?: (spread: number, side: "left" | "right") => number | undefined;
 };
 
 export type TermHit = { key: string; x: number; y: number; tap: boolean };
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeInOutSine = (t: number) => (1 - Math.cos(Math.PI * t)) / 2;
 const easeOutBack = (t: number) => 1 + 2.1 * Math.pow(t - 1, 3) + 1.1 * Math.pow(t - 1, 2);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 const rad = (deg: number) => (deg * Math.PI) / 180;
+
+function restWhenHidden(object: THREE.Object3D): void {
+  object.updateMatrixWorld = function (force?: boolean) {
+    if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force);
+  };
+}
 const defaultCoverFrame: Frame = { center: [0.45, 0, 0], width: 1.9, depth: 2, az: 12, el: 58 };
 
 const HURRY = 0.12;
@@ -103,18 +110,31 @@ function edgeTexture(paper: string, ink: string): THREE.CanvasTexture {
 }
 
 const pageHeight = (fromSpine: number) => -0.032 * Math.exp(-fromSpine * 13) - 0.006 * fromSpine * fromSpine;
+const SPINE_HALF = BLOCK + 0.022;
+
+function onPaper(material: THREE.MeshLambertMaterial, paper: string, flip: boolean): void {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.paper = { value: new THREE.Color(paper) };
+    shader.fragmentShader = shader.fragmentShader.replace("void main() {", "uniform vec3 paper;\nvoid main() {").replace(
+      "#include <map_fragment>",
+      `vec4 ink = texture2D(map, vec2(${flip ? "1.0 - vMapUv.x" : "vMapUv.x"}, vMapUv.y));\ndiffuseColor.rgb *= mix(paper, ink.rgb, ink.a);`,
+    );
+  };
+}
 
 class TextSide {
   readonly canvases: [HTMLCanvasElement, HTMLCanvasElement];
   readonly textures: [THREE.CanvasTexture, THREE.CanvasTexture];
   readonly meshes: [THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>, THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>];
   active = 0;
+  private drawn: (Stop | null)[] = [null, null];
 
   constructor(geometry: THREE.BufferGeometry, parent: THREE.Object3D, anisotropy: number, textureWidth: number) {
     const make = () => {
       const canvas = document.createElement("canvas");
       canvas.width = textureWidth;
       canvas.height = Math.round((textureWidth * PAGE_D) / PAGE_W);
+      canvas.getContext("2d", { willReadFrequently: true });
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = anisotropy;
@@ -135,10 +155,13 @@ class TextSide {
     return this.canvases[this.active];
   }
 
-  prepare(draw: (canvas: HTMLCanvasElement) => void): number {
+  prepare(stop: Stop, draw: (canvas: HTMLCanvasElement) => void): number {
     const next = 1 - this.active;
-    draw(this.canvases[next]);
-    this.textures[next].needsUpdate = true;
+    if (this.drawn[next] !== stop) {
+      draw(this.canvases[next]);
+      this.textures[next].needsUpdate = true;
+      this.drawn[next] = stop;
+    }
     return next;
   }
 
@@ -149,6 +172,12 @@ class TextSide {
 
   commit(next: number): void {
     this.active = next;
+  }
+
+  redraw(draw: (canvas: HTMLCanvasElement) => void): void {
+    draw(this.current);
+    this.textures[this.active].needsUpdate = true;
+    this.drawn[1 - this.active] = null;
   }
 }
 
@@ -162,15 +191,17 @@ export class BookScene {
   private raf = 0;
   private visible = true;
   private frozen = false;
+  private opening = 0;
   private options: SceneOptions;
   private kit: Kit;
   private model: BookModel;
   private leftHalf = new THREE.Group();
+  private spineBand: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>;
   private bookRoot = new THREE.Group();
   private modelRoot = new THREE.Group();
   private leftText: TextSide;
   private rightText: TextSide;
-  private leaf: { front: THREE.Mesh; back: THREE.Mesh; geometry: THREE.BufferGeometry; frontMap: THREE.CanvasTexture; backMap: THREE.CanvasTexture; frontCanvas: HTMLCanvasElement; backCanvas: HTMLCanvasElement };
+  private leaf: { front: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>; back: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>; geometry: THREE.BufferGeometry; frontMap: THREE.CanvasTexture; backMap: THREE.CanvasTexture; frontCanvas: HTMLCanvasElement; backCanvas: HTMLCanvasElement };
   private desk: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>;
   private cam = { x: 0, y: 0, z: 0, az: 0, el: 60, dist: 6 };
   private camGoal = { x: 0, y: 0, z: 0, az: 0, el: 60, dist: 6 };
@@ -183,10 +214,14 @@ export class BookScene {
   private terms = new WeakMap<Stop, { seen: Set<string>; left: TermBox[]; right: TermBox[] }>();
   private hovered: string | null = null;
   private underline: LinkUnderline;
-  private lens: { x: number; y: number; u: number; v: number } | null = null;
+  private pointerAt = 0;
+  private lensPerPx = 0.002;
+  private prefetchTimer = 0;
+  private lens: { x: number; y: number; u: number; v: number; side: "left" | "right" } | null = null;
   private target = { stop: 0, beat: 0 };
   private running = false;
   private riffleNext = false;
+  private direction: 1 | -1 = 1;
   private riffleLeaves: { front: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>; back: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial> }[] = [];
   private opened = false;
   private closedView = false;
@@ -286,6 +321,11 @@ export class BookScene {
     const spine = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, PAGE_D + 0.05), coverMaterial);
     spine.position.set(0, -BLOCK - 0.012, 0);
     this.bookRoot.add(spine);
+    const bandGeometry = new THREE.PlaneGeometry(1, PAGE_D + 0.05, 16, 1);
+    bandGeometry.rotateX(-Math.PI / 2);
+    this.spineBand = new THREE.Mesh(bandGeometry, new THREE.MeshLambertMaterial({ color: palette.cover, side: THREE.DoubleSide }));
+    this.spineBand.castShadow = true;
+    this.bookRoot.add(this.spineBand);
 
     const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.003, 0.34), new THREE.MeshLambertMaterial({ color: palette.ribbon }));
     ribbon.position.set(0.13, -BLOCK - 0.026, PAGE_D / 2 + 0.14);
@@ -323,6 +363,7 @@ export class BookScene {
       const canvas = document.createElement("canvas");
       canvas.width = textureWidth;
       canvas.height = Math.round((textureWidth * PAGE_D) / PAGE_W);
+      canvas.getContext("2d", { willReadFrequently: true });
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = anisotropy;
@@ -333,8 +374,10 @@ export class BookScene {
     backLeaf.texture.wrapS = THREE.RepeatWrapping;
     backLeaf.texture.repeat.x = -1;
     backLeaf.texture.offset.x = 1;
-    const front = new THREE.Mesh(leafGeometry, new THREE.MeshLambertMaterial({ map: frontLeaf.texture, side: THREE.FrontSide }));
-    const back = new THREE.Mesh(leafGeometry, new THREE.MeshLambertMaterial({ map: backLeaf.texture, side: THREE.BackSide }));
+    const front = new THREE.Mesh(leafGeometry, new THREE.MeshLambertMaterial({ map: this.rightText.textures[0], side: THREE.FrontSide }));
+    const back = new THREE.Mesh(leafGeometry, new THREE.MeshLambertMaterial({ map: this.leftText.textures[0], side: THREE.BackSide }));
+    onPaper(front.material, palette.paper, false);
+    onPaper(back.material, palette.paper, true);
     front.castShadow = true;
     front.visible = false;
     back.visible = false;
@@ -346,11 +389,22 @@ export class BookScene {
     for (const exhibit of this.model.exhibits) {
       exhibit.scale.y = 0.001;
       exhibit.visible = false;
+      restWhenHidden(exhibit);
       this.modelRoot.add(exhibit);
     }
 
     this.listen();
     this.resize();
+    this.warm();
+  }
+
+  warm(): void {
+    for (const exhibit of this.model.exhibits) exhibit.children.forEach(restWhenHidden);
+    void this.renderer.compileAsync(this.scene, this.camera).then(() =>
+      this.scene.traverse((object) => {
+        for (const material of [(object as THREE.Mesh).material].flat()) if (material) (this.renderer.properties.get(material) as { currentProgram?: { getUniforms(): unknown } }).currentProgram?.getUniforms();
+      }),
+    );
   }
 
   private listen(): void {
@@ -377,6 +431,7 @@ export class BookScene {
         return;
       }
       this.lastPointer = event;
+      this.pointerAt = performance.now();
       const handle = this.pickHandle(event);
       const term = handle ? null : this.termAt(event);
       const link = handle || term ? null : this.linkAt(event);
@@ -506,7 +561,17 @@ export class BookScene {
     const boxes = hit.object === this.leftPlane ? marks.left : marks.right;
     const u = hit.uv.x;
     const v = 1 - hit.uv.y;
-    return boxes.find((t) => u >= t.box[0] && u <= t.box[2] && v >= t.box[1] && v <= t.box[3])?.key ?? null;
+    let best: string | null = null;
+    let bestDistance = Infinity;
+    for (const { box, key } of boxes) {
+      const tall = box[3] - box[1];
+      const padU = tall * (PAGE_D / PAGE_W) * 0.4;
+      const padV = tall * 0.15;
+      if (u < box[0] - padU || u > box[2] + padU || v < box[1] - padV || v > box[3] + padV) continue;
+      const distance = Math.max(box[0] - u, 0, u - box[2]) / (PAGE_D / PAGE_W) + Math.max(box[1] - v, 0, v - box[3]);
+      if (distance < bestDistance) [best, bestDistance] = [key, distance];
+    }
+    return best;
   }
 
   private hoverTerm(key: string | null, event: PointerEvent | null, tap: boolean): void {
@@ -526,24 +591,32 @@ export class BookScene {
 
   private updateLens(event: PointerEvent): void {
     const stop = this.options.stops[this.applied.stop];
-    if (!stop?.page || this.narrow || this.camStartTime >= 0 || this.leaf.front.visible) {
+    if (!stop || this.narrow || this.camStartTime >= 0 || this.leaf.front.visible) {
       this.showLens(null);
       return;
     }
     this.setPointer(event);
-    const hit = this.raycaster.intersectObject(this.leftPlane)[0];
-    if (!hit?.uv) {
+    const hit = this.raycaster.intersectObjects([this.leftPlane, this.rightPlane], false)[0];
+    const side = hit?.object === this.leftPlane ? "left" : "right";
+    const v = hit?.uv ? 1 - hit.uv.y : 0;
+    const source = side === "left" ? this.leftText.current : this.rightText.current;
+    const text = side === "left" ? !!stop.page : !stop.overlay && (stop.exhibit === null || (!stop.paint?.right && v >= captionTop(source.width, source.height)));
+    if (!hit?.uv || !text) {
       this.showLens(null);
       return;
     }
     const rect = this.options.canvas.getBoundingClientRect();
-    this.showLens({ x: event.clientX - rect.left, y: event.clientY - rect.top, u: hit.uv.x, v: 1 - hit.uv.y });
+    this.pointer.x += 20 / rect.width;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const beside = this.raycaster.intersectObject(hit.object, false)[0]?.uv;
+    if (beside) this.lensPerPx = Math.abs(beside.x - hit.uv.x) / 10;
+    this.showLens({ x: event.clientX - rect.left, y: event.clientY - rect.top, u: hit.uv.x, v, side });
   }
 
-  private showLens(lens: { x: number; y: number; u: number; v: number } | null): void {
+  private showLens(lens: { x: number; y: number; u: number; v: number; side: "left" | "right" } | null): void {
     if (!lens && !this.lens) return;
     this.lens = lens;
-    this.options.onLens(lens && { ...lens, source: this.leftText.current, lines: this.underline.lines("left"), color: this.kit.palette.blue });
+    this.options.onLens(lens && { ...lens, perPx: this.lensPerPx, source: (lens.side === "left" ? this.leftText : this.rightText).current, lines: this.underline.lines(lens.side), color: this.kit.palette.blue });
   }
 
   private setVisible(visible: boolean): void {
@@ -614,7 +687,25 @@ export class BookScene {
   }
 
   private setLeftAngle(t: number): void {
-    this.leftHalf.rotation.z = -Math.PI * (1 - t);
+    const phi = -Math.PI * (1 - t);
+    this.leftHalf.rotation.z = phi;
+    const [ax, ay] = [0, -SPINE_HALF];
+    const [bx, by] = [SPINE_HALF * Math.sin(phi), -SPINE_HALF * Math.cos(phi)];
+    const length = Math.hypot(bx - ax, by - ay);
+    this.spineBand.visible = length > 0.002;
+    if (!this.spineBand.visible) return;
+    const [nx, ny] = [-(by - ay) / length, (bx - ax) / length];
+    const position = this.spineBand.geometry.attributes.position as THREE.BufferAttribute;
+    const columns = 17;
+    for (let i = 0; i < position.count; i++) {
+      const s = (i % columns) / (columns - 1);
+      const bulge = 0.22 * length * Math.sin(Math.PI * s);
+      position.setX(i, ax + (bx - ax) * s + nx * bulge);
+      position.setY(i, ay + (by - ay) * s + ny * bulge);
+    }
+    position.needsUpdate = true;
+    this.spineBand.geometry.computeVertexNormals();
+    this.spineBand.geometry.computeBoundingSphere();
   }
 
   showClosed(): void {
@@ -637,24 +728,26 @@ export class BookScene {
     if (!resting) this.showClosed();
     this.closedView = false;
     this.target = { stop: start, beat: 0 };
+    this.opening = start;
     const first = this.options.stops[start];
-    const leftNext = this.leftText.prepare((c) => this.drawLeft(c, first));
+    const leftNext = this.leftText.prepare(first, (c) => this.drawLeft(c, first));
     this.leftText.blend(leftNext, 1);
     this.leftText.commit(leftNext);
-    const rightNext = this.rightText.prepare((c) => this.drawRight(c, first));
+    const rightNext = this.rightText.prepare(first, (c) => this.drawRight(c, first));
     this.rightText.blend(rightNext, 1);
     this.rightText.commit(rightNext);
     const beat = this.beatOf(start, 0)!;
     if (!this.options.reduced && !resting) await this.wait(0.5);
     this.setCamGoal(beat, 2.2);
     await this.tween(2.2, (t) => this.setLeftAngle(easeInOut(t)));
-    this.applied.stop = start;
+    this.applied.stop = this.opening;
     this.applied.beat = 0;
     this.opened = true;
-    this.model.enter?.(start);
+    this.model.enter?.(this.opening);
     if (first.exhibit !== null) await this.popUp(first.exhibit, 0);
     this.publishOverlay();
     this.kick();
+    if (!this.running) window.setTimeout(() => this.prefetch(), 250);
   }
 
   async close(): Promise<void> {
@@ -683,11 +776,27 @@ export class BookScene {
     const seen = new Set<string>();
     const left = stop.paint?.left ? (stop.paint.left(canvas, this.kit.palette, this.options.fonts), []) : drawTextPage(canvas, stop.page, this.kit.palette, this.options.fonts, seen);
     this.terms.set(stop, { seen, left, right: [] });
+    this.drawFolio(canvas, stop, "left");
+  }
+
+  private drawFolio(canvas: HTMLCanvasElement, stop: Stop, side: "left" | "right"): void {
+    const page = this.options.pageOf?.(stop.spread, side);
+    if (page === undefined) return;
+    const ctx = canvas.getContext("2d")!;
+    const unit = canvas.width / 1200;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = this.kit.palette.faint;
+    ctx.font = `${26 * unit}px ${this.options.fonts.sans}`;
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = side;
+    ctx.fillText(String(page), side === "left" ? 130 * unit : canvas.width - 130 * unit, canvas.height - 90 * unit);
+    ctx.textAlign = "left";
   }
 
   private drawRight(canvas: HTMLCanvasElement, stop: Stop): void {
     if (stop.paint?.right) {
       stop.paint.right(canvas, this.kit.palette, this.options.fonts);
+      this.drawFolio(canvas, stop, "right");
       return;
     }
     if (stop.overlay) {
@@ -697,8 +806,9 @@ export class BookScene {
       return;
     }
     const marks = this.terms.get(stop);
-    const right = drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, stop.folio, this.kit.palette, this.options.fonts, new Set(marks?.seen));
+    const right = drawCaptionPage(canvas, stop.figure, stop.caption, stop.instruction, this.kit.palette, this.options.fonts, new Set(marks?.seen));
     if (marks) marks.right = right;
+    this.drawFolio(canvas, stop, "right");
   }
 
   goTo(stop: number, beat: number, riffle = false): void {
@@ -724,14 +834,31 @@ export class BookScene {
     return this.target.stop !== stop || this.target.beat !== beat;
   }
 
+  repaint(): void {
+    const stop = this.options.stops[this.applied.stop];
+    if (!stop) return;
+    this.leftText.redraw((c) => this.drawLeft(c, stop));
+    this.rightText.redraw((c) => this.drawRight(c, stop));
+    this.frozen = false;
+    if (!this.raf) this.raf = requestAnimationFrame(this.tick);
+  }
+
   setStops(stops: Stop[], map: (index: number) => number): void {
     this.options.stops = stops;
     if (this.applied.stop >= 0) this.applied.stop = map(this.applied.stop);
+    this.opening = map(this.opening);
     this.target.stop = map(this.target.stop);
+    this.warm();
   }
 
   async idle(): Promise<void> {
     while (this.running) await this.settling;
+  }
+
+  async quiet(): Promise<void> {
+    const rest = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    await rest(0);
+    for (let n = 0; n < 8 && (this.running || performance.now() - this.pointerAt < 300); n++) await rest(250);
   }
 
   private kick(): void {
@@ -761,6 +888,25 @@ export class BookScene {
     }
     this.rush = false;
     this.running = false;
+    window.setTimeout(() => this.prefetch(), 250);
+  }
+
+  private prefetch(): void {
+    if (this.running || !this.opened || !this.visible) return;
+    if (performance.now() - this.pointerAt < 250) {
+      window.clearTimeout(this.prefetchTimer);
+      this.prefetchTimer = window.setTimeout(() => this.prefetch(), 250);
+      return;
+    }
+    const next = this.options.stops[this.applied.stop + this.direction];
+    if (!next) return;
+    const left = this.leftText.prepare(next, (c) => this.drawLeft(c, next));
+    this.renderer.initTexture(this.leftText.textures[left]);
+    window.setTimeout(() => {
+      if (this.running || !this.opened || this.options.stops[this.applied.stop + this.direction] !== next) return;
+      const right = this.rightText.prepare(next, (c) => this.drawRight(c, next));
+      this.renderer.initTexture(this.rightText.textures[right]);
+    }, 50);
   }
 
   private waitForCamera(): Promise<void> {
@@ -778,6 +924,7 @@ export class BookScene {
     this.frozenSoon = false;
     this.options.onOverlay(null);
     const exhibitChanges = from.exhibit !== to.exhibit || from.spread !== to.spread;
+    if (to.spread !== from.spread) this.direction = to.spread > from.spread ? 1 : -1;
     const fold = exhibitChanges && from.exhibit !== null ? this.foldDown(from.exhibit) : null;
     this.setCamGoal(this.beatOf(stop, beat)!, 1.9);
     const riffle = this.riffleNext;
@@ -785,8 +932,8 @@ export class BookScene {
     if (from.spread !== to.spread) {
       await (riffle ? this.riffle(from, to) : this.turnLeaf(from, to));
     } else {
-      const left = this.leftText.prepare((c) => this.drawLeft(c, to));
-      const right = this.rightText.prepare((c) => this.drawRight(c, to));
+      const left = this.leftText.prepare(to, (c) => this.drawLeft(c, to));
+      const right = this.rightText.prepare(to, (c) => this.drawRight(c, to));
       await this.tween(0.7, (t) => {
         this.leftText.blend(left, t);
         this.rightText.blend(right, t);
@@ -836,34 +983,24 @@ export class BookScene {
 
   private async turnLeaf(from: Stop, to: Stop): Promise<void> {
     const forward = to.spread > from.spread;
-    const scratch = document.createElement("canvas");
-    scratch.width = this.leaf.frontCanvas.width;
-    scratch.height = this.leaf.frontCanvas.height;
-    const left = this.leftText.prepare((c) => this.drawLeft(c, to));
-    const right = this.rightText.prepare((c) => this.drawRight(c, to));
-    const zeroActive = () => {
-      this.leftText.meshes[this.leftText.active].material.opacity = 0;
-      this.rightText.meshes[this.rightText.active].material.opacity = 0;
-    };
+    const left = this.leftText.prepare(to, (c) => this.drawLeft(c, to));
+    const right = this.rightText.prepare(to, (c) => this.drawRight(c, to));
     if (forward) {
-      this.composeLeaf(this.leaf.frontCanvas, this.rightText.current);
-      this.composeLeaf(this.leaf.backCanvas, this.leftText.canvases[left]);
+      this.leaf.front.material.map = this.rightText.textures[this.rightText.active];
+      this.leaf.back.material.map = this.leftText.textures[left];
       this.rightText.blend(right, 1);
       this.rightText.commit(right);
     } else {
-      this.composeLeaf(this.leaf.frontCanvas, this.rightText.canvases[right]);
-      this.composeLeaf(this.leaf.backCanvas, this.leftText.current);
+      this.leaf.front.material.map = this.rightText.textures[right];
+      this.leaf.back.material.map = this.leftText.textures[this.leftText.active];
       this.leftText.blend(left, 1);
       this.leftText.commit(left);
+      this.rightText.meshes[this.rightText.active].material.opacity = 0;
     }
-    this.leaf.frontMap.needsUpdate = true;
-    this.leaf.backMap.needsUpdate = true;
     this.leaf.front.visible = true;
     this.leaf.back.visible = true;
-    this.setLeaf(forward ? 0 : 1);
-    if (!forward) zeroActive();
-    this.leftText.meshes[this.leftText.active].material.opacity = forward ? this.leftText.meshes[this.leftText.active].material.opacity : 1;
-    await this.tween(1.8, (t) => this.setLeaf(forward ? easeInOut(t) : 1 - easeInOut(t)));
+    this.setLeaf(forward ? 0 : 1, forward);
+    await this.tween(1.8, (t) => this.setLeaf(forward ? easeInOutSine(t) : 1 - easeInOutSine(t), forward));
     this.leaf.front.visible = false;
     this.leaf.back.visible = false;
     if (forward) {
@@ -898,8 +1035,8 @@ export class BookScene {
     const leaves = this.riffleLeaves;
     const n = leaves.length;
     const paper = leaves[1].front.material.map;
-    const left = this.leftText.prepare((c) => this.drawLeft(c, to));
-    const right = this.rightText.prepare((c) => this.drawRight(c, to));
+    const left = this.leftText.prepare(to, (c) => this.drawLeft(c, to));
+    const right = this.rightText.prepare(to, (c) => this.drawRight(c, to));
     for (const leaf of leaves) {
       leaf.front.material.map = paper;
       leaf.back.material.map = paper;
@@ -926,7 +1063,7 @@ export class BookScene {
       const u = easeInOut(t);
       leaves.forEach((leaf, k) => {
         const p = clamp01((u - (k * 0.65) / (n - 1)) / 0.35);
-        this.setLeaf(forward ? p : 1 - p);
+        this.setLeaf(forward ? p : 1 - p, forward);
         const attributes = leaf.front.geometry.attributes;
         (attributes.position.array as Float32Array).set(source.position.array as Float32Array);
         (attributes.normal.array as Float32Array).set(source.normal.array as Float32Array);
@@ -948,7 +1085,7 @@ export class BookScene {
     }
   }
 
-  private setLeaf(t: number): void {
+  private setLeaf(t: number, forward: boolean): void {
     const position = this.leaf.geometry.attributes.position as THREE.BufferAttribute;
     const columns = 41;
     const ds = PAGE_W / 40;
@@ -957,7 +1094,7 @@ export class BookScene {
     let x = 0;
     let y = 0.002;
     for (let j = 0; j < columns; j++) {
-      const phi = Math.PI * clamp01(t * 1.4 - 0.4 * (j / 40));
+      const phi = Math.PI * clamp01(t * 1.4 - 0.4 * (forward ? 1 - j / 40 : j / 40));
       xs.push(x);
       ys.push(y + Math.abs(Math.cos(phi)) * pageHeight(Math.abs(x)));
       x += Math.cos(phi) * ds;

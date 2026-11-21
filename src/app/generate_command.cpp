@@ -45,11 +45,14 @@ struct Options {
     int speculate = 0;
     bool speculate_adaptive = false;
     std::filesystem::path draft_model;
+    int tensor_parallel = 0;
 };
 
 #if ENGINE_HAS_CUDA
 void run(const Options& o) {
     using Clock = std::chrono::steady_clock;
+    if (o.tensor_parallel > 0 && o.speculate > 0)
+        throw std::invalid_argument("--tensor-parallel cannot be combined with --speculate");
     std::random_device entropy;
     const SamplingParams sampling{
         o.temperature, o.seed.value_or(uint64_t(entropy()) << 32 | entropy()), o.top_k, o.top_p};
@@ -61,7 +64,9 @@ void run(const Options& o) {
     messages.push_back({"user", o.prompt});
     const auto prompt = tokenizer.encode(chat_prompt(messages, true), false);
 
-    const DeviceWeights w = load_weights(o.model, nullptr);
+    const DeviceWeights w = o.tensor_parallel > 0
+                                ? load_shard_weights(o.model, 0, o.tensor_parallel, nullptr)
+                                : load_weights(o.model, nullptr);
     const auto prompt_len = int64_t(prompt.size());
     const int64_t context =
         std::min<int64_t>(prompt_len + o.max_new_tokens, w.config.max_positions);
@@ -122,6 +127,17 @@ void run(const Options& o) {
             for (size_t i = out.size(); i < r.output.size(); ++i) emit(r.output[i]);
             out = r.output;
         }
+    } else if (o.tensor_parallel > 0) {
+        std::vector<DeviceWeights> others;
+        others.reserve(size_t(o.tensor_parallel));
+        std::vector<ModelWeights> ranks{w.weights};
+        for (int r = 1; r < o.tensor_parallel; ++r)
+            ranks.push_back(
+                others.emplace_back(load_shard_weights(o.model, r, o.tensor_parallel, nullptr))
+                    .weights);
+        ShardedRunner runner(load_config(o.model / "config.json"), std::move(ranks), prompt_len,
+                             context, nullptr);
+        out = generate(runner, prompt, max_new, w.config.eos_id, sampling, emit);
     } else {
         ModelRunner runner(w.config, w.weights, prompt_len, context, nullptr);
         out = generate(runner, prompt, max_new, w.config.eos_id, sampling, emit);
@@ -195,6 +211,12 @@ void add_generate_command(CLI::App& app) {
     cmd->add_flag("--speculate-adaptive", opts->speculate_adaptive,
                   "With --speculate: halve the draft limit after a step that rejects a guess and "
                   "double it back after a step that accepts them all");
+    cmd->add_option("--tensor-parallel", opts->tensor_parallel,
+                    "Tensor parallelism: cut the weights into this many shards (ranks) and run "
+                    "them all on this GPU, summing their partial results twice per layer; it "
+                    "checks the split and cannot be faster than one model; 0 is off")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
     cmd->callback([opts] { run(*opts); });
 }
 

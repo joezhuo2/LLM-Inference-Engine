@@ -9,18 +9,24 @@ import { memoryBudget } from "./memory-budget";
 import { oneToken } from "./one-token";
 import { pagedAttention } from "./paged-attention";
 import { pagedKv } from "./paged-kv";
+import { quantization } from "./quantization";
 import { rope } from "./rope";
 import { sampling } from "./sampling";
 import { serving } from "./serving";
 import { speculativeDecoding } from "./speculative-decoding";
 import { splitAttention } from "./split-attention";
 import { swiglu } from "./swiglu";
+import { tensorParallelism } from "./tensor-parallelism";
 import { whereTheTimeWent } from "./where-the-time-went";
 import { deadEnds } from "../dead-ends";
-import { beyondTitle } from "../book-order";
+import { beyondTitle, bookOrder, chapterNumber } from "../book-order";
 import type { KernelStory } from "./types";
 
-export const kernelStories: KernelStory[] = [oneToken, foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, memoryBudget, serving, speculativeDecoding, whereTheTimeWent].map((k, index) => ({ ...k, index }));
+const stories = [oneToken, foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, memoryBudget, serving, speculativeDecoding, tensorParallelism, whereTheTimeWent, quantization];
+
+if (stories.length !== bookOrder.length || stories.some((k) => !bookOrder.includes(k.slug))) throw new Error("content/kernels: every story needs a place in bookOrder (content/book-order.ts)");
+
+export const kernelStories: KernelStory[] = [...stories].sort((a, b) => bookOrder.indexOf(a.slug) - bookOrder.indexOf(b.slug)).map((k) => ({ ...k, index: chapterNumber(k.slug) }));
 
 export function kernelStory(slug: string): KernelStory | undefined {
   return kernelStories.find((k) => k.slug === slug);
@@ -32,9 +38,9 @@ export const kernelCards: KernelCard[] = kernelStories.map((k) => {
   const first = k.timeline[0]?.date;
   const last = k.timeline[k.timeline.length - 1]?.date;
   return { slug: k.slug, index: k.index, title: k.title, short: k.short, dates: first === last ? (first ?? "") : `${first} – ${last}`, ready: true };
-}).concat({ slug: "beyond", index: kernelStories.length, title: beyondTitle, short: "What the engine leaves out, in bytes per token: quantization, a draft model that pays for speculative decoding, prefix caching and multiple GPUs.", dates: "", ready: true }, {
+}).concat({ slug: "beyond", index: kernelStories.length + 1, title: beyondTitle, short: "What the engine leaves out, in bytes per token: quantization, a draft model that pays for speculative decoding, prefix caching and multiple GPUs.", dates: "", ready: true }, {
   slug: "dead-ends",
-  index: kernelStories.length + 1,
+  index: kernelStories.length + 2,
   title: "what didn't work",
   short: "Slower drafts, a broken bit, rules with a cliff and a profile read wrong, each with what was kept.",
   dates: `${deadEnds[0].date} – ${deadEnds[deadEnds.length - 1].date}`,

@@ -6,11 +6,12 @@ import { servingAbout, servingAboutCaption } from "@/components/kernels/serving/
 import { LoadFigure, tightBlocks } from "@/components/kernels/serving/figures";
 import { queueConfig } from "@/components/kernels/serving/queue";
 import { replayFacts, ServingReplay } from "@/components/kernels/serving/replay";
-import { servingCaptions, servingSteps } from "@/components/kernels/serving/story";
+import { ServingScaleFigure, servingCaptions, servingSteps } from "@/components/kernels/serving/story";
 import { KvVisualizer } from "@/components/kernels/serving/visualizer";
 import { chapterNumber } from "@/content/book-order";
 import { blockTokens, fmt, fullContext, serving, sweepRows } from "@/content/kernels/serving";
 import { kvDemo } from "@/lib/data";
+import { about } from "@/lib/round";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createServingAboutModel } from "./serving-about-model";
@@ -56,6 +57,7 @@ const beats: Beat[][] = [
   gridBeats(`Static batching: ${lengths.length} requests in ${slots} slots`, "Close up: the pink slabs are slots that wait for the longest request"),
   gridBeats("Continuous batching: a free slot is refilled at once", "Close up: the waste is only at the end, when the queue is empty"),
   gridBeats(`A pool of ${tightBlocks} blocks: admission and preemption in the grid`, "Close up: pink cells are recomputed steps, pink balls are evictions"),
+  [flat("TinyLlama on this GPU against Llama 3 8B on an H100")],
   [flat("Goodput against the offered load")],
   [flat("Time per token against the offered load")],
   [flat("Allocate it yourself: the pool")],
@@ -72,6 +74,7 @@ const instructions = [
   "Drag the pink ball to step through; the pink slabs are wasted slot-steps.",
   "Watch a finished request's slot go to the front of the queue on the next step.",
   "Watch the pink balls: a full pool sends the newest request back to the queue.",
+  "Compare the rows: the pool grows, but each long request holds far more of it.",
 ];
 
 const workbench: WorkbenchPage[] = [
@@ -94,7 +97,7 @@ const workbench: WorkbenchPage[] = [
       "The table runs both caches side by side on the same arrivals, whichever one the pool shows: requests running, requests waiting for room, blocks held of 63, slots written, slots held but empty, and preemptions.",
       "Under paged, the list shows each running request's block table: its logical blocks in order, each pointing to the physical block that holds it. A request's blocks are scattered wherever there was room when it grew.",
       "Under contiguous, each request holds one run of blocks, listed by its first and last block, and a waiting request needs that many blocks in a row: a pool with enough free blocks in all can still turn it away when they are scattered.",
-      "Use step to move one decode step at a time, or replay demo to start over. Compare the slots held but empty row: blocks of 16 keep it under one block per request, while a reservation keeps every slot a request might use.",
+      "The box at the top holds the pool page's own controls, bound to the same run: add a request, switch the cache, or use step to move one decode step at a time, and the table changes on this page. Compare the slots held but empty row: blocks of 16 keep it under one block per request, while a reservation keeps every slot a request might use.",
     ],
   },
   {
@@ -102,9 +105,9 @@ const workbench: WorkbenchPage[] = [
     overlay: "replay",
     caption: "Replay a recorded run",
     paragraphs: [
-      replayFacts ? `This is a run the engine recorded with engine bench --trace: ${replayFacts.requests} chat requests arriving at ${replayFacts.rate} per second, ${fmt(replayFacts.steps)} scheduler steps. Press play, or drag the slider to any step.` : "The engine can record a run with engine bench --trace and replay it here, step by step.",
+      replayFacts ? `This is a run the engine recorded with engine bench --trace: ${replayFacts.requests} chat requests arriving at ${replayFacts.rate} per second, ${about(replayFacts.steps)} scheduler steps. Press play, or drag the slider to any step.` : "The engine can record a run with engine bench --trace and replay it here, step by step.",
       "The batch timeline has one row per step. Its length is the time the step took, its colour says whether the step was a prefill of newly admitted requests or a decode step of everyone running, and the dots beside it are the requests in the step. Watch a long prefill row appear each time a request arrives, with the decoders waiting for it.",
-      replayFacts ? `The pool shows which blocks each request holds, a colour per request. At most ${replayFacts.seen} requests ran at once here, under a max_batch of ${replayFacts.maxBatch}, and they never held more than a sliver of the ${fmt(replayFacts.blocks)} blocks: this run was limited by how fast requests arrived, not by rows or memory.` : "The pool shows which blocks each request holds, a colour per request.",
+      replayFacts ? `The pool shows which blocks each request holds, a colour per request. At most ${replayFacts.seen} requests ran at once here, under a max_batch of ${replayFacts.maxBatch}, and they never held more than a sliver of the ${about(replayFacts.blocks)} blocks: this run was limited by how fast requests arrived, not by rows or memory.` : "The pool shows which blocks each request holds, a colour per request.",
       "Step through the end of a request: its blocks all go back at once, and the next request that needs one takes the lowest free block.",
     ],
   },
@@ -116,6 +119,7 @@ function ServingOverlay({ kind, target, narrow }: OverlayProps) {
       <KvVisualizer pages={{ pool: kind === "visualizer-pool" ? target : null, tables: kind === "visualizer-tables" ? target : null }} />
       <ServingReplay pages={{ replay: kind === "replay" ? target : null }} />
       {target && (kind === "goodput" || kind === "tpot") && createPortal(<div className={narrow ? "w-full" : "pt-10"}><LoadFigure kind={kind} /></div>, target)}
+      {target && kind === "scale" && createPortal(<div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}><ServingScaleFigure /></div>, target)}
     </>
   );
 }
@@ -127,8 +131,8 @@ const chapter: ChapterDef = {
   formula: serving.formula,
   steps: servingSteps,
   captions: servingCaptions,
-  exhibits: [0, 1, 1, 2, 2, 3, 3, 3, null, null],
-  overlays: [null, null, null, null, null, null, null, null, "goodput", "tpot"],
+  exhibits: [0, 1, 1, 2, 2, 3, 3, 3, null, null, null],
+  overlays: [null, null, null, null, null, null, null, null, "scale", "goodput", "tpot"],
   instructions,
   beats,
   workbench,

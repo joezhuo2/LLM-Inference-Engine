@@ -64,5 +64,12 @@ export function useLoop(duration: number) {
     };
   };
 
-  return { on, grow, pulse, move, reduced };
+  const draw = (start: number, end: number, hold = 0.94): Props => {
+    if (reduced) return { initial: false };
+    const s = Math.max(0, Math.min(start, 0.9));
+    const e = Math.max(s + edge, Math.min(end, hold));
+    return { initial: { pathLength: 0 }, animate: { pathLength: [0, 0, 1, 1, 0] }, transition: { ...loop, times: [0, s, e, Math.max(e, hold), 1] } };
+  };
+
+  return { on, grow, pulse, move, draw, reduced };
 }

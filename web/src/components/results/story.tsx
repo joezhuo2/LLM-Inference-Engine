@@ -305,7 +305,7 @@ function Source({ p }: { p: Provenance }) {
   );
 }
 
-const sources = [benchRun, benchRun, benchRun, contextRun, profileRun, profileB16Run, { ...benchRun, source: "docs/results.md, Roofline (scripts/roofline.py)" }, loadProvenance, loadProvenance];
+const sources = [benchRun, benchRun, benchRun, contextRun, profileRun, profileB16Run, { ...benchRun, source: "results.md, Roofline (scripts/roofline.py)" }, loadProvenance, loadProvenance];
 
 function Story({ to, children }: { to: string; children: ReactNode }) {
   return (

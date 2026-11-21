@@ -3,6 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
+import { about } from "@/lib/round";
 import { modelShape, onchip } from "@/lib/data";
 import { EasedBar } from "../eased-bar";
 import { StickyStory, type StoryStep } from "../sticky-story";
@@ -153,7 +154,7 @@ const steps: StoryStep[] = [
           number of slots.
         </p>
         <p>
-          That fills only <span className="text-accent">{v2.waves}</span> of a wave. Every block
+          That fills only <span className="text-accent">{about(v2.waves)}</span> of a wave. Every block
           walks its head&apos;s whole context alone, and most of the GPU has nothing to do.
         </p>
       </>
@@ -199,7 +200,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Splits finish in whatever order the GPU runs them, but the merge always adds them the same way, so the same
-          input gives the same bits on every run. One row at a long context now takes <span className="text-accent">{loop8} µs</span> per call, merge included.
+          input gives the same bits on every run. One row at a long context now takes <span className="text-accent">{about(loop8)} µs</span> per call, merge included.
         </p>
         <p>
           Rescaling to the largest maximum is the step an online softmax takes when a chunk raises its maximum, so the merged
@@ -220,7 +221,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           The fix captures one graph per batch size and split count, more graphs than before, and replays the one that
-          matches the batch: <span className="text-accent">{graphBars[3].ms} ms</span>.
+          matches the batch: <span className="text-accent">{about(graphBars[3].ms)} ms</span>.
         </p>
       </>
     ),
@@ -233,11 +234,11 @@ const steps: StoryStep[] = [
       <>
         <p>
           For v2 at one row, a long context sounds like a lot of memory to read, but Nsight Compute shows DRAM at{" "}
-          <span className="text-text">{dram}%</span> of its peak. The kernel is not short of bandwidth.
+          <span className="text-text">{about(dram)}%</span> of its peak. The kernel is not short of bandwidth.
         </p>
         <p>
           It is short of warps. A load that has to go to DRAM waits several hundred cycles on this GPU, much longer than one
-          that hits L2, and a GPU hides that wait by running other warps in the meantime. With <span className="text-accent">{v2.warps}%</span> of warp slots filled, there are
+          that hits L2, and a GPU hides that wait by running other warps in the meantime. With <span className="text-accent">{about(v2.warps)}%</span> of warp slots filled, there are
           too few to switch to.
         </p>
       </>
@@ -254,7 +255,7 @@ const steps: StoryStep[] = [
           time.
         </p>
         <p>
-          At the last doubling the grid is <span className="text-accent">{waves[3].waves}</span> waves. The first wave&apos;s worth of blocks run together and the rest wait for a second, mostly empty wave, so each block has half the work and the
+          At the last doubling the grid is <span className="text-accent">{about(waves[3].waves)}</span> waves. The first wave&apos;s worth of blocks run together and the rest wait for a second, mostly empty wave, so each block has half the work and the
           time barely moves.
         </p>
       </>
@@ -280,13 +281,13 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `${perSm} blocks per SM and ${v2.warps}% warps active are measured (Nsight Compute, 1 row × 2,048 tokens); ${sms} SMs hold ${slots} blocks at once, calculated`,
+  `${perSm} blocks per SM, ${v2.warps}% warps active and ${v2.waves} of a wave are measured (Nsight Compute, 1 row × 2,048 tokens); ${sms} SMs hold ${slots} blocks at once, calculated`,
   `one row, one head: ${cutContext.toLocaleString("en-US")} tokens become ${cutSplits} ranges of ${cutContext / cutSplits}; the other ${modelShape().heads - 1} heads are cut the same way`,
   "the layout of the scratch buffer; the record contents are illustrative",
   `${loopV2} µs → ${loop8} µs per call, one row at 2,048 tokens, v2 against 8 splits, merge included; example values; the same arithmetic as one pass over the whole context`,
   `TPOT p50 of the first of two runs, RTX 5060 Laptop GPU, 64 output tokens; eager at a 1,984-token prompt: v2 ${graphBars[0].ms} → split ${graphBars[1].ms} ms per token; ${graphKeys.reduce((a, k) => a + k.splits.length, 0)} graphs instead of ${graphKeys.length} for the batch sizes ${graphKeys.map((k) => k.bucket).join(", ")}, measured with those sizes; the CUDA Graphs chapter adds batch sizes in between`,
-  `from the v2 Nsight Compute table in docs/profiling.md; ${smThroughput}% SM throughput; a DRAM load waits about ${dramCycles} cycles and an L2 hit ${l2Cycles}, both measured with a pointer chase (scripts/onchip_bench.cu)`,
-  `measured with Nsight Compute: ${waves.map((w) => w.us.toFixed(1)).join(", ")} µs for ${waves.map((w) => w.splits).join(", ")} splits; up to ${waves[2].splits} splits (${waves[2].blocks} blocks) the grid fits one wave; at ${waves[3].splits} splits ${slots} blocks run first and ${waves[3].blocks - slots} wait; slot placement is a sketch`,
+  `from the v2 Nsight Compute table in profiling.md; DRAM at ${dram}%, ${smThroughput}% SM throughput; a DRAM load waits about ${dramCycles} cycles and an L2 hit ${l2Cycles}, both measured with a pointer chase (scripts/onchip_bench.cu)`,
+  `measured with Nsight Compute: ${waves.map((w) => w.us.toFixed(1)).join(", ")} µs for ${waves.map((w) => w.splits).join(", ")} splits; up to ${waves[2].splits} splits (${waves[2].blocks} blocks) the grid fits one wave; at ${waves[3].splits} splits the grid is ${waves[3].waves} waves: ${slots} blocks run first and ${waves[3].blocks - slots} wait; slot placement is a sketch`,
   `µs per call from the bench loop; the engine never picks 16; ${fullRows} rows × ${modelShape().heads} heads = ${fullBlocks} blocks against ${slots} slots; the short context is 128 tokens; the rule needs at least ${minTokens} tokens per split, at most ${maxBlocks} blocks and ${maxSplits} splits`,
 ];
 

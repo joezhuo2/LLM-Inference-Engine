@@ -5,7 +5,11 @@ import { useEffect } from "react";
 import { metric } from "@/components/gpu-floorplan";
 import { Frame, Label } from "@/components/kernels/frame";
 import { useLoop } from "@/components/kernels/loop";
-import { bucketScene, sweepScene } from "@/content/build-log";
+import { Chip, short } from "@/components/kernels/speculative-decoding/figures";
+import { Matrix, RankBar } from "@/components/kernels/tensor-parallelism/figures";
+import { bucketScene, rankScene, sweepScene } from "@/content/build-log";
+import { spec, specFmt } from "@/content/kernels/speculative-decoding";
+import { attentionMatrices, rankShare, shardedForward, tpFmt, tpShape } from "@/content/kernels/tensor-parallelism";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { ceilings } from "@/lib/data";
 
@@ -419,6 +423,189 @@ export function SweepFigure() {
       ))}
       <Label x={12} y={shareBase + 16}>max batch</Label>
       <Label x={12} y={388}>{`share measured in eager profiles, max batch ${profiled[0].batch} and up`}</Label>
+    </Frame>
+  );
+}
+
+const specTokens = [...spec.example.prompt_tokens, ...spec.example.output_tokens];
+const specTop = 100;
+const specPitch = 25;
+
+export function SpeculateFigure() {
+  const { on, move } = useLoop(14);
+  const s = spec.missStep;
+  const lead = Math.min(2, s.match);
+  const found = specTokens.slice(s.match - lead, s.match + s.ngram + s.draft.length);
+  const cw = Math.min(43, 520 / found.length);
+  const rows = 1 + s.draft.length;
+  const rowY = (i: number) => specTop + i * specPitch;
+  const guessX = (i: number) => 20 + (lead + s.ngram + i) * cw;
+  return (
+    <Frame label={`One decode step of one request with ${spec.maxBatch} rows. The last ${s.ngram} tokens appeared earlier in the context, so the ${s.draft.length} tokens after them fill rows 1 to ${s.draft.length} as guesses. The model agrees with ${s.kept}; the first wrong guess and the rows after it are dropped, and the step writes ${s.kept + 1} tokens`}>
+      <Label x={20} y={22} className="fill-text">one decode step: guesses fill the spare rows</Label>
+      <Label x={20} y={40}>earlier in the context</Label>
+      {found.map((t, i) => (
+        <motion.g key={i} {...on(0.03)}>
+          <Chip x={20 + i * cw} y={46} w={cw} text={short(t)} tone={i < lead ? "plain" : i < lead + s.ngram ? "pattern" : "draft"} />
+        </motion.g>
+      ))}
+      <motion.g {...on(0.08)}>
+        <Label x={20 + lead * cw} y={86} className="fill-accent">{`the last ${s.ngram} tokens`}</Label>
+        <Label x={540} y={86} anchor="end" className="fill-warn">{`the ${s.draft.length} after them: copied as guesses`}</Label>
+      </motion.g>
+      {Array.from({ length: rows }, (_, i) => (
+        <Label key={i} x={20} y={rowY(i) + 16}>{`row ${i}`}</Label>
+      ))}
+      <motion.g {...on(0.12)}>
+        <Chip x={64} y={rowY(0)} w={cw} text={short(specTokens[s.at - 1])} tone="real" />
+      </motion.g>
+      {s.draft.map((t, i) => (
+        <motion.g key={i} {...move(0.18 + i * 0.025, 0.3 + i * 0.025, 64 - guessX(i), rowY(i + 1) - 46, false, 0.62)}>
+          <Chip x={guessX(i)} y={46} w={cw} text={short(t)} tone="draft" />
+        </motion.g>
+      ))}
+      {s.draft.map((t, i) => (
+        <motion.g key={i} {...on(0.62)}>
+          <Chip x={64} y={rowY(i + 1)} w={cw} text={short(t)} tone={i < s.kept ? "pattern" : "dropped"} />
+        </motion.g>
+      ))}
+      {Array.from({ length: rows }, (_, i) => {
+        const kept = i <= s.kept;
+        const t = kept ? 0.44 + i * 0.05 : 0.62;
+        return (
+          <motion.g key={i} {...on(t)}>
+            {kept && (
+              <text x={118} y={rowY(i) + 16} className="fill-muted text-[11px]">
+                →
+              </text>
+            )}
+            {kept && <Chip x={134} y={rowY(i)} w={cw} text={short(specTokens[s.at + i])} tone="kept" />}
+            <Label x={186} y={rowY(i) + 16} className={kept && i < s.kept ? "fill-accent" : kept && i === s.draft.length ? "fill-muted" : "fill-warn"}>
+              {!kept ? "dropped: built on the wrong guess" : i === s.draft.length ? "no guess left to check" : i < s.kept ? `same as guess ${i + 1}: keep it` : `guess ${i + 1} was “${short(s.draft[i])}”: stop`}
+            </Label>
+          </motion.g>
+        );
+      })}
+      {rows < spec.maxBatch && (
+        <motion.g {...on(0.12)}>
+          <rect x={20} y={rowY(rows) + 4} width={520} height={20} rx={3} className="fill-none stroke-border" strokeDasharray="3 2" />
+          <Label x={30} y={rowY(rows) + 18}>{`rows ${rows} to ${spec.maxBatch - 1}: left empty, at most ${spec.maxDraft} guesses a step`}</Label>
+        </motion.g>
+      )}
+      <motion.g {...on(0.74)}>
+        <Label x={20} y={372} className="fill-accent">{`${s.kept + 1} tokens out of one step; ${specFmt(spec.best.tokensPerStep, 2)} a step on prompts that repeat (measured)`}</Label>
+      </motion.g>
+      <Label x={20} y={392}>{`step ${s.index} of a run recorded ${spec.date}, one request`}</Label>
+    </Frame>
+  );
+}
+
+export function RankFigure() {
+  const { on, grow } = useLoop(16);
+  const { n, pct } = rankScene;
+  const [qkv, wo] = attentionMatrices;
+  const px = 520 / rankShare(1).total;
+  const s = rankShare(n);
+  return (
+    <Frame label={`One layer's fused QKV weight is cut by rows and the output projection by columns for ${n} ranks, so each rank gets ${s.qHeads} of ${tpShape.heads} query heads. The embedding and the LM head stay whole in every rank, so a rank of ${n} holds ${pct}% of the model, not half`}>
+      <Label x={20} y={22} className="fill-text">{`one layer's attention weights, cut for ${n} ranks`}</Label>
+      {Array.from({ length: n }, (_, r) => (
+        <motion.g key={r} {...on(0.08 + (r * 0.84) / n, 0.08 + ((r + 1) * 0.84) / n, false)}>
+          <Label x={540} y={22} anchor="end" className="fill-accent">{`rank ${r} of ${n}: ${s.qHeads} heads`}</Label>
+        </motion.g>
+      ))}
+      <Matrix m={qkv} x={20} y={74} w={180} h={120} n={n} on={on} />
+      <Matrix m={wo} x={290} y={74} w={180} h={120} n={n} on={on} />
+      <Label x={20} y={218}>rows of one matrix, then the columns of the next</Label>
+      <motion.g {...on(0.04)}>
+        <Label x={20} y={248} className="fill-text">the whole model</Label>
+        <RankBar n={1} x={20} y={254} h={18} px={px} />
+      </motion.g>
+      <motion.g {...grow(0.2, 0.36)}>
+        <RankBar n={n} x={20} y={306} h={18} px={px} />
+      </motion.g>
+      <motion.g {...on(0.36)}>
+        <Label x={20} y={300} className="fill-accent">{`a rank of ${n}: ${pct}% of the model, not half`}</Label>
+        <line x1={280} y1={286} x2={280} y2={330} strokeDasharray="3 3" className="stroke-text" />
+        <Label x={284} y={340}>half</Label>
+      </motion.g>
+      <rect x={20} y={354} width={10} height={10} rx={1} className="fill-accent" />
+      <Label x={36} y={363}>{`layers, cut in ${n}`}</Label>
+      <rect x={140} y={354} width={10} height={10} rx={1} className="fill-text/70" />
+      <Label x={156} y={363}>embedding, LM head, norms: whole in every rank</Label>
+      <Label x={20} y={388}>bars to scale from the shapes; the percent from the MiB on the device</Label>
+    </Frame>
+  );
+}
+
+const shardBlocks = [
+  { name: "attention", what: `${rankShare(2).qHeads} of ${tpShape.heads} heads`, x: 20, t: 0.06 },
+  { name: "MLP", what: `${tpFmt(rankShare(2).channels)} channels`, x: 290, t: 0.44 },
+];
+const shardLane = [96, 96, 28];
+
+export function ShardsFigure() {
+  const { on, move } = useLoop(16);
+  const f = shardedForward();
+  const two = f.ranks.indexOf(2);
+  return (
+    <Frame label={`One layer with 2 ranks on one GPU: each rank in turn computes a partial result with its own weights, and the two partials are summed into the residual stream, after attention and after the MLP. ${tpShape.sums} sums in a token. A token took ${tpFmt(f.msPerToken[two], 2)} ms with 2 ranks against ${tpFmt(f.wholeMsPerToken, 2)} ms for the whole model (measured)`}>
+      <Label x={20} y={22} className="fill-text">one layer, 2 ranks taking turns on one GPU</Label>
+      <Label x={20} y={56}>residual stream</Label>
+      <line x1={20} y1={70} x2={540} y2={70} strokeWidth={2} className="stroke-border" />
+      {shardBlocks.map((b) => {
+        const node = b.x + 214;
+        const sum = b.t + 0.26;
+        return (
+          <g key={b.name}>
+            <Label x={b.x} y={100} className="fill-text">{b.name}</Label>
+            {[0, 1].map((r) => {
+              const y = 110 + r * 46;
+              return (
+                <g key={r}>
+                  <rect x={b.x} y={y} width={150} height={34} rx={3} className="fill-text/10 stroke-border" />
+                  <motion.rect x={b.x} y={y} width={150} height={34} rx={3} strokeWidth={1.5} className="fill-accent/25 stroke-accent" {...on(b.t + r * 0.1)} />
+                  <Label x={b.x + 10} y={y + 21} className="fill-text">{`rank ${r}: ${b.what}`}</Label>
+                  <motion.rect x={b.x + 164} y={y} width={10} height={34} rx={2} className="fill-accent" {...on(b.t + r * 0.1 + 0.06)} />
+                  <motion.rect x={b.x + 164} y={y} width={10} height={34} rx={2} className="fill-accent" {...move(sum, sum + 0.07, node - 5 - b.x - 164, 53 - y, false, sum + 0.1)} />
+                </g>
+              );
+            })}
+            <motion.g {...on(b.t + 0.16)}>
+              <Label x={b.x + 169} y={216} anchor="middle">partials</Label>
+            </motion.g>
+            <circle cx={node} cy={70} r={11} className="fill-surface stroke-border" />
+            <motion.circle cx={node} cy={70} r={11} strokeWidth={1.5} className="fill-accent/25 stroke-accent" {...on(sum + 0.08)} />
+            <motion.line x1={node + 11} y1={70} x2={b.x === 20 ? shardBlocks[1].x + 203 : 540} y2={70} strokeWidth={2} className="stroke-accent" {...on(sum + 0.08)} />
+            <text x={node} y={75} textAnchor="middle" className="fill-text text-[14px]">
+              +
+            </text>
+          </g>
+        );
+      })}
+      <Label x={20} y={250}>the one GPU, in time</Label>
+      {shardBlocks.map((b, k) =>
+        shardLane.map((w, i) => {
+          const x = 20 + k * 236 + shardLane.slice(0, i).reduce((a, c) => a + c + 4, 0);
+          const sum = i === 2;
+          return (
+            <g key={`${k}-${i}`}>
+              <rect x={x} y={258} width={w} height={24} rx={3} className="fill-text/10" />
+              <motion.rect x={x} y={258} width={w} height={24} rx={3} strokeWidth={1.5} className="fill-accent/25 stroke-accent" {...on(sum ? b.t + 0.34 : b.t + i * 0.1)} />
+              <text x={x + w / 2} y={274} textAnchor="middle" className="fill-text text-[11px]">
+                {sum ? "+" : `rank ${i}`}
+              </text>
+            </g>
+          );
+        }),
+      )}
+      {shardBlocks.map((b, k) => (
+        <Label key={b.name} x={20 + k * 236 + 112} y={298} anchor="middle">{b.name}</Label>
+      ))}
+      <Label x={20} y={328} className="fill-text">{`${tpShape.sums} sums in a token: 2 in each of ${tpShape.layers} layers`}</Label>
+      <Label x={20} y={348} className="fill-accent">{`a token: ${tpFmt(f.msPerToken[two], 2)} ms with 2 ranks in turn, ${tpFmt(f.wholeMsPerToken, 2)} ms whole (measured)`}</Label>
+      <Label x={20} y={368}>{`logits within ${f.maxLogitDiff}, every greedy token the same (measured)`}</Label>
+      <Label x={20} y={390}>one GPU: the ranks take turns, so it cannot be faster; the lane is not to scale</Label>
     </Frame>
   );
 }

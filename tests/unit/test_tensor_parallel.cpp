@@ -21,6 +21,7 @@ using engine::plan_shard_layout;
 using engine::plan_weight_layout;
 using engine::Region;
 using engine::SafetensorsHeader;
+using engine::shard_config;
 using engine::WeightLayout;
 using engine::test::fake_header;
 using engine::test::tinyllama_config;
@@ -459,3 +460,55 @@ TEST(TensorParallel, RejectsWhatPlanWeightLayoutRejects) {
 }
 
 }  // namespace
+
+TEST(TensorParallel, ShardConfigDividesTheHeadsAndTheMlp) {
+    const ModelConfig c = tinyllama_config();
+    for (const int n : {1, 2, 4}) {
+        SCOPED_TRACE(n);
+        const ModelConfig s = shard_config(c, n);
+        EXPECT_EQ(s.heads, 32 / n);
+        EXPECT_EQ(s.kv_heads, 4 / n);
+        EXPECT_EQ(s.intermediate, 5632 / n);
+        EXPECT_EQ(s.q_dim(), 2048 / n);
+        EXPECT_EQ(s.kv_dim(), 256 / n);
+        EXPECT_EQ(s.qkv_dim(), (2048 + 2 * 256) / n);
+        EXPECT_EQ(s.group_size(), c.group_size());
+        EXPECT_EQ(s.hidden, c.hidden);
+        EXPECT_EQ(s.head_dim, c.head_dim);
+        EXPECT_EQ(s.layers, c.layers);
+        EXPECT_EQ(s.vocab, c.vocab);
+        EXPECT_EQ(s.max_positions, c.max_positions);
+        EXPECT_EQ(s.eos_id, c.eos_id);
+    }
+}
+
+TEST(TensorParallel, ShardConfigRejectsWhatDoesNotDivide) {
+    const auto expect_message = [](const ModelConfig& c, int n, const std::string& part) {
+        SCOPED_TRACE(n);
+        try {
+            shard_config(c, n);
+            ADD_FAILURE() << "shard_config did not throw";
+        } catch (const std::invalid_argument& e) {
+            EXPECT_NE(std::string(e.what()).find(part), std::string::npos) << e.what();
+        }
+    };
+    const ModelConfig c = tp_config();
+    expect_message(c, 0, "num_ranks must be at least 1");
+    expect_message(c, -2, "num_ranks must be at least 1");
+    expect_message(c, 3, "shard_config: kv_heads must");
+    expect_message(c, 8, "shard_config: kv_heads must");
+
+    ModelConfig no_kv = c;
+    no_kv.kv_heads = 0;
+    expect_message(no_kv, 1, "shard_config: kv_heads must");
+
+    ModelConfig heads = c;
+    heads.heads = 6;
+    expect_message(heads, 4, "shard_config: heads must");
+    EXPECT_NO_THROW(shard_config(heads, 2));
+
+    ModelConfig mlp = c;
+    mlp.intermediate = 26;
+    expect_message(mlp, 4, "intermediate must be a multiple");
+    EXPECT_NO_THROW(shard_config(mlp, 2));
+}

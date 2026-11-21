@@ -58,19 +58,21 @@ const norms = [140, 330];
 const blockX = [128, 318];
 const plus = [216, 406];
 
-function Bars({ x, base, values, k, className, from }: { x: number; base: number; values: number[]; k: number; className: string; from?: number[] }) {
+type Loop = ReturnType<typeof useLoop>;
+
+function Bars({ x, base, values, k, className, from, rise }: { x: number; base: number; values: number[]; k: number; className: string; from?: number[]; rise?: ReturnType<Loop["grow"]> }) {
   return (
     <>
       {values.map((v, i) => {
         const under = from ? from[i] * k : 0;
-        return <rect key={i} x={x + i * pitch} y={base - under - v * k} width={bar} height={v * k} rx={1.5} className={className} />;
+        return <motion.rect key={i} x={x + i * pitch} y={base - under - v * k} width={bar} height={v * k} rx={1.5} className={className} {...rise} />;
       })}
     </>
   );
 }
 
 function Phase({ scale, start, end, still }: { scale: number; start: number; end: number; still: boolean }) {
-  const { on } = useLoop(16);
+  const { on, grow, move } = useLoop(16);
   const span = end - start;
   const at = (f: number) => start + f * span;
   const s0 = S0.map((v) => v * scale);
@@ -78,22 +80,28 @@ function Phase({ scale, start, end, still }: { scale: number; start: number; end
   const s2 = s1.map((v, i) => v + M[i]);
   const n1 = normed(s0, W1);
   const n2 = normed(s1, W2);
+  const rise = (f: number) => grow(at(f), at(f + 0.12), "y", end);
+  const dots = [0, 1].flatMap((b) => [
+    <motion.circle key={`r${b}`} cx={stations[b] + 2 * pitch} cy={streamY - 120} r={4} className="fill-accent" {...move(at(b * 0.34), at(0.14 + b * 0.34), norms[b] + 30 - stations[b] - 2 * pitch, normY + 12 - streamY + 120, false)} />,
+    <motion.circle key={`w${b}`} cx={plus[b]} cy={93} r={4} className="fill-text" {...move(at(0.16 + b * 0.34), at(0.31 + b * 0.34), 0, streamY - 101, false)} />,
+  ]);
   return (
     <motion.g {...on(start, end, still)}>
+      {dots}
       <Bars x={stations[0]} base={streamY} values={s0} k={kS} className="fill-baseline" />
       <motion.g {...on(at(0.12), end, still)}>
-        <Bars x={norms[0]} base={normY} values={n1} k={kN} className="fill-accent" />
+        <Bars x={norms[0]} base={normY} values={n1} k={kN} className="fill-accent" rise={rise(0.12)} />
       </motion.g>
       <motion.g {...on(at(0.3), end, still)}>
         <Bars x={stations[1]} base={streamY} values={s0} k={kS} className="fill-baseline" />
-        <Bars x={stations[1]} base={streamY} values={A} k={kS} from={s0} className="fill-surface stroke-text" />
+        <Bars x={stations[1]} base={streamY} values={A} k={kS} from={s0} className="fill-surface stroke-text" rise={rise(0.3)} />
       </motion.g>
       <motion.g {...on(at(0.46), end, still)}>
-        <Bars x={norms[1]} base={normY} values={n2} k={kN} className="fill-accent" />
+        <Bars x={norms[1]} base={normY} values={n2} k={kN} className="fill-accent" rise={rise(0.46)} />
       </motion.g>
       <motion.g {...on(at(0.64), end, still)}>
         <Bars x={stations[2]} base={streamY} values={s1} k={kS} className="fill-baseline" />
-        <Bars x={stations[2]} base={streamY} values={M} k={kS} from={s1} className="fill-surface stroke-text" />
+        <Bars x={stations[2]} base={streamY} values={M} k={kS} from={s1} className="fill-surface stroke-text" rise={rise(0.64)} />
       </motion.g>
       <Label x={20} y={48} className="fill-text">
         {scale === 1 ? "the stream arrives at its usual size" : `the same stream, ${scale} times larger`}

@@ -143,7 +143,7 @@ export function speculativeExample(): SpeculativeExample {
 
 export type Doc = "profiling" | "results";
 
-export const docPath: Record<Doc, string> = { profiling: "docs/profiling.md", results: "docs/results.md" };
+export const docPath: Record<Doc, string> = { profiling: "profiling.md", results: "results.md" };
 
 export function docSections(doc: Doc): ProfilingSection[] {
   return doc === "results" ? resultsDoc.sections : profiling;
@@ -162,7 +162,7 @@ export function embeddingLaunch(): EmbeddingLaunch {
   const row = rows.find((r) => r[header.indexOf("Kernel")] === "Embedding lookup");
   const kernel = /one thread per (\d+) bytes.*not a multiple of (\d+)/.exec(row?.[header.indexOf("Optimized version")] ?? "");
   const m = /max batch (\d+) with ([\d,]+)-token prompts, ([\d-]+): a decode step ([\d.]+) to ([\d.]+) us, a ([\d,]+)-token prefill step ([\d.]+) to ([\d.]+) us to ([\d.]+) to ([\d.]+) us; under ([\d.]+)% of a step/.exec(row?.[header.indexOf("Nsight Compute before and after")] ?? "");
-  if (!kernel || !m) throw new Error("docs/results.md Kernels: the Embedding lookup row has no \"one thread per N bytes\" or no \"a decode step A to B us, a T-token prefill step ... under P% of a step\" text");
+  if (!kernel || !m) throw new Error("results.md Kernels: the Embedding lookup row has no \"one thread per N bytes\" or no \"a decode step A to B us, a T-token prefill step ... under P% of a step\" text");
   const n = (text: string) => cellNumber(text) as number;
   return { date: m[3], maxBatch: n(m[1]), promptTokens: n(m[2]), bytesPerThread: n(kernel[1]), valuesPerLoad: n(kernel[2]), decodeUs: { naive: n(m[4]), fast: n(m[5]) }, prefillTokens: n(m[6]), prefillUs: { naive: [n(m[7]), n(m[8])], fast: [n(m[9]), n(m[10])] }, underPct: n(m[11]) };
 }
@@ -171,7 +171,7 @@ export type Hardware = { gpu: string; compute_capability: number; sms: number; v
 
 export function hardware(): Hardware {
   const hw = hardwareJson as Partial<Hardware>;
-  if (!hw.sms || !hw.shared_kb_per_sm || !hw.l2_kb || !hw.vram_gb) throw new Error("docs/hardware.md is missing SMs, VRAM, L2 or shared mem per SM");
+  if (!hw.sms || !hw.shared_kb_per_sm || !hw.l2_kb || !hw.vram_gb) throw new Error("hardware.md is missing SMs, VRAM, L2 or shared mem per SM");
   return hw as Hardware;
 }
 
@@ -188,17 +188,17 @@ export type FlashKernel = { tile: number; warps_per_block: number; max_head_dim:
 export const flashKernel = (): FlashKernel => flashKernelJson;
 
 export function loadRun(): LoadRun {
-  if (!resultsDoc.load) throw new Error("docs/results.md has no \"Engine runs measured\" line in its Under load section");
+  if (!resultsDoc.load) throw new Error("results.md has no \"Engine runs measured\" line in its Under load section");
   return resultsDoc.load;
 }
 
 export function loadSlo(): { ttft_ms: number; tpot_ms: number } {
-  if (!resultsDoc.slo) throw new Error("docs/results.md has no \"SLO: TTFT at most ... and TPOT at most ...\" line in its Under load section");
+  if (!resultsDoc.slo) throw new Error("results.md has no \"SLO: TTFT at most ... and TPOT at most ...\" line in its Under load section");
   return resultsDoc.slo;
 }
 
 export function ceilings(): { gbs: number; tflops: number } {
-  if (!resultsDoc.ceilings) throw new Error("docs/results.md has no Ceilings line in its Roofline section");
+  if (!resultsDoc.ceilings) throw new Error("results.md has no Ceilings line in its Roofline section");
   return resultsDoc.ceilings;
 }
 

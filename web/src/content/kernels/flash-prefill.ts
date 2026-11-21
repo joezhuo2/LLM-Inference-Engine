@@ -203,7 +203,7 @@ export const flashPrefill: KernelStory = {
       doc: "results",
       section: prefill,
       table: 0,
-      caption: "TTFT in ms against prompt tokens, one request per run, median of 5 (min to max); engine is the tiled kernel, engine, paged prefill the per-row decode attention",
+      caption: "TTFT in ms against prompt tokens, one request per run, median of 3 (min to max); engine is the tiled kernel, engine, paged prefill the per-row decode attention",
       command: "python scripts/prefill_ttft.py --llama-batched-bench <path> --token-budget 256",
     },
     {
@@ -217,7 +217,7 @@ export const flashPrefill: KernelStory = {
       doc: "results",
       section: kernels,
       table: 0,
-      caption: "three attention paths for the same prefill, same session; the first kernel measured at commit 9cff334 (results/prefill/first_flash_kernel.csv)",
+      caption: "three attention paths for the same prefill and llama.cpp, one session on 2026-11-10; the first kernel measured at commit 9cff334 (results/prefill/first_flash_kernel.csv)",
       command: "engine bench --prefill-attention paged for the per-row decode kernels; the default is the tiled kernel",
     },
   ],

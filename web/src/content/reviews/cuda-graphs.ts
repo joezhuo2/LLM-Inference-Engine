@@ -1,4 +1,5 @@
 import { kvReplay, launchGaps } from "@/lib/data";
+import { about } from "@/lib/round";
 import trace from "@/content/kernels/cuda-graphs-trace.json";
 import { padding, sweepKnee, sweepOps, sweepPoints } from "@/content/kernels/cuda-graphs";
 import { chapterNumber } from "../book-order";
@@ -22,8 +23,8 @@ export const review: ChapterReview = {
   lesson: "When kernels are short, the gaps between launches cost time: record the step once and replay it.",
   why: "It shows that a batch-1 step can leave the GPU waiting even when every kernel is fast, so the speed of a step depends on how many launches it needs, not only on how long each kernel runs.",
   takeaways: [
-    `Launched one by one, every kernel is preceded by a gap of a few microseconds while the GPU takes the next launch and sets up its grid. Those gaps leave the GPU idle for ${eager.idle_pct}% of a batch-1 decode step, and faster kernels would not remove them.`,
-    `A CUDA Graph records the chain of launches once and replays it with a single launch, which cuts the idle share to ${replay.idle_pct}% while the kernels take the same time. The saving is about a fixed time per step, because every step has the same kernel boundaries.`,
+    `Launched one by one, every kernel is preceded by a gap of a few microseconds while the GPU takes the next launch and sets up its grid. Those gaps leave the GPU idle for ${about(eager.idle_pct)}% of a batch-1 decode step, and faster kernels would not remove them.`,
+    `A CUDA Graph records the chain of launches once and replays it with a single launch, which cuts the idle share to ${about(replay.idle_pct)}% while the kernels take the same time. The saving is about a fixed time per step, because every step has the same kernel boundaries.`,
     `A graph freezes each kernel's pointers and grid, so a replay can only change values. Inputs go through fixed buffers, and anything that changes a grid, like the split count of attention, needs its own graph. Batches are padded to a bucket, and padded rows are still computed, so the buckets come ${padding.steps} per power of two: padding ${padding.rows} rows to ${padding.coarseBucket} instead of ${padding.fineBucket} costs about ${padding.costPct}% more time per token.`,
   ],
   questions: [

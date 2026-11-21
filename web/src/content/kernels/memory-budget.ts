@@ -1,5 +1,6 @@
 import { hardware, kvReplay, modelShape } from "@/lib/data";
 import { published } from "../published";
+import { fullContextsIn, kvTokenBytes, poolBlocksFor, poolTokensOf, weightBytes } from "../scale";
 import { blockBytes, blockTokens, fullContext, fullMb, maxBatch, poolBlocks, poolFraction, poolTokens, reservedFit, sweepLast, tokenBytes } from "./serving";
 import type { KernelStory } from "./types";
 
@@ -18,7 +19,7 @@ const weights = params * 2;
 const pool = poolBlocks * blockBytes;
 const free = pool / fraction;
 const rest = vram - weights - free;
-if (rest < 0) throw new Error("the recorded KV pool is larger than the VRAM left after the weights: check docs/hardware.md and the kv replay");
+if (rest < 0) throw new Error("the recorded KV pool is larger than the VRAM left after the weights: check hardware.md and the kv replay");
 
 export const budget = {
   gpu: hw.gpu,
@@ -84,12 +85,13 @@ const specs: Spec[] = [
 ];
 
 export const fits = specs.map((s) => {
-  const w = (s.params * s.bits) / 8;
+  const w = (weightBytes(s.params) * s.bits) / 16;
   const left = vram - rest - w;
-  const perToken = 2 * s.layers * s.kvHeads * s.headDim * 2;
-  const p = s.measured ? pool : Math.max(0, left * fraction);
-  const tokens = s.measured ? poolTokens : Math.floor(p / perToken / blockTokens) * blockTokens;
-  return { name: `${s.model}, ${s.bits === 16 ? "BF16" : `${s.bits}-bit`}`, model: s.model, bits: s.bits, measured: s.measured, weights: w, perToken, pool: p, spare: Math.max(0, left) - p, over: Math.max(0, -left), tokens, contexts: Math.floor(tokens / fullContext) };
+  const perToken = kvTokenBytes(s.layers, s.kvHeads, s.headDim);
+  const blocks = s.measured ? poolBlocks : poolBlocksFor(Math.max(0, left), perToken);
+  const p = blocks * perToken * blockTokens;
+  const tokens = blocks > 0 ? poolTokensOf(blocks) : 0;
+  return { name: `${s.model}, ${s.bits === 16 ? "BF16" : `${s.bits}-bit`}`, model: s.model, bits: s.bits, measured: s.measured, weights: w, perToken, blocks, pool: p, spare: Math.max(0, left) - p, over: Math.max(0, -left), tokens, contexts: blocks > 0 ? fullContextsIn(blocks, fullContext) : 0 };
 });
 export const fitOf = (model: string, bits: number) => {
   const f = fits.find((x) => x.model === model && x.bits === bits);
@@ -114,7 +116,7 @@ export const memoryBudget: KernelStory = {
     { path: "include/engine/kv/cache_size.h", label: "block size 16, fraction 0.9" },
     { path: "src/runtime/kv_cache.cpp", label: "free memory, the pool's allocation" },
     { path: "src/kv/block_manager.cpp", label: "who holds which block" },
-    { path: "docs/hardware.md", label: "the GPU's memory" },
+    { path: "hardware.md", label: "the GPU's memory" },
   ],
   tests: [{ path: "tests/unit/test_kv_cache_size.cpp", label: "bytes per block and the pool size" }],
   testing: "",

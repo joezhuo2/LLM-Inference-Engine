@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SmoothRange } from "@/components/smooth-range";
+import { Mirror, MirrorRange } from "../mirror";
 import { glide as tween, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { ceilings, environment, modelShape, profilingTable } from "@/lib/data";
@@ -140,9 +141,34 @@ export function FoundationsSandbox({ pages }: { pages?: { one: HTMLElement | nul
     { label: "bytes moved", value: <NumberFlow value={byte.value} suffix={` ${byte.unit}`} format={sig} /> },
     { label: "FLOP per byte", value: <NumberFlow value={a.intensity} format={sig} /> },
     { label: "ridge", value: `${ridge.toFixed(1)} FLOP/byte` },
-    { label: "bound by", value: <span className="text-accent">{a.bound === "memory" ? "memory bandwidth" : "compute"}</span> },
+    { label: "bound by", value: <span className="text-accent">{a.bound === "memory" ? <>memory<span className="max-sm:hidden"> bandwidth</span></> : "compute"}</span> },
     { label: "time at the ceiling", value: <NumberFlow value={a.timeUs} suffix=" µs" format={one} /> },
   ];
+
+  const opPicker = (compact: boolean) => (
+    <div role="group" aria-label="operation" className={clsx("flex flex-wrap items-center", compact ? "gap-1.5" : "gap-2")}>
+      <span className="text-muted">operation</span>
+      {ops.map((o) => (
+        <button
+          key={o}
+          type="button"
+          aria-pressed={op === o}
+          onClick={() => {
+            setOp(o);
+            setGuess(null);
+          }}
+          className={clsx("pressable rounded border", compact ? "px-1.5 py-0.5" : "px-2.5 py-1", op === o ? "border-accent bg-accent-dim text-accent" : "border-border text-text")}
+        >
+          {compact && o === "qkv" ? "QKV" : labels[o]}
+        </button>
+      ))}
+      {compact && (
+        <button type="button" onClick={reset} className="pressable ml-auto rounded border border-border px-1.5 py-0.5 text-text">
+          reset
+        </button>
+      )}
+    </div>
+  );
 
   const partOne = (
       <div className="space-y-4">
@@ -169,23 +195,7 @@ export function FoundationsSandbox({ pages }: { pages?: { one: HTMLElement | nul
           )}
         </div>
 
-        <div role="group" aria-label="operation" className="flex flex-wrap items-center gap-2">
-          <span className="text-muted">operation</span>
-          {ops.map((o) => (
-            <button
-              key={o}
-              type="button"
-              aria-pressed={op === o}
-              onClick={() => {
-                setOp(o);
-                setGuess(null);
-              }}
-              className={clsx("pressable rounded border px-2.5 py-1", op === o ? "border-accent bg-accent-dim text-accent" : "border-border text-text")}
-            >
-              {labels[o]}
-            </button>
-          ))}
-        </div>
+        {opPicker(false)}
 
         <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_5.5rem] sm:items-center">
           <label htmlFor="roofline-rows" className="text-muted">
@@ -286,30 +296,33 @@ export function FoundationsSandbox({ pages }: { pages?: { one: HTMLElement | nul
       </div>
   );
   const partTwo = (
-      <div className="space-y-5">
-        <div className="flex items-center justify-between gap-2">
+      <div className={pages ? "space-y-3 max-sm:space-y-2" : "space-y-5"}>
+        {pages && (
+          <Mirror from="the previous page">
+            {opPicker(true)}
+            <MirrorRange id="roofline-rows-mirror" label="rows" min={0} max={rowSteps} value={step} onValue={(v) => { stop(); setStep(v); }} text={`${rows} row${rows > 1 ? "s" : ""}`} />
+            <MirrorRange id="roofline-context-mirror" label="context" min={16} max={shape.max_positions} step={16} value={context} onValue={(v) => { stop(); setContext(v); }} text={`${context} tok`} disabled={op !== "attention"} />
+          </Mirror>
+        )}
+        <div className={clsx("flex items-center justify-between gap-2", pages && "hidden")}>
           <span className="text-text">{`${labels[op]}, ${rows} row${rows > 1 ? "s" : ""}`}</span>
           <button type="button" onClick={reset} className="pressable rounded border border-border px-2.5 py-1 text-text">
             reset
           </button>
         </div>
-        <p className="leading-relaxed text-muted">{`Counted per decode step, all ${shape.layers} layers: ${counted[op]}.`}</p>
+        <p className={clsx("leading-relaxed text-muted", pages && "max-sm:leading-snug")}>{`Counted per decode step, all ${shape.layers} layers: ${counted[op]}.`}</p>
 
-        <table className="w-full tabular-nums">
-          <thead className="text-left text-muted">
-            <tr>
-              <th colSpan={2} className="pb-1 font-normal">{`computed from the ceilings: ${peak.gbs} GB/s, ${peak.tflops} TFLOP/s`}</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div className="tabular-nums">
+          <div className={clsx("pb-1 text-muted", pages && "max-sm:hidden")}>{`computed from the ceilings: ${peak.gbs} GB/s, ${peak.tflops} TFLOP/s`}</div>
+          <div className={clsx("grid", pages && "max-sm:grid-cols-2 max-sm:gap-x-4")}>
             {readouts.map((r) => (
-              <tr key={r.label} className="border-t border-border">
-                <td className="py-1 text-muted">{r.label}</td>
-                <td className="py-1 text-right text-text">{r.value}</td>
-              </tr>
+              <div key={r.label} className="flex justify-between gap-2 border-t border-border py-1">
+                <span className="text-muted">{r.label}</span>
+                <span className="text-right text-text">{r.value}</span>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
 
         <div className="space-y-1.5">
           <div className="text-muted">time if limited by only one thing</div>
@@ -330,23 +343,24 @@ export function FoundationsSandbox({ pages }: { pages?: { one: HTMLElement | nul
         </div>
 
         <div>
-          <div className="pb-1 text-muted">{`measured: ${gpu}, commit ${environment.commit}, ${String(environment.date).slice(0, 10)}`}</div>
+          <div className="pb-1 text-muted">
+            {`measured: ${gpu}, commit ${environment.commit}`}
+            <span className={clsx(pages && "max-sm:hidden")}>{`, ${String(environment.date).slice(0, 10)}`}</span>
+          </div>
           <div className="grid">
-            <table className={clsx("col-start-1 row-start-1 w-full tabular-nums", !m && "invisible")} aria-hidden={!m}>
-              <tbody>
+            <div className={clsx("col-start-1 row-start-1 grid tabular-nums", pages && "max-sm:grid-cols-2 max-sm:gap-x-4", !m && "invisible")} aria-hidden={!m}>
                 {[
                   { label: "time", value: <NumberFlow value={m?.us ?? 0} suffix=" µs" format={one} /> },
                   { label: "of the roof", value: <NumberFlow value={m?.pct ?? 0} suffix="%" /> },
                   { label: "bandwidth", value: <NumberFlow value={m?.gbs ?? 0} suffix=" GB/s" /> },
                   { label: "compute", value: <NumberFlow value={m?.tflops ?? 0} suffix=" TFLOP/s" format={{ maximumFractionDigits: 2 }} /> },
                 ].map((r) => (
-                  <tr key={r.label} className="border-t border-border">
-                    <td className="py-1 text-muted">{r.label}</td>
-                    <td className="py-1 text-right text-text">{r.value}</td>
-                  </tr>
+                  <div key={r.label} className="flex justify-between gap-2 border-t border-border py-1">
+                    <span className="text-muted">{r.label}</span>
+                    <span className="text-right text-text">{r.value}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+            </div>
             {!m && (
               <p className="col-start-1 row-start-1 self-start border-t border-border py-1 leading-relaxed text-muted">
                 {`no measured point here: ${op === "attention" ? `attention was measured at ${shape.roofline_context} tokens of context and ` : ""}the profiles cover ${measuredRows.join(" and ")} rows${["rmsnorm", "swiglu", "rope"].includes(op) ? ", and not this op" : ""}. Only the computed dot is drawn.`}

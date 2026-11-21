@@ -6,7 +6,7 @@ import { embeddingNumbers, EmbeddingPanel } from "@/components/kernels/embedding
 import { foundationsAbout, foundationsAboutCaption } from "@/components/kernels/foundations/about";
 import { foundationsIdeas, IdeaFigure, ideaCaptions, ideaInstructions } from "@/components/kernels/foundations/ideas";
 import { FoundationsSandbox } from "@/components/kernels/foundations/sandbox";
-import { foundationsCaptions, foundationsNumbers, foundationsSteps, RowsPicker } from "@/components/kernels/foundations/story";
+import { FoundationsScaleFigure, foundationsCaptions, foundationsNumbers, foundationsSteps, RowsPicker } from "@/components/kernels/foundations/story";
 import { foundations } from "@/content/kernels/foundations";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
@@ -49,6 +49,7 @@ const beats: Beat[][] = [
     close("From the side: fused, the sum stays in registers", [0.5, 0.03, -0.06], 1.0, 0.44, 18, 46),
   ],
   [flat(`The embedding lookup: ${embeddingNumbers.speedup.toFixed(1)}x faster per launch, the step unchanged`)],
+  [flat("TinyLlama on this GPU against Llama 3 8B on an H100")],
 ];
 
 const instructions = [
@@ -60,6 +61,7 @@ const instructions = [
   undefined,
   "Count the trips to global memory in each row.",
   "Compare the two lanes, then the two pairs of bars.",
+  "Find the dashed mark of batch-1 decode, far left of both ridges.",
 ];
 
 const workbench: WorkbenchPage[] = [
@@ -82,7 +84,7 @@ const workbench: WorkbenchPage[] = [
       "This page shows the numbers behind the ring for the op and the batch you set on the previous spread: the FLOPs and the bytes of one decode step over all the model's layers, their ratio, and the ridge that ratio has to beat.",
       "The two bars are the time the op would take if only memory or only compute limited it: bytes ÷ bandwidth and FLOPs ÷ compute. The longer bar is the op's time at the ceilings, and it names the bound.",
       "Below them is the measured row from the profiles on the same GPU: the time, the share of the bandwidth roof, and the bandwidth and compute it reached. Where nothing was measured the page says so, and only the computed numbers stand.",
-      "Go back a page, change the op or the batch, and come back: the sandbox keeps its state across both spreads, so these numbers always match the ring you placed.",
+      "The op, the rows and the context are mirrored at the top of the right page: change them there and the numbers below follow. Both spreads share one sandbox, so the ring on the previous spread moves with them.",
     ],
   },
 ];
@@ -106,6 +108,14 @@ function FoundationsOverlay({ kind, target, narrow }: OverlayProps) {
           </div>,
           target,
         )}
+      {kind === "scale" &&
+        target &&
+        createPortal(
+          <div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>
+            <FoundationsScaleFigure />
+          </div>,
+          target,
+        )}
       {kind === "lookup" &&
         target &&
         createPortal(
@@ -126,8 +136,8 @@ const chapter: ChapterDef = {
   formula: foundations.formula,
   steps: [...foundationsIdeas, ...foundationsSteps],
   captions: [...ideaCaptions, ...foundationsCaptions],
-  exhibits: [...foundationsIdeas.map(() => null), 0, 1, 2, 3, null, 4, null],
-  overlays: [...foundationsIdeas.map((_, k) => `idea-${k}`), null, null, null, null, "rows", null, "lookup"],
+  exhibits: [...foundationsIdeas.map(() => null), 0, 1, 2, 3, null, 4, null, null],
+  overlays: [...foundationsIdeas.map((_, k) => `idea-${k}`), null, null, null, null, "rows", null, "lookup", "scale"],
   instructions,
   beats,
   workbench,

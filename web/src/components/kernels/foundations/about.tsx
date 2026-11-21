@@ -52,7 +52,7 @@ export const foundationsAbout: StoryStep = {
   ),
 };
 
-export const foundationsAboutCaption = `illustrative: ${n.layers} plates for ${n.layers} layers, a few bars for ${fmt(n.vocab)} logits; answer of ${n.tokens.length - 1} tokens and a stop token from results/kv_demo.json; ${((params * 2) / 1e9).toFixed(1)} GB of BF16 weights (calculated); ${n.perLayer} kernels per layer and about ${n.stepMs.toFixed(1)} ms a step, CUDA Graphs profile (measured)`;
+export const foundationsAboutCaption = `illustrative: ${n.layers} plates for ${n.layers} layers, a few bars for ${fmt(n.vocab)} logits; answer of ${n.tokens.length - 1} tokens and a stop token from results/kv_demo.json; ${((params * 2) / 1e9).toFixed(1)} GB of BF16 weights (calculated); ${n.perLayer} kernels per layer and about ${n.stepMs.toFixed(1)} ms from the first kernel of a step to the end of the last, CUDA Graphs profile (measured; the time per token adds the host's work between steps)`;
 
 const shown = 6;
 const pick = shown - 1;

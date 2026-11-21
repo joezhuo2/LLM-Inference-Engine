@@ -1,6 +1,6 @@
 # Claude handoff notes
 
-This folder holds everything a new Claude Code session needs to continue work on this repo without the original chat. It is gitignored and local to this machine. A new session should read `status.md` first, then `working_rules.md` and `delegation.md`, and open the plan files only for the milestone it is working on.
+This folder holds everything a new Claude Code session needs to continue work on this repo without the original chat. It was gitignored and local at first and has been tracked in the repo since `c7c6633`. A new session should read `status.md` first, then `working_rules.md` and `delegation.md`, and open the plan files only for the milestone it is working on.
 
 | File | What it contains |
 | --- | --- |
@@ -17,7 +17,7 @@ This folder holds everything a new Claude Code session needs to continue work on
 | `setup_guide.md` | Section 3 of Joe's handoff doc: the full setup guide. |
 | `web_plan.md` | The web site plan (Part 2): look, stack, pages, motion rules, branch order, and every design decision Joe made since. |
 | `kernels_plan.md` | The kernels section plan: the 7 kernel pages, page template, visual models, data sources, branch order, Joe's answers, and how to add the next page. |
-| `branchNN_summary.md` | PR summaries Claude writes when a branch is done (what each commit does, how it was checked, what is open for Joe). The newest: `branch52_summary.md` (landing page), `branch53_54_summary.md` (kernels). |
+| `branchNN_summary.md` | PR summaries Claude writes when a branch is done (what each commit does, how it was checked, what is open for Joe). They stop at `branch99_summary.md`; later branches are recorded as snapshots at the end of `status.md`. |
 | `verify.sh` | The pre-commit gate script (a copy also lives at `~/.cache/llmie-claude/verify.sh`). |
 
-Claude works in separate worktrees, not in Joe's checkout: `~/code/llm-inference-engine-claude` (engine), `~/code/llm-inference-engine-api` (a second engine worktree for parallel agents) and `~/code/llm-inference-engine-web` (the web site). Joe's checkout is `~/code/llm-inference-engine`; read these files from `~/code/llm-inference-engine/docs/claude/` (gitignored files are not shared between worktrees).
+Claude works in separate worktrees, not in Joe's checkout: one per branch, `~/code/llm-inference-engine-<task>`, made from `origin/main` and removed after the merge (the three fixed worktrees `-claude`, `-api` and `-web` are gone). Joe's checkout is `~/code/llm-inference-engine`.

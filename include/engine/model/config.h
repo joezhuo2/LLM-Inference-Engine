@@ -20,8 +20,9 @@ struct ModelConfig {
     int eos_id = 0;
     bool tie_embeddings = false;
 
+    int q_dim() const { return heads * head_dim; }
     int kv_dim() const { return kv_heads * head_dim; }
-    int qkv_dim() const { return hidden + 2 * kv_dim(); }
+    int qkv_dim() const { return q_dim() + 2 * kv_dim(); }
     int group_size() const { return heads / kv_heads; }
 };
 

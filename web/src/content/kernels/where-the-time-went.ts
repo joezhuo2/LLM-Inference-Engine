@@ -1,7 +1,7 @@
 import { goodputSeries, largestGap, loadProvenance, loadRates, loadValue, peakGoodput, ttftTailSeries } from "@/content/results";
 import { ceilings, decodeSteps, launchGaps, loadSlo, modelShape, profilingTable } from "@/lib/data";
 import { sweepOps, sweepPoints } from "./cuda-graphs";
-import { flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashShape, flashSystems, flashTokens, flashTtft } from "./flash-prefill";
+import { flashLengths, flashLong, flashNumbers, flashPath, flashPaths, flashPerToken, flashProfile, flashShape, flashSystems, flashTokens } from "./flash-prefill";
 import historyJson from "./step-history.json";
 import { type KernelStory, measured } from "./types";
 
@@ -132,7 +132,7 @@ export const prefillPaths = [
   { id: "paged", label: "decode kernels, one walk per row", ms: flashLengths.map((p) => flashPath(flashPaths.paged, p)) },
   { id: "first", label: "first flash kernel", ms: flashLengths.map((p) => flashPath(flashPaths.first, p)) },
   { id: "tiled", label: "tiled flash kernel", ms: flashLengths.map((p) => flashPath(flashPaths.tiled, p)) },
-  { id: "llama", label: "llama.cpp", ms: flashLengths.map((p) => flashTtft(flashSystems.llama, p)) },
+  { id: "llama", label: "llama.cpp", ms: flashLengths.map((p) => flashPath(flashSystems.llama, p)) },
 ];
 export const prefillLengths = flashLengths;
 export const prefillTokens = flashLengths.map(flashTokens);
@@ -159,7 +159,7 @@ export const prefill = {
 
 const present = (id: string) => goodputSeries.some((s) => s.id === id && s.values.some((v) => v !== undefined));
 const engineIds = ["chunked", "budget-2048", "engine"].filter(present);
-if (engineIds.length === 0 || !present("vllm")) throw new Error("docs/results.md Under load has no engine or no vLLM rows that content/results.ts knows");
+if (engineIds.length === 0 || !present("vllm")) throw new Error("results.md Under load has no engine or no vLLM rows that content/results.ts knows");
 const labelOf = (id: string) => goodputSeries.find((s) => s.id === id)?.label ?? id;
 const peaks = engineIds.map((id) => ({ id, label: labelOf(id), ...peakGoodput(id) }));
 const best = peaks.reduce((a, b) => (b.value > a.value ? b : a));
@@ -210,12 +210,12 @@ export const loadTitle = load.verdict === "vllm" ? "under load, vLLM still serve
 
 const sweepAt = (batch: number) => {
   const p = sweepPoints.find((x) => x.batch === batch);
-  if (!p) throw new Error(`docs/results.md Batch size past 16 has no max batch ${batch}`);
+  if (!p) throw new Error(`results.md Batch size past 16 has no max batch ${batch}`);
   return p;
 };
 const opsAt = (batch: number) => {
   const p = sweepOps.find((x) => x.batch === batch);
-  if (!p) throw new Error(`docs/results.md Batch size past 16 has no profile at max batch ${batch}`);
+  if (!p) throw new Error(`results.md Batch size past 16 has no profile at max batch ${batch}`);
   return p;
 };
 const loadBatch = 16;
@@ -226,7 +226,7 @@ const cellRuns = (cell: string) => cell.split("/").map((p) => Number(p.trim())).
 const gumbelTable = profilingTable(gumbel, 2);
 const floatRow = gumbelTable.rows.find((r) => r[0].startsWith("float"));
 const floatRuns = cellRuns(floatRow?.[1] ?? "");
-if (floatRuns.length === 0) throw new Error("docs/profiling.md Sampling: no float variant of gumbel() in the third table");
+if (floatRuns.length === 0) throw new Error("profiling.md Sampling: no float variant of gumbel() in the third table");
 
 export const next = {
   loadBatch,
@@ -297,20 +297,20 @@ export const whereTheTimeWent: KernelStory = {
     label: "of a batch-1 token is the read of the weights at this GPU's peak bandwidth",
   },
   sources: [
-    { path: "docs/results.md", label: "every table this chapter reads" },
-    { path: "docs/profiling.md", label: "the profiles, kernel by kernel" },
+    { path: "results.md", label: "every table this chapter reads" },
+    { path: "profiling.md", label: "the profiles, kernel by kernel" },
     { path: "results/decode_step.md", label: "the decode step profile, one version per commit" },
     { path: "results/decode_step_graphs.md", label: "the same step replayed from a graph" },
     { path: "scripts/profile_report.py", label: "kernels grouped by the op that launched them" },
     { path: "web/scripts/step-history.mjs", label: "reads every committed version of the profile" },
-    { path: "docs/baselines.md", label: "how llama.cpp and vLLM were run" },
+    { path: "baselines.md", label: "how llama.cpp and vLLM were run" },
   ],
   tests: [],
   testing: "",
   excerpts: [],
   measurements: [
     { doc: "results", section: "gpu-time-per-op-in-a-decode-step", table: 0, caption: "today's batch-1 decode step, GPU time per op, launched one by one", command: "scripts/profile.sh nsys decode_step --max-batch 1 (run by scripts/reproduce.sh)" },
-    { doc: "results", section: "prefill-against-prompt-length", table: 0, caption: "TTFT in ms against prompt tokens, one request per run, median of 5 (min to max)", command: "python scripts/prefill_ttft.py --llama-batched-bench <path> --token-budget 256" },
+    { doc: "results", section: "prefill-against-prompt-length", table: 0, caption: "TTFT in ms against prompt tokens, one request per run, median of 3 (min to max)", command: "python scripts/prefill_ttft.py --llama-batched-bench <path> --token-budget 256" },
     { doc: "results", section: "under-load", table: 0, caption: `Poisson arrivals at each rate, medians of the runs; engine runs measured ${load.date} at commit ${load.commit}`, command: "scripts/load_sweep.sh, then scripts/load_report.py" },
     { doc: "results", section: "batch-size-past-16", table: 0, caption: "all requests submitted at once, twice as many as the max batch, median of 3 runs", command: "scripts/batch_sweep.sh, then scripts/batch_report.py" },
   ],

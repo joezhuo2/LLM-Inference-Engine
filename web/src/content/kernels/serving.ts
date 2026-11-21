@@ -98,7 +98,7 @@ export const serving: KernelStory = {
     { path: "src/kv/block_manager.cpp", label: "can_allocate, can_append, free" },
     { path: "src/kv/cache_size.cpp", label: "bytes per block, blocks in the pool" },
     { path: "scripts/load_sweep.sh", label: "the load sweep" },
-    { path: "docs/baselines.md", label: "how vLLM was run" },
+    { path: "baselines.md", label: "how vLLM was run" },
   ],
   tests: [
     { path: "tests/unit/test_scheduler.cpp", label: "21 scheduler tests on a fake KV cache" },

@@ -58,7 +58,7 @@ test("slug drops code ticks and punctuation", () => {
 });
 
 test("the repository's profiling notes parse with the attention tables intact", () => {
-  const sections = parseProfiling(readFileSync(new URL("../../docs/profiling.md", import.meta.url), "utf8"));
+  const sections = parseProfiling(readFileSync(new URL("../../profiling.md", import.meta.url), "utf8"));
   const split = sections.find((s) => s.id === "split-context-attention-branch-40");
   assert.ok(split, "split section present");
   const table = split.tables[0];

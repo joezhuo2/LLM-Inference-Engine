@@ -25,13 +25,55 @@ export type StubExercise = Base & {
 
 export type OpenStart = { title: string; text: string; commands: string[] };
 
-export type OpenExercise = Base & { kind: "open"; runs: "gpu"; check: string; compare: { path: string; label: string }[]; write?: OpenStart; tag?: string };
+export type OpenExercise = Base & { kind: "open"; check: string; compare: { path: string; label: string }[]; write?: OpenStart; tag?: string } & ({ runs: "gpu" } | { runs: "cpu"; write: OpenStart });
 
 export const openTag = (e: OpenExercise) => e.tag ?? "no tests, open ended";
 
 export type Exercise = StubExercise | OpenExercise;
 
+const numpyDir = "docs/exercises/numpy";
+
+export const numpyFile = (n: Pick<Numpy, "name">) => `${numpyDir}/${n.name}.py`;
+
+export const numpySolution = (n: Pick<Numpy, "name">) => `${numpyDir}/solutions/${n.name}.py`;
+
+export const numpyCommand = (n: Pick<Numpy, "name">) => `python3 ${numpyFile(n)}`;
+
+export const numpyInstall = "pip install numpy";
+
 export const exercises: Exercise[] = [
+  {
+    kind: "open",
+    id: "decode-step",
+    chapter: "one-token",
+    title: "one decode step in NumPy",
+    task: "Write one decode step for one token of a tiny model with random weights: look up its embedding row, run one layer in the engine's order, then the final norm, the LM head and the argmax. Every station of this chapter in about forty lines of NumPy, on any machine.",
+    nudge: "Follow the chapter's list of ten operations and keep the residual stream apart from the normed copy that each projection reads: RMSNorm, QKV, RoPE on Q and K only, the new key and value after the cached ones, attention, output projection, add, RMSNorm, gate/up, SwiGLU, down, add. Query head h reads key/value head h // (HEADS // KV_HEADS), as in TinyLlama.",
+    runs: "cpu",
+    tag: "NumPy, checked against a slow loop",
+    write: { title: "Fill in the function", text: "It needs Python 3 and numpy. Until decode_step is written the command stops with NotImplementedError and says what to write; when it is right it prints ok.", commands: [numpyInstall, numpyCommand({ name: "decode_step" })] },
+    check: "Your logits must match a slow looped reference within 0.001 and your token id must match it exactly, once at position 0 with an empty cache and once with nine cached tokens. The reference is put together from the slow versions in rope.py, add_rmsnorm.py, swiglu.py and common.py, the same ones the later exercises check against. The model keeps TinyLlama's layout (eight query heads per key/value head, its MLP to hidden ratio, its eps and RoPE theta) at a toy width, so nothing is downloaded.",
+    compare: [
+      { path: numpySolution({ name: "decode_step" }), label: "a reference solution" },
+      { path: "src/runtime/paged_runner.cpp", label: "the engine's order of the same steps, in PagedRunner::run_staged" },
+    ],
+  },
+  {
+    kind: "open",
+    id: "cpu-bandwidth",
+    chapter: "foundations",
+    title: "measure your own roof on a CPU",
+    task: "Copy an array far larger than your CPU's caches, keep the best of a few copies and turn it into GB/s. Then turn that into the time it takes to read TinyLlama's weights once: the least time a decoded token can take at that rate. No GPU needed.",
+    nudge: "Count both the bytes read and the bytes written, as the GPU version does. Then run two or three copies of the script at the same time and add up their GB/s: if the total climbs, one thread was not enough to reach your memory's peak.",
+    runs: "cpu",
+    tag: "NumPy, open ended",
+    write: { title: "Run it, then change it", text: "It needs Python 3 and numpy. The file copies a 256 MiB array; give it another size in MiB to try others. Shrink the array until the GB/s jumps: that is where it starts to fit in a cache.", commands: [numpyInstall, numpyCommand({ name: "bandwidth" }), `${numpyCommand({ name: "bandwidth" })} 4`] },
+    check: "There are no tests. NumPy copies on one thread, so the GB/s it prints is a floor for your machine's bandwidth, not its peak. Compare it with the peak on your memory's spec sheet, and with the GPU roof in this chapter: the ratio is about how much faster the GPU reads the same weights.",
+    compare: [
+      { path: numpyFile({ name: "bandwidth" }), label: "the copy, and the weight bytes counted from the TinyLlama config" },
+      { path: "src/practice/bandwith_test.cu", label: "Joe's GPU version" },
+    ],
+  },
   {
     kind: "open",
     id: "bandwidth",
@@ -216,6 +258,22 @@ export const exercises: Exercise[] = [
     numpy: { name: "swiglu", compares: "Your output against silu(gate) · up with silu(g) = g / (1 + e^−g), where the first half of each input row is the gate and the second half is up. Swapping the halves fails the check." },
   },
   {
+    kind: "open",
+    id: "gumbel-max",
+    chapter: "sampling",
+    title: "sampling is an argmax",
+    task: "Write Gumbel-max sampling in NumPy: divide the logits by the temperature, add the noise −log(−log u) to each and take the argmax. At temperature 0 it is plain greedy. A second small function returns the top-k cut, the k-th largest scaled logit, below which every token is dropped before the noise.",
+    nudge: "Drop tokens by comparing with the cut, not by keeping exactly k indices: tokens tied at the cut all stay in, as in the engine's kernel. At temperature 0 leave u alone and return the largest logit.",
+    runs: "cpu",
+    tag: "NumPy, checked against a slow loop",
+    write: { title: "Fill in the two functions", text: "It needs Python 3 and numpy. Until they are written the command stops with NotImplementedError and says what to write; when both are right it prints ok.", commands: [numpyInstall, numpyCommand({ name: "gumbel_max" })] },
+    check: "Two parts. With the same u, your pick must equal a slow looped reference exactly over 300 random rows, temperatures and top-k settings, ties included. Then over 20,000 seeded draws for each of three settings, how often each token wins must match softmax(logits / T), over the top k when it is set, within 0.015. The u are made as the engine makes them, (a random 32-bit integer + 0.5) / 2³², so none is 0 or 1.",
+    compare: [
+      { path: numpySolution({ name: "gumbel_max" }), label: "a reference solution" },
+      { path: "src/sampling/sample.cu", label: "the kernel: the same argmax, with counter-based noise and a binary-searched top-k cut" },
+    ],
+  },
+  {
     kind: "stub",
     id: "cuda-graphs",
     chapter: "cuda-graphs",
@@ -252,6 +310,96 @@ export const exercises: Exercise[] = [
     author: "both",
   },
   {
+    kind: "stub",
+    id: "scheduler-cancel",
+    chapter: "serving",
+    title: "Scheduler::cancel",
+    task: "Take a request out of the scheduler when its client disconnects or a stop string ends the answer, wherever it is: waiting, running or preempted.",
+    nudge: "Free its blocks at once and touch nothing else: the other requests keep their order, so the next step is exactly the step they would have had without it.",
+    runs: "cpu",
+    model: false,
+    start: "a5d0793",
+    file: "src/sched/scheduler.cpp",
+    tests: "tests/todo/unit/test_scheduler_cancel.cpp",
+    filter: "^SchedulerCancel\\.",
+    stubPrs: [116],
+    implPrs: [117],
+    end: "114fd03",
+    author: "joe",
+  },
+  {
+    kind: "stub",
+    id: "graph-buckets",
+    chapter: "cuda-graphs",
+    title: "decode_graph_buckets",
+    task: "List the batch sizes to capture CUDA Graphs for, so a batch of n rows pads to a bucket fewer than n / steps_per_octave rows larger.",
+    nudge: "Walk the octaves [2^k, 2^(k+1)) with a step of max(1, 2^k / steps_per_octave), stop below max_batch and append max_batch once; steps_per_octave = 1 must give today's list.",
+    runs: "cpu",
+    model: false,
+    start: "11c250f",
+    file: "src/sched/graph_buckets.cpp",
+    tests: "tests/todo/unit/test_graph_buckets.cpp",
+    filter: "^GraphBuckets\\.",
+    stubPrs: [176],
+    implPrs: [183],
+    end: "59306e5",
+    author: "joe",
+  },
+  {
+    kind: "stub",
+    id: "flash-prefill",
+    chapter: "flash-prefill",
+    title: "flash_attention_prefill",
+    task: "Give prefill its own attention kernel: one thread block takes a tile of query rows and walks the keys once for all of them, instead of one walk per prompt token.",
+    nudge: "Get one row right first with the online softmax of the decode kernel, then let a block own several rows; the causal mask is what tells a row where to stop.",
+    runs: "gpu",
+    model: false,
+    start: "4c406f7",
+    file: "src/kernels/flash_prefill.cu",
+    tests: "tests/todo/gpu/test_flash_prefill.cpp",
+    filter: "^FlashAttentionPrefill\\.",
+    stubPrs: [184],
+    implPrs: [197],
+    end: "92860ea",
+    author: "both",
+  },
+  {
+    kind: "stub",
+    id: "speculative",
+    chapter: "speculative-decoding",
+    title: "prompt lookup",
+    task: "Guess the next tokens by finding the last few tokens earlier in the context, count how many of the guesses the model agrees with, and give back the blocks of the rest.",
+    nudge: "Try the longest pattern first and, among its matches, take the latest one; the accepted count stops at the first guess the model's own token disagrees with.",
+    runs: "cpu",
+    model: false,
+    start: "865c3b5",
+    file: "src/sched/speculative.cpp",
+    tests: "tests/todo/unit/test_speculative.cpp",
+    filter: "^(PromptLookup|CountAccepted|Truncate)\\.",
+    stubPrs: [204],
+    implPrs: [210],
+    end: "9dc3c94",
+    author: "joe",
+  },
+  {
+    kind: "stub",
+    id: "tensor-parallel",
+    chapter: "tensor-parallelism",
+    title: "plan_shard_layout",
+    task: "Plan where one rank's share of every weight goes when each layer is cut across N GPUs: its query and kv heads, its MLP channels, and the tensors every rank keeps whole.",
+    nudge: "Cut Q, K, V and gate/up by rows and o_proj and down by columns, so each rank's partial result adds into the residual; with one rank the plan must match plan_weight_layout byte for byte.",
+    runs: "cpu",
+    model: false,
+    start: "ac6d5f0",
+    file: "src/loader/tensor_parallel.cpp",
+    tests: "tests/todo/unit/test_tensor_parallel.cpp",
+    filter: "^TensorParallel\\.",
+    stubPrs: [205],
+    implPrs: [212],
+    end: "b6f2480",
+    author: "joe",
+  },
+  {
     kind: "open",
     id: "flash-shared-kv",
     chapter: "flash-prefill",
@@ -261,11 +409,11 @@ export const exercises: Exercise[] = [
     runs: "gpu",
     tag: "open ended, the kernel's tests still apply",
     write: { title: "Change the kernel in place", text: "Start from main. The kernel is one file, and its tests are already part of the build.", commands: ["cmake --preset debug -DCMAKE_CUDA_ARCHITECTURES=native && cmake --build --preset debug", "ctest --preset debug -R 'Flash(AttentionPrefill|Layout)'"] },
-    check: `The ${flashShape.tests} tests of tests/gpu/test_flash_prefill.cpp must pass unchanged, the bit-for-bit ones included. Then profile one launch with the Nsight Compute command in docs/profiling.md and compare with today's kernel (measured): ${flashFmt(flashProfile.step.requestedMb)} MB requested, ${flashProfile.step.l1Hit}% of it in L1, tensor pipe at ${flashProfile.step.tensor}%, ${flashProfile.step.occupancy}% of warp places filled, ${flashProfile.step.ms} ms. The bound: at the measured GEMM peak the products of a whole ${flashLong}-token prefill would take ${flashRoofline.floorMs.toFixed(0)} ms of the ${flashRoofline.kernelMs} ms the kernel takes in Nsight Systems, so against that measured ceiling nothing gains more than ${flashRoofline.maxGain.toFixed(1)} times (calculated).`,
+    check: `The ${flashShape.tests} tests of tests/gpu/test_flash_prefill.cpp must pass unchanged, the bit-for-bit ones included. Then profile one launch with the Nsight Compute command in profiling.md and compare with today's kernel (measured): ${flashFmt(flashProfile.step.requestedMb)} MB requested, ${flashProfile.step.l1Hit}% of it in L1, tensor pipe at ${flashProfile.step.tensor}%, ${flashProfile.step.occupancy}% of warp places filled, ${flashProfile.step.ms} ms. The bound: at the measured GEMM peak the products of a whole ${flashLong}-token prefill would take ${flashRoofline.floorMs.toFixed(0)} ms of the ${flashRoofline.kernelMs} ms the kernel takes in Nsight Systems, so against that measured ceiling nothing gains more than ${flashRoofline.maxGain.toFixed(1)} times (calculated).`,
     compare: [
       { path: "src/kernels/flash_prefill.cu", label: "the kernel as it is today" },
       { path: "tests/gpu/test_flash_prefill.cpp", label: "the tests it must still pass" },
-      { path: "docs/profiling.md", label: "the Nsight Compute numbers to start from, under FlashAttention prefill in chunks" },
+      { path: "profiling.md", label: "the Nsight Compute numbers to start from, under FlashAttention prefill in chunks" },
     ],
   },
   {
@@ -282,6 +430,71 @@ export const exercises: Exercise[] = [
       { path: "scripts/prompts_repeat.json", label: "the four prompts whose answers repeat them" },
     ],
   },
+  {
+    kind: "open",
+    id: "tensor-parallel-ranks",
+    chapter: "tensor-parallelism",
+    title: "load every rank and add them up",
+    task: "Load all four ranks of 4 and the whole model, one process each, and check what the chapter says: every rank holds the same bytes, the four together hold more than the model, and each loads faster than the whole model.",
+    nudge: "Build scripts/shard_load_bench.cu with the nvcc line under Tensor parallelism in results.md, then run it with the arguments models/tinyllama 7 4 R for R from 0 to 3, and models/tinyllama 7 0 0 for the whole model. Add up the MiB of the four ranks.",
+    runs: "gpu",
+    check: "There are no tests: the four ranks should print the same MiB, their sum divided by the whole model's MiB should match the chapter's ratio for 4 ranks, and the upload ms of a rank should stay below the whole model's in every run.",
+    compare: [
+      { path: "scripts/shard_load_bench.cu", label: "the load of one rank, timed" },
+      { path: "results/tensor_parallel/shard_load.md", label: "the runs this chapter's table comes from" },
+    ],
+  },
+  {
+    kind: "open",
+    id: "fp8-gemm",
+    chapter: "quantization",
+    title: "gemm_fp8",
+    task: "Write the matrix product that reads FP8 weights: BF16 activations, an FP8 weight matrix with one FP32 scale per output row, BF16 out. It is what would halve the bytes a decoded token reads.",
+    nudge: "Read the TODO(JOE) block above the stub first: it gives the exact formula, where the scale is applied, the errors to throw and the edge cases the tests try. Start with the hand example.",
+    runs: "gpu",
+    tag: "a stub with tests, no solution yet",
+    write: { title: "Start from the stub", text: "The stub, its spec and its tests landed in PR 221. Nobody has written it yet, so there is nothing to compare with.", commands: ["git switch --detach 78780b2", "cmake --preset debug -DCMAKE_CUDA_ARCHITECTURES=native && cmake --build --preset debug", "ctest --preset debug -L todo_joe -R 'GemmFp8'"] },
+    check: "All GemmFp8 tests and the ShapesFp8 shapes pass. Then move the file to tests/gpu/ as the spec says, and measure bytes read per second against the peak the way profiling.md measures gemm.",
+    compare: [
+      { path: "src/kernels/gemm_fp8.cu", label: "the stub and its spec" },
+      { path: "tests/todo/gpu/test_gemm_fp8.cpp", label: "the tests it must pass" },
+      { path: "tests/support/fp8.h", label: "the host's reference rounding" },
+    ],
+  },
+  {
+    kind: "open",
+    id: "fp8-write-kv",
+    chapter: "quantization",
+    title: "write_kv_fp8",
+    task: "Write the step that rounds each new key and value into an FP8 paged cache: one byte per element, one scale for all keys and one for all values.",
+    nudge: "The spec above the stub says exactly how a value is rounded, what saturates and what must never change. The tests compare the cache byte for byte, guard bytes included.",
+    runs: "gpu",
+    tag: "a stub with tests, no solution yet",
+    write: { title: "Start from the stub", text: "The stub, its spec and its tests landed in PR 221. Nobody has written it yet, so there is nothing to compare with.", commands: ["git switch --detach 78780b2", "cmake --preset debug -DCMAKE_CUDA_ARCHITECTURES=native && cmake --build --preset debug", "ctest --preset debug -L todo_joe -R 'WriteKvFp8'"] },
+    check: "All WriteKvFp8 tests pass, including the one that sends every BF16 bit pattern through.",
+    compare: [
+      { path: "src/kernels/fp8_kv.cu", label: "the stubs and their spec" },
+      { path: "tests/todo/gpu/test_fp8_kv.cpp", label: "the tests it must pass" },
+      { path: "tests/support/fp8.h", label: "the host's reference rounding" },
+    ],
+  },
+  {
+    kind: "open",
+    id: "fp8-decode-attention",
+    chapter: "quantization",
+    title: "paged_attention_decode_fp8",
+    task: "Write decode attention that reads keys and values back from an FP8 paged cache, byte × scale, and is paged_attention_decode from there.",
+    nudge: "The spec gives the tolerance, the determinism rule and the inputs a BF16 cache must be rejected for. paged_attention_decode is the kernel it has to agree with.",
+    runs: "gpu",
+    tag: "a stub with tests, no solution yet",
+    write: { title: "Start from the stub", text: "The stub, its spec and its tests landed in PR 221. Nobody has written it yet, so there is nothing to compare with.", commands: ["git switch --detach 78780b2", "cmake --preset debug -DCMAKE_CUDA_ARCHITECTURES=native && cmake --build --preset debug", "ctest --preset debug -L todo_joe -R 'PagedAttentionDecodeFp8|LayoutsFp8'"] },
+    check: "All PagedAttentionDecodeFp8 tests and the LayoutsFp8 layouts pass, with every batch row bit-identical alone and in a batch.",
+    compare: [
+      { path: "src/kernels/fp8_kv.cu", label: "the stubs and their spec" },
+      { path: "tests/todo/gpu/test_fp8_kv.cpp", label: "the tests it must pass" },
+      { path: "tests/support/fp8.h", label: "the host's reference rounding" },
+    ],
+  },
 ];
 
 export const chapterExercises = (slug: string): Exercise[] => exercises.filter((e) => e.chapter === slug);
@@ -292,19 +505,11 @@ export const numpyOf = (e: Exercise): Numpy | undefined => (e.kind === "stub" ? 
 
 export const cpuCount = () => exercises.filter((e) => e.runs === "cpu").length;
 
+export const numpyOnly = (e: Exercise) => e.kind === "open" && e.runs === "cpu";
+
 export const numpyCount = () => exercises.filter((e) => numpyOf(e)).length;
 
-const numpyDir = "docs/exercises/numpy";
-
-export const numpyFile = (n: Numpy) => `${numpyDir}/${n.name}.py`;
-
-export const numpySolution = (n: Numpy) => `${numpyDir}/solutions/${n.name}.py`;
-
-export const numpyCommand = (n: Numpy) => `python3 ${numpyFile(n)}`;
-
 export const numpyUrl = (n: Numpy) => `${repoUrl}/blob/main/${numpyFile(n)}`;
-
-export const numpyInstall = "pip install numpy";
 
 export const numpyNote = "The engine keeps BF16 values and rounds at fixed points inside each kernel. The NumPy files use float32 and compare within a small tolerance, so they teach the algorithm and not the rounding; the CUDA tests make the exact comparison.";
 

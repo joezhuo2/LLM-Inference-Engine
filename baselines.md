@@ -55,12 +55,12 @@ Comparability: the same BF16 weights (the script stops if the server's log repor
 
 - **HTTP and Python:** every vLLM token goes through a Python server, HTTP and the Python client, and its times are taken in the client. `engine bench` has no HTTP and times requests inside the process, so this overhead counts only against vLLM.
 - **Attention:** vLLM picks its `FLASH_ATTN` backend (FlashAttention 2) here, not FlashInfer, which it uses only for sampling. Decode runs from its own `torch.compile` and CUDA Graph capture, which made the first start take more than 5 minutes (later starts reuse the compile cache).
-- **Prefill and decode:** vLLM's default chunked prefill mixes prefill and decode in one step with a budget of 2,048 tokens per step on this GPU (its server default). The engine's steps are all prefill or all decode unless it runs with `--token-budget`; `docs/results.md` compares it with no budget and with budgets of 256, 512 and 2,048.
+- **Prefill and decode:** vLLM's default chunked prefill mixes prefill and decode in one step with a budget of 2,048 tokens per step on this GPU (its server default). The engine's steps are all prefill or all decode unless it runs with `--token-budget`; `results.md` compares it with no budget and with budgets of 256, 512 and 2,048.
 - **Sampling:** both are greedy, but each uses its own code path; the engine's is its GPU sampling kernel.
 - **Memory:** neither system is short of KV space (0 preemptions in vLLM's runs): vLLM's cache holds 153,888 tokens at 70% of the VRAM.
 - **The limit of 16:** this matches the engine's run but is not vLLM's default for this GPU (128 sequences for the server), so these curves do not show what vLLM does with more concurrency. A sweep of both systems past 16 would be the fairer test at high rates.
 
-Reading (RTX 5060 Laptop GPU, 2026-11-11 UTC, measured in the same boot as the engine's sweep in `docs/results.md`; median of 3 runs, 0 preemptions, every stream chunk carried exactly one token):
+Reading (RTX 5060 Laptop GPU, 2026-11-11 UTC, measured in the same boot as the engine's sweep in `results.md`; median of 3 runs, 0 preemptions, every stream chunk carried exactly one token):
 
 | QPS | output tok/s | TTFT p50 ms | TTFT p99 ms | TPOT p50 ms | TPOT p99 ms |
 | --- | --- | --- | --- | --- | --- |

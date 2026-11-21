@@ -14,7 +14,9 @@ def split_ranges(context_len, num_splits, block_size):
 
 
 def paged_attention_split(qkv, k_cache, v_cache, block_tables, context_lens, heads, num_splits):
-    raise NotImplementedError
+    raise NotImplementedError(
+        "Write split attention in NumPy: give each piece from split_ranges() its own maximum, sum and partial output, scoring a whole piece at once, then merge the pieces. reference_attention() in common.py is the slow version your result is checked against; the spec is on this exercise's card on the exercises page."
+    )
 
 
 def check(fn=None):

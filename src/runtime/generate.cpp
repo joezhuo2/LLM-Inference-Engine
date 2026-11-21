@@ -8,9 +8,12 @@
 
 namespace engine {
 
-std::vector<int32_t> generate(ModelRunner& runner, std::span<const int32_t> prompt,
-                              int max_new_tokens, int32_t eos_id, const SamplingParams& sampling,
-                              const TokenCallback& on_token) {
+namespace {
+
+template <typename Runner>
+std::vector<int32_t> run(Runner& runner, std::span<const int32_t> prompt, int max_new_tokens,
+                         int32_t eos_id, const SamplingParams& sampling,
+                         const TokenCallback& on_token) {
     if (max_new_tokens < 1)
         throw std::invalid_argument("generate: max_new_tokens must be positive");
     if (int64_t(prompt.size()) + max_new_tokens - 1 > runner.max_context())
@@ -37,6 +40,20 @@ std::vector<int32_t> generate(ModelRunner& runner, std::span<const int32_t> prom
         logits = runner.forward(std::span(&token, 1));
     }
     return out;
+}
+
+}  // namespace
+
+std::vector<int32_t> generate(ModelRunner& runner, std::span<const int32_t> prompt,
+                              int max_new_tokens, int32_t eos_id, const SamplingParams& sampling,
+                              const TokenCallback& on_token) {
+    return run(runner, prompt, max_new_tokens, eos_id, sampling, on_token);
+}
+
+std::vector<int32_t> generate(ShardedRunner& runner, std::span<const int32_t> prompt,
+                              int max_new_tokens, int32_t eos_id, const SamplingParams& sampling,
+                              const TokenCallback& on_token) {
+    return run(runner, prompt, max_new_tokens, eos_id, sampling, on_token);
 }
 
 }  // namespace engine

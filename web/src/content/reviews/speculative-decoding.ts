@@ -1,7 +1,7 @@
-import { spec, specFmt } from "@/content/kernels/speculative-decoding";
+import { spec } from "@/content/kernels/speculative-decoding";
+import { about } from "@/lib/round";
 import type { ChapterReview } from "./types";
 
-const fmt = specFmt;
 const chat = spec.chatAt(spec.best.k) ?? spec.chatWorst;
 const miss = spec.missStep;
 
@@ -9,9 +9,9 @@ export const review: ChapterReview = {
   lesson: "A step reads the weights once however many rows it carries, so the rows no request needs can check guesses of the next tokens.",
   why: "It is the one technique in this book that gets more than one token out of a step, and every token it keeps is one the model sampled.",
   takeaways: [
-    `${spec.maxBatch} rows cost ${fmt(spec.rowCost, 2)} times one row: ${fmt(spec.step16, 2)} ms against ${fmt(spec.step1, 2)} ms per step (measured). A wrong guess wastes a row, not a step.`,
+    `${spec.maxBatch} rows cost ${about(spec.rowCost)} times one row: ${about(spec.step16)} ms against ${about(spec.step1)} ms per step (measured). A wrong guess wastes a row, not a step.`,
     `The guess is the tokens that followed the last ${spec.maxNgram} tokens the last time they appeared in the context. No draft model, no extra pass on the GPU.`,
-    `On answers that repeat their prompt the model agreed with ${fmt(spec.best.acceptedPct)}% of the guesses and the time per token fell from ${fmt(spec.plain.ms, 2)} to ${fmt(spec.best.ms, 2)} ms; on chat answers it agreed with ${fmt(chat.acceptedPct)}% and the time went from ${fmt(spec.chatPlain.ms, 2)} to ${fmt(chat.ms, 2)} ms (measured).`,
+    `On answers that repeat their prompt the model agreed with ${about(spec.best.acceptedPct)}% of the guesses and the time per token fell from ${about(spec.plain.ms)} to ${about(spec.best.ms)} ms; on chat answers it agreed with ${about(chat.acceptedPct)}% and the time went from ${about(spec.chatPlain.ms)} to ${about(chat.ms)} ms (measured).`,
   ],
   questions: [
     {

@@ -1,6 +1,7 @@
 import { deadEnds } from "@/content/dead-ends";
 import { cpuCount, exercises, numpyCount } from "@/content/exercises";
 import { kernelStories, kernelStory } from "@/content/kernels";
+import { glossaryEntries } from "@/lib/glossary";
 import { headlineStats } from "@/lib/data";
 import { ogCard } from "@/lib/og";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-static";
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return ["overview", "results", "dead-ends", "exercises", ...kernelStories.map((k) => k.slug)].map((name) => ({ card: `${name}.png` }));
+  return ["overview", "results", "dead-ends", "glossary", "exercises", ...kernelStories.map((k) => k.slug)].map((name) => ({ card: `${name}.png` }));
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ card: string }> }) {
@@ -20,6 +21,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ car
       title: "what didn't work",
       text: "The changes that did not do what they were meant to, with the measurement that showed it and what was kept.",
       stats: [{ label: "dead ends, each with its source", value: String(deadEnds.length) }],
+    });
+  }
+  if (name === "glossary") {
+    return ogCard({
+      eyebrow: "kernels / glossary",
+      title: "glossary",
+      text: "Every term the chapters explain on hover, with what it stands for, why it matters here and the chapter that first uses it.",
+      stats: [{ label: "terms", value: String(glossaryEntries.length) }],
     });
   }
   if (name === "exercises") {

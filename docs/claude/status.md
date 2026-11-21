@@ -1,6 +1,6 @@
 # Status
 
-Last updated 2026-10-10 (PRs #24 to #27 merged; branch 19 `sched/scheduler` done locally, not pushed). Always confirm against git (`git fetch`, `git log --oneline origin/main`, `git branch -vv`, `gh pr list --state all -L 5`) before acting; this file may be behind.
+This file is a log, oldest first: the dated notes below, then `## Snapshot` sections. Read the last snapshot first. Since #220 `results.md`, `profiling.md`, `baselines.md`, `hardware.md` and `ownership.md` are at the repo root, so older entries that say `docs/results.md` and so on mean those. Always confirm against git (`git fetch`, `git log --oneline origin/main`, `git branch -vv`, `gh pr list --state all -L 5`) before acting; this file may be behind.
 
 
 2026-10-11: branch 19 has since merged (main 135b3bd). Joe's `kv/block-manager-impl` (main checkout) now holds his BlockManager (c27b0b5, 034de07) plus 6 Claude fix commits (17184c8..d90b5c7: format, allocate loop, slot formula, invalid_argument everywhere, constructor validation, tests moved to `tests/unit/`). All 15 BlockManager tests pass (also under ASan and UBSan), gate green with GPU. Not pushed. The gate copy for the main checkout is `~/.cache/llmie-claude/verify-main.sh`.
@@ -325,3 +325,120 @@ Open:
 - The chapter is not on the one-hour path. The new site text was built and checked in headless Chrome only.
 
 Helpers: `~/.cache/llmie-spec/static.mjs` (static server for `web/out` on 4317), `cdp-motion.mjs` (samples a value per frame after a trigger), `verify.sh` and `verify-web.sh` (the gates).
+
+## Snapshot 2026-11-14 (tensor parallelism: the layout of one rank, finished and measured)
+
+Branch `loader/tensor-parallel-wire` (Branch 151, worktree `~/code/llm-inference-engine-tp`), stacked on Joe's `loader/tensor-parallel-impl` (his `plan_shard_layout`, #202). Local only, not pushed. Four commits on top of his:
+
+- 51fb62c: the rejections carry the messages of `plan_weight_layout`, the unused data offset is gone from the helpers, `total_bytes` is the end of the last region; the 15 tests moved to `tests/unit/test_tensor_parallel.cpp`. Full gate with the GPU: debug 828 of 828, cpu 389 of 389.
+- 02e2917: `WeightUpload.AShardUploadsThroughTheSameCopies` (GPU).
+- 587904e: `scripts/shard_load_bench.cu`, `docs/results.md` "Tensor parallelism: the weights of one rank", `results/tensor_parallel/shard_load.md`.
+- b678815: the Beyond page and spread (`web/src/content/beyond.ts` reads the new table and throws when its claims stop holding).
+
+Later the same day, three more commits:
+
+- fdeb8ca: `upload_weights` packs the copies of one tensor into one staging chunk when their destinations follow each other (no strided `CopyOp`; the copy list is unchanged). Full gate with the GPU: debug 828 of 828, cpu 389 of 389. The first gate run failed once on `Splits/PagedSplitTest.LargeScoresDoNotOverflow/splits16` with `cudaErrorInvalidValue` from `cudaStreamCreate` (`tests/support/device.h:12`); the test passed 5 times out of 5 alone and in two full gates after, and does not touch the upload.
+- 101ab18: the bench runs one layout per process and the results section is rewritten around the new numbers.
+- 46e937d: the Beyond text follows.
+
+What the measurement found: a rank of 2 is 1,174.2 MiB (56% of the model), a rank of 4 is 712.2 MiB (34%), because the embedding and the LM head stay whole in every rank. With one upload call per copy a rank loaded in 4.5 to 5.0 s against 0.22 s for the full model (90,269 copies in place of 201, about 50 us each); packed, a rank of 2 loads in 139 ms and a rank of 4 in 88 ms against 228 ms. Packing across tensors too made the full model 10% slower (227 against 205 ms, A/B in one session), so a tensor starts a new chunk.
+
+Open:
+
+- From about the eleventh `upload_weights` call in one process, some calls take 130 to 180 ms more inside the CUDA calls (the host copies keep their time). Not explained; every call allocates and frees two 64 MiB pinned buffers, which is the first thing to look at. A real load does one call per rank. `~/.cache/llmie-tp/ab/` has the A/B programs (`ab.cu`, `host.cu`).
+- Planning a rank costs 34 ms against 0.2 (90,269 copies with a name and a shape each).
+- Everything after the layout, each its own branch (see the spec text in the stub commit 789f5b1): a config for a shard, a runner and a KV cache per rank, the all-reduce, which rank embeds and samples, a flag on generate and bench, and the logits of the sharded forward against the unsharded one.
+- The book spread was checked in headless Chrome only (light theme, 1600 by 1000).
+
+Helpers: `~/.cache/llmie-tp/verify.sh` and `verify-web.sh` (the gates), `shard_load_bench` (the built bench), `bench_run1.md` to `bench_run3.md`.
+
+## Snapshot 2026-11-14 (tensor parallelism: a forward pass on the shards, built, tested and measured)
+
+Branch `runtime/tensor-parallel-forward` (Branch 152, worktree `~/code/llm-inference-engine-tp`), on origin/main b6f2480. Local only, not pushed. An earlier session had written the code uncommitted and never built it; this one built it, reviewed it, tested it and measured it. Five commits, each through the full gate with the GPU:
+
+- b6be02d: `shard_config` and `ModelConfig::q_dim()`, two unit tests; the three whole tensors of `plan_shard_layout` held by value, which ends three GCC `-Wdangling-reference` warnings in the cpu preset. Gate: debug 817 of 817, cpu 391 of 391.
+- 1f5fbba: `all_reduce_add` (`src/kernels/all_reduce.cu`) and `tests/gpu/test_all_reduce.cpp`, bit for bit against a host sum. Gate: debug 819, cpu 391.
+- f8e3526: `load_shard_weights`, `ShardedRunner` and `sharded_layer`, `generate` for a `ShardedRunner`, `tests/gpu/test_sharded_runner.cpp` (1, 2 and 4 ranks against `ModelRunner`, rejections). Gate: debug 826, cpu 391.
+- 284c886: `generate --tensor-parallel N`, rejected with `--speculate` before anything loads; `tests/gpu/test_generate_command.cpp` runs the built `engine` (new: `ENGINE_BINARY` and `add_dependencies(gpu_tests engine)`). Gate: debug 828, cpu 391.
+- 321ebdb: `scripts/sharded_forward_bench.cu`, `docs/results.md` "Tensor parallelism: a forward pass on the shards", `results/tensor_parallel/sharded_forward.md`. Gate: debug 828, cpu 391.
+
+What review found in the inherited code: the shapes, the layout and the two reductions per layer were right; one rank gives the logits of `ModelRunner` bit for bit. Fixed: the `--speculate` rejection ran after the tokenizer loaded (moved to the start of `run`); an unused include. Not changed: rank 0 alone embeds and makes the logits, yet every rank still holds the embedding and the LM head.
+
+Measured (release, RTX 5060 Laptop GPU, commit 284c886, three runs): largest logit difference against the whole model 0 for one rank, 0.75 for 2 and 0.64 for 4 over three prompts and 64 decode steps each; greedy tokens 192 of 192 for every rank count; device memory of all ranks 2,222, 2,474 and 2,978 MiB against 2,222 for `ModelRunner`; ms per decode step 8.34, 11.21 and 17.89 against 8.27 (run medians within 0.5 ms). The ranks run one after another on one GPU, so this is a check, not a speedup. The GPU test allows 1.0 and sees 0, 0.25 and 0.64.
+
+Open:
+
+- The Beyond page (`web/src/content/beyond.ts`, line 78) still says no forward pass runs on the shares; web/ was not touched on this branch.
+- `all_reduce_add` and `ShardedRunner` are Part B drafts for Joe to read.
+- Not wired: `bench --tensor-parallel`, `serve`, sampling with a temperature through the sharded runner (only greedy is tested), dropping the embedding and the LM head from ranks other than 0, and anything between two devices.
+
+Helpers: `~/.cache/llmie-tp/verify.sh` (the gate), `gate_fwd_1.log` to `gate_fwd_6.log`, `sharded_forward_bench` (the built bench), `fwd_run1.md` to `fwd_run3.md`, `final/code.tar` (the code as finished before it was split into commits).
+
+## Snapshot 2026-11-15 (tensor parallelism: late uploads explained, a chapter, the timeline and Beyond)
+
+Branch `runtime/tensor-parallel-forward` now also carries, cherry-picked on top of f21833b, the work of two subagents and the web follow-up. Local only, not pushed.
+
+- Late upload calls (from `loader/upload-late-calls`, worktree `~/code/llm-inference-engine-tpup`, Branch 154, docs only): the cause is the GPU lowering its clocks (P5) when a process mostly waits on `cudaMallocHost` and `cudaFreeHost` (about 265 ms per call) for 6 to 10 s; H2D falls from 14.5 to 3.7 GB/s. No engine change. `docs/results.md` "Late uploads in one process: the GPU lowers its clocks". Side finding, not changed: the time `upload_weights` reports starts after the pinned staging is allocated, so the published load times leave out about 265 ms per call. Programs and logs in `~/.cache/llmie-tpup`.
+- The chapter `tensor-parallelism` (from `web/tensor-parallel-chapter-b153`, worktree `~/code/llm-inference-engine-tpweb`, Branch 153): chapter 15, after speculative decoding; scroll page, every byte spreads, sandbox, review, exercise, five glossary terms. Its forward pass numbers read the new results table (`shardedForward()` in `web/src/content/kernels/tensor-parallelism.ts`, throws when the claims stop holding).
+- The main timeline (`web/src/content/build-log.ts`) has speculative decoding (#210, #211), the layout of one rank (#212) and the forward pass with the upload finding (PR #213, pushed 2026-11-15). Beyond says the split runs on one GPU.
+
+Gates: the six engine commits each passed the full gate with the GPU; the three chapter commits each passed the web gate in their own worktree; the tip passed the web gate after the merge. The cherry-picked commits were not gated one by one here.
+
+Open:
+
+- Not looked at in the chapter: close-up camera views, phone width, light theme for spreads 3 to 7, the review and exercise pages, motion timing, a settled 3D view at deviceScaleFactor 2.
+- The staging allocation left out of the reported upload time; whether native Linux lowers the clocks the same way.
+- A stray worktree `~/code/llm-inference-engine-beyond` holds the branch name `web/tensor-parallel-chapter` with broken metadata; not touched.
+- Everything listed as not wired in the snapshot above.
+
+## Snapshot 2026-11-16 (results refresh and site audit fixes)
+
+Branch `results/refresh-2026-11-16`, worktree `~/code/llm-inference-engine-refresh`, from main 78d9f2f, nothing pushed. Commits, each with its changelog entry:
+
+- 05c3749: `make_results.py` adds "(CUDA Graphs)" to the graph profile headings, so `docs/results.md` has no duplicate section ids.
+- bcf4cf8, 98bf71e, eaddcb7: site errors from the audit: duplicate React keys in the foundations figure; `/kernels` ordered and numbered by `bookOrder` (01 to 19, beyond 20, dead ends 21); the overview counts the weeks from the timeline.
+- c81fcd0: `scripts/reproduce.sh` minus load, vLLM and on-chip (driver `~/.cache/llmie-refresh/run.sh`, which also drops the `load_report.py` call so the 2026-11-11 load results keep their commit, and re-records the chat trace). Measured at eaddcb7: graphs batch 1 144.9 tok/s (302 GB/s, 93%), batch 16 1738.5 (12.0x); prefill 2,048 tokens 164.3 ms against llama.cpp 186.0. llama.cpp and HF moved too (driver 591.84, was 617.42); the DRAM copy test still reads 323 GB/s. Hand text of results.md, README and docs/api.md rewritten to the new numbers.
+- e873777: step-history.json regenerated, dashboard label "max batch 16, 8 reached", prefill charts kept to one session (llama.cpp row added to the 2026-11-10 kernel table), captions median of 3.
+- a19a859: stub exercises for Scheduler::cancel, decode_graph_buckets, flash_attention_prefill, prompt lookup, plan_shard_layout.
+
+Not done: the results page still lacks the batch sweep past 16, the prefill curve, speculative decoding and tensor parallelism; no graphs profile at batch 16; prefix caching exercise waits for Joe's implementation; the exercise commands at the five new start commits were not run; the engine gate (verify.sh) was not run (no engine code changed besides `scripts/make_results.py`, whose unit tests pass). `next build` printed Next.js 16.4.3's security upgrade recommendation.
+
+## Snapshot 2026-11-17 (Part C stubs for #126, #104 and #94; ten glossary terms)
+
+Branch 161 `kernel/fp8-batch16-stubs` (worktree ~/code/llm-inference-engine-fp8, gate ~/.cache/llmie-fp8/verify.sh), four commits, each gated with the GPU available:
+- `DType::F8E4M3` (Part A).
+- #126: `write_kv_fp8` and `paged_attention_decode_fp8` (`src/kernels/fp8_kv.cu`), 33 todo_joe tests. One FP32 scale for the keys and one for the values; the byte is what `__nv_cvt_float_to_fp8(x / scale, __NV_SATFINITE, __NV_E4M3)` gives.
+- #104: `gemm_fp8` (`src/kernels/gemm_fp8.cu`), 29 todo_joe tests. FP8 weights with a scale per output row, BF16 activations, no tensor cores required.
+- #94: `paged_attention_decode_grouped` (`src/kernels/paged_attention_grouped.cu`), 28 todo_joe tests: the v2 tests with head dims that are multiples of 16.
+
+The tests were checked against throwaway implementations (in ~/.cache/llmie-fp8/throwaway, never committed) and mutants of them: 8 for the cache (7 caught), 5 for the product, 1 for grouped attention. The one that passed multiplies by 1 / scale in place of dividing; with BF16 inputs the bytes came out the same for every scale tried, so the spec only defines the division. Branch 160 `web/glossary-terms`: floor, knee, shard, oracle, free list, SLO, SSE, safetensors, pinned memory, causal mask.
+
+Not done: no quantizer, no wiring, no accuracy or speed numbers (each spec lists them under What is not here); the PTX and cuBLASLt remarks in the gemm_fp8 spec come from the manuals, nothing was run; the hover cards of the new terms were not looked at in a browser.
+
+
+## Snapshot 2026-11-18 (markdown audit)
+
+Branch `docs/md-audit` (worktree ~/code/llm-inference-engine-mdaudit). Brought the markdown files up to the code on main 78780b2: README (what is built since the MVP, what is stubbed next, `/every-byte` and `/exercises`, SentencePiece), `reproduce.md` (the flags `generate`, `bench` and `serve` have now, vLLM setup, everything `reproduce.sh` runs and its skip flags), `ownership.md` (the planned table became what landed and who wrote it, from the changelog tags), `web/README.md`, and this folder's `README.md` and `working_rules.md` (tracked since c7c6633, per-branch worktrees, root paths).
+
+Not touched: the plans, `review_notes.md`, `technical_notes.md`, the branch summaries and the older entries here still name `docs/results.md` and the like; they are records of their day. The "about 10 minutes" of a full `reproduce.sh` run in `reproduce.md` and `results.md` predates the load, vLLM, prefill and on-chip parts and was not timed again. Joe's branch `kv/prefix-cache-impl` is in the main checkout with prefix caching in progress.
+
+
+## Snapshot 2026-11-19 (Every Byte for beginners: audit, fixes, new pages, new kernels index)
+
+Branch 162 `web/every-byte-audit` (worktree ~/code/llm-inference-engine-ebaudit), web and docs only, gated at the tip, not pushed. Joe asked for an audit of Every Byte as a tool for a beginner (`docs/claude/every_byte_audit.md`), then for everything under "needs fixing" and "good to have", a book icon in the top bar, an ideas-only toggle, and his prototype `Documents/gpu-animation` as the new `/kernels` index. Fourteen Claude subagents built it in their own worktrees (`~/code/llmie-eb-*`); the lead cherry-picked each commit and added the changelog and learning-log lines. Only the tip and a few points on the way were gated, not every commit alone.
+
+What is in it:
+- Top bar: a book icon left of GitHub with a themed hover text; a click sweeps the desk colour out from the icon and hands over to the cover opening on "start here".
+- Book: an ideas-only toggle in the action bar (`?view=ideas`, skips "how it got built", marks those steps as deep dives), the spread in the URL (`?at=`), the last spread saved and offered on the cover, the tab title follows the chapter.
+- Content: the attention primer moved to chapter 1; the nine "needs fixing" items; prose numbers rounded in 19 chapters with `web/src/lib/round.ts` (exact values stay in captions); "on a bigger model" steps for Llama 3 8B on an H100 from `web/src/content/scale.ts` in one-token, foundations, gemm, paged-kv, paged-attention, serving and where-the-time-went, and a sentence in add-rmsnorm and cuda-graphs; sandbox controls mirrored on their readout spreads (`kernels/mirror.tsx`).
+- New: chapter 20, quantization, calculated only because the FP8 kernels are stubs; three NumPy exercises (decode step, CPU bandwidth, Gumbel-max); a glossary page and glossary spreads; search on the kernels page; "where this lives in other engines" (vLLM v0.34.0, llama.cpp v1.0.0, every cell opened at the tag) on `/kernels/beyond`, on each chapter page and in the book.
+- `/kernels`: Joe's scroll-assembled machine ported into `web/src/components/kernels/machine.ts` and `atlas.tsx`, inked from the site's tokens in both themes, stories from the site's data (22), the old layer map and kernel cards removed. Ported from the prototype as it stood at 23:44 on 2026-11-18; later edits there are not in.
+
+Generated files: after a chapter's text changes, rebuild and run `node scripts/short-path.mjs` and `node scripts/search-index.mjs` in `web/`.
+
+Not done or not right yet:
+- At 390x844 the sandbox spreads of sampling (draw), chunked prefill (predict) and paged attention (step, check) still scroll inside the page; the mirrors added height. Needs a layout decision.
+- The quantization chapter's prose is not rounded. The book has no search. The NumPy bandwidth exercise and the engines map notes state a few facts from general knowledge (listed in the agents' reports under `~/.cache/llmie-web/agents/audit-*`).
+- RoPE's 3D exhibit says "fast kernel, one token 2.5 µs" where the prose and caption say 6.5 µs (two data columns); it was there before this round.
+- Not looked at by eye by the lead: glossary spreads, the quantization chapter, most rounded spreads, dark-theme book spreads. Nothing was checked in a real browser with a GPU: all checks ran in headless Chrome with software WebGL.
+- `next build` and `next dev` stop now and then with the Next.js 16.4.3 security notice and pass on the next run; the fix is the upgrade to 16.4.6.

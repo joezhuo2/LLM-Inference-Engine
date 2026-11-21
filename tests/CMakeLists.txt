@@ -37,6 +37,7 @@ add_executable(unit_tests
   unit/test_stop_matcher.cpp
   unit/test_sampling_params.cpp
   unit/test_tensor.cpp
+  unit/test_tensor_parallel.cpp
   unit/test_text_stream.cpp
   unit/test_tokenizer.cpp
   unit/test_tokenizer_golden.cpp
@@ -55,6 +56,7 @@ if(ENGINE_CUDA)
   add_executable(gpu_tests
     gpu/test_add.cpp
     gpu/test_add_rmsnorm.cpp
+    gpu/test_all_reduce.cpp
     gpu/test_attention.cpp
     gpu/test_bench.cpp
     gpu/test_bench_batched.cpp
@@ -70,6 +72,7 @@ if(ENGINE_CUDA)
     gpu/test_forward_golden.cpp
     gpu/test_gemm.cpp
     gpu/test_generate.cpp
+    gpu/test_generate_command.cpp
     gpu/test_greedy.cpp
     gpu/test_kv_cache.cpp
     gpu/test_load_weights.cpp
@@ -85,6 +88,7 @@ if(ENGINE_CUDA)
     gpu/test_sample.cpp
     gpu/test_serve.cpp
     gpu/test_server.cpp
+    gpu/test_sharded_runner.cpp
     gpu/test_smoke.cpp
     gpu/test_stream.cpp
     gpu/test_swiglu.cpp
@@ -93,15 +97,26 @@ if(ENGINE_CUDA)
     gpu/test_write_kv.cpp
   )
   target_include_directories(gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
-  target_compile_definitions(gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
+  target_compile_definitions(gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS}
+    ENGINE_BINARY="$<TARGET_FILE:engine>")
+  add_dependencies(gpu_tests engine)
   target_link_libraries(gpu_tests PRIVATE engine_runtime engine_server_gpu httplib::httplib
     GTest::gtest_main)
   gtest_discover_tests(gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS gpu)
+
+  add_executable(todo_gpu_tests
+    todo/gpu/test_fp8_kv.cpp
+    todo/gpu/test_gemm_fp8.cpp
+    todo/gpu/test_paged_attention_grouped.cpp
+  )
+  target_include_directories(todo_gpu_tests PRIVATE ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
+  target_compile_definitions(todo_gpu_tests PRIVATE ${ENGINE_TEST_DEFINITIONS})
+  target_link_libraries(todo_gpu_tests PRIVATE engine_runtime GTest::gtest_main)
+  gtest_discover_tests(todo_gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS "todo_joe;gpu")
 endif()
 
 add_executable(todo_unit_tests
   todo/unit/test_prefix_cache.cpp
-  todo/unit/test_tensor_parallel.cpp
 )
 target_include_directories(todo_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(todo_unit_tests PRIVATE engine_core GTest::gtest_main)

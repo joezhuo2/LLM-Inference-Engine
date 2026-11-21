@@ -10,17 +10,17 @@
    {
     "id": "fusion",
     "title": "fusion keeps the value on the chip",
-    "words": 173
+    "words": 174
    },
    {
     "id": "round-trip",
     "title": "the pair sends the sum out and back",
-    "words": 70
+    "words": 71
    },
    {
     "id": "first",
     "title": "fewer bytes did not buy time",
-    "words": 118
+    "words": 119
    },
    {
     "id": "rounding",
@@ -44,12 +44,12 @@
     "id": "measured",
     "title": "3.0x faster than the pair, one token",
     "group": "measured",
-    "words": 69
+    "words": 147
    }
   ]
  },
  "attention-v2": {
-  "about": 253,
+  "about": 254,
   "steps": [
    {
     "id": "online",
@@ -70,19 +70,19 @@
     "id": "v1",
     "title": "v1 kept every score and passed three times",
     "group": "how it got built",
-    "words": 76
+    "words": 77
    },
    {
     "id": "cap",
     "title": "keeping every score capped the context",
     "group": "how it got built",
-    "words": 88
+    "words": 89
    },
    {
     "id": "step",
     "title": "in the decode step, the gain grows with the batch",
     "group": "measured",
-    "words": 45
+    "words": 46
    },
    {
     "id": "compare",
@@ -98,7 +98,7 @@
    {
     "id": "stall",
     "title": "one prompt stops everyone",
-    "words": 94
+    "words": 97
    },
    {
     "id": "budget",
@@ -108,7 +108,7 @@
    {
     "id": "spread",
     "title": "the budget trades the prompt's wait for everyone's",
-    "words": 108
+    "words": 109
    },
    {
     "id": "preempt",
@@ -129,12 +129,12 @@
    {
     "id": "launches",
     "title": "the CPU keeps up, the GPU still idles",
-    "words": 96
+    "words": 97
    },
    {
     "id": "gaps",
     "title": "a gap before every kernel adds up",
-    "words": 108
+    "words": 110
    },
    {
     "id": "capture",
@@ -144,30 +144,30 @@
    {
     "id": "stage",
     "title": "same addresses, new values",
-    "words": 121
+    "words": 122
    },
    {
     "id": "replay",
     "title": "a replay cuts the gaps, not the kernels",
-    "words": 98
+    "words": 178
    },
    {
     "id": "buckets",
     "title": "finer buckets pad fewer rows",
     "group": "how it got built",
-    "words": 126
+    "words": 128
    },
    {
     "id": "splits",
     "title": "the frozen grid froze the split count",
     "group": "how it got built",
-    "words": 108
+    "words": 110
    },
    {
     "id": "sweep",
     "title": "past 64 rows, more rows buy little",
     "group": "measured",
-    "words": 126
+    "words": 127
    }
   ]
  },
@@ -204,7 +204,7 @@
     "id": "first",
     "title": "a shorter path to each byte, the same walk",
     "group": "how it got built",
-    "words": 107
+    "words": 108
    },
    {
     "id": "registers",
@@ -216,13 +216,13 @@
     "id": "blocks",
     "title": "registers decide how many blocks run at once",
     "group": "how it got built",
-    "words": 145
+    "words": 147
    },
    {
     "id": "result",
     "title": "the square stays, the cost per token goes flat",
     "group": "measured",
-    "words": 86
+    "words": 87
    },
    {
     "id": "lengths",
@@ -234,7 +234,7 @@
     "id": "open",
     "title": "your turn: 8 heads read the same keys",
     "group": "measured",
-    "words": 302
+    "words": 305
    }
   ]
  },
@@ -244,7 +244,7 @@
    {
     "id": "idea-memory",
     "title": "decode waits on memory",
-    "words": 111
+    "words": 153
    },
    {
     "id": "idea-cache",
@@ -254,17 +254,17 @@
    {
     "id": "idea-batch",
     "title": "batching shares the read",
-    "words": 86
+    "words": 88
    },
    {
     "id": "idea-budget",
     "title": "memory is the budget",
-    "words": 81
+    "words": 82
    },
    {
     "id": "idea-latency",
     "title": "batching trades latency for throughput",
-    "words": 99
+    "words": 100
    },
    {
     "id": "hierarchy",
@@ -274,17 +274,17 @@
    {
     "id": "memory",
     "title": "the nearer the data, the faster",
-    "words": 157
+    "words": 159
    },
    {
     "id": "bytes",
     "title": "the slower of bytes and FLOPs wins",
-    "words": 108
+    "words": 110
    },
    {
     "id": "roofline",
     "title": "the ridge splits memory from compute",
-    "words": 99
+    "words": 158
    },
    {
     "id": "measured",
@@ -294,12 +294,17 @@
    {
     "id": "fusion",
     "title": "fused kernels skip a trip to memory",
-    "words": 140
+    "words": 141
    },
    {
     "id": "lookup",
     "title": "speed up only what the step waits on",
     "words": 152
+   },
+   {
+    "id": "bigger",
+    "title": "on an H100 SXM, the ridge moves to 295",
+    "words": 203
    }
   ]
  },
@@ -309,32 +314,37 @@
    {
     "id": "job",
     "title": "most of a layer is matrix products",
-    "words": 106
+    "words": 107
    },
    {
     "id": "gemv",
     "title": "one row uses each weight byte once",
-    "words": 95
+    "words": 96
    },
    {
     "id": "roof",
     "title": "cuBLAS already reads at the roof",
-    "words": 86
+    "words": 109
    },
    {
     "id": "batch",
     "title": "sixteen rows share one weight read",
-    "words": 98
+    "words": 99
    },
    {
     "id": "prefill",
     "title": "a long prompt crosses the ridge",
-    "words": 210
+    "words": 211
    },
    {
     "id": "roofline",
     "title": "no decode op gets near the ridge",
-    "words": 122
+    "words": 123
+   },
+   {
+    "id": "bigger",
+    "title": "on an H100 SXM, a GEMM needs 295 rows to pass the ridge",
+    "words": 205
    },
    {
     "id": "trick",
@@ -344,9 +354,54 @@
    }
   ]
  },
- "paged-attention": {
-  "about": 222,
+ "memory-budget": {
+  "about": 194,
   "steps": [
+   {
+    "id": "bytes",
+    "title": "a cached token costs 22,528 bytes, whatever it says",
+    "words": 163
+   },
+   {
+    "id": "budget",
+    "title": "batch size and context length share one pool",
+    "words": 189
+   },
+   {
+    "id": "bigger",
+    "title": "a larger model squeezes the pool from both sides",
+    "words": 200
+   }
+  ]
+ },
+ "one-token": {
+  "about": 182,
+  "steps": [
+   {
+    "id": "tokenize",
+    "title": "text becomes IDs on the host, once",
+    "words": 159
+   },
+   {
+    "id": "layers",
+    "title": "one ID goes through 22 layers, and that is the token's time",
+    "words": 197
+   },
+   {
+    "id": "head",
+    "title": "2,048 numbers become 32,000 scores, then one ID",
+    "words": 168
+   },
+   {
+    "id": "trip",
+    "title": "the whole trip, timed",
+    "words": 178
+   },
+   {
+    "id": "bigger",
+    "title": "on an H100 SXM, Llama 3 8B needs 4.48 ms at least",
+    "words": 185
+   },
    {
     "id": "basics-qkv",
     "title": "three vectors per token",
@@ -355,7 +410,7 @@
    {
     "id": "basics-scores",
     "title": "score, weigh, sum",
-    "words": 102
+    "words": 107
    },
    {
     "id": "basics-past",
@@ -366,11 +421,16 @@
     "id": "basics-heads",
     "title": "heads, and heads that share",
     "words": 106
-   },
+   }
+  ]
+ },
+ "paged-attention": {
+  "about": 195,
+  "steps": [
    {
     "id": "prefill",
     "title": "prefill: the whole prompt at once",
-    "words": 74
+    "words": 75
    },
    {
     "id": "decode",
@@ -390,7 +450,7 @@
    {
     "id": "job",
     "title": "one query against every cached key, every step",
-    "words": 50
+    "words": 51
    },
    {
     "id": "blocks",
@@ -403,21 +463,26 @@
     "words": 91
    },
    {
+    "id": "bigger",
+    "title": "at 8,192 tokens, Llama 3 8B reads 1.07 GB of K and V a step",
+    "words": 167
+   },
+   {
     "id": "v2",
     "title": "an online softmax removed v1's context cap",
     "group": "how it got built",
-    "words": 77
+    "words": 78
    },
    {
     "id": "split",
     "title": "splitting the context filled an idle GPU",
     "group": "how it got built",
-    "words": 78
+    "words": 79
    }
   ]
  },
  "paged-kv": {
-  "about": 247,
+  "about": 224,
   "steps": [
    {
     "id": "why",
@@ -427,7 +492,7 @@
    {
     "id": "pool",
     "title": "one pool, a table per request",
-    "words": 117
+    "words": 118
    },
    {
     "id": "append",
@@ -440,21 +505,61 @@
     "words": 99
    },
    {
+    "id": "bigger",
+    "title": "on Llama 3 8B a cached token is 131,072 bytes",
+    "words": 164
+   },
+   {
     "id": "write",
     "title": "write_kv is a pure copy, one thread per value",
     "group": "how it got built",
-    "words": 185
+    "words": 188
    },
    {
     "id": "replay",
-    "title": "a busy run held 66 of 12,915 blocks",
+    "title": "a busy run held 65 of 12,915 blocks",
     "group": "measured",
     "words": 141
    }
   ]
  },
+ "quantization": {
+  "about": 229,
+  "steps": [
+   {
+    "id": "floor",
+    "title": "the floor moves with the bytes",
+    "words": 153
+   },
+   {
+    "id": "arithmetic",
+    "title": "the arithmetic stays free",
+    "words": 181
+   },
+   {
+    "id": "scale",
+    "title": "a scale per row fits the weights into eight bits",
+    "words": 178
+   },
+   {
+    "id": "rounding",
+    "title": "rounding costs at most half a step",
+    "words": 166
+   },
+   {
+    "id": "kv",
+    "title": "an FP8 cache holds twice the tokens",
+    "words": 159
+   },
+   {
+    "id": "plan",
+    "title": "the plan: a dtype and three kernels",
+    "words": 212
+   }
+  ]
+ },
  "rope": {
-  "about": 240,
+  "about": 219,
   "steps": [
    {
     "id": "job",
@@ -474,29 +579,29 @@
    {
     "id": "bits",
     "title": "position multiplies a last-bit error",
-    "words": 99
+    "words": 100
    },
    {
     "id": "serial",
     "title": "one thread per head leaves most idle",
     "group": "how it got built",
-    "words": 88
+    "words": 89
    },
    {
     "id": "measured",
     "title": "at small counts the launch sets the time",
     "group": "measured",
-    "words": 95
+    "words": 96
    }
   ]
  },
  "sampling": {
-  "about": 206,
+  "about": 207,
   "steps": [
    {
     "id": "greedy",
     "title": "greedy is an argmax over 32,000 logits",
-    "words": 61
+    "words": 62
    },
    {
     "id": "gumbel",
@@ -522,13 +627,13 @@
     "id": "cost",
     "title": "top-k runs 2.1x faster than a bare sort",
     "group": "measured",
-    "words": 43
+    "words": 45
    },
    {
     "id": "fp64",
     "title": "FP64 logs make temperature slowest",
     "group": "measured",
-    "words": 80
+    "words": 81
    },
    {
     "id": "rows",
@@ -544,22 +649,22 @@
    {
     "id": "budget",
     "title": "every token costs 22,528 bytes of cache",
-    "words": 141
+    "words": 155
    },
    {
     "id": "fit",
     "title": "divide the pool by what requests hold",
-    "words": 150
+    "words": 152
    },
    {
     "id": "max-batch",
     "title": "the row limit filled first, never the pool",
-    "words": 203
+    "words": 195
    },
    {
     "id": "admission",
     "title": "first come, first served, nothing skips ahead",
-    "words": 178
+    "words": 179
    },
    {
     "id": "preempt",
@@ -582,10 +687,15 @@
     "words": 94
    },
    {
+    "id": "bigger",
+    "title": "on an H100 SXM, Llama 3 8B fits 53 full contexts, not 100",
+    "words": 215
+   },
+   {
     "id": "load",
     "title": "goodput peaks at an offered 5 requests a second",
     "group": "measured",
-    "words": 184
+    "words": 189
    },
    {
     "id": "vllm",
@@ -595,8 +705,38 @@
    }
   ]
  },
+ "speculative-decoding": {
+  "about": 163,
+  "steps": [
+   {
+    "id": "rows",
+    "title": "a step has rows to spare",
+    "words": 129
+   },
+   {
+    "id": "guess",
+    "title": "the guess is copied from the context",
+    "words": 180
+   },
+   {
+    "id": "check",
+    "title": "one step checks every guess",
+    "words": 248
+   },
+   {
+    "id": "truncate",
+    "title": "a wrong guess gives its cache slots back",
+    "words": 165
+   },
+   {
+    "id": "payoff",
+    "title": "it pays when the answer repeats the prompt",
+    "words": 318
+   }
+  ]
+ },
  "split-attention": {
-  "about": 245,
+  "about": 246,
   "steps": [
    {
     "id": "few",
@@ -616,25 +756,25 @@
    {
     "id": "merge",
     "title": "rescaled to one maximum, the merge is exact",
-    "words": 112
+    "words": 113
    },
    {
     "id": "graphs",
     "title": "a CUDA graph replays the split count it captured",
     "group": "how it got built",
-    "words": 70
+    "words": 71
    },
    {
     "id": "waiting",
     "title": "short of warps to switch to, not of bandwidth",
     "group": "measured",
-    "words": 86
+    "words": 87
    },
    {
     "id": "wave",
     "title": "splits pay until the grid passes one wave",
     "group": "measured",
-    "words": 62
+    "words": 63
    },
    {
     "id": "choose",
@@ -645,27 +785,27 @@
   ]
  },
  "swiglu": {
-  "about": 272,
+  "about": 273,
   "steps": [
    {
     "id": "job",
     "title": "each output is silu(gate) times up",
-    "words": 95
+    "words": 96
    },
    {
     "id": "bits",
     "title": "keep PyTorch's two roundings",
-    "words": 125
+    "words": 126
    },
    {
     "id": "vector",
     "title": "wide loads reach peak bandwidth",
-    "words": 157
+    "words": 158
    },
    {
     "id": "small",
     "title": "at one token, blocks beat wide loads",
-    "words": 102
+    "words": 103
    },
    {
     "id": "draft",
@@ -675,39 +815,84 @@
    },
    {
     "id": "measured",
-    "title": "1.6x to 2.1x, but 0.4% of a step",
+    "title": "1.6x to 2.1x, but 0.3% of a step",
     "group": "measured",
     "words": 121
    }
   ]
  },
+ "tensor-parallelism": {
+  "about": 173,
+  "steps": [
+   {
+    "id": "heads",
+    "title": "attention is cut by heads",
+    "words": 170
+   },
+   {
+    "id": "channels",
+    "title": "the MLP is cut by channels",
+    "words": 123
+   },
+   {
+    "id": "sums",
+    "title": "two sums in every layer",
+    "words": 164
+   },
+   {
+    "id": "forward",
+    "title": "a forward pass on the shards",
+    "words": 201
+   },
+   {
+    "id": "bytes",
+    "title": "a rank holds more than its share",
+    "words": 155
+   },
+   {
+    "id": "load",
+    "title": "a column slice is one copy per row",
+    "words": 187
+   },
+   {
+    "id": "wire",
+    "title": "one GPU, and no wire",
+    "words": 131
+   }
+  ]
+ },
  "where-the-time-went": {
-  "about": 230,
+  "about": 233,
   "steps": [
    {
     "id": "decode",
     "title": "every kernel shrank its slice, and the GEMMs kept the step",
-    "words": 196
+    "words": 209
    },
    {
     "id": "floor",
     "title": "most of a token is the read of the weights",
-    "words": 141
+    "words": 160
    },
    {
     "id": "prefill",
     "title": "the first token of a long prompt was the slow part",
-    "words": 199
+    "words": 206
    },
    {
     "id": "load",
     "title": "under load, vLLM still serves more",
-    "words": 216
+    "words": 220
    },
    {
     "id": "next",
     "title": "three things to do next",
-    "words": 229
+    "words": 236
+   },
+   {
+    "id": "bigger",
+    "title": "on an H100 SXM, Llama 3 8B's floor is 4.48 ms a token",
+    "words": 211
    }
   ]
  }

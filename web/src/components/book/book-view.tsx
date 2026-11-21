@@ -2,16 +2,17 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, type Ref, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Scramble } from "@/components/scramble";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import type { BookScene, OverlayRect, Rect, Stop } from "./book-scene";
 import { type ChapterDef, chapterStops, chapterTitles } from "./chapter";
 import { DOT_PITCH, loadFonts, readFonts, readRuns } from "./typeset";
 
-export type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number; lines: number[][]; color: string };
+export type Lens = { x: number; y: number; source: HTMLCanvasElement; u: number; v: number; perPx: number; lines: number[][]; color: string };
 
 const LENS_SIZE = 190;
+const LENS_ZOOM = 1.8;
 const beatMs = 6500;
 
 function Icon({ d }: { d: string }) {
@@ -22,33 +23,41 @@ function Icon({ d }: { d: string }) {
   );
 }
 
-export function Magnifier({ lens }: { lens: Lens | null }) {
+export type LensHandle = (lens: Lens | null) => void;
+
+export function Magnifier({ ref, on = true }: { ref: Ref<LensHandle>; on?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const [at, setAt] = useState({ x: 0, y: 0 });
-  if (lens && (lens.x !== at.x || lens.y !== at.y)) setAt({ x: lens.x, y: lens.y });
-  useEffect(() => {
-    const c = canvas.current;
-    if (!c || !lens) return;
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    const zoom = lens.source.width * 0.38;
-    const sx = lens.u * lens.source.width - zoom / 2;
-    const sy = lens.v * lens.source.height - zoom / 2;
-    ctx.clearRect(0, 0, c.width, c.height);
-    ctx.drawImage(lens.source, sx, sy, zoom, zoom, 0, 0, c.width, c.height);
-    const page = lens.source.width;
-    const scale = c.width / zoom;
-    ctx.fillStyle = lens.color;
-    for (const [x0, y, x1, dot] of lens.lines) for (let x = x0; x < x1; x += dot * DOT_PITCH) ctx.fillRect((x * page - sx) * scale, (y * page - sy) * scale, Math.min(dot, x1 - x) * page * scale, dot * page * scale);
-  }, [lens]);
+  useImperativeHandle(
+    ref,
+    () => (lens) => {
+      const c = canvas.current;
+      if (!c) return;
+      c.style.opacity = lens ? "1" : "0";
+      if (!lens || c.hidden) return;
+      c.style.transform = `translate(${lens.x - LENS_SIZE / 2}px, ${lens.y - LENS_SIZE / 2}px)`;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+      const zoom = (lens.source.width * lens.perPx * LENS_SIZE) / LENS_ZOOM;
+      const sx = lens.u * lens.source.width - zoom / 2;
+      const sy = lens.v * lens.source.height - zoom / 2;
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.drawImage(lens.source, sx, sy, zoom, zoom, 0, 0, c.width, c.height);
+      const page = lens.source.width;
+      const scale = c.width / zoom;
+      ctx.fillStyle = lens.color;
+      for (const [x0, y, x1, dot] of lens.lines) for (let x = x0; x < x1; x += dot * DOT_PITCH) ctx.fillRect((x * page - sx) * scale, (y * page - sy) * scale, Math.min(dot, x1 - x) * page * scale, dot * page * scale);
+    },
+    [],
+  );
   return (
     <canvas
       ref={canvas}
       aria-hidden
+      hidden={!on}
       width={LENS_SIZE * 2}
       height={LENS_SIZE * 2}
-      style={{ width: LENS_SIZE, height: LENS_SIZE, left: at.x - LENS_SIZE / 2, top: at.y - LENS_SIZE / 2, opacity: lens ? 1 : 0 }}
-      className="pointer-events-none absolute z-10 rounded-full border border-[var(--book-faint)] bg-[var(--book-paper)] shadow-lg transition-opacity duration-300"
+      style={{ width: LENS_SIZE, height: LENS_SIZE, opacity: 0 }}
+      className="pointer-events-none absolute left-0 top-0 z-10 rounded-full border border-[var(--book-faint)] bg-[var(--book-paper)] shadow-lg transition-opacity duration-300 will-change-transform"
     />
   );
 }
@@ -108,7 +117,7 @@ export function BookView({ chapter }: { chapter: ChapterDef }) {
   const [beat, setBeat] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [overlay, setOverlay] = useState<OverlayRect | null>(null);
-  const [lens, setLens] = useState<Lens | null>(null);
+  const lens = useRef<LensHandle>(null);
   const [failed, setFailed] = useState(false);
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(false);
@@ -166,7 +175,7 @@ export function BookView({ chapter }: { chapter: ChapterDef }) {
           reduced,
           buildModel: (kit) => chapter.buildModel(kit, fonts),
           onOverlay: setOverlay,
-          onLens: setLens,
+          onLens: (l) => lens.current?.(l),
           onPageClick: (side) => hostEl.dispatchEvent(new CustomEvent("bookpage", { detail: side })),
         });
       } catch (error) {
@@ -275,11 +284,11 @@ export function BookView({ chapter }: { chapter: ChapterDef }) {
       </div>
       <div ref={host} className="relative min-h-0 flex-1 touch-none bg-[var(--book-desk)]">
         <canvas ref={canvas} role="img" aria-label={`3D book, open at ${titles[stop]}. ${caption}`} className="absolute inset-0 size-full" />
-        <Magnifier lens={lens} />
+        <Magnifier ref={lens} />
           <nav
             aria-label="book"
             style={{ width: barWidth ?? undefined }}
-            className="absolute bottom-4 left-1/2 z-20 max-w-[calc(100%-2rem)] -translate-x-1/2 overflow-hidden rounded-full border border-white/30 bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-black/15 backdrop-blur-xl backdrop-saturate-150 transition-[width] duration-700 ease-[var(--ease-in-out)] motion-reduce:transition-none"
+            className="absolute bottom-4 left-1/2 z-20 max-w-[calc(100%-2rem)] -translate-x-1/2 overflow-hidden rounded-full border border-[var(--pill-edge)] bg-surface/55 tabular-nums text-xs text-muted shadow-lg shadow-[color:var(--pill-shadow)] backdrop-blur-xl backdrop-saturate-150 transition-[width] duration-700 ease-[var(--ease-in-out)] motion-reduce:transition-none"
           >
             <div ref={barInner} className="flex w-max items-center gap-1.5 py-1 pl-1.5 pr-4">
             <button type="button" aria-label="previous page" disabled={stop === 0} onClick={() => go(stop - 1)} className="pressable rounded-full p-1.5 enabled:hover:text-text disabled:opacity-30">

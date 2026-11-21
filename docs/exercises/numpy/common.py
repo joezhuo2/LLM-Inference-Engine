@@ -15,6 +15,8 @@ KV_HEADS = _config["num_key_value_heads"]
 HEAD_DIM = HIDDEN // HEADS
 RMS_EPS = _config["rms_norm_eps"]
 ROPE_THETA = _config["rope_theta"]
+LAYERS = _config["num_hidden_layers"]
+VOCAB = _config["vocab_size"]
 BLOCK_SIZE = 16
 
 

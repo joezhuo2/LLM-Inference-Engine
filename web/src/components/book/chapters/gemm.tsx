@@ -3,11 +3,12 @@
 import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
 import { TilingSandbox } from "@/components/kernels/gemm/sandbox";
-import { gemmCaptions, gemmNumbers, gemmSteps, RooflinePicker } from "@/components/kernels/gemm/story";
+import { GemmScaleFigure, gemmCaptions, gemmNumbers, gemmSteps, RooflinePicker } from "@/components/kernels/gemm/story";
 import { GemmStream } from "@/components/kernels/gemm/stream";
 import { gemmAbout, gemmAboutCaption } from "@/components/kernels/gemm/about";
 import { gemm, prefillRoof } from "@/content/kernels/gemm";
 import { hardware } from "@/lib/data";
+import { about } from "@/lib/round";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createGemmAboutModel } from "./gemm-about-model";
@@ -39,6 +40,7 @@ const beats: Beat[][] = [
   ],
   [flat(`Prefill at ${prefillRoof.rows.toLocaleString("en-US")} rows: past the ridge`)],
   [flat("Switch between 1 row, 16 rows and prefill")],
+  [flat("TinyLlama on this GPU against Llama 3 8B on an H100")],
   [
     overview("One row of W in three places"),
     close("Close up: the twelve addresses, one row after the other", [0.53, 0.02, -0.5], 0.92, 0.3, 0, 42),
@@ -54,6 +56,7 @@ const instructions = [
   "Drag the pink ball along the rail to change the rows from one to 16.",
   undefined,
   undefined,
+  "Find the dashed mark of a 16-row batch against both ridges.",
   "Watch one row of W lift in all three places: the same four addresses.",
 ];
 
@@ -75,7 +78,7 @@ const workbench: WorkbenchPage[] = [
     caption: "Stream it yourself: the bytes and the ceilings",
     paragraphs: [
       `Answer the prediction first. The table then counts one whole decode step for the matrix you picked at all three batch sizes: the weight bytes of one layer, the x and y bytes, the bytes of the step across all ${gemmNumbers.projections[0].per} layers (the LM head is read once), and the FLOPs.`,
-      `FLOPs divided by bytes is the arithmetic intensity. The ridge at ${Math.round(gemmNumbers.ridge)} FLOP per byte is where the two measured ceilings meet, the bandwidth and the compute peak: under it the bytes set the time, over it the tensor cores do.`,
+      `FLOPs divided by bytes is the arithmetic intensity. The ridge at ${about(gemmNumbers.ridge)} FLOP per byte is where the two measured ceilings meet, the bandwidth and the compute peak: under it the bytes set the time, over it the tensor cores do.`,
       "Each weight feeds one FLOP per byte for every row of x, so the intensity is about M. For one row and a small batch that is far under the ridge, and the measured time per step barely moves: 16 tokens for the price of one.",
       "For a long prompt the compute bar passes the memory bar and the matrix is compute bound. The profiles only measured the two smaller batches, so the table says not measured there; the two roof times are computed from the measured ceilings.",
     ],
@@ -115,6 +118,14 @@ function GemmOverlay({ kind, target, narrow }: OverlayProps) {
           </div>,
           target,
         )}
+      {kind === "scale" &&
+        target &&
+        createPortal(
+          <div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>
+            <GemmScaleFigure />
+          </div>,
+          target,
+        )}
       {kind === "roofline" &&
         target &&
         createPortal(
@@ -136,8 +147,8 @@ const chapter: ChapterDef = {
   formula: gemm.formula,
   steps: gemmSteps,
   captions: gemmCaptions,
-  exhibits: [0, 2, 3, 4, null, null, 1],
-  overlays: [null, null, null, null, "prefill-roofline", "roofline", null],
+  exhibits: [0, 2, 3, 4, null, null, null, 1],
+  overlays: [null, null, null, null, "prefill-roofline", "roofline", "scale", null],
   instructions,
   beats,
   workbench,

@@ -1,5 +1,7 @@
 import { measured as tableValue } from "@/content/kernels/types";
 import { cellNumber, embeddingLaunch, medianOf, profilingTable } from "@/lib/data";
+import { more as specMore, spec, specFmt } from "./kernels/speculative-decoding";
+import { shardedForward } from "./kernels/tensor-parallelism";
 
 export type Bar = { label: string; value: number; highlight?: boolean };
 
@@ -14,7 +16,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
-  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles";
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles" | "speculate" | "rank" | "shards";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -65,7 +67,7 @@ const ladderMax = bucket("1");
 function ladder(steps: number) {
   const sizes = graphBuckets(ladderMax, steps);
   const size = bucket(String(steps));
-  if (paddedRows === undefined || sizes.find((b) => b >= paddedRows) !== size) throw new Error(`docs/results.md Batch size past 16: the padding table puts ${paddedRows} rows in the graph for ${size} at ${steps} graph steps, the bucket rule does not`);
+  if (paddedRows === undefined || sizes.find((b) => b >= paddedRows) !== size) throw new Error(`results.md Batch size past 16: the padding table puts ${paddedRows} rows in the graph for ${size} at ${steps} graph steps, the bucket rule does not`);
   return { steps, sizes, size, ms: padding(String(steps), "TPOT p50 (ms)") };
 }
 
@@ -83,9 +85,19 @@ function prefillPath(path: string) {
   return tableValue("flashattention-prefill-kernels", { "prefill attention": path }, longPrompt, 0, "results");
 }
 
-const llamaPrefill = tableValue("prefill-against-prompt-length", { system: "llama.cpp -ub 512" }, longPrompt, 0, "results");
+export const tilesScene = { prompt: longPrompt, paged: prefillPath("paged decode kernels"), first: prefillPath("flash, first kernel"), tiled: prefillPath("flash, tiled kernel"), llama: prefillPath("llama.cpp -ub 512") };
 
-export const tilesScene = { prompt: longPrompt, paged: prefillPath("paged decode kernels"), first: prefillPath("flash, first kernel"), tiled: prefillPath("flash, tiled kernel"), llama: llamaPrefill };
+const shards = "tensor-parallelism-the-weights-of-one-rank";
+
+function shardValue(layout: string, column: string, table = 0) {
+  return tableValue(shards, { layout }, column, table, "results");
+}
+
+const shareOf = (layout: string) => Math.round((100 * shardValue(layout, "MiB on the device")) / shardValue("full model", "MiB on the device"));
+const forward = shardedForward();
+
+export const rankScene = { n: 2, pct: shareOf("rank 0 of 2") };
+const unpackedColumn = profilingTable(shards, 1, "results").header[1];
 
 export const milestones: Milestone[] = [
   {
@@ -406,8 +418,8 @@ export const milestones: Milestone[] = [
   {
     id: "M6",
     name: "refinements",
-    dates: "Nov 4 to 10",
-    goal: "Refine how the engine serves requests now that it has shipped.",
+    dates: "Nov 4 to 14",
+    goal: "Refine how the engine serves requests now that it has shipped, and take a first step past one GPU.",
     entries: [
       {
         date: "Nov 5",
@@ -496,6 +508,67 @@ export const milestones: Milestone[] = [
           ],
         },
       },
+      {
+        date: "Nov 12",
+        prs: [210, 211],
+        branch: "sched/speculative-wire",
+        scene: "speculate",
+        title: "Guess the next tokens in the rows a step has to spare",
+        text: `Speculative decoding fills the empty rows of a decode step with guesses of the next tokens, copied from earlier in the context, and keeps the ones the model agrees with. On prompts whose answers repeat them a step yields ${specFmt(spec.best.tokensPerStep, 2)} tokens, ${specFmt(spec.best.speedup, 2)} times the tokens per second (measured). Chat prompts repeat less and gain less, and when the batch is full of requests there are no rows to spare. A draft model can guess anywhere, but the one tried here was too slow to pay: ${specFmt(specMore.draftSpeedup, 2)} times the tokens per second.`,
+        metric: { kind: "value", value: `${specFmt(spec.best.speedup, 2)}×`, label: "measured tokens per second on prompts that repeat, against plain decoding" },
+      },
+      {
+        date: "Nov 14",
+        prs: [212],
+        branch: "loader/tensor-parallel-wire",
+        scene: "rank",
+        title: "The weights of one GPU out of several",
+        text: `Tensor parallelism splits every layer's weights across N GPUs, called ranks. The first step: plan_shard_layout, written by Joe, gives the weights of one rank, and the engine can load them. A rank of 2 holds ${shareOf("rank 0 of 2")}% of the model and not half, and a rank of 4 holds ${shareOf("rank 0 of 4")}% (calculated), because every rank keeps the embedding and the LM head whole. A slice of columns is one copy per row, ${whole(shardValue("rank 0 of 2", "copies"))} copies in place of ${shardValue("full model", "copies")}, so a rank of 2 first took ${(shardValue("rank 0 of 2", unpackedColumn, 1) / 1000).toFixed(1)} s to load. upload_weights now packs the copies of one tensor into one chunk: a rank of 2 loads in ${shardValue("rank 0 of 2", "upload ms").toFixed(0)} ms and a rank of 4 in ${shardValue("rank 0 of 4", "upload ms").toFixed(0)} ms, against ${shardValue("full model", "upload ms").toFixed(0)} ms for the whole model.`,
+        metric: {
+          kind: "bars",
+          label: "measured ms to load the weights",
+          unit: "ms",
+          digits: 0,
+          bars: [
+            { label: "rank of 2, one call per copy", value: shardValue("rank 0 of 2", unpackedColumn, 1) },
+            { label: "whole model", value: shardValue("full model", "upload ms") },
+            { label: "rank of 2, packed", value: shardValue("rank 0 of 2", "upload ms"), highlight: true },
+          ],
+        },
+      },
+      {
+        date: "Nov 14",
+        prs: [213],
+        branch: "runtime/tensor-parallel-forward",
+        scene: "shards",
+        title: "Every rank runs, and the sums give the model back",
+        text: `ShardedRunner runs the forward pass on the shards. Every rank has its own weights, K/V cache and scratch buffers, and each layer adds the partial results of the ranks into the residual stream twice. This laptop has one GPU, so the ranks take turns on it: it checks that the split computes the model, and it cannot be faster. One rank gives the whole model's logits bit for bit. With 2 and 4 ranks the logits come within ${forward.maxLogitDiff} and every greedy token is the same (measured). A token takes ${forward.msPerToken[1].toFixed(2)} ms with 2 ranks and ${forward.msPerToken[2].toFixed(2)} with 4, against ${forward.wholeMsPerToken.toFixed(2)} for the whole model. The late upload calls that took 130 to 180 ms more are explained too: when a process mostly waits on pinned memory, the driver lowers the GPU's clocks after some seconds. A real load uploads once, before that. What a second GPU would gain is still not measured.`,
+        metric: {
+          kind: "bars",
+          label: "measured ms per token, ranks taking turns on one GPU",
+          unit: "ms",
+          digits: 2,
+          bars: [
+            { label: "whole model", value: forward.wholeMsPerToken },
+            { label: "2 ranks", value: forward.msPerToken[1], highlight: true },
+            { label: "4 ranks", value: forward.msPerToken[2] },
+          ],
+        },
+      },
     ],
   },
 ];
+
+const dayOf = (text: string) => {
+  const [month, day] = text.split(" ");
+  const m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(month);
+  if (m < 0 || !Number(day)) throw new Error(`build-log: cannot read the date "${text}"`);
+  return Date.UTC(2026, m, Number(day));
+};
+
+const entryDates = milestones.flatMap((m) => m.entries.map((e) => dayOf(e.date)));
+const firstDay = Math.min(dayOf(milestones[0].dates.split(" to ")[0]), ...entryDates);
+const weeks = Math.round((Math.max(...entryDates) - firstDay) / (7 * 864e5));
+const weekWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+
+export const buildWeeks = `${weekWords[weeks] ?? weeks} ${weeks === 1 ? "week" : "weeks"}`;

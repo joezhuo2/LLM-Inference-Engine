@@ -1,5 +1,6 @@
 "use client";
 
+import { about } from "@/lib/round";
 import NumberFlow from "@number-flow/react";
 import { useState } from "react";
 import { measured } from "@/content/kernels/types";
@@ -89,7 +90,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Ties go to the lowest index, so the result never depends on thread timing:{" "}
-          <span className="text-accent">{one("greedy")} µs</span> per call.
+          <span className="text-accent">{about(one("greedy"))} µs</span> per call.
         </p>
       </>
     ),
@@ -166,12 +167,12 @@ const steps: StoryStep[] = [
     body: (
       <>
         <p>
-          Top-k takes <span className="text-accent">{one("top-k 50")} µs</span>. Sorting the row alone, before
+          Top-k takes <span className="text-accent">{about(one("top-k 50"))} µs</span>. Sorting the row alone, before
           any prefix sum or draw, takes about twice as long, so the search wins comfortably.
         </p>
         <p>
           Two columns break the pattern: top-p alone, and plain temperature sampling at{" "}
-          <span className="text-warn">{one("temperature")} µs</span>, the slowest mode of all.
+          <span className="text-warn">{about(one("temperature"))} µs</span>, the slowest mode of all.
         </p>
       </>
     ),
@@ -184,11 +185,11 @@ const steps: StoryStep[] = [
       <>
         <p>
           The noise uses double-precision log. A laptop GPU runs FP64 at a small fraction of its FP32 rate, and Nsight
-          Compute shows the FP64 pipe busy <span className="text-accent">{busy}%</span> of the time for a small share of the instructions. With temperature alone
+          Compute shows the FP64 pipe busy <span className="text-accent">{about(busy)}%</span> of the time for a small share of the instructions. With temperature alone
           every token gets noise; with top-k only the kept ones do.
         </p>
         <p>
-          A throwaway float version ran in {Math.min(...floatRuns).toFixed(0)} to {Math.max(...floatRuns).toFixed(0)} µs.
+          A throwaway float version ran in {about(Math.min(...floatRuns), 2, "")} to {about(Math.max(...floatRuns))} µs.
           It changes which token a fixed seed draws, so it is written up for a decision rather than merged.
         </p>
       </>
@@ -216,8 +217,8 @@ const captions = [
   "the offsets are the kernel's; the cells are a sketch",
   "example keys; the kernel searches the 32-bit key of every logit, 32 passes",
   "example keys; the bar is the kept share of the probability mass",
-  `µs per call at 1 row, first of two runs, RTX 5060 Laptop GPU (docs/profiling.md); top-k 50 ${one("top-k 50")}, sorting the row alone ${one("full sort alone")}`,
-  `Nsight Compute on one temperature-only launch: the FP64 instructions are ${share}% of all instructions, and ${vocab} tokens get noise where top-k 50 computes it for 50; float times from a throwaway copy`,
+  `µs per call at 1 row, first of two runs, RTX 5060 Laptop GPU (profiling.md); top-k 50 ${one("top-k 50")}, sorting the row alone ${one("full sort alone")}, temperature alone ${one("temperature")}`,
+  `Nsight Compute on one temperature-only launch: the FP64 instructions are ${share}% of all instructions and keep the FP64 pipe busy ${busy}% of the time; ${vocab} tokens get noise where top-k 50 computes it for 50; float times from a throwaway copy: ${floatRuns.map((v) => v.toFixed(0)).join(", ")} µs over the runs at 1 and 16 rows`,
   "µs per call, first of two runs; blue is faster than sorting the row alone",
 ];
 

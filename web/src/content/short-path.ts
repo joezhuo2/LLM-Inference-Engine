@@ -7,6 +7,7 @@ export const shortPathName = "one-hour path";
 export const shortPathQuery = "path=hour";
 
 export const shortPath: ShortChapter[] = [
+  { slug: "one-token", beforeGroups: ["basics-qkv", "basics-scores", "basics-past", "basics-heads"] },
   { slug: "foundations", cap: 6, beforeGroups: ["idea-memory", "idea-cache", "idea-batch", "bytes", "roofline", "measured"] },
   { slug: "gemm", beforeGroups: ["job", "gemv", "roof", "batch"] },
   { slug: "paged-kv", beforeGroups: ["why", "pool", "append", "reuse"] },

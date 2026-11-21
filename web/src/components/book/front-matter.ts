@@ -2,6 +2,7 @@ import { bookOrder, bookParts, chapterNumber } from "@/content/book-order";
 import { type DeadEnd, deadEnds, kindLabel } from "@/content/dead-ends";
 import { compareCommand, type Exercise, exerciseCommands, chapterExercises, cloneCommand, implLabel, numpyCommand, numpyOf, numpyUrl, openTag, runsLabel } from "@/content/exercises";
 import { type BeyondTopic, beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
+import { engineHref, engineKeys, engineRows, engines, enginesChecked, enginesIntro, enginesTitle } from "@/content/engines-map";
 import { type Estimate, estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
 import { kernelStory, layerOps } from "@/content/kernels";
 import { chunked, peakGoodput } from "@/content/kernels/chunked-prefill";
@@ -10,26 +11,31 @@ import { chapterReview } from "@/content/reviews";
 import { roundMinutes, shortPathName, shortRoute } from "@/content/short-path";
 import type { ChapterReview } from "@/content/reviews/types";
 import { loadSlo } from "@/lib/data";
+import { type GlossEntry, glossary, glossaryEntries } from "@/lib/glossary";
 import { type LinkLine, PAGE_D, PAGE_W, type PageLink, type Stop } from "./book-scene";
 import { type ChapterDef, chapterTitles, flat, frames, stepNumber } from "./chapter";
 import type { BookPalette } from "./ink";
+import { listRows } from "./fit";
 import { bookHref } from "./paths";
-import type { Fonts } from "./typeset";
+import { type Fonts, fitFont } from "./typeset";
 
 export { bookOrder, bookParts };
 
 export const chapterTitle = (slug: string) => kernelStory(slug)?.title ?? slug;
 const firstPage: Record<string, number> = {};
 export const chapterPage = (key: string): number | undefined => firstPage[key];
+export const leftPage = (spread: number | undefined) => (spread === undefined ? undefined : 2 * spread - 2);
 
-const sections = ["start", "contents", ...bookOrder, "beyond", "estimates", "errata"];
+const sections = ["start", "contents", ...bookOrder, "beyond", "engines", "estimates", "errata", "glossary"];
+let endPage = 0;
 
 export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
   for (const key of sections.filter((k) => !bookOrder.includes(k) || spreads[k] !== undefined)) {
     firstPage[key] = page;
-    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : spreads[key];
+    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "engines" ? 2 : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : key === "glossary" ? glossarySpreads.length : spreads[key];
   }
+  endPage = page;
   return page - 1;
 }
 
@@ -52,14 +58,6 @@ function begin(canvas: HTMLCanvasElement, side: Side) {
   const x0 = side === "left" ? 130 : 170;
   const x1 = side === "left" ? W - 170 : W - 130;
   return { ctx, x0, x1 };
-}
-
-function folio(ctx: Ctx, text: string, side: Side, x0: number, x1: number, palette: BookPalette, fonts: Fonts) {
-  ctx.fillStyle = palette.faint;
-  ctx.font = `26px ${fonts.sans}`;
-  ctx.textAlign = side === "left" ? "left" : "right";
-  ctx.fillText(text, side === "left" ? x0 : x1, H - 90);
-  ctx.textAlign = "left";
 }
 
 function lines(ctx: Ctx, text: string, width: number): string[] {
@@ -87,7 +85,7 @@ function paragraph(ctx: Ctx, text: string, x: number, y: number, width: number, 
 const under = (ctx: Ctx, text: string, x: number, y: number, size: number): LinkLine => ({ x, y, width: ctx.measureText(text).width, size });
 
 const ROW = 92;
-const toBox = (x0: number, x1: number, y: number): [number, number, number, number] => [x0 / W, (y - 56) / H, x1 / W, (y + 36) / H];
+const toBox = (x0: number, x1: number, y: number, pitch: number): [number, number, number, number] => [x0 / W, (y - pitch * 0.61) / H, x1 / W, (y + pitch * 0.39) / H];
 
 type RouteStop = { key: string; local: number };
 let route: { order: RouteStop[]; chapters: string[]; minutes: number } = { order: [], chapters: [], minutes: 0 };
@@ -96,12 +94,12 @@ export const startRouteLink = `The ${shortPathName} →`;
 export const bookRoute = () => route;
 export const routeLine = () => `${route.chapters.length} chapters, ${route.order.length} spreads, about ${roundMinutes(route.minutes)} minutes`;
 const rank = (key: string, local: number) => sections.indexOf(key) * 1000 + local + 1;
-export const routeIndex = (key: string, local: number) => route.order.findIndex((o) => o.key === key && o.local === local);
+export const routeIndex = (key: string, local: number, order = route.order) => order.findIndex((o) => o.key === key && o.local === local);
 export const routePage = (key: string, local: number) => (chapterPage(key) ?? 0) + local + (bookOrder.includes(key) ? 1 : 0);
 
-export function routeStep(key: string, local: number, delta: 1 | -1): RouteStop | undefined {
+export function routeStep(key: string, local: number, delta: 1 | -1, order = route.order): RouteStop | undefined {
   const here = rank(key, local);
-  const side = route.order.filter((o) => (delta > 0 ? rank(o.key, o.local) > here : rank(o.key, o.local) < here));
+  const side = order.filter((o) => (delta > 0 ? rank(o.key, o.local) > here : rank(o.key, o.local) < here));
   return delta > 0 ? side[0] : side[side.length - 1];
 }
 
@@ -111,6 +109,17 @@ export function routeSection(key: string, delta: 1 | -1, short: boolean): string
   return delta > 0 ? side[0] : side[side.length - 1];
 }
 
+export const deepGroup = "how it got built";
+const deepNote = "deep dive, skip on a first read";
+let deep = new Set<string>();
+let ideasView = false;
+export const setIdeasView = (on: boolean) => void (ideasView = on);
+export const isDeep = (key: string, local: number) => deep.has(`${key}:${local}`);
+export function ideasRoute(): RouteStop[] {
+  const keys = sections.filter((k) => firstPage[k] !== undefined);
+  return keys.flatMap((key, i) => Array.from({ length: (firstPage[keys[i + 1]] ?? endPage) - firstPage[key] }, (_, j) => ({ key, local: bookOrder.includes(key) ? j - 1 : j }))).filter((o) => !isDeep(o.key, o.local));
+}
+
 function routeDot(ctx: Ctx, x: number, y: number, palette: BookPalette) {
   ctx.fillStyle = palette.blue;
   ctx.beginPath();
@@ -118,34 +127,41 @@ function routeDot(ctx: Ctx, x: number, y: number, palette: BookPalette) {
   ctx.fill();
 }
 
-function contentsRows(parts: typeof bookParts, withErrata: boolean) {
+const CONTENTS_TOP = 380;
+const CONTENTS_BOTTOM = H - 330;
+
+function contentsRows(parts: typeof bookParts, withErrata: boolean, scale = 1) {
   const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string; slug?: string }[] = [];
-  let y = 380;
-  const entries = parts.reduce((n, p) => n + p.slugs.length, 0);
-  const pitch = withErrata || entries < 2 ? ROW : Math.min(ROW, (H - 330 - 380 - 78 * parts.length - 40 * (parts.length - 1)) / (entries - 1));
+  let y = CONTENTS_TOP;
+  const pitch = ROW * scale;
   for (const part of parts) {
     rows.push({ kind: "part", y, text: `Part ${part.numeral} · ${part.title}` });
-    y += 78;
+    y += 78 * scale;
     for (const slug of part.slugs) {
       rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug), slug });
       y += pitch;
     }
-    y += 40;
+    y += 40 * scale;
   }
   if (withErrata) {
-    rows.push({ kind: "entry", y: y + 20, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
-    rows.push({ kind: "entry", y: y + 20 + ROW, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
-    rows.push({ kind: "entry", y: y + 20 + 2 * ROW, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+    rows.push({ kind: "entry", y: y + 20 * scale, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
+    rows.push({ kind: "entry", y: y + 20 * scale + pitch, text: "Where this lives in other engines", page: chapterPage("engines"), href: "#engines" });
+    rows.push({ kind: "entry", y: y + 20 * scale + 2 * pitch, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
+    rows.push({ kind: "entry", y: y + 20 * scale + 3 * pitch, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
+    rows.push({ kind: "entry", y: y + 20 * scale + 4 * pitch, text: glossaryTitle, page: chapterPage("glossary"), href: "#glossary" });
   }
   return rows;
 }
 
-function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) {
+const contentsScale = (parts: typeof bookParts, withErrata: boolean) => Math.min(1, (CONTENTS_BOTTOM - CONTENTS_TOP) / (contentsRows(parts, withErrata).at(-1)!.y - CONTENTS_TOP));
+
+function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean, scale: number) {
   const x0 = side === "left" ? 130 : 170;
   const x1 = side === "left" ? W - 170 : W - 130;
-  const links: PageLink[] = contentsRows(parts, withErrata)
+  const rows = contentsRows(parts, withErrata, scale);
+  const links: PageLink[] = rows
     .filter((r) => r.href)
-    .map((r) => ({ side, box: toBox(x0, x1, r.y), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
+    .map((r) => ({ side, box: toBox(x0, x1, r.y, ROW * scale), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
   if (side === "left") links.push({ side, box: [x0 / W, (H - 215) / H, x1 / W, (H - 145) / H], href: "#path", label: routeLink });
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
@@ -157,7 +173,7 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       ctx.font = `92px ${fonts.serif}`;
       ctx.fillText("Contents", x0, 260);
     }
-    for (const row of contentsRows(parts, withErrata)) {
+    for (const row of contentsRows(parts, withErrata, scale)) {
       if (row.kind === "part") {
         ctx.fillStyle = palette.faint;
         ctx.font = `26px ${fonts.sans}`;
@@ -166,28 +182,27 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       }
       if (row.slug && route.chapters.includes(row.slug)) routeDot(ctx, x0 - 28, row.y - 13, palette);
       ctx.fillStyle = palette.faint;
-      ctx.font = `40px ${fonts.serif}`;
+      ctx.font = `${40 * scale}px ${fonts.serif}`;
       if (row.number) ctx.fillText(row.number, x0, row.y);
       ctx.fillStyle = palette.ink;
-      ctx.font = `46px ${fonts.serif}`;
+      ctx.font = `${46 * scale}px ${fonts.serif}`;
       const tx = x0 + 70;
       ctx.fillText(row.text, tx, row.y);
       const link = links.find((l) => l.href === row.href);
-      if (link) link.lines = [under(ctx, row.text, tx, row.y, 46)];
+      if (link) link.lines = [under(ctx, row.text, tx, row.y, 46 * scale)];
       const end = tx + ctx.measureText(row.text).width + 18;
       if (row.page === undefined) continue;
       ctx.font = `30px ${fonts.sans}`;
-      const page = String(row.page);
+      const page = String(leftPage(row.page));
       const pw = ctx.measureText(page).width;
       ctx.fillStyle = palette.faint;
       ctx.fillText(page, x1 - pw, row.y);
       for (let x = end; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
     }
     if (side === "right") {
-      const rows = contentsRows(parts, withErrata);
       ctx.fillStyle = palette.blue;
       ctx.font = `40px ${fonts.serif}`;
-      paragraph(ctx, "Click a chapter to open it.", x0, Math.max(H - 250, rows[rows.length - 1].y + 110), x1 - x0, 48);
+      paragraph(ctx, ideasView ? "Click a chapter to open it. Ideas only is on: the deep dives are turned for you." : "Click a chapter to open it.", x0, Math.max(H - 250, rows[rows.length - 1].y + 110), x1 - x0, 48);
     }
     if (side === "left" && route.chapters.length) {
       routeDot(ctx, x0 + 8, H - 249, palette);
@@ -199,7 +214,6 @@ function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean) 
       ctx.fillText(routeLink, x0, H - 180);
       links[links.length - 1].lines = [under(ctx, routeLink, x0, H - 180, 40)];
     }
-    if (side === "left") folio(ctx, String(chapterPage("contents")), side, x0, x1, palette, fonts);
   };
   return { paint, links };
 }
@@ -218,10 +232,9 @@ function errataTitlePage(canvas: HTMLCanvasElement, palette: BookPalette, fonts:
   ctx.fillStyle = palette.ink;
   ctx.font = `36px ${fonts.sans}`;
   paragraph(ctx, errataIntro, x0, 450, x1 - x0, 54);
-  folio(ctx, String(chapterPage("errata")), "left", x0, x1, palette, fonts);
 }
 
-function deadEndPage(d: DeadEnd, side: Side, offset: number) {
+function deadEndPage(d: DeadEnd, side: Side) {
   const link: PageLink = { side, box: [0, 0, 0, 0], href: bookOrder.includes(d.slug) ? bookHref(d.slug) : `/kernels/${d.slug}`, label: d.kernel };
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
@@ -265,12 +278,11 @@ function deadEndPage(d: DeadEnd, side: Side, offset: number) {
     };
     while (size > 24 && layout(false) > bottom) size -= 1;
     layout(true);
-    if (side === "left") folio(ctx, String((chapterPage("errata") ?? 0) + offset), side, x0, x1, palette, fonts);
   };
   return { paint, link };
 }
 
-const pageText = (title: string, paragraphs: string[]) => ({ kicker: "Every Byte", title, paragraphs: paragraphs.map((text) => [{ text, accent: false }]), folio: "" });
+const pageText = (title: string, paragraphs: string[]) => ({ kicker: "Every Byte", title, paragraphs: paragraphs.map((text) => [{ text, accent: false }]) });
 
 const flatStop = (spread: number, caption: string, title: string, paragraphs: string[]): Stop => ({
   exhibit: null,
@@ -278,14 +290,14 @@ const flatStop = (spread: number, caption: string, title: string, paragraphs: st
   page: pageText(title, paragraphs),
   figure: "",
   caption: "",
-  folio: "",
   overlay: null,
   beats: [{ caption, frame: frames.spread }],
 });
 
 export function contentsStop(spread = 0): Stop {
-  const left = contentsPage("left", bookParts.slice(0, 2), false);
-  const right = contentsPage("right", bookParts.slice(2), true);
+  const scale = Math.min(contentsScale(bookParts.slice(0, 2), false), contentsScale(bookParts.slice(2), true));
+  const left = contentsPage("left", bookParts.slice(0, 2), false, scale);
+  const right = contentsPage("right", bookParts.slice(2), true, scale);
   return {
     ...flatStop(spread, "Contents: click a chapter to open it", "Contents", bookOrder.map(chapterTitle)),
     paint: { left: left.paint, right: right.paint },
@@ -302,8 +314,8 @@ export const errataSpreads: ErrataSpread[] = Array.from({ length: Math.ceil((dea
 
 export function errataStops(firstSpread: number): Stop[] {
   return errataSpreads.map(({ left, right }, k) => {
-    const l = left ? deadEndPage(left, "left", k) : null;
-    const r = right ? deadEndPage(right, "right", k) : null;
+    const l = left ? deadEndPage(left, "left") : null;
+    const r = right ? deadEndPage(right, "right") : null;
     const shown = [left, right].filter((d): d is DeadEnd => d !== null);
     return {
       ...flatStop(firstSpread + k, k === 0 ? `Errata: ${errataTitle}` : `Errata: ${shown.map((d) => d.kernel).join(" and ")}`, left?.title ?? "Errata", left ? [left.tried, left.happened, left.kept] : [errataIntro]),
@@ -332,26 +344,17 @@ function introRows(def: ChapterDef) {
   if (def.workbench.length > 0) starts[steps] = "try it yourself";
   if (built > reviewed) starts[reviewed] = "review";
   if (titles.length > built) starts[built] = "build it yourself";
-  const step = Math.min(ROW, (H - 700) / (titles.length + Object.keys(starts).length * 1.5));
-  const rows: { y: number; text: string; number?: string; kind?: "bench" | "review" | "build"; k?: number }[] = [];
-  let y = 380;
-  titles.forEach((text, k) => {
-    if (starts[k]) {
-      rows.push({ y: y + step * 0.2, text: starts[k] });
-      y += step * 1.5;
-    }
-    rows.push({ y, text, number: stepNumber(def, k) || undefined, kind: k >= built ? "build" : k >= reviewed ? "review" : k >= steps ? "bench" : undefined, k });
-    y += step;
-  });
-  return { rows, step };
+  const fit = listRows(titles.length, Object.keys(starts).map(Number), 380, H - 270, ROW);
+  const rows = fit.rows.map(({ y, k, head }) => (head !== undefined ? { y, text: starts[head] } : { y, text: titles[k!], number: stepNumber(def, k!) || undefined, kind: k! >= built ? ("build" as const) : k! >= reviewed ? ("review" as const) : k! >= steps ? ("bench" as const) : undefined, k }));
+  return { rows, step: fit.step, size: fit.size };
 }
 
 export function introStop(def: ChapterDef): Stop {
   const part = bookParts.find((p) => p.slugs.includes(def.slug));
   const title = chapterTitle(def.slug);
   const summary = kernelStory(def.slug)?.short ?? "";
-  const { rows, step } = introRows(def);
-  const page = (k: number) => (chapterPage(def.slug) ?? 0) + k;
+  const { rows, step, size: titleSize } = introRows(def);
+  const page = (k: number) => leftPage((chapterPage(def.slug) ?? 0) + k);
   const left = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "left");
     ctx.fillStyle = palette.faint;
@@ -364,7 +367,6 @@ export function introStop(def: ChapterDef): Stop {
     const y = paragraph(ctx, title, x0, 530, x1 - x0, 100);
     ctx.font = `36px ${fonts.sans}`;
     paragraph(ctx, summary, x0, y + 50, x1 - x0, 54);
-    folio(ctx, String(page(0)), "left", x0, x1, palette, fonts);
   };
   const right = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "right");
@@ -380,17 +382,22 @@ export function introStop(def: ChapterDef): Stop {
         ctx.fillStyle = palette.faint;
         ctx.font = `26px ${fonts.sans}`;
         ctx.fillText(row.text, x0, row.y);
+        if (row.text === deepGroup) {
+          ctx.fillStyle = palette.blue;
+          ctx.fillText(`· ${deepNote}`, x0 + ctx.measureText(`${row.text} `).width, row.y);
+        }
         continue;
       }
+      ctx.globalAlpha = ideasView && isDeep(def.slug, row.k) ? 0.35 : 1;
       ctx.fillStyle = palette.faint;
-      ctx.font = `${Math.round(step * 0.43)}px ${fonts.serif}`;
+      ctx.font = `${Math.round(titleSize * 0.86)}px ${fonts.serif}`;
       if (row.number) ctx.fillText(row.number, x0, row.y);
       const target = String(page(row.k + 1));
       ctx.font = `30px ${fonts.sans}`;
       const pw = ctx.measureText(target).width;
       ctx.fillText(target, x1 - pw, row.y);
       const tx = x0 + 70;
-      let size = Math.round(step * 0.5);
+      let size = titleSize;
       ctx.font = `${size}px ${fonts.serif}`;
       while (size > 26 && ctx.measureText(row.text).width > x1 - pw - 40 - tx) ctx.font = `${--size}px ${fonts.serif}`;
       ctx.fillStyle = palette.ink;
@@ -398,10 +405,11 @@ export function introStop(def: ChapterDef): Stop {
       links[entry++].lines = [under(ctx, row.text, tx, row.y, size)];
       ctx.fillStyle = palette.faint;
       for (let x = tx + ctx.measureText(row.text).width + 18; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
+      ctx.globalAlpha = 1;
     }
     ctx.fillStyle = palette.blue;
     ctx.font = `40px ${fonts.serif}`;
-    paragraph(ctx, "Click a step to turn to it.", x0, H - 250, x1 - x0, 48);
+    paragraph(ctx, "Click a step to turn to it.", x0, H - 180, x1 - x0, 48);
   };
   const entries = rows.filter((r) => r.k !== undefined);
   const links: PageLink[] = entries.map((r, i) => ({
@@ -452,7 +460,7 @@ function exerciseSteps(e: Exercise): ExerciseStep[] {
 
 const NUMPY_Y = H - 260;
 
-function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number, link?: PageLink) {
+function exerciseLeft(def: ChapterDef, e: Exercise, link?: PageLink) {
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "left");
     const width = x1 - x0;
@@ -460,8 +468,7 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number, lin
     ctx.font = `26px ${fonts.sans}`;
     ctx.fillText(`chapter ${def.number} · ${chapterTitle(def.slug)} · build it yourself`, x0, 150);
     ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.font = `${Math.min(92, (92 * width) / ctx.measureText(e.title).width)}px ${fonts.serif}`;
+    fitFont(ctx, e.title, 92, width, fonts.serif);
     ctx.fillText(e.title, x0, 260);
     ctx.fillStyle = palette.faint;
     ctx.font = `28px ${fonts.sans}`;
@@ -486,7 +493,6 @@ function exerciseLeft(def: ChapterDef, e: Exercise, folioPage: () => number, lin
       ctx.fillText(numpyCommand(numpy), x0, NUMPY_Y + 48);
       if (link) link.lines = [under(ctx, numpyCommand(numpy), x0, NUMPY_Y + 48, 25)];
     }
-    folio(ctx, String(folioPage()), "left", x0, x1, palette, fonts);
   };
 }
 
@@ -552,14 +558,13 @@ export function exerciseStops(def: ChapterDef): Stop[] {
     const numpy = numpyOf(e);
     const links: PageLink[] = [{ side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: `/exercises#${e.id}`, label: `${e.title}: ${LINK_TEXT}` }];
     if (numpy) links.push({ side: "left", box: [130 / W, (NUMPY_Y + 48 - 40) / H, (W - 170) / W, (NUMPY_Y + 48 + 16) / H], href: numpyUrl(numpy), label: `${e.title}: the NumPy version on GitHub, ${numpyCommand(numpy)}` });
-    const left = exerciseLeft(def, e, () => (chapterPage(def.slug) ?? 0) + local + 1, links[1]);
+    const left = exerciseLeft(def, e, links[1]);
     return {
       exhibit: null,
       spread: local,
-      page: { kicker: `chapter ${def.number} · build it yourself`, title: e.title, paragraphs: [[{ text: e.task, accent: false }]], folio: "" },
+      page: { kicker: `chapter ${def.number} · build it yourself`, title: e.title, paragraphs: [[{ text: e.task, accent: false }]] },
       figure: "",
       caption: "",
-      folio: "",
       overlay: null,
       beats: [flat(`Build it yourself: ${e.title}`)],
       paint: { left, right: exerciseRight(e, links[0]) },
@@ -730,7 +735,7 @@ function servingPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fon
   ctx.fillText("batching, to scale", x0, 1110);
   ctx.fillStyle = palette.faint;
   ctx.font = `26px ${fonts.sans}`;
-  ctx.fillText("engine with CUDA Graphs, whole decode step, docs/results.md", x0, 1148);
+  ctx.fillText("engine with CUDA Graphs, whole decode step, results.md", x0, 1148);
   const barX = x0 + 150;
   const barMax = x1 - 170 - barX;
   const bars = (title: string, y: number, values: number[], text: (v: number) => string) => {
@@ -776,15 +781,14 @@ const tokenLife = [
   "Read it in order the first time, because the parts follow the token. Each chapter says what its piece is, walks through how it works, and ends with something to try and an exercise to build.",
 ];
 
-function textPage(side: Side, kicker: string, title: string, paragraphs: string[], page: () => number | undefined, size = 34) {
+function textPage(side: Side, kicker: string, title: string, paragraphs: string[], size = 34) {
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
     ctx.fillStyle = palette.faint;
     ctx.font = `26px ${fonts.sans}`;
     ctx.fillText(kicker, x0, 150);
     ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.font = `${Math.min(92, (92 * (x1 - x0)) / ctx.measureText(title).width)}px ${fonts.serif}`;
+    fitFont(ctx, title, 92, x1 - x0, fonts.serif);
     ctx.fillText(title, x0, 260);
     let px = size;
     const fit = (draw: boolean) => {
@@ -796,7 +800,6 @@ function textPage(side: Side, kicker: string, title: string, paragraphs: string[
     while (px > 26 && fit(false) > H - 170) px -= 1;
     ctx.fillStyle = palette.ink;
     fit(true);
-    if (side === "left") folio(ctx, String(page() ?? ""), side, x0, x1, palette, fonts);
   };
 }
 
@@ -868,7 +871,7 @@ function mapLinks(): PageLink[] {
 }
 
 const startRight = (link: PageLink) => (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
-  textPage("right", "Every Byte · start here", "what you need first", needFirst, () => undefined, 34)(canvas, palette, fonts);
+  textPage("right", "Every Byte · start here", "what you need first", needFirst, 34)(canvas, palette, fonts);
   if (!route.chapters.length) return;
   const x0 = 170;
   const ctx = canvas.getContext("2d")!;
@@ -884,25 +887,22 @@ const startRight = (link: PageLink) => (canvas: HTMLCanvasElement, palette: Book
 export const startText = { forWho, needFirst, tokenLife, serving, servingFigure, map: () => mapRows().rows };
 
 export function startStops(): Stop[] {
-  const page = () => chapterPage("start");
-  const next = () => (chapterPage("start") ?? 0) + 1;
-  const last = () => (chapterPage("start") ?? 0) + 2;
   const links = mapLinks();
   const hour: PageLink = { side: "right", box: [170 / W, (H - 250) / H, (W - 130) / W, (H - 180) / H], href: "#path", label: startRouteLink };
   return [
     {
       ...flatStop(0, "Start here: who this book is for", "start here", [...forWho, ...needFirst]),
-      paint: { left: textPage("left", "Every Byte", "start here", forWho, page, 36), right: startRight(hour) },
+      paint: { left: textPage("left", "Every Byte", "start here", forWho, 36), right: startRight(hour) },
       links: [hour],
     },
     {
       ...flatStop(1, "Start here: the life of a token", "the life of a token", tokenLife),
-      paint: { left: textPage("left", "Every Byte · start here", "the life of a token", tokenLife, next, 32), right: tokenMapPage(links) },
+      paint: { left: textPage("left", "Every Byte · start here", "the life of a token", tokenLife, 32), right: tokenMapPage(links) },
       links,
     },
     {
       ...flatStop(2, "Start here: serving in one spread", "serving in one spread", serving),
-      paint: { left: textPage("left", "Every Byte · start here", "serving in one spread", serving, last, 32), right: servingPage },
+      paint: { left: textPage("left", "Every Byte · start here", "serving in one spread", serving, 32), right: servingPage },
     },
   ];
 }
@@ -914,7 +914,7 @@ function fitLayout(layout: (scale: number, draw: boolean) => number, bottom: num
   layout(scale, true);
 }
 
-function reviewLeft(def: ChapterDef, r: ChapterReview, page: () => number) {
+function reviewLeft(def: ChapterDef, r: ChapterReview) {
   const story = kernelStory(def.slug);
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, "left");
@@ -956,7 +956,6 @@ function reviewLeft(def: ChapterDef, r: ChapterReview, page: () => number) {
       });
       return y;
     }, H - 170);
-    folio(ctx, String(page()), "left", x0, x1, palette, fonts);
   };
 }
 
@@ -964,23 +963,21 @@ export function reviewStops(def: ChapterDef): Stop[] {
   const r = chapterReview(def.slug);
   if (!r) return [];
   const first = def.steps.length + def.workbench.length;
-  const page = (local: number) => () => (chapterPage(def.slug) ?? 0) + local + 1;
   const base = (local: number, title: string, caption: string, paragraphs: string[]): Stop => ({
     exhibit: null,
     spread: local,
-    page: { kicker: `chapter ${def.number} · review`, title, paragraphs: paragraphs.map((text) => [{ text, accent: false }]), folio: "" },
+    page: { kicker: `chapter ${def.number} · review`, title, paragraphs: paragraphs.map((text) => [{ text, accent: false }]) },
     figure: "",
     caption: "",
-    folio: "",
     overlay: null,
     beats: [flat(caption)],
   });
-  return [{ ...base(first, reviewTitles[0], "Review: what to remember, then open each answer", [r.lesson, r.why, ...r.takeaways]), overlay: reviewOverlay, paint: { left: reviewLeft(def, r, page(first)) } }];
+  return [{ ...base(first, reviewTitles[0], "Review: what to remember, then open each answer", [r.lesson, r.why, ...r.takeaways]), overlay: reviewOverlay, paint: { left: reviewLeft(def, r) } }];
 }
 
 export const estimateSpreads = 1 + estimates.length;
 
-const estimatePage = (k: number) => (chapterPage("estimates") ?? 0) + k;
+const estimatePage = (k: number) => leftPage((chapterPage("estimates") ?? 0) + k);
 
 function estimateListPage(canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) {
   const { ctx, x0, x1 } = begin(canvas, "right");
@@ -1021,8 +1018,7 @@ function estimateQuestion(e: Estimate, k: number) {
     ctx.font = `26px ${fonts.sans}`;
     ctx.fillText(`${estimatesTitle} · problem ${k + 1} of ${estimates.length}`, x0, 150);
     ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
-    ctx.font = `${Math.min(92, (92 * width) / ctx.measureText(e.title).width)}px ${fonts.serif}`;
+    fitFont(ctx, e.title, 92, width, fonts.serif);
     ctx.fillText(e.title, x0, 260);
     fitLayout((scale, draw) => {
       ctx.fillStyle = palette.ink;
@@ -1041,7 +1037,6 @@ function estimateQuestion(e: Estimate, k: number) {
       }
       return y;
     }, H - 170);
-    folio(ctx, String(estimatePage(k + 1)), "left", x0, x1, palette, fonts);
   };
 }
 
@@ -1090,7 +1085,7 @@ function estimateWorking(e: Estimate, k: number, link?: PageLink) {
 export function estimateStops(firstSpread: number): Stop[] {
   const intro: Stop = {
     ...flatStop(firstSpread, `Estimate it yourself: ${estimates.length} problems`, estimatesTitle, estimatesIntro),
-    paint: { left: textPage("left", "Every Byte", estimatesTitle, estimatesIntro, () => estimatePage(0), 34), right: estimateListPage },
+    paint: { left: textPage("left", "Every Byte", estimatesTitle, estimatesIntro, 34), right: estimateListPage },
   };
   return [
     intro,
@@ -1115,16 +1110,15 @@ export const beyondSpreads: BeyondSpread[] = Array.from({ length: Math.ceil(beyo
 export const beyondSpreadOf = (topic: number) => Math.floor((topic + 1) / 2);
 
 export const beyondUnitsTitle = "in bytes per token";
-export const beyondUnitsNote = "None of the four is implemented or measured in this engine.";
+export const beyondUnitsNote = "None of the four is measured in bytes per token in this engine.";
 
-const beyondPageNumber = (k: number) => (chapterPage("beyond") ?? 0) + k;
 
 export const estimateOf = (topic: BeyondTopic) => {
   const index = estimates.findIndex((e) => e.id === topic.estimate);
   return index < 0 ? undefined : { index, href: `#estimates:${index + 1}`, text: `Estimate ${index + 1}: ${estimates[index].title} →` };
 };
 
-function beyondTopicPage(topic: BeyondTopic, side: Side, k: number) {
+function beyondTopicPage(topic: BeyondTopic, side: Side) {
   const left = side === "left" ? 130 : 170;
   const right = side === "left" ? W - 170 : W - 130;
   const estimate = estimateOf(topic);
@@ -1137,7 +1131,7 @@ function beyondTopicPage(topic: BeyondTopic, side: Side, k: number) {
     ctx.font = `26px ${fonts.sans}`;
     ctx.fillText(`${beyondTitle} · ${topic.unit}`, x0, 150);
     ctx.fillStyle = palette.ink;
-    ctx.font = `92px ${fonts.serif}`;
+    fitFont(ctx, topic.title, 92, width, fonts.serif);
     ctx.fillText(topic.title, x0, 260);
     let px = 34;
     const fit = (draw: boolean) => {
@@ -1162,12 +1156,11 @@ function beyondTopicPage(topic: BeyondTopic, side: Side, k: number) {
     const sourceLines = lines(ctx, topic.source.label, width);
     sourceLines.forEach((line, i) => ctx.fillText(line, x0, H - 244 + i * 40));
     source.lines = sourceLines.map((line, i) => under(ctx, line, x0, H - 244 + i * 40, 28));
-    if (side === "left") folio(ctx, String(beyondPageNumber(k)), side, x0, x1, palette, fonts);
   };
   return { paint, links: inside ? [inside, source] : [source] };
 }
 
-function beyondUnitsPage(side: Side, k: number) {
+function beyondUnitsPage(side: Side) {
   return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
     ctx.fillStyle = palette.faint;
@@ -1179,7 +1172,7 @@ function beyondUnitsPage(side: Side, k: number) {
     let y = 420;
     for (const topic of beyondTopics) {
       ctx.fillStyle = palette.ink;
-      ctx.font = `52px ${fonts.serif}`;
+      fitFont(ctx, topic.title, 52, x1 - x0, fonts.serif);
       ctx.fillText(topic.title, x0, y);
       ctx.fillStyle = palette.blue;
       ctx.font = `34px ${fonts.sans}`;
@@ -1188,7 +1181,6 @@ function beyondUnitsPage(side: Side, k: number) {
     ctx.fillStyle = palette.faint;
     ctx.font = `30px ${fonts.sans}`;
     paragraph(ctx, beyondUnitsNote, x0, y + 10, x1 - x0, 44);
-    if (side === "left") folio(ctx, String(beyondPageNumber(k)), side, x0, x1, palette, fonts);
   };
 }
 
@@ -1196,9 +1188,9 @@ export function beyondStops(firstSpread: number): Stop[] {
   return beyondSpreads.map((spread, k) => {
     const sides = (["left", "right"] as const).map((side) => {
       const page = spread[side];
-      if (page.kind === "topic") return beyondTopicPage(page.topic, side, k);
-      if (page.kind === "units") return { paint: beyondUnitsPage(side, k), links: [] as PageLink[] };
-      return { paint: textPage(side, "Every Byte", beyondTitle, beyondIntro, () => beyondPageNumber(k), 36), links: [] as PageLink[] };
+      if (page.kind === "topic") return beyondTopicPage(page.topic, side);
+      if (page.kind === "units") return { paint: beyondUnitsPage(side), links: [] as PageLink[] };
+      return { paint: textPage(side, "Every Byte", beyondTitle, beyondIntro, 36), links: [] as PageLink[] };
     });
     const topics = [spread.left, spread.right].flatMap((p) => (p.kind === "topic" ? [p.topic] : []));
     const title = spread.left.kind === "topic" ? spread.left.topic.title : beyondTitle;
@@ -1210,15 +1202,223 @@ export function beyondStops(firstSpread: number): Stop[] {
   });
 }
 
+export function engineStops(firstSpread: number): Stop[] {
+  const perPage = [4, 5, 5, 6];
+  const tags = `${engineKeys.map((k) => `${engines[k].name} ${engines[k].tag}`).join(" · ")} · checked ${enginesChecked}`;
+  const page = (p: number) => {
+    const side: Side = p % 2 === 0 ? "left" : "right";
+    const x0 = side === "left" ? 130 : 170;
+    const x1 = side === "left" ? W - 170 : W - 130;
+    const start = perPage.slice(0, p).reduce((a, b) => a + b, 0);
+    const rows = engineRows.slice(start, start + perPage[p]);
+    const top = p === 0 ? 560 : 300;
+    const pitch = Math.min(236, (H - 170 - 176 - top) / (rows.length - 1));
+    const fit = pitch / 236;
+    const tx = x0 + 60;
+    const sx = x0 + 200;
+    const links: PageLink[] = rows.flatMap((r, i) => {
+      const y = top + i * pitch;
+      const chapter: PageLink = { side, box: toBox(tx - 60, x1, y, 60), href: bookHref(r.slug), label: `chapter ${chapterNumber(r.slug)}, ${chapterTitle(r.slug)}` };
+      const cells = engineKeys.flatMap((k, j): PageLink[] => {
+        const href = engineHref(k, r[k]);
+        const sy = y + (80 + j * 68) * fit;
+        return href ? [{ side, box: [sx / W, (sy - 32) / H, x1 / W, (sy + 36) / H], href, label: `${engines[k].name}: ${"none" in r[k] ? "" : r[k].symbol}` }] : [];
+      });
+      return [chapter, ...cells];
+    });
+    const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+      const { ctx } = begin(canvas, side);
+      ctx.fillStyle = palette.faint;
+      ctx.font = `26px ${fonts.sans}`;
+      ctx.fillText(p === 0 ? `Every Byte · ${beyondTitle}` : enginesTitle, x0, 150);
+      if (p === 0) {
+        ctx.fillStyle = palette.ink;
+        fitFont(ctx, enginesTitle, 92, x1 - x0, fonts.serif);
+        ctx.fillText(enginesTitle, x0, 260);
+        ctx.font = `30px ${fonts.sans}`;
+        const y = paragraph(ctx, "For each chapter, the file and the function to open next in vLLM and llama.cpp. The links open the code at the version named here.", x0, 350, x1 - x0, 44);
+        ctx.fillStyle = palette.faint;
+        fitFont(ctx, tags, 24, x1 - x0, fonts.sans);
+        ctx.fillText(tags, x0, y + 20);
+      }
+      let linkAt = 0;
+      rows.forEach((r, i) => {
+        const y = top + i * pitch;
+        ctx.fillStyle = palette.faint;
+        ctx.font = `34px ${fonts.serif}`;
+        ctx.fillText(String(chapterNumber(r.slug)), x0, y);
+        ctx.fillStyle = palette.ink;
+        fitFont(ctx, chapterTitle(r.slug), 40, x1 - tx, fonts.serif);
+        ctx.fillText(chapterTitle(r.slug), tx, y);
+        links[linkAt++].lines = [under(ctx, chapterTitle(r.slug), tx, y, 40)];
+        ctx.fillStyle = palette.faint;
+        fitFont(ctx, r.idea, 25, x1 - tx, fonts.sans);
+        ctx.fillText(r.idea, tx, y + 36 * fit);
+        engineKeys.forEach((k, j) => {
+          const cell = r[k];
+          const sy = y + (80 + j * 68) * fit;
+          ctx.fillStyle = palette.faint;
+          ctx.font = `23px ${fonts.sans}`;
+          ctx.fillText(engines[k].name, tx, sy);
+          if ("none" in cell) {
+            fitFont(ctx, cell.none, 24, x1 - sx, fonts.sans);
+            ctx.fillText(cell.none, sx, sy);
+            return;
+          }
+          ctx.fillStyle = palette.blue;
+          fitFont(ctx, cell.symbol, 27, x1 - sx, fonts.mono);
+          ctx.fillText(cell.symbol, sx, sy);
+          links[linkAt++].lines = [under(ctx, cell.symbol, sx, sy, 27)];
+          ctx.fillStyle = palette.faint;
+          const path = `${cell.path}:${cell.line}`;
+          fitFont(ctx, path, 20, x1 - sx, fonts.mono);
+          ctx.fillText(path, sx, sy + 28 * fit);
+        });
+      });
+    };
+    return { paint, links, rows };
+  };
+  return [0, 1].map((k) => {
+    const [left, right] = [page(2 * k), page(2 * k + 1)];
+    const shown = [...left.rows, ...right.rows];
+    return {
+      ...flatStop(firstSpread + k, `${enginesTitle}: chapters ${chapterNumber(shown[0].slug)} to ${chapterNumber(shown.at(-1)!.slug)}`, enginesTitle, k === 0 ? enginesIntro : shown.map((r) => `${chapterTitle(r.slug)}: ${r.idea}`)),
+      paint: { left: left.paint, right: right.paint },
+      links: [...left.links, ...right.links],
+    };
+  });
+}
+
 const countWords = (texts: string[]) => texts.join(" ").split(/\s+/).filter(Boolean).length;
 export const startWords = countWords([...forWho, ...needFirst, ...tokenLife, ...serving, ...servingFigure]);
 export const startSpreadCount = startSpreads;
 
 export function setBookRoute(defs: ChapterDef[]) {
+  deep = new Set(defs.flatMap((d) => d.steps.flatMap((s, i) => (s.group === deepGroup ? [`${d.slug}:${i}`] : []))));
   const found = shortRoute(defs.map((d) => ({ slug: d.slug, steps: d.steps.slice(d.lead ?? 0) })), startWords, startSpreads);
   const chapterStopsOf = (c: { slug: string; picks: number[] }) => {
     const lead = defs.find((d) => d.slug === c.slug)?.lead ?? 0;
     return [-1, ...Array.from({ length: lead }, (_, i) => i), ...c.picks.map((i) => i + lead)].map((local) => ({ key: c.slug, local }));
   };
   route = { order: [...Array.from({ length: startSpreads }, (_, local) => ({ key: "start", local })), ...found.chapters.flatMap(chapterStopsOf)], chapters: found.chapters.map((c) => c.slug), minutes: found.minutes };
+}
+
+type Measure = (text: string, px: number, family: "serif" | "sans") => number;
+export type GlossaryPage = { kind: "title" } | { kind: "terms"; keys: string[] } | { kind: "blank" };
+export type GlossarySpread = { left: GlossaryPage; right: GlossaryPage };
+
+export const glossaryTitle = "Glossary";
+export const glossaryIntro = [`The ${glossaryEntries.length} terms the chapters explain when you point at them, in alphabetical order. Each one gives what the abbreviation stands for or what the word means, then why it matters in this engine.`, "The scroll site has the same list at /kernels/glossary, with a filter and the chapter that first uses each term."];
+const glossarySorted = [...glossaryEntries].sort((a, b) => a.term.localeCompare(b.term, "en", { sensitivity: "base" }));
+const glossaryLetter = (term: string) => (/^[a-z]/i.test(term) ? term[0].toUpperCase() : "#");
+const GLOSSARY_TOP = 210;
+const GLOSSARY_BOTTOM = H - 170;
+const GLOSSARY_WIDTH = W - 300;
+
+function measureLines(measure: Measure, text: string, px: number, family: "serif" | "sans", width: number, first = width): string[] {
+  const out: string[] = [];
+  let line = "";
+  for (const word of text.split(/\s+/)) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && measure(next, px, family) > (out.length ? width : first)) {
+      out.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+function glossaryEntryLayout(measure: Measure, e: GlossEntry, s: number, width = GLOSSARY_WIDTH) {
+  const termWidth = measure(e.term, 46 * s, "serif");
+  const tail = width - termWidth - 24 * s;
+  const fullLines = measureLines(measure, e.full, 28 * s, "sans", width, tail);
+  const sameLine = measure(fullLines[0], 28 * s, "sans") <= tail;
+  const whyLines = measureLines(measure, e.why, 30 * s, "sans", width);
+  const height = 46 * s + (fullLines.length - (sameLine ? 1 : 0)) * 38 * s + 46 * s + (whyLines.length - 1) * 42 * s + 44 * s;
+  return { termWidth, fullLines, sameLine, whyLines, height };
+}
+
+const estimate: Measure = (text, px, family) => text.length * px * (family === "serif" ? 0.45 : 0.5);
+const GLOSSARY_LETTER_H = 96;
+
+const glossaryTermPages: string[][] = [];
+for (let k = 0, y = GLOSSARY_TOP, page: string[] = []; k < glossarySorted.length; k++) {
+  const e = glossarySorted[k];
+  const head = k === 0 || glossaryLetter(e.term) !== glossaryLetter(glossarySorted[k - 1].term) ? GLOSSARY_LETTER_H : 0;
+  const need = head + glossaryEntryLayout(estimate, e, 1).height;
+  if (page.length && y + need > GLOSSARY_BOTTOM) {
+    glossaryTermPages.push(page);
+    page = [];
+    y = GLOSSARY_TOP;
+  }
+  page.push(e.key);
+  y += need;
+  if (k === glossarySorted.length - 1) glossaryTermPages.push(page);
+}
+
+const glossaryPages: GlossaryPage[] = [{ kind: "title" }, ...glossaryTermPages.map((keys): GlossaryPage => ({ kind: "terms", keys }))];
+export const glossarySpreads: GlossarySpread[] = Array.from({ length: Math.ceil(glossaryPages.length / 2) }, (_, k) => ({ left: glossaryPages[2 * k], right: glossaryPages[2 * k + 1] ?? { kind: "blank" } }));
+
+function glossaryTermsPage(keys: string[], side: Side) {
+  return (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
+    const { ctx, x0, x1 } = begin(canvas, side);
+    const width = x1 - x0;
+    const family = (f: "serif" | "sans") => (f === "serif" ? fonts.serif : fonts.sans);
+    const measure: Measure = (text, px, f) => {
+      ctx.font = `${px}px ${family(f)}`;
+      return ctx.measureText(text).width;
+    };
+    const entries = keys.map((key) => glossary[key]);
+    const letters = [...new Set(entries.map((e) => glossaryLetter(e.term)))];
+    ctx.fillStyle = palette.faint;
+    ctx.font = `26px ${fonts.sans}`;
+    ctx.fillText(`Every Byte · glossary · ${letters.length > 1 ? `${letters[0]} to ${letters.at(-1)}` : letters[0]}`, x0, 150);
+    fitLayout((s, draw) => {
+      let y = GLOSSARY_TOP;
+      entries.forEach((e, i) => {
+        const before = i === 0 ? glossarySorted[glossarySorted.indexOf(e) - 1] : entries[i - 1];
+        if (!before || glossaryLetter(before.term) !== glossaryLetter(e.term)) {
+          if (draw) {
+            ctx.fillStyle = palette.blue;
+            ctx.font = `${64 * s}px ${fonts.serif}`;
+            ctx.fillText(glossaryLetter(e.term), x0, y + 64 * s);
+          }
+          y += GLOSSARY_LETTER_H * s;
+        }
+        const l = glossaryEntryLayout(measure, e, s, width);
+        let base = y + 46 * s;
+        if (draw) {
+          ctx.fillStyle = palette.ink;
+          ctx.font = `${46 * s}px ${fonts.serif}`;
+          ctx.fillText(e.term, x0, base);
+          ctx.fillStyle = palette.faint;
+          ctx.font = `${28 * s}px ${fonts.sans}`;
+          l.fullLines.forEach((line, j) => {
+            if (j === 0 && l.sameLine) ctx.fillText(line, x0 + l.termWidth + 24 * s, base);
+            else ctx.fillText(line, x0, base + (j + (l.sameLine ? 0 : 1)) * 38 * s);
+          });
+          ctx.fillStyle = palette.ink;
+          ctx.font = `${30 * s}px ${fonts.sans}`;
+          const whyTop = base + (l.fullLines.length - (l.sameLine ? 1 : 0)) * 38 * s + 46 * s;
+          l.whyLines.forEach((line, j) => ctx.fillText(line, x0, whyTop + j * 42 * s));
+        }
+        base += l.height;
+        y = base - 46 * s;
+      });
+      return y - 44 * s + 12 * s;
+    }, GLOSSARY_BOTTOM);
+  };
+}
+
+export function glossaryStops(firstSpread: number): Stop[] {
+  return glossarySpreads.map((spread, k) => {
+    const paint = (page: GlossaryPage, side: Side) => (page.kind === "title" ? textPage(side, "Every Byte · glossary", glossaryTitle, glossaryIntro, 36) : page.kind === "terms" ? glossaryTermsPage(page.keys, side) : (canvas: HTMLCanvasElement) => void begin(canvas, side));
+    const terms = [spread.left, spread.right].flatMap((p) => (p.kind === "terms" ? p.keys.map((key) => glossary[key]) : []));
+    const caption = terms.length ? `Glossary: ${terms[0].term} to ${terms.at(-1)!.term}` : glossaryTitle;
+    return {
+      ...flatStop(firstSpread + k, caption, glossaryTitle, terms.length ? terms.map((e) => `${e.term}, ${e.full}. ${e.why}`) : glossaryIntro),
+      paint: { left: paint(spread.left, "left"), right: paint(spread.right, "right") },
+    };
+  });
 }

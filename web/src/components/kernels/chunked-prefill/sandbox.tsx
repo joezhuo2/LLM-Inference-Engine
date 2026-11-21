@@ -9,6 +9,7 @@ import { glide, hold, type Tween } from "@/lib/glide";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { chunkBudget, perRowPrefill, prefillMs, stallDecoding, stallMs, stallPrompt } from "@/content/kernels/chunked-prefill";
 import { EasedBar } from "../eased-bar";
+import { Mirror, MirrorRange } from "../mirror";
 import { Toggle } from "../toggle";
 import { type Cell, decoders, type Lane, maxPrompt, type Mode, Playground, type PoolSize, predict, type Run } from "./scheduler-model";
 
@@ -323,6 +324,33 @@ export function ChunkedPrefillSandbox({ pages }: { pages?: { predict: HTMLElemen
     </>
   );
 
+  const mirroredDrop = (
+    <Mirror from="the next page">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="w-14 shrink-0 text-muted">drop</span>
+        {[...quick, length].map((q, i) => (
+          <button key={i} type="button" onClick={() => drop(q)} className="pressable rounded border border-border px-2 py-0.5 text-text">
+            {i === quick.length ? "drop it" : `+${fmt(q)}`}
+          </button>
+        ))}
+      </div>
+      <MirrorRange id="cp-length-mirror" label="length" min={16} max={maxPrompt} step={16} value={length} onValue={(v) => { cancelTween(); setLength(v); }} text={`${fmt(length)} tokens`} />
+      <div inert={mode === "schedule()"} className={clsx(mode === "schedule()" && "opacity-40")}>
+        <Toggle label="budget" choices={budgets} value={budgetName} onChange={setBudgetName} />
+      </div>
+      <Toggle label="rule" choices={modes} value={mode} onChange={(v) => setMode(v as Mode)} />
+      <Toggle
+        label="KV pool"
+        choices={pools}
+        value={pool}
+        onChange={(v) => {
+          setPool(v as PoolSize);
+          fresh(v as PoolSize);
+        }}
+      />
+    </Mirror>
+  );
+
   const playControls = (
     <div className="flex flex-wrap gap-2">
       <button type="button" disabled={!busy} onClick={() => setPlaying(!playing)} aria-pressed={playing} className="pressable rounded border border-border px-2.5 py-1 text-accent disabled:opacity-40">
@@ -370,7 +398,7 @@ export function ChunkedPrefillSandbox({ pages }: { pages?: { predict: HTMLElemen
 
   const scale = (
     <p className="max-w-2xl text-muted">
-      {`For scale, measured on this engine (docs/results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms (${fmt(aloneLargeBefore)} ms with the per-row prefill attention that the FlashAttention prefill kernel replaced). A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}.`}
+      {`For scale, measured on this engine (results.md): prefilling 128 tokens alone takes ${fmt(aloneSmall)} ms and 2,048 tokens ${fmt(aloneLarge)} ms (${fmt(aloneLargeBefore)} ms with the per-row prefill attention that the FlashAttention prefill kernel replaced). A step's cost grows with its tokens, so one 2,048-token step is the long wait the decoders feel; the lanes count steps and tokens, not milliseconds. On the real engine, when a ${fmt(stallPrompt)}-token prompt arrives among ${stallDecoding} decoding requests, their longest wait between two tokens is ${fmt(stallWhole)} ms with whole-prompt steps and ${fmt(stallChunked)} ms with --token-budget ${chunkBudget}.`}
     </p>
   );
 
@@ -451,6 +479,7 @@ export function ChunkedPrefillSandbox({ pages }: { pages?: { predict: HTMLElemen
         {pages.predict &&
           createPortal(
             <div className="space-y-5 tabular-nums text-xs">
+              {mirroredDrop}
               {predictBox}
               {playControls}
               {table}

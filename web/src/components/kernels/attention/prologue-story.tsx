@@ -1,6 +1,7 @@
 "use client";
 
 import { measured } from "@/content/kernels/types";
+import { about } from "@/lib/round";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { CacheHomeFigure, DecodeFigure, PrefillFigure, SideBySideFigure } from "./prologue-figures";
 
@@ -33,7 +34,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Time to first token is this pass. On this engine a long prompt takes{" "}
-          <span className="text-accent">{ttft2048.toLocaleString("en-US")} ms</span>, and a prompt token costs about the same in a long prompt as in a short one.
+          <span className="text-accent">{about(ttft2048)} ms</span>, and a prompt token costs about the same in a long prompt as in a short one.
         </p>
       </>
     ),
@@ -49,7 +50,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Counted from the model config, with one request in flight the engine reaches{" "}
-          <span className="text-accent">{percent}%</span> of the GPU&apos;s measured peak memory bandwidth: the step waits on memory, not
+          <span className="text-accent">{about(percent)}%</span> of the GPU&apos;s measured peak memory bandwidth: the step waits on memory, not
           on arithmetic.
         </p>
       </>
@@ -65,7 +66,7 @@ const steps: StoryStep[] = [
           Without the cache every new token would rerun the whole prefill over a context that grew by one.
         </p>
         <p>
-          One decode step at a context as long as the prompt took about <span className="text-accent">{ratio}x</span> less time than the prefill that built the cache. Both times are in the caption.
+          One decode step at a context as long as the prompt took about <span className="text-accent">{about(ratio, 2, "")}x</span> less time than the prefill that built the cache. Both times are in the caption.
         </p>
       </>
     ),
@@ -89,9 +90,9 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `an illustrative 8-token prompt; single-request TTFT, median of 5 runs, from docs/results.md: ${ttft128} ms for 128 tokens (${perToken128} ms per token) and ${ttft2048.toLocaleString("en-US")} ms for 2,048 tokens (${perToken2048} ms per token)`,
-  `illustrative tokens; ${gbs} GB/s is ${percent}% of the measured peak, the engine at batch 1 without CUDA Graphs, from docs/results.md`,
-  `${ttft2048.toLocaleString("en-US")} ms prefill of 2,048 tokens (docs/results.md) against ${stepMs} ms per decode step at a 1,984-token prompt, batch 1, with CUDA Graphs (docs/profiling.md)`,
+  `an illustrative 8-token prompt; single-request TTFT, median of 3 runs, from results.md: ${ttft128} ms for 128 tokens (${perToken128} ms per token) and ${ttft2048.toLocaleString("en-US")} ms for 2,048 tokens (${perToken2048} ms per token)`,
+  `illustrative tokens; ${gbs} GB/s is ${percent}% of the measured peak, the engine at batch 1 without CUDA Graphs, from results.md`,
+  `${ttft2048.toLocaleString("en-US")} ms prefill of 2,048 tokens (results.md) against ${stepMs} ms per decode step at a 1,984-token prompt, batch 1, with CUDA Graphs (profiling.md)`,
   "an illustrative 96-token sequence in a 16-block pool; the blocks and their order are made up",
 ];
 

@@ -1,6 +1,8 @@
 import { beyondTitle, chapterNumber } from "./book-order";
 import { estimates, fitEstimate } from "./estimates";
 import { kernelStory } from "./kernels";
+import { profilingTable } from "@/lib/data";
+import { shardedForward } from "./kernels/tensor-parallelism";
 import { more, spec, specFmt as fmt } from "./kernels/speculative-decoding";
 
 export type BeyondSource = { label: string; href: string };
@@ -10,12 +12,27 @@ const f = fitEstimate;
 const estimateNumber = estimates.findIndex((e) => e.id === f.id) + 1;
 const title = (slug: string) => kernelStory(slug)?.title ?? slug;
 
+const forward = shardedForward();
+const shardTable = profilingTable("tensor-parallelism-the-weights-of-one-rank", 0, "results");
+const shardCell = (layout: string, name: string) => {
+  const row = shardTable.rows.find((r) => r[0] === layout);
+  const v = row ? Number(row[shardTable.header.indexOf(name)].replaceAll(",", "")) : Number.NaN;
+  if (Number.isNaN(v)) throw new Error(`results.md Tensor parallelism: no "${name}" for ${layout}`);
+  return v;
+};
+const shard = {
+  pct: Math.round((shardCell("rank 0 of 2", "MiB on the device") / shardCell("full model", "MiB on the device")) * 100),
+  loadMs: shardCell("rank 0 of 2", "upload ms"),
+  fullMs: shardCell("full model", "upload ms"),
+};
+if (shard.pct <= 50 || shard.loadMs >= shard.fullMs) throw new Error("results.md Tensor parallelism: Beyond says one of two shares is more than half the model and loads faster than the whole model; rewrite the multiple GPUs topic");
+
 export { beyondTitle };
 
 export const beyondIntro = [
   `This book's argument fits in one sentence. At batch 1 a decode step reads every weight once, so tokens per second can be no higher than the memory bandwidth divided by the bytes read per token. Chapter ${chapterNumber("foundations")}, ${title("foundations")}, sets up that bound, and chapter ${chapterNumber("gemm")}, ${title("gemm")}, measures the projections against it.`,
   "The engine in this book stops at one model in BF16 on one GPU. Real engines go further in four ways, and each one changes the bytes read per token.",
-  `Quantization, prefix caching and multiple GPUs are not implemented or measured in this engine. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model runs too, with a draft model that turned out too slow to pay. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
+  `Quantization and prefix caching are not implemented or measured in this engine (quantization is planned, and chapter ${chapterNumber("quantization")} has its arithmetic), and of multiple GPUs the engine has the split, checked on one GPU: chapter ${chapterNumber("tensor-parallelism")}, ${title("tensor-parallelism")}. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model runs too, with a draft model that turned out too slow to pay. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
 ];
 
 export const beyondTopics: BeyondTopic[] = [
@@ -24,9 +41,9 @@ export const beyondTopics: BeyondTopic[] = [
     title: "quantization",
     unit: "fewer bytes per weight",
     paragraphs: [
-      `Quantization stores each weight in fewer bits. This engine keeps its weights in BF16, ${f.bf16BytesPerWeight} bytes each, so every decode step reads ${f.bf16BytesPerWeight} bytes per weight. At ${f.lowBits} bits a step reads ${f.fewerBytes} times fewer bytes, and the batch-1 floor falls by the same factor, because the floor is bytes divided by bandwidth (calculated). It is the biggest single way to cut the bytes.`,
+      `Quantization stores each weight in fewer bits, so a decode step reads fewer bytes and the batch-1 floor falls with them. It has its own chapter: chapter ${chapterNumber("quantization")}, ${title("quantization")}, works out what FP8 and 4-bit weights do to the floor, the arithmetic and the KV cache, and what the engine's FP8 stubs promise. None of it is measured yet. A real 4-bit file is a little larger than bits times weights, because each small block of weights also stores its scale.`,
       `Estimate ${estimateNumber} works one case on this book's GPU. ${f.model} is ${f.bf16} in BF16 and does not fit in ${f.vram} of VRAM. At ${f.lowBits} bits it is ${f.low}, and at the measured ${f.bandwidth} the floor is ${f.floorLow} per token, ${f.rateLow} tokens per second (calculated, not run).`,
-      "There are three costs. A real file is a little larger than bits times weights, because each group of weights also stores a scale factor. The kernel has to turn the small integers back into numbers before it multiplies, which adds work to a step that had almost none besides reading. And rounding changes the model's output, so the accuracy has to be measured. GPTQ is one method for choosing the rounded values: it quantizes a trained model one layer at a time, using second-order information from a small set of calibration data, with no retraining.",
+      "GPTQ is one method for choosing the rounded values: it quantizes a trained model one layer at a time, using second-order information from a small set of calibration data, with no retraining.",
     ],
     source: { label: "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers (Frantar et al., 2022)", href: "https://arxiv.org/abs/2210.17323" },
     estimate: f.id,
@@ -60,6 +77,7 @@ export const beyondTopics: BeyondTopic[] = [
     paragraphs: [
       "Tensor parallelism splits every layer's weight matrices across the GPUs. Each GPU reads only its share of the bytes for a token, and together the GPUs have several times the memory bandwidth. The price is communication: the partial results have to be combined inside every layer, on every step, over a link that is far slower than a GPU's own memory. It is also the way to run a model whose weights do not fit in one GPU.",
       "Pipeline parallelism puts different layers on different GPUs, and replicas put a whole copy of the model on each. In both, one token still has all of the weights read for it, one GPU at a time, so they raise the number of requests served and not the speed of one stream. The Megatron-LM paper describes the tensor split. It was written for training, and inference uses the same split of the forward pass.",
+      `This engine cuts TinyLlama's weights for 2 or 4 GPUs and runs the forward pass on the shares, all of them taking turns on its one GPU (chapter ${chapterNumber("tensor-parallelism")}). A share of 2 is ${shard.pct}% of the model and not half, since every GPU keeps the embedding and the LM head whole, and it loads in ${shard.loadMs.toFixed(0)} ms against ${shard.fullMs.toFixed(0)} for the whole model. The shares give the whole model's tokens, and the logits come within ${forward.maxLogitDiff} (measured). On one GPU that is slower, ${forward.msPerToken[1].toFixed(2)} ms a token with 2 shares against ${forward.wholeMsPerToken.toFixed(2)}, so it checks the split and no more. The engine has no second GPU and no link between GPUs, and the cost of that link is the part that decides the gain.`,
     ],
     source: { label: "Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism (Shoeybi et al., 2019)", href: "https://arxiv.org/abs/1909.08053" },
   },

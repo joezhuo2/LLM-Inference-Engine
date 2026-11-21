@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExerciseCard } from "@/components/exercise-card";
+import { ExercisesFigure } from "@/components/kernels/page-figures";
 import { EstimateCard } from "@/components/estimate-card";
 import { bookHref } from "@/components/book/paths";
 import { PageTitle } from "@/components/page-title";
 import { PageTransition } from "@/components/page-transition";
 import { estimates, estimatesIntro, estimatesTitle } from "@/content/estimates";
-import { cloneCommand, cpuCount, exercises, numpyCount } from "@/content/exercises";
+import { cloneCommand, cpuCount, exercises, numpyCount, numpyInstall, numpyOnly } from "@/content/exercises";
 import { ogImage } from "@/lib/og";
 
 const description = "Rebuild the engine piece by piece: check out the commit where each stub landed, make its tests pass, then compare with the code that shipped.";
@@ -18,7 +19,8 @@ export const metadata: Metadata = {
 };
 
 const groups = [
-  { id: "cpu", title: "start here: runs on a CPU", intro: "The block manager and the scheduler are plain C++ and their tests run on any machine with a C++20 compiler, CMake 3.28 and Ninja. They are the best place to start even if you have a GPU: the logic is the hard part, and a failure is easy to debug.", items: exercises.filter((e) => e.runs === "cpu") },
+  { id: "numpy", title: "start here: NumPy on any machine", intro: `Each of these is one Python file with a check built in: it needs Python 3 and numpy (${numpyInstall}), no build and no old commit. They come with the chapters that have no stub to rebuild, and they are the quickest way to see that a chapter's idea is a few lines of arithmetic.`, items: exercises.filter(numpyOnly) },
+  { id: "cpu", title: "runs on a CPU", intro: "The block manager and the scheduler are plain C++ and their tests run on any machine with a C++20 compiler, CMake 3.28 and Ninja. They are the best place to start in C++ even if you have a GPU: the logic is the hard part, and a failure is easy to debug.", items: exercises.filter((e) => e.runs === "cpu" && !numpyOnly(e)) },
   { id: "gpu", title: "needs an NVIDIA GPU", intro: `These need an NVIDIA GPU and CUDA 12.8 or newer. The commands build for whatever GPU you have; the engine was written for an RTX 5060 Laptop GPU, so your times will differ, but the tests check correctness, not speed. Exercises marked as loading TinyLlama need the model downloaded as the README's Building section describes. ${numpyCount()} of them also have a NumPy version of the algorithm that runs on any machine: open the card and try it first.`, items: exercises.filter((e) => e.runs === "gpu") },
 ];
 
@@ -47,13 +49,14 @@ export default function Exercises() {
             <li>Write the function until they pass, using the spec and the tests as your only guide.</li>
             <li>Compare with the code that shipped, and read the chapter&apos;s timeline and what didn&apos;t work for the mistakes made on the way.</li>
           </ol>
+          <ExercisesFigure total={exercises.length} cpu={cpuCount()} numpy={numpyCount()} />
           <p className="max-w-2xl tabular-nums text-text">
             {cpuCount()} of {exercises.length} run on a CPU. {numpyCount()} more have a NumPy version that does, so {cpuCount() + numpyCount()} of {exercises.length} can be started without an NVIDIA GPU.
           </p>
           <p className="max-w-2xl text-muted">Clone the repo once:</p>
           <pre className="max-w-2xl overflow-x-auto rounded border border-border bg-surface px-3 py-2 font-mono text-[11px] text-text">{cloneCommand}</pre>
           <p className="max-w-2xl text-sm text-muted">
-            GEMM calls cuBLAS and sampling was written without a stub, so those two chapters have no exercise. Each exercise switches to an old commit; <span className="font-mono text-[0.85em]">git switch main</span> brings you back.
+            GEMM calls cuBLAS, so its chapter has no exercise, and neither do the memory budget and where the time went. Sampling was written without a stub, so its exercise is a NumPy file. Each exercise switches to an old commit; <span className="font-mono text-[0.85em]">git switch main</span> brings you back.
           </p>
         </header>
         {groups.map((g) => (

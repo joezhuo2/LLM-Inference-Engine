@@ -1,5 +1,6 @@
-import { budget, fitOf, gb, lastRow, memFmt } from "@/content/kernels/memory-budget";
+import { budget, fitOf, lastRow, memFmt } from "@/content/kernels/memory-budget";
 import { published } from "@/content/published";
+import { bytesText } from "@/lib/round";
 import type { ChapterReview } from "./types";
 
 const fmt = memFmt;
@@ -10,7 +11,7 @@ export const review: ChapterReview = {
   lesson: "Weights are a fixed cost and the KV cache is a shared one: batch size and context length draw on the same pool.",
   why: "It says what a GPU can hold before asking how fast it runs, and why a larger model serves fewer requests at once.",
   takeaways: [
-    `The weights take ${gb(budget.weights)} of ${gb(budget.vram)} whatever the load (calculated); the engine gives ${budget.fractionPct}% of what is free after them to one KV pool, ${gb(budget.pool)} (measured).`,
+    `The weights take ${bytesText(budget.weights)} of ${bytesText(budget.vram, 2, "")} whatever the load (calculated); the engine gives ${budget.fractionPct}% of what is free after them to one KV pool, ${bytesText(budget.pool)} (measured).`,
     `A cached token is ${fmt(budget.tokenBytes)} bytes: ${budget.layers} layers × K and V × ${budget.kvHeads} KV heads × ${budget.headDim} numbers × 2 bytes (calculated).`,
     `Batch × context cannot pass ${fmt(budget.poolTokens)} tokens. ${budget.reservedFit} requests fit at the full ${fmt(budget.fullContext)}-token context; ${lastRow.batch} can each reach ${fmt(lastRow.context)} (calculated).`,
   ],

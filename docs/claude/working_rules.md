@@ -4,7 +4,7 @@ The current, merged rules for how Claude works on this repo. `delegation.md` has
 
 ## Who writes what
 
-- **Part A (Claude writes, Joe reviews and tests):** CMake, presets, CI, clang-format and clangd config, CLI and benchmark harness plumbing, CSV metrics, plotting scripts, Python reference and golden scripts (`dump_reference.py`, `compare_logits.py`, `checksum.py`), config and JSON parsing, the weight loader beyond the safetensors header parse, the SentencePiece tokenizer wrapper and chat template helper, test boilerplate, the checksum tool, README and docs. Also DeviceBuffer, PinnedBuffer, Tensor and DType, and the check macros.
+- **Part A (Claude writes, Joe reviews and tests):** CMake, presets, CI, clang-format and clangd config, CLI and benchmark harness plumbing, CSV metrics, plotting scripts, Python reference and golden scripts (`dump_reference.py`, `dump_logits.py`, `checksum.py`), config and JSON parsing, the weight loader beyond the safetensors header parse, the SentencePiece tokenizer wrapper and chat template helper, test boilerplate, the checksum tool, README and docs. Also DeviceBuffer, PinnedBuffer, Tensor and DType, and the check macros.
 - **Part B (Claude drafts, Joe reads and explains every line):** cuBLAS GEMM wrappers, model runner forward pass wiring, the sampler (greedy, Gumbel-max temperature, top-k, top-p), and the naive oracle kernels (embedding, RMSNorm, RoPE, SwiGLU, residual add, attention over a contiguous KV cache).
 - **Part C (Joe writes; Claude only stubs, specs and tests):** fused `add_rmsnorm`, vectorized RoPE, fused or vectorized SwiGLU, paged decode attention, paged prefill attention, the safetensors header parser, the KV block manager, the scheduler and preemption, the KV cache layout and `write_kv` slot mapping, CUDA Graph capture and buckets.
 - Never write a Part C body, even partially. When Joe asks for help on Part C, give hints, explanations and reviews, not code.
@@ -20,7 +20,7 @@ The current, merged rules for how Claude works on this repo. `delegation.md` has
 
 ## Repo and branches
 
-- Work only in the worktree `~/code/llm-inference-engine-claude`. Joe works in `~/code/llm-inference-engine` at the same time; never switch branches or edit tracked files there. Reading his checkout, and writing to this gitignored folder, is fine.
+- Work only in a worktree of your own, one per branch (`~/code/llm-inference-engine-<task>`, made from `origin/main`; the fixed `-claude` worktree is gone). Joe works in `~/code/llm-inference-engine` at the same time; never switch branches or edit tracked files there. Reading his checkout is fine.
 - Joe merges PRs with **rebase and merge** (decided Oct 8; PRs #6 to #12 were squash-merged before that). Every commit of a branch lands on `main` individually, with a new hash, so `main` stays linear and keeps the small atomic commits for `git bisect`. Consequences: every commit must build and pass the gate on its own (it already must); compare branches with `main` by content (`git diff`), not by hash; and keep commit messages clean, because they become `main`'s history verbatim.
 - Before every branch: `git fetch`, then `git switch --no-track -c <area>/<task> origin/main`. Do not stack new work on unmerged branches unless it truly depends on them. If a stacked branch's base gets merged, the stacked branch must be rebased onto `main` (its base's commits now exist on `main` under new hashes); ask Joe before rebasing, and tell him the branch then needs `git push --force-with-lease` if it was already pushed.
 - Before continuing on any branch, check `git status`, `git log` and `git reflog`: Joe sometimes resets, rewords or recommits Claude's branches. Never undo his changes.
@@ -63,12 +63,12 @@ GPU access from Claude's process is flaky even with the sandbox disabled: `cudaE
 
 ## Web site (`web/`, since 2026-10-25)
 
-- Claude builds all of `web/` and writes all copy; Joe reviews and edits. Work in `~/code/llm-inference-engine-web`. Design decisions live in `web_plan.md` and `kernels_plan.md`; add every new decision there.
+- Claude builds all of `web/` and writes all copy; Joe reviews and edits. Work in a per-branch worktree as for the engine. Design decisions live in `web_plan.md` and `kernels_plan.md`; add every new decision there.
 - Same branch and commit rules as the engine (one-line messages, no trailer, changelog entry per commit, blank learning-log terms under `## <Topic> (Branch N)`, no code comments, never push). Branch numbers continue the changelog's numbering (52 web/overview, 53 web/kernels-data, 54 web/kernels-template).
 - Gate: `bash ~/.cache/llmie-web/verify-web.sh > ~/.cache/llmie-web/gate.log 2>&1 && git commit ...` (refuses staged engine files; audit, lint with 0 warnings, `npm test`, typecheck, static build with no warnings). Joe approved this instead of the engine gate for web-only commits. It skips `npm ci` when node_modules matches the lockfile, because `npm ci` under Joe's running `next dev` put Turbopack into an endless reload loop (restart `next dev` if that ever happens).
 - The gate builds the working tree, not the commit. When one turn makes several commits, build each commit alone afterwards in a temporary detached worktree (`git worktree add --detach`, `cp -al web/node_modules`, copy untracked `results/traces/*.json`; a symlinked node_modules makes Turbopack fail), then remove the worktree.
 - Pin exact npm versions released at least two weeks earlier, and check `npm audit` before adding one.
-- Numbers on the site come from `results/`, `docs/profiling.md` or the recorded trace at build time, never typed into the page. Illustrations that are not measurements say so in their caption.
+- Numbers on the site come from `results/`, `results.md`, `profiling.md` or the recorded trace at build time, never typed into the page. Illustrations that are not measurements say so in their caption.
 - Verify in a browser before saying something works: headless Windows Chrome over CDP (see `technical_notes.md`), dark and light, 390 px, reduced motion. Joe watches the dev server on port 3000; test against it as well as the static build, and never kill it.
 - Joe often sends fixes while a turn is running; address each one, and confirm with a measurement (for example sampled transforms during a transition), not only a screenshot.
-- `web/AGENTS.md` (written by `next dev`) stays untracked until Joe decides.
+- `web/AGENTS.md` (written by `next dev`) is tracked; commit it when `next dev` rewrites it.

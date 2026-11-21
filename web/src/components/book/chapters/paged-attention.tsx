@@ -1,20 +1,18 @@
 "use client";
 
-import { chapterNumber } from "@/content/book-order";
 import { createPortal } from "react-dom";
+import { chapterNumber } from "@/content/book-order";
 import { modelShape } from "@/lib/data";
 import { pagedAttentionAbout, pagedAttentionAboutCaption } from "@/components/kernels/attention/about";
-import { attentionBasics, BasicsFigure, basicsCaptions, basicsInstructions } from "@/components/kernels/attention/basics";
 import { prologueCaptions, prologueNumbers, prologueSteps } from "@/components/kernels/attention/prologue-story";
 import { PagedAttentionSandbox } from "@/components/kernels/attention/sandbox";
-import { attentionCaptions, attentionNumbers, attentionSteps } from "@/components/kernels/attention/story";
+import { attentionCaptions, attentionNumbers, attentionSteps, PagedAttentionScaleFigure } from "@/components/kernels/attention/story";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
 import { createPagedAttentionAboutModel } from "./paged-attention-about-model";
 import { createPagedAttentionModel } from "./paged-attention-model";
 
 const beats: Beat[][] = [
-  ...attentionBasics.map((step) => [flat(`Attention basics: ${step.title}`)]),
   [
     overview("Prefill: eight tokens, one wide pass"),
     close("Close up: every position enters the model at once", [0.53, 0.04, -0.4], 1.12, 0.50, -18, 36),
@@ -54,6 +52,7 @@ const beats: Beat[][] = [
     close("Close up: one table entry for all 16 keys of a block", [0.5, 0.04, -0.4], 1.12, 0.50, -18, 36),
     close("From the side: the jumps fall between blocks", [0.52, 0.03, -0.08], 1.12, 0.56, 24, 32),
   ],
+  [flat("One step's K and V reads at the full context, against the weights")],
   [
     overview("v1 held every score; v2 streams chunks with no cap"),
     close("Close up: v1 keeps every score and passes three times", [0.5, 0.03, -0.48], 1.12, 0.45, -18, 36),
@@ -69,7 +68,6 @@ const beats: Beat[][] = [
 ];
 
 const instructions = [
-  ...basicsInstructions,
   "Watch all eight tokens enter the model together and fill K and V at once.",
   "Watch each step read every cached pair, then add one more.",
   "Watch both bars start together: the decode step is done almost at once.",
@@ -77,6 +75,7 @@ const instructions = [
   "Watch the scores fill one key at a time, then the softmax weigh them all.",
   "Drag the pink ball along the sequence to pick a token.",
   "Drag the pink ball within one block: every token there follows the same table entry.",
+  "Compare the rows: one request's cache stays under the weights, a full batch does not.",
   "Watch v1 pass over its full tray three times while v2 streams chunks.",
   "Watch the context run as one range, then as eight at once.",
 ];
@@ -101,7 +100,7 @@ const workbench: WorkbenchPage[] = [
     overlay: "sandbox-step",
     caption: "Step through it yourself: one block, one update",
     paragraphs: [
-      "Each step reads one block: its scores q · k / √d, then the running max m, the running sum l and the accumulator acc are updated before the next block arrives.",
+      "Each step reads one block: its scores q · k / √d, then the running max m, the running sum l and the accumulator acc are updated before the next block arrives. The context and block size are mirrored at the top of the right page.",
       "Watch the m row. When a block's best score beats every earlier one, m is raised and the rescale factor exp(m old - m new) drops below 1; l and acc are multiplied by it before the new weights are added.",
       "When m is unchanged the factor is exactly 1 and the new weights are simply added. Either way no block is read twice, which is what lets v2 keep only one chunk in shared memory.",
       "The table below counts the blocks read and the bytes they would cost at head dim 64: K and V in BF16, for one head.",
@@ -113,7 +112,7 @@ const workbench: WorkbenchPage[] = [
     caption: "Step through it yourself: predict, then compare",
     paragraphs: [
       "Answer the question first: a block arrives whose best score is bigger than any before. What happens to l and the accumulator?",
-      "Then press jump to the next raised m and check your answer against the update on the previous page.",
+      "Then press jump to the next raised m and check your answer against the update line under the choices. The context and block size are mirrored at the top of the right page.",
       "The table compares acc / l so far with ordinary softmax attention computed in one go. Read every block and the two columns agree to float precision.",
       "That agreement is the point of the online softmax: the same output as the three-pass v1, from one pass over the keys.",
     ],
@@ -123,36 +122,29 @@ const workbench: WorkbenchPage[] = [
 function PagedAttentionOverlay({ kind, target, narrow }: OverlayProps) {
   return (
     <>
-      {kind?.startsWith("basics-") &&
-        target &&
-        createPortal(
-          <div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>
-            <BasicsFigure index={Number(kind.slice(7))} />
-          </div>,
-          target,
-        )}
       <PagedAttentionSandbox pages={{ table: kind === "sandbox-table" ? target : null, step: kind === "sandbox-step" ? target : null, check: kind === "sandbox-check" ? target : null }} />
+      {target && kind === "scale" && createPortal(<div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}><PagedAttentionScaleFigure /></div>, target)}
     </>
   );
 }
 
-const ownExhibits = [0, 1, 2, 3, 4, 5, 5, 6, 7];
+const ownExhibits = [0, 1, 2, 3, 4, 5, 5, null, 6, 7];
 
 const chapter: ChapterDef = {
   slug: "paged-attention",
   number: chapterNumber("paged-attention"),
   title: "paged attention",
   formula: "out = softmax(q · Kᵀ / √d) · V",
-  steps: [...attentionBasics, ...prologueSteps, ...attentionSteps],
-  captions: [...basicsCaptions, ...prologueCaptions, ...attentionCaptions],
-  exhibits: [...attentionBasics.map(() => null), ...ownExhibits],
-  overlays: [...attentionBasics.map((_, k) => `basics-${k}`), ...ownExhibits.map(() => null)],
+  steps: [...prologueSteps, ...attentionSteps],
+  captions: [...prologueCaptions, ...attentionCaptions],
+  exhibits: ownExhibits,
+  overlays: ownExhibits.map((e) => (e === null ? "scale" : null)),
   instructions,
   beats,
   workbench,
   buildModel: (kit, fonts) => {
     const model = createPagedAttentionModel(kit, fonts, { ...prologueNumbers, ...attentionNumbers });
-    return { ...model, enter: (stop) => model.enter?.(ownExhibits[stop - attentionBasics.length] ?? -1) };
+    return { ...model, enter: (stop) => model.enter?.(ownExhibits[stop] ?? -1) };
   },
   Overlay: PagedAttentionOverlay,
 };

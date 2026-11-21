@@ -2232,3 +2232,296 @@
 - **accepted share against rows spent: what an adaptive draft limit trades** => 
 - **Poisson arrivals and reading TPOT p50 against p99 under load** => 
 - **a build that fails when a sentence stops matching its table** => 
+
+## Tensor parallelism: the layout of one rank (Branch 151)
+
+- **tensor parallelism: one model cut across N GPUs along the width of each layer** => 
+- **why a slice of rows is one copy and a slice of columns is one copy per row** => 
+- **an offset counted from the start of the file against one counted from the start of the data** => 
+- **an error message as part of an interface that a test pins down** => 
+- **reading a device buffer back to the host to check an upload** => 
+- **a fixed cost per copy: why 90,000 small copies take longer than 200 large ones** => 
+- **what tensor parallelism does not divide: the embedding and the LM head** => 
+- **gathering scattered source pieces into one staging buffer when their destinations are contiguous** => 
+- **an A/B in one session: why two numbers from different hours cannot be compared on this GPU** => 
+- **one process per measurement when the tenth call behaves unlike the first** => 
+
+## Tensor parallelism: a forward pass on the shards (Branch 152)
+
+- **the config of a shard: a smaller model with the same hidden size** => 
+- **the width of the query heads against the hidden size** => 
+- **a reference to the result of a function that took a temporary, and why GCC warns about it** => 
+- **an all-reduce: every rank ends with the sum of the partial results of every rank** => 
+- **summing in float and rounding to BF16 once, against rounding after every add** => 
+- **passing a small fixed array of pointers to a kernel by value** => 
+- **a row-parallel and a column-parallel matrix: which side of a GEMM a split cuts** => 
+- **two all-reduces per layer: after the attention output and after the MLP down projection** => 
+- **a K/V cache per rank: each rank caches only its own KV heads** => 
+- **running the ranks one after another on one GPU as a check of the split** => 
+- **the largest logit difference as the measure of a reordered BF16 sum** => 
+- **a test that runs the built program and reads its output** => 
+- **extra memory of a split on one GPU: the tables every rank copies** => 
+- **why N ranks on one GPU are slower than the whole model: more launches on narrower matrices** => 
+- **reviewing code written by someone else before building on it** => 
+## Late upload calls (Branch 154)
+
+- **GPU performance states (P0, P2, P5) and the clocks each one allows** => 
+- **dynamic clock lowering when the GPU is busy only a small part of the time** => 
+- **why a host-to-device copy slows down with the memory clock** => 
+- **the cost of cudaMallocHost and cudaFreeHost against the copy they serve** => 
+- **changing one variable at a time: keeping the buffers against adding the same idle time as a sleep** => 
+- **sampling nvidia-smi next to per-call timestamps to line up a slowdown with a state change** => 
+- **minor and major page faults read with getrusage** => 
+## Tensor parallelism chapter (Branch 153)
+
+- **a glossary alias that is also an English verb** => 
+- **why cutting the first matrix by rows and the second by columns makes the partial results add** => 
+- **an elementwise activation between two cut matrices: why SwiGLU needs no sum** => 
+- **what tensor parallelism costs in memory: tables copied into every rank** => 
+- **a chapter that calculates bytes from the shape and checks them against measured MiB** => 
+- **text left out until a measurement exists, behind one accessor** => 
+- **checking a claim about shares by adding up the parts yourself** => 
+## Timeline diagrams and page fit (Branch 155)
+
+- **a moving copy that hands over to its final copy, and hides when motion is reduced** => 
+- **clipping a CDP screenshot to one element: page coordinates add the scroll offset** => 
+- **a time lane: drawing work that takes turns on one device** => 
+- **fitting a list to a fixed page by scaling row pitch and type together** => 
+- **deriving type size from row pitch so a list fills the page at any length** => 
+
+## Every Byte fixes (Branch 156)
+
+- **a page curl where the free edge leads the spine** => 
+- **a gentle-start ease: sine in-out against cubic in-out** => 
+- **patching a three.js material shader with onBeforeCompile** => 
+- **why uploading a large canvas texture stalls a frame** => 
+- **prefetching into the spare half of a double buffer** => 
+- **renderer.initTexture: uploading a texture before it is drawn** => 
+- **a hinge strip: a curve between two moving points** => 
+- **picking the nearest of two meshes with one raycast** => 
+- **hit slop: a hit area larger than what it marks** => 
+- **recto and verso: why right-hand pages are odd** => 
+- **drawing a shared detail in one place instead of in every painter** => 
+- **aria-pressed on a toggle button** => 
+- **usePathname after history.pushState in the Next.js app router** => 
+
+## Site chrome (Branch 157)
+
+- **a CSS-only tooltip with group-hover and has-[:focus-visible]** => 
+- **rel=noopener noreferrer on links that open a new tab** => 
+- **the hidden attribute: keeping markup in the page without showing it** => 
+- **inertial scrolling: easing the scroll position toward a target each frame** => 
+- **a non-passive wheel listener and preventDefault** => 
+- **the View Transitions API: document.startViewTransition** => 
+- **animating a view transition pseudo-element with element.animate** => 
+
+## Root documents (Branch 159)
+
+- **git mv: a rename git can follow in the history** => 
+- **a relative link in Markdown resolves from the file that holds it** => 
+- **where GitHub looks for a pull request template and issue templates** => 
+- **private vulnerability reporting on GitHub** => 
+- **the MIT license: what it permits and the one condition it sets** => 
+
+## Motion pass (Branch 158)
+
+- **a tooltip outside an overflow-hidden parent, placed from getBoundingClientRect** => 
+- **a Tailwind arbitrary shadow color: shadow-[color:var(--x)]** => 
+- **animating pathLength to draw an SVG line** => 
+- **transform-box: fill-box for scaling an SVG shape about its own edge** => 
+- **a quadratic Bezier curve in an SVG path (Q)** => 
+
+## FP8 and batch-16 stubs (Branch 161)
+
+- **FP8 E4M3: 1 sign bit, 4 exponent bits, 3 mantissa bits** => 
+- **round to nearest, ties to even** => 
+- **saturating a conversion in place of overflowing to NaN** => 
+- **a quantization scale: stored = round(x / scale), read = stored * scale** => 
+- **cuda_fp8.h: __nv_cvt_float_to_fp8 and __nv_fp8_e4m3** => 
+- **a scale per output row (per-channel quantization)** => 
+- **weights in 8 bits with activations in 16** => 
+- **mma.sync with .e4m3 operands** => 
+- **one block per (row, KV head): sharing K and V loads across a group of query heads** => 
+- **P V as a second matrix product** => 
+
+## Glossary terms (Branch 160)
+
+- **service level objective (SLO)** => 
+- **server-sent events (SSE)** => 
+- **pinned (page-locked) host memory** => 
+- **a causal mask** => 
+- **a test oracle** => 
+
+## Every Byte audit round (Branch 162)
+
+- **NotImplementedError** => 
+- **vectorisation** => 
+- **a reference implementation** => 
+- **a pre-norm residual** => 
+- **grouped-query attention** => 
+- **the LM head** => 
+- **argmax** => 
+- **memory bandwidth** => 
+- **cache size** => 
+- **bytes divided by bandwidth** => 
+- **the Gumbel-max trick** => 
+- **temperature** => 
+- **a top-k threshold** => 
+- **a discriminated union** => 
+- **the temporal dead zone** => 
+- **a static site search index** => 
+- **HTML text extraction** => 
+- **node:test** => 
+- **the CSS :target selector** => 
+- **useDeferredValue** => 
+- **sticky positioning** => 
+- **the combobox pattern** => 
+- **aria-activedescendant** => 
+- **dynamic import code splitting** => 
+- **@starting-style** => 
+- **CUDA graph replay** => 
+- **profiler overhead** => 
+- **time per output token** => 
+- **a kernel span** => 
+- **host overhead** => 
+- **a scheduler** => 
+- **continuous batching** => 
+- **the bandwidth roof** => 
+- **theoretical and effective bandwidth** => 
+- **the null block** => 
+- **a block pool** => 
+- **token slots** => 
+- **prefill** => 
+- **decode** => 
+- **query, key and value** => 
+- **a causal mask** => 
+- **dot-product attention** => 
+- **softmax** => 
+- **a reading path** => 
+- **a reading-time estimate** => 
+- **a pinned release tag** => 
+- **a ggml backend** => 
+- **a responsive table** => 
+- **a permalink to a tag** => 
+- **a sampler chain** => 
+- **document.title** => 
+- **a metadata title template** => 
+- **aria-pressed** => 
+- **a canvas texture repaint** => 
+- **a route filter** => 
+- **history.replaceState** => 
+- **URLSearchParams** => 
+- **localStorage** => 
+- **index remapping** => 
+- **a race condition** => 
+- **a responsive breakpoint** => 
+- **text pagination** => 
+- **canvas measureText** => 
+- **a running head** => 
+- **back matter** => 
+- **canvas text fitting** => 
+- **significant figures** => 
+- **rounding error** => 
+- **a published spec** => 
+- **HBM bandwidth** => 
+- **the ridge point** => 
+- **context length** => 
+- **KV pool sizing** => 
+- **a bound control** => 
+- **progressive disclosure** => 
+- **page fit** => 
+- **quantization** => 
+- **FP8 E4M3** => 
+- **a scale factor** => 
+- **a mantissa** => 
+- **an exponent** => 
+- **a stub exercise** => 
+- **a forward reference** => 
+- **title fitting** => 
+- **label clearance** => 
+- **scale overhead** => 
+- **a quantized block** => 
+- **aria-current** => 
+- **a cross-fade** => 
+- **focus-visible** => 
+- **clip-path** => 
+- **the Web Animations API** => 
+- **client-side navigation** => 
+- **progressive enhancement** => 
+- **an entry point** => 
+- **display rounding** => 
+- **DRAM bytes per launch** => 
+- **hidden size** => 
+- **a latency-bound kernel** => 
+- **a scalar path** => 
+- **vector loads** => 
+- **the FP64 pipe** => 
+- **a top-k threshold search** => 
+- **a launch gap** => 
+- **idle share** => 
+- **acceptance rate** => 
+- **tokens per step** => 
+- **a read floor** => 
+- **kernel boundaries** => 
+- **a mirrored control** => 
+- **shared React state** => 
+- **negative zero** => 
+- **floating-point subtraction error** => 
+- **an all-reduce** => 
+- **a single source of truth** => 
+- **4-bit weights** => 
+- **a token budget** => 
+- **a span** => 
+- **the H100 SXM** => 
+- **Llama 3 8B** => 
+- **an SVG label** => 
+- **schedule_chunked** => 
+- **a caption** => 
+- **HBM bandwidth** => 
+- **a rounding rule** => 
+- **a published peak** => 
+- **the memory wall** => 
+- **shared sandbox state** => 
+- **a GEMV floor** => 
+- **arithmetic intensity** => 
+- **rows per weight read** => 
+- **the compute-bound crossover** => 
+- **a launch-bound kernel** => 
+- **an overflow check** => 
+- **measured bandwidth** => 
+- **a label fit** => 
+- **a canvas 2D isometric projection** => 
+- **a piecewise-linear scroll remap** => 
+- **a content layer** => 
+- **HTML dialog showModal** => 
+- **the inert attribute** => 
+- **a Suspense fallback in a static export** => 
+- **an import graph** => 
+- **bytes per cached token** => 
+- **a block table read** => 
+- **cache reads per step** => 
+- **an online softmax** => 
+- **a split merge** => 
+- **a key tile** => 
+- **a sandbox readout** => 
+- **title size** => 
+- **a chunk width** => 
+- **a page number** => 
+- **a generated file** => 
+- **an unreachable case** => 
+- **a caption fit** => 
+- **a row pitch** => 
+- **a package mirror** => 
+- **a retry loop** => 
+
+## Book performance (Branch 163)
+
+- **a shader precompile** => 
+- **KHR_parallel_shader_compile** => 
+- **a GPU readback** => 
+- **willReadFrequently** => 
+- **a long task** => 
+- **an imperative handle** => 
+- **a text bounding box** => 
+- **a fit guard** => 
+- **a custom event** => 

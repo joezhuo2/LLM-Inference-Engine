@@ -9,6 +9,7 @@ import { glide as tween, type Tween } from "@/lib/glide";
 import { samplingLogits } from "@/lib/data";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import { EasedBar } from "../eased-bar";
+import { Mirror } from "../mirror";
 import { Toggle } from "../toggle";
 import { buildGroups, draw, type Group, type Knobs, stages, type Stages } from "./sampler";
 
@@ -20,6 +21,7 @@ const SHOW = 12;
 const KOFF = 201;
 const defaults = { temperature: 1, k: KOFF, p: 1 };
 const historyLength = 24;
+const pageHistory = 8;
 const snap = (v: number, step: number) => Math.round(v / step) * step;
 
 const fmt = (v: number) => v.toLocaleString("en-US");
@@ -114,6 +116,7 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
   const lastDraw = history.length ? history[history.length - 1].index : -1;
   const lastRow = lastDraw < 0 ? -1 : Math.min(lastDraw, SHOW);
   const distinct = new Set(history.map((h) => h.label)).size;
+  const shown = pages ? history.slice(-pageHistory) : history;
 
   const survivorsAt = (t: number) => stages(context.groups, knobsOf(t, KOFF, 0.9)).survivors;
   const before = survivorsAt(0.7);
@@ -150,7 +153,7 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
     { label: "candidates left", value: <NumberFlow value={s.survivors} format={{ maximumFractionDigits: 0 }} /> },
     { label: "entropy of what is left", value: <NumberFlow value={s.entropy} suffix=" bits" format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} /> },
     { label: "most likely token", value: <NumberFlow value={Math.max(...s.final)} format={{ style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }} /> },
-    { label: "mass cut by top-k and top-p", value: <NumberFlow value={1 - s.afterP.reduce((a, b) => a + b, 0)} format={{ style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }} /> },
+    { label: "mass cut by top-k and top-p", value: <NumberFlow value={Math.max(0, 1 - s.afterP.reduce((a, b) => a + b, 0))} format={{ style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }} /> },
     { label: "different tokens drawn", value: <NumberFlow value={distinct} suffix={` of ${history.length}`} /> },
   ];
 
@@ -246,8 +249,8 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
         </div>
         <ul aria-label="recent draws" className="flex min-h-7 flex-wrap gap-1">
           {history.length === 0 && <li className="text-muted">nothing drawn yet</li>}
-          {history.map((h, i) => (
-            <li key={i} className={clsx("rounded border px-1.5 py-0.5", i === history.length - 1 ? "border-accent text-accent" : "border-border text-text")}>
+          {shown.map((h, i) => (
+            <li key={i} className={clsx("rounded border px-1.5 py-0.5", i === shown.length - 1 ? "border-accent text-accent" : "border-border text-text")}>
               {h.label}
             </li>
           ))}
@@ -261,8 +264,8 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
         <tbody>
           {readouts.map((r) => (
             <tr key={r.label} className="border-t border-border first:border-t-0">
-              <td className="py-1 text-muted">{r.label}</td>
-              <td className="py-1 text-right text-text">{r.value}</td>
+              <td className={clsx(pages ? "py-0.5" : "py-1", "text-muted")}>{r.label}</td>
+              <td className={clsx(pages ? "py-0.5" : "py-1", "text-right text-text")}>{r.value}</td>
             </tr>
           ))}
         </tbody>
@@ -271,7 +274,7 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
       <div className="space-y-2 rounded border border-border p-3">
         <div className="text-text">predict first</div>
         <p className="leading-relaxed text-muted">Set top-p to 0.90 with top-k off, then raise the temperature from 0.7 to 1.5. Do the candidates left grow, shrink or stay the same?</p>
-        <div className="flex flex-wrap gap-2">
+        <div className={clsx("flex flex-wrap gap-2", pages && guess && "hidden")}>
           {["grow", "shrink", "same"].map((g) => (
             <button key={g} type="button" aria-pressed={guess === g} onClick={() => setGuess(g)} className={clsx("pressable rounded border px-2.5 py-1", guess === g ? "border-accent text-accent" : "border-border text-text")}>
               {g}
@@ -294,7 +297,10 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
           </div>
         )}
       </div>
-
+    </>
+  );
+  const notesPart = (
+    <>
       <div className="space-y-1.5 leading-relaxed text-muted">
         <p>Try: drag T to zero and sample, then all the way up and press sample 20. Pull top-k down to a few tokens and watch the bars after it. Switch the stage to see what each knob does to the same row.</p>
         <p>{`Logits are the BF16 output of TinyLlama on the CPU (${dump.commit}, ${dump.date.slice(0, 10)}): the ${dump.top} largest and the rest in bins of ${dump.bin}. Draws use the engine's Gumbel-max rule.`}</p>
@@ -315,8 +321,11 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
           )}
         {pages.two &&
           createPortal(
-            <div className="space-y-4 tabular-nums text-xs">
-              {sliderPart}
+            <div className="space-y-3 tabular-nums text-xs">
+              <Mirror from="the previous page">
+                <Toggle label="prompt" choices={names} value={ctx} onChange={pickContext} />
+                {sliderPart}
+              </Mirror>
               {drawPart}
               {sidePart}
             </div>,
@@ -334,7 +343,10 @@ export function SamplingSandbox({ pages }: { pages?: { one: HTMLElement | null; 
         {drawPart}
       </div>
 
-      <div className="space-y-5">{sidePart}</div>
+      <div className="space-y-5">
+        {sidePart}
+        {notesPart}
+      </div>
     </div>
   );
 }

@@ -15,6 +15,16 @@ constexpr uint64_t align_up(uint64_t byte_os, uint64_t alignment) {
     return (byte_os + alignment - 1) & ~(alignment - 1);
 }
 
+std::string shape_string(const std::vector<int64_t>& shape) {
+    std::string text = "[";
+
+    for (size_t i = 0; i < shape.size(); ++i) {
+        text += (i ? ", " : "") + std::to_string(shape[i]);
+    }
+
+    return text + "]";
+}
+
 const TensorEntry& require_bf16_tensor(const SafetensorsHeader& header, const std::string& name,
                                        const std::vector<int64_t>& shape,
                                        std::unordered_set<std::string>& seen) {
@@ -23,18 +33,18 @@ const TensorEntry& require_bf16_tensor(const SafetensorsHeader& header, const st
     auto it = header.tensors.find(name);
 
     if (it == header.tensors.end()) {
-        throw std::runtime_error("missing required tensor " + name);
+        throw std::runtime_error("weights: missing tensor " + name);
     }
 
     const TensorEntry& info = it->second;
 
     if (info.dtype != DType::BF16) {
-        throw std::runtime_error("tensor " + name + " must have dtype BF16, got " +
-                                 std::string(dtype_name(info.dtype)));
+        throw std::runtime_error("weights: " + name + " must be BF16");
     }
 
     if (info.shape != shape) {
-        throw std::runtime_error("unexpected shape for tensor: " + name);
+        throw std::runtime_error("weights: " + name + " has shape " + shape_string(info.shape) +
+                                 ", expected " + shape_string(shape));
     }
 
     uint64_t bytes = dtype_size(DType::BF16);
@@ -44,7 +54,8 @@ const TensorEntry& require_bf16_tensor(const SafetensorsHeader& header, const st
     }
 
     if (info.bytes != bytes) {
-        throw std::runtime_error("byte size mismatch for tensor: " + name);
+        throw std::runtime_error("weights: " + name +
+                                 " has a byte size that does not match its shape");
     }
 
     return info;
@@ -64,7 +75,7 @@ Region allocate_region(uint64_t& buffer_cursor, const std::vector<int64_t>& regi
     return region;
 }
 
-void push_whole_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const std::string& name,
+void push_whole_copy(std::vector<CopyOp>& copy_ops, const std::string& name,
                      const TensorEntry& info, const Region& dst_region) {
     copy_ops.push_back(CopyOp{.name = name,
                               .src = info.offset,
@@ -73,7 +84,7 @@ void push_whole_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const std:
                               .shape = info.shape});
 }
 
-void push_row_slice_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const std::string& name,
+void push_row_slice_copy(std::vector<CopyOp>& copy_ops, const std::string& name,
                          const TensorEntry& info, uint64_t dst_os, int64_t start, int64_t count) {
     constexpr uint64_t bf16_elem_bytes = dtype_size(DType::BF16);
     const int64_t cols = info.shape[1];
@@ -86,7 +97,7 @@ void push_row_slice_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const 
                               .shape = {count, cols}});
 }
 
-void push_col_slice_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const std::string& name,
+void push_col_slice_copy(std::vector<CopyOp>& copy_ops, const std::string& name,
                          const TensorEntry& info, const Region& dst_region, int64_t start,
                          int64_t count) {
     constexpr uint64_t bf16_elem_bytes = dtype_size(DType::BF16);
@@ -108,6 +119,21 @@ void push_col_slice_copy(std::vector<CopyOp>& copy_ops, uint64_t data_os, const 
 }
 
 }  // namespace
+
+ModelConfig shard_config(const ModelConfig& config, int num_ranks) {
+    if (num_ranks < 1) throw std::invalid_argument("shard_config: num_ranks must be at least 1");
+    if (config.kv_heads <= 0 || config.kv_heads % num_ranks != 0)
+        throw std::invalid_argument("shard_config: kv_heads must be a multiple of num_ranks");
+    if (config.heads <= 0 || config.heads % num_ranks != 0)
+        throw std::invalid_argument("shard_config: heads must be a multiple of num_ranks");
+    if (config.intermediate <= 0 || config.intermediate % num_ranks != 0)
+        throw std::invalid_argument("shard_config: intermediate must be a multiple of num_ranks");
+    ModelConfig shard = config;
+    shard.heads /= num_ranks;
+    shard.kv_heads /= num_ranks;
+    shard.intermediate /= num_ranks;
+    return shard;
+}
 
 WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeader& header, int rank,
                                int num_ranks) {
@@ -136,7 +162,7 @@ WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeade
     }
 
     if (config.tie_embeddings) {
-        throw std::runtime_error("tied embeddings are not supported");
+        throw std::runtime_error("weights: tied embeddings are not supported");
     }
 
     std::unordered_set<std::string> seen;
@@ -149,11 +175,11 @@ WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeade
     const int64_t full_kv_rows = static_cast<int64_t>(config.kv_heads) * head_dim;
     const int64_t full_intermediate_rows = config.intermediate;
 
-    const TensorEntry& embed =
+    const TensorEntry embed =
         require_bf16_tensor(header, "model.embed_tokens.weight", {vocab_size, hidden_size}, seen);
-    const TensorEntry& final_norm =
+    const TensorEntry final_norm =
         require_bf16_tensor(header, "model.norm.weight", {hidden_size}, seen);
-    const TensorEntry& lm_head =
+    const TensorEntry lm_head =
         require_bf16_tensor(header, "lm_head.weight", {vocab_size, hidden_size}, seen);
 
     struct LayerTensorEntries {
@@ -203,7 +229,7 @@ WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeade
 
     for (const auto& [name, _] : header.tensors) {
         if (!seen.contains(name)) {
-            throw std::runtime_error("unexpected tensor in checkpoint: " + name);
+            throw std::runtime_error("weights: unexpected tensor " + name);
         }
     }
 
@@ -222,8 +248,7 @@ WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeade
     uint64_t buffer_cursor = 0;
 
     shard_layout.embed = allocate_region(buffer_cursor, {vocab_size, hidden_size});
-    push_whole_copy(shard_layout.copies, header.data_offset, "model.embed_tokens.weight", embed,
-                    shard_layout.embed);
+    push_whole_copy(shard_layout.copies, "model.embed_tokens.weight", embed, shard_layout.embed);
 
     for (int layer = 0; layer < config.layers; ++layer) {
         const std::string prefix = "model.layers." + std::to_string(layer) + ".";
@@ -232,8 +257,8 @@ WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeade
 
         dst_layer.ln1 = allocate_region(buffer_cursor, {hidden_size});
 
-        push_whole_copy(shard_layout.copies, header.data_offset, prefix + "input_layernorm.weight",
-                        *entry.ln1, dst_layer.ln1);
+        push_whole_copy(shard_layout.copies, prefix + "input_layernorm.weight", *entry.ln1,
+                        dst_layer.ln1);
 
         dst_layer.wqkv = allocate_region(buffer_cursor, {shard_wqkv_rows, hidden_size});
 
@@ -242,55 +267,49 @@ WeightLayout plan_shard_layout(const ModelConfig& config, const SafetensorsHeade
         const uint64_t kv_bytes =
             static_cast<uint64_t>(shard_kv_rows * hidden_size) * bf16_elem_bytes;
 
-        push_row_slice_copy(shard_layout.copies, header.data_offset,
-                            prefix + "self_attn.q_proj.weight", *entry.q_proj,
+        push_row_slice_copy(shard_layout.copies, prefix + "self_attn.q_proj.weight", *entry.q_proj,
                             dst_layer.wqkv.offset, rank * shard_q_rows, shard_q_rows);
-        push_row_slice_copy(shard_layout.copies, header.data_offset,
-                            prefix + "self_attn.k_proj.weight", *entry.k_proj,
+        push_row_slice_copy(shard_layout.copies, prefix + "self_attn.k_proj.weight", *entry.k_proj,
                             dst_layer.wqkv.offset + q_bytes, rank * shard_kv_rows, shard_kv_rows);
-        push_row_slice_copy(shard_layout.copies, header.data_offset,
-                            prefix + "self_attn.v_proj.weight", *entry.v_proj,
+        push_row_slice_copy(shard_layout.copies, prefix + "self_attn.v_proj.weight", *entry.v_proj,
                             dst_layer.wqkv.offset + q_bytes + kv_bytes, rank * shard_kv_rows,
                             shard_kv_rows);
 
         dst_layer.wo = allocate_region(buffer_cursor, {hidden_size, shard_q_rows});
-        push_col_slice_copy(shard_layout.copies, header.data_offset,
-                            prefix + "self_attn.o_proj.weight", *entry.o_proj, dst_layer.wo,
-                            rank * shard_q_rows, shard_q_rows);
+        push_col_slice_copy(shard_layout.copies, prefix + "self_attn.o_proj.weight", *entry.o_proj,
+                            dst_layer.wo, rank * shard_q_rows, shard_q_rows);
 
         dst_layer.ln2 = allocate_region(buffer_cursor, {hidden_size});
-        push_whole_copy(shard_layout.copies, header.data_offset,
-                        prefix + "post_attention_layernorm.weight", *entry.ln2, dst_layer.ln2);
+        push_whole_copy(shard_layout.copies, prefix + "post_attention_layernorm.weight", *entry.ln2,
+                        dst_layer.ln2);
 
         dst_layer.wgu = allocate_region(buffer_cursor, {2 * shard_intermediate_units, hidden_size});
         const uint64_t gate_bytes =
             static_cast<uint64_t>(shard_intermediate_units * hidden_size) * bf16_elem_bytes;
 
-        push_row_slice_copy(shard_layout.copies, header.data_offset,
-                            prefix + "mlp.gate_proj.weight", *entry.gate_proj, dst_layer.wgu.offset,
-                            rank * shard_intermediate_units, shard_intermediate_units);
-        push_row_slice_copy(shard_layout.copies, header.data_offset, prefix + "mlp.up_proj.weight",
-                            *entry.up_proj, dst_layer.wgu.offset + gate_bytes,
-                            rank * shard_intermediate_units, shard_intermediate_units);
+        push_row_slice_copy(shard_layout.copies, prefix + "mlp.gate_proj.weight", *entry.gate_proj,
+                            dst_layer.wgu.offset, rank * shard_intermediate_units,
+                            shard_intermediate_units);
+        push_row_slice_copy(shard_layout.copies, prefix + "mlp.up_proj.weight", *entry.up_proj,
+                            dst_layer.wgu.offset + gate_bytes, rank * shard_intermediate_units,
+                            shard_intermediate_units);
 
         dst_layer.wdown = allocate_region(buffer_cursor, {hidden_size, shard_intermediate_units});
-        push_col_slice_copy(shard_layout.copies, header.data_offset,
-                            prefix + "mlp.down_proj.weight", *entry.down_proj, dst_layer.wdown,
-                            rank * shard_intermediate_units, shard_intermediate_units);
+        push_col_slice_copy(shard_layout.copies, prefix + "mlp.down_proj.weight", *entry.down_proj,
+                            dst_layer.wdown, rank * shard_intermediate_units,
+                            shard_intermediate_units);
     }
 
     shard_layout.final_norm = allocate_region(buffer_cursor, {hidden_size});
-    push_whole_copy(shard_layout.copies, header.data_offset, "model.norm.weight", final_norm,
-                    shard_layout.final_norm);
+    push_whole_copy(shard_layout.copies, "model.norm.weight", final_norm, shard_layout.final_norm);
 
     shard_layout.lm_head = allocate_region(buffer_cursor, {vocab_size, hidden_size});
-    push_whole_copy(shard_layout.copies, header.data_offset, "lm_head.weight", lm_head,
-                    shard_layout.lm_head);
+    push_whole_copy(shard_layout.copies, "lm_head.weight", lm_head, shard_layout.lm_head);
 
     std::sort(shard_layout.copies.begin(), shard_layout.copies.end(),
               [](const CopyOp& a, const CopyOp& b) { return a.src < b.src; });
 
-    shard_layout.total_bytes = align_up(buffer_cursor, kWeightAlignment);
+    shard_layout.total_bytes = buffer_cursor;
 
     return shard_layout;
 }

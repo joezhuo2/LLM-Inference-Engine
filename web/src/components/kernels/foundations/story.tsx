@@ -6,9 +6,13 @@ import { useState } from "react";
 import { gemmOps, roofline } from "@/content/kernels/gemm";
 import { measured } from "@/content/kernels/types";
 import { ceilings, hardware, onchip, onchipRun } from "@/lib/data";
+import { published } from "@/content/published";
+import { bigSide, engineSide, scaleSources } from "@/content/scale";
+import { about, bytesText, msText, num } from "@/lib/round";
 import { Author } from "../authorship";
 import { EasedBar } from "../eased-bar";
 import { embeddingNumbers, EmbeddingPanel } from "../embedding-lookup";
+import { ScaleFigure } from "../scale-figure";
 import { StickyStory, type StoryStep } from "../sticky-story";
 import { Toggle } from "../toggle";
 import { ContrastFigure, FusionFigure, HierarchyFigure, type Lane, MemoryFigure, RooflineFigure, type Tier } from "./figures";
@@ -51,6 +55,7 @@ const fusion = {
 };
 
 const lookup = embeddingNumbers;
+const h100 = published.h100;
 
 const mb = (kb: number) => `${(kb / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 })} MB`;
 
@@ -84,7 +89,7 @@ const prediction: Prediction = {
   question: "Decode 16 tokens at once instead of 1 (16 rows of x). What happens to the time it takes to read gate/up's weights?",
   choices: ["16 times longer", "a little longer", "it stays the same"],
   answer: "it stays the same",
-  why: `All the rows share one read of the same weights, so the bytes, and the memory time, do not move. Only the FLOPs grow with the rows, and they overtake memory only past the ridge, about ${Math.round(ridge)} rows.`,
+  why: `All the rows share one read of the same weights, so the bytes, and the memory time, do not move. Only the FLOPs grow with the rows, and they overtake memory only past the ridge, ${about(ridge)} rows.`,
 };
 
 export function RowsPicker() {
@@ -173,7 +178,7 @@ const steps: StoryStep[] = [
         <p>
           A thread can work on data in four places. Global memory is the DRAM that holds the weights and
           the KV cache; its measured bandwidth on this GPU is{" "}
-          <span className="text-accent">{peak.gbs} GB/s</span>. On a laptop GPU it is GDDR, not HBM, but the role
+          <span className="text-accent">{about(peak.gbs)} GB/s</span>. On a laptop GPU it is GDDR, not HBM, but the role
           is the same. The L2 cache sits in front of it and every SM shares it.
         </p>
         <p>
@@ -182,7 +187,7 @@ const steps: StoryStep[] = [
         </p>
         <p>
           Each step closer to the thread is faster, measured on this GPU: a load waits{" "}
-          <span className="text-text">{nanos(chip.dramNs)}</span> from DRAM, less from L2 and least from shared memory, and an FMA&apos;s result
+          <span className="text-text">{msText(chip.dramNs / 1e6)}</span> from DRAM, less from L2 and least from shared memory, and an FMA&apos;s result
           feeds the next after only a few cycles. L2 streams several times what DRAM does, and shared memory moves about twice as much with wide vector loads as with plain word loads.
         </p>
       </>
@@ -196,11 +201,11 @@ const steps: StoryStep[] = [
         <p>
           Every operation has to move some bytes from memory and do some arithmetic, and it takes as long as the slower of
           the two. Take one layer&apos;s gate/up projection, a large BF16 matrix. Reading its weights at the measured bandwidth takes{" "}
-          <span className="text-accent">{readUs.toFixed(1)} µs</span> (calculated), however many tokens use them.
+          <span className="text-accent">{msText(readUs / 1e3)}</span> (calculated), however many tokens use them.
         </p>
         <p>
           Decoding one token is a matrix times a vector: one FLOP for every byte of weight. At the measured compute peak the
-          arithmetic needs only <span className="text-text">{mathUs(1).toFixed(1)} µs</span> and the GPU waits on
+          arithmetic needs only <span className="text-text">{msText(mathUs(1) / 1e3)}</span> and the GPU waits on
           memory: memory bound. A long prefill uses each weight once for every prompt token, needs far more arithmetic and waits on
           nothing but the math: compute bound.
         </p>
@@ -214,8 +219,11 @@ const steps: StoryStep[] = [
       <>
         <p>
           A roofline plots speed against FLOPs per byte. Its slope is the memory bandwidth and its flat top the compute peak,
-          and they meet at the ridge, <span className="text-accent">{Math.round(ridge)}</span> FLOP/byte on this GPU (the compute peak divided by the bandwidth). Left
+          and they meet at the ridge, <span className="text-accent">{about(ridge)}</span> FLOP/byte on this GPU (the compute peak divided by the bandwidth). Left
           of the ridge an operation is memory bound, right of it compute bound.
+        </p>
+        <p>
+          The bandwidth roof is not a law of physics. It is the {about(peak.gbs, 2, "")} GB/s or so that a plain kernel adding two large arrays into a third reached in a bandwidth test on this GPU, some way below the memory&apos;s rated speed, so a kernel that streams its bytes a little better can read above 100% of it.
         </p>
         <p>
           Rows that share one read of the weights set the position: FLOP/byte is about the number of rows. The ring climbs the
@@ -231,7 +239,7 @@ const steps: StoryStep[] = [
       <>
         <p>
           At a batch of one, the five matrix-vector products of a decode step run at about the bandwidth roof, and the whole step with CUDA Graphs at{" "}
-          <span className="text-accent">{wholeStep("1")}%</span>. Nothing in a decode step is near the ridge, so a
+          <span className="text-accent">{about(wholeStep("1"))}%</span>. Nothing in a decode step is near the ridge, so a
           faster multiply would not make a token faster: moving fewer bytes would.
         </p>
         <p>
@@ -251,7 +259,7 @@ const steps: StoryStep[] = [
           kernels in a row pay for the data between them twice. Fusing them keeps that intermediate in registers or shared
           memory. For add + RMSNorm that is the sum: the naive pair writes it and reads it back twice, the fused kernel does
           not, and the DRAM traffic falls to{" "}
-          <span className="text-accent">{fusion.fusedKb} KB</span>, about two thirds of the unfused pair&apos;s.
+          <span className="text-accent">{about(fusion.fusedKb)} KB</span>, about two thirds of the unfused pair&apos;s.
         </p>
         <p>
           The kernel stories that follow are this idea at work, each on one small operation of a layer:{" "}
@@ -285,10 +293,27 @@ const steps: StoryStep[] = [
           {lookup.bytesPerThread}-byte load. Its output is bit-identical.
         </p>
         <p>
-          Its median launch in a decode step fell from {lookup.decodeUs.naive} µs to{" "}
-          <span className="text-accent">{lookup.decodeUs.fast} µs</span> (measured), and no end-to-end number moved. The lookup is under {lookup.underPct}% of a step
+          Its median launch in a decode step fell from {msText(lookup.decodeUs.naive / 1e3)} to{" "}
+          <span className="text-accent">{msText(lookup.decodeUs.fast / 1e3)}</span> (measured), and no end-to-end number moved. The lookup is under {lookup.underPct}% of a step
           either way, so the tokens per second stayed where they were. A faster kernel only helps if the step was waiting on
           it. That is why every chapter measures where the time goes before it changes anything.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "bigger",
+    title: `on an ${bigSide.gpu}, the ridge moves to ${Math.round(bigSide.ridge)}`,
+    body: (
+      <>
+        <p>
+          The roofline carries to any GPU: its ridge is the compute peak divided by the bandwidth. Here that is {about(ridge)} FLOP per byte. An {bigSide.gpu} is published at {h100.bf16TFlops} TFLOP/s of dense BF16 and {h100.bandwidthTBs} TB/s, so its ridge sits at <span className="text-accent">{about(bigSide.ridge)}</span>, {about(bigSide.ridge / ridge)} times as far right. Its slope is higher too: {bigSide.model}&apos;s {bytesText(bigSide.readBytes)} of weights read in {msText(bigSide.readFloorMs)}, where TinyLlama needs {msText(engineSide.readFloorMs)} here.
+        </p>
+        <p>
+          Decode does not move. A matrix times one vector does about one FLOP per weight byte on any GPU, because that ratio comes from the model, not the hardware. So batch-1 decode is even further left of the H100&apos;s ridge: about {num(bigSide.ridge)} rows would have to share each weight read to reach it, against about {num(ridge)} here. A faster GPU makes the memory wall taller, not lower.
+        </p>
+        <p>
+          These numbers are calculated from published specs, and nothing was measured on an {bigSide.gpu}. Its ridge is a ratio of two peaks from a spec sheet, not a measured roofline like this chapter&apos;s, whose ceilings came from tests on this GPU; measured ceilings would likely sit below both peaks, as this GPU&apos;s bandwidth does below its rated speed.
         </p>
       </>
     ),
@@ -296,13 +321,14 @@ const steps: StoryStep[] = [
 ];
 
 const captions = [
-  `all ${blocks} blocks of ${threadsPerBlock} threads drawn (${threadsPerBlock / 32} warps each), as in SwiGLU's first draft; one block and one warp zoomed; SM count from docs/hardware.md`,
-  `${hw.gpu}: sizes from docs/hardware.md, DRAM bandwidth from the bandwidth test, the rest from scripts/onchip_bench.cu: median of ${run.runs} runs at about ${whole(chip.mhz)} MHz, commit ${run.commit}, ${run.date.slice(0, 10)}; shared memory reads ${whole(chip.smem128Gbs)} GB/s with 128-bit loads, ${whole(chip.smem32Gbs)} with 32-bit; over all ${hw.sms} SMs, ${mb(hw.sms * hw.shared_kb_per_sm)} of shared memory and ${mb(chip.regTotalKb)} of registers`,
-  `gate/up weights [${out.toLocaleString("en-US")} × ${inn.toLocaleString("en-US")}] in BF16, ${(weightBytes / 1e6).toFixed(0)} MB, from config.json; ceilings from docs/results.md, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s; ${prefillRows} rows needs ${mathUs(prefillRows).toFixed(0)} µs of arithmetic, computed from the ceilings, not measured`,
-  `docs/results.md, Roofline: gate/up at 1 and 16 rows measured; the ring follows the two ceilings, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s`,
-  "docs/results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU",
-  `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, docs/profiling.md: ${fusion.unfusedKb} KB unfused, ${fusion.fusedKb} KB fused; SwiGLU's vector loads are 16 bytes; each packet stands for a whole tensor, not to scale`,
-  `docs/results.md, Kernels; a decode step copies one row per sequence, a ${lookup.prefillTokens.toLocaleString("en-US")}-token prefill step one row per prompt token; ${lookup.naiveLoads} loads per naive thread computed from the ${lookup.hidden.toLocaleString("en-US")}-value row and its ${lookup.naiveThreads} threads`,
+  `all ${blocks} blocks of ${threadsPerBlock} threads drawn (${threadsPerBlock / 32} warps each), as in SwiGLU's first draft; one block and one warp zoomed; SM count from hardware.md`,
+  `${hw.gpu}: sizes from hardware.md, DRAM bandwidth from the bandwidth test, the rest from scripts/onchip_bench.cu: median of ${run.runs} runs at about ${whole(chip.mhz)} MHz, commit ${run.commit}, ${run.date.slice(0, 10)}; shared memory reads ${whole(chip.smem128Gbs)} GB/s with 128-bit loads, ${whole(chip.smem32Gbs)} with 32-bit; over all ${hw.sms} SMs, ${mb(hw.sms * hw.shared_kb_per_sm)} of shared memory and ${mb(chip.regTotalKb)} of registers`,
+  `gate/up weights [${out.toLocaleString("en-US")} × ${inn.toLocaleString("en-US")}] in BF16, ${(weightBytes / 1e6).toFixed(0)} MB, from config.json; ceilings from results.md, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s; ${prefillRows} rows needs ${mathUs(prefillRows).toFixed(0)} µs of arithmetic, computed from the ceilings, not measured`,
+  `results.md, Roofline: gate/up at 1 and 16 rows measured; the ring follows the two ceilings, ${peak.gbs} GB/s and ${peak.tflops} TFLOP/s, which meet at ${ridge.toFixed(1)} FLOP/byte`,
+  `results.md, Roofline: RTX 5060 Laptop GPU, ceilings measured on the same GPU; the whole decode step with CUDA Graphs at ${wholeStep("1")}% of the roof`,
+  `DRAM bytes per launch at ${fusion.tokens} tokens from Nsight Compute, profiling.md: ${fusion.unfusedKb} KB unfused, ${fusion.fusedKb} KB fused; SwiGLU's vector loads are 16 bytes; each packet stands for a whole tensor, not to scale`,
+  `results.md, Kernels; a decode step copies one row per sequence, a ${lookup.prefillTokens.toLocaleString("en-US")}-token prefill step one row per prompt token; ${lookup.naiveLoads} loads per naive thread computed from the ${lookup.hidden.toLocaleString("en-US")}-value row and its ${lookup.naiveThreads} threads`,
+  `calculated, not measured: ${scaleSources.big}; ridge ${h100.bf16TFlops} TFLOP/s ÷ ${h100.bandwidthTBs} TB/s = ${bigSide.ridge.toFixed(1)} FLOP/byte, against ${peak.tflops} ÷ ${peak.gbs} = ${ridge.toFixed(1)} from this GPU's measured ceilings; floor ${whole(bigSide.readBytes)} bytes ÷ ${h100.bandwidthTBs} TB/s = ${bigSide.readFloorMs.toFixed(2)} ms, against ${engineSide.readFloorMs.toFixed(2)} ms here`,
 ];
 
 export const foundationsSteps = steps;
@@ -323,6 +349,10 @@ export const foundationsNumbers = {
   measured: measuredRows.map((rows) => ({ rows: Number(rows), x: roofline("gate_up", rows, "FLOP/byte"), y: roofline("gate_up", rows, "TFLOP/s") })),
   fusion,
 };
+
+export function FoundationsScaleFigure() {
+  return <ScaleFigure title={`the roofline on an ${bigSide.gpu}`} quantities={["ridge", "readFloor"]} marks={{ ridge: { value: 1, label: "batch-1 decode" } }} />;
+}
 
 export function FoundationsStory() {
   return (
@@ -353,6 +383,8 @@ export function FoundationsStory() {
             return <RowsPicker />;
           case 5:
             return <FusionFigure numbers={fusion} />;
+          case 7:
+            return <FoundationsScaleFigure />;
           default:
             return <EmbeddingPanel compact />;
         }

@@ -26,8 +26,8 @@ export default function Results() {
             What the engine measures on {benchRun.gpu}, against HuggingFace transformers and llama.cpp, and under load against
             vLLM. Scroll through the
             steps; hover or focus a chart for its exact values. Every number is read from <code className="font-mono text-text">results/</code> and{" "}
-            <a href={`${repoUrl}/blob/main/docs/results.md`} className="link-underline text-accent">
-              docs/results.md
+            <a href={`${repoUrl}/blob/main/results.md`} className="link-underline text-accent">
+              results.md
             </a>{" "}
             when the site is built.
           </p></Glossed>
@@ -85,7 +85,7 @@ export default function Results() {
           </h2>
           <p className="max-w-2xl text-muted">
             One script rebuilds the benchmark CSVs, the three decode step profiles, the roofline and the generated parts of
-            docs/results.md, in about 10 minutes, plugged in and with no other GPU program running.
+            results.md, in about 10 minutes, plugged in and with no other GPU program running.
           </p>
           <pre className="overflow-x-auto rounded border border-border bg-surface p-4 font-mono text-sm text-text">scripts/reproduce.sh</pre>
         </section>
