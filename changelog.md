@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## kv/prefix-cache-impl
+
+- Part C, written by Joe: prefix caching on `BlockManager`. `match_prefix`, `can_allocate_tokens`, `allocate_tokens`, `publish`, `ref_count` and `num_cached` replace the stubs: each full block is keyed by the hash of every token up to its end and by those tokens themselves, a block has a count of the sequences that hold it, a published block whose count reaches 0 stays cached, and `allocate_block` takes blank blocks first and then the cached block released longest ago. `free` and the new `truncate` release blocks from the end of the table, so the end of a chain is evicted before its start. The scheduler does not call any of it yet.
+- Part A: the 27 prefix cache tests pass and move from `tests/todo/unit/` to `tests/unit/test_prefix_cache.cpp` in `unit_tests`; the `todo_unit_tests` target is gone. `main` is merged in: the spec comment conflicted with the implementation that replaces it, and `truncate` was defined twice after the merge, so the copy in `src/sched/speculative.cpp` is removed and the one in `src/kv/block_manager.cpp` stays (same behaviour). `README.md` and `ownership.md` say prefix caching is written and not wired in.
+
 ## web/book-perf
 
 - Part A: the book icon in the top bar opens Every Byte at its cover, and closes the book to the cover when it is open (`web/src/components/top-bar.tsx`)

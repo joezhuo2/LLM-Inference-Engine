@@ -442,3 +442,11 @@ Not done or not right yet:
 - RoPE's 3D exhibit says "fast kernel, one token 2.5 µs" where the prose and caption say 6.5 µs (two data columns); it was there before this round.
 - Not looked at by eye by the lead: glossary spreads, the quantization chapter, most rounded spreads, dark-theme book spreads. Nothing was checked in a real browser with a GPU: all checks ran in headless Chrome with software WebGL.
 - `next build` and `next dev` stop now and then with the Next.js 16.4.3 security notice and pass on the next run; the fix is the upgrade to 16.4.6.
+
+## Snapshot 2026-11-21: kv/prefix-cache-impl (Branch 164)
+
+Joe wrote prefix caching on `BlockManager` (issue #99) on `kv/prefix-cache-impl`. Claude's review found two bugs (the room check in `allocate_tokens` compared against the matched blocks instead of the blocks to take; `publish` refused fewer tokens than the sequence length); Joe fixed both in c932364. Then Claude merged `origin/main` into the branch, removed the second `BlockManager::truncate` that main had in `src/sched/speculative.cpp` (the branch defines it in `block_manager.cpp`; the two linked twice), moved the tests to `tests/unit/test_prefix_cache.cpp`, removed `todo_unit_tests`, and updated the changelog, learning log, `README.md` and `ownership.md`.
+
+Open:
+- `truncate` to a length inside a published block leaves the block published, and the next `append_slot` writes into it. Nothing calls `publish` yet, so nothing breaks today; the scheduler branch must either never publish past what a rollback can reach or unpublish on truncate. No test covers it.
+- The scheduler side (admission through `can_allocate_tokens` and `allocate_tokens`, prefill from the returned count, `publish` after a step) is not started. The site still says prefix caching is not implemented in the engine, which stays true until then.

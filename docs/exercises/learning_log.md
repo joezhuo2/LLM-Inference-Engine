@@ -2525,3 +2525,10 @@
 - **a text bounding box** => 
 - **a fit guard** => 
 - **a custom event** => 
+
+## Prefix caching implemented (Branch 164)
+
+- **a reference count per block: when a shared block may be reused** => 
+- **an LRU list with a stored iterator per entry, for removal in constant time** => 
+- **why a hash hit still compares the tokens** => 
+- **checking for room before changing anything, so a failed call leaves no trace** => 

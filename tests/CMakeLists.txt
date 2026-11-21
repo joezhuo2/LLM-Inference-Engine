@@ -25,6 +25,7 @@ add_executable(unit_tests
   unit/test_metrics_window.cpp
   unit/test_model_weights.cpp
   unit/test_paged_batch.cpp
+  unit/test_prefix_cache.cpp
   unit/test_reference_golden.cpp
   unit/test_request.cpp
   unit/test_safetensors.cpp
@@ -114,13 +115,6 @@ if(ENGINE_CUDA)
   target_link_libraries(todo_gpu_tests PRIVATE engine_runtime GTest::gtest_main)
   gtest_discover_tests(todo_gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS "todo_joe;gpu")
 endif()
-
-add_executable(todo_unit_tests
-  todo/unit/test_prefix_cache.cpp
-)
-target_include_directories(todo_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(todo_unit_tests PRIVATE engine_core GTest::gtest_main)
-gtest_discover_tests(todo_unit_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
