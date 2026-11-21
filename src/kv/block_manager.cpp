@@ -188,10 +188,6 @@ int BlockManager::append_slot(SeqId seq) {
 void BlockManager::free(SeqId seq) {
     auto& seq_data = get_sequence(seq);
 
-    for (int block_id : seq_data.table) {
-        free_block(block_id);
-    }
-
     for (auto it = seq_data.table.rbegin(); it != seq_data.table.rend(); ++it) {
         free_block(*it);
     }
