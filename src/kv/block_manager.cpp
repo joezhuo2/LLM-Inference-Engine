@@ -359,11 +359,51 @@ int BlockManager::allocate_tokens(SeqId seq, std::span<const int32_t> tokens) {
     }
     
     sequences_[seq] = std::move(seq_data);
-    return leading * block_size;
+    return leading * block_size_;
 }
 
-void BlockManager::publish(SeqId, std::span<const int32_t>) {
-    throw std::logic_error("unimplemented: BlockManager::publish");
+void BlockManager::publish(SeqId seq, std::span<const int32_t> tokens) {
+    const auto& seq_data = get_sequence(seq);
+    
+    if (static_cast<int>(tokens.size()) != seq_data.length) {
+        throw std::invalid_argument(
+            "[BlockManager] Token count (" + std::to_string(tokens.size()) +
+            ") does not match sequence length (" + std::to_string(seq_data.length) + ")");
+    }
+    
+    const int full_blocks = seq_data.length / block_size_;
+    
+    if (full_blocks <= 0) {
+        return;
+    }
+    
+    PrefixKey key;
+    key.hash = 0;
+    key.tokens.reserve(static_cast<std::size_t>(full_blocks) * block_size_);
+    
+    for (int b = 0; b < full_blocks; ++b) {
+        const int start = b * block_size_;
+        
+        for (int j = 0; j < block_size_; ++j) {
+            const int32_t tok = tokens[start + j];
+            key.hash = hash_combine_token(key.hash, tok);
+            key.tokens.push_back(tok);
+        }
+        
+        const int block_id = seq_data.table[b];
+        auto& meta = block_meta_[block_id];
+        
+        if (meta.published) {
+            continue;
+        }
+        
+        auto [it, inserted] = prefix_to_block_.emplace(key, block_id);
+        
+        if (inserted) {
+            meta.published = true;
+            meta.key = key;
+        }
+    }
 }
 
 int BlockManager::ref_count(int block) const {
