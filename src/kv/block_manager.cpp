@@ -289,8 +289,23 @@ int BlockManager::match_prefix(std::span<const int32_t> tokens) const {
     return match_blocks(tokens, nullptr) * block_size_;
 }
 
-bool BlockManager::can_allocate_tokens(std::span<const int32_t>) const {
-    throw std::logic_error("unimplemented: BlockManager::can_allocate_tokens");
+bool BlockManager::can_allocate_tokens(std::span<const int32_t> tokens) const {
+    std::vector<int> matched;
+    int leading = match_blocks(tokens, &matched);
+    
+    int cached = 0;
+    
+    for (int block_id : matched) {
+        if (block_meta_[block_id].ref_count == 0) {
+            ++cached;
+        }
+    }
+    
+    const int total = (static_cast<int>(tokens.size()) + block_size_ - 1) / block_size_;
+    const int needed = total - leading;
+    const int available = free_count_ - cached;
+    
+    return available >= needed;
 }
 
 int BlockManager::allocate_tokens(SeqId, std::span<const int32_t>) {
