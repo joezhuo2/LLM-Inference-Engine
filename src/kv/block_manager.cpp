@@ -247,41 +247,41 @@ int BlockManager::match_blocks(std::span<const int32_t> tokens,
     if (tokens.empty()) {
         throw std::invalid_argument("[BlockManager] tokens must not be empty.");
     }
-    
+
     const int max_matchable = static_cast<int>((tokens.size() - 1) / block_size_);
-    
+
     if (max_matchable <= 0) {
         return 0;
     }
-    
+
     PrefixKey key;
     key.hash = 0;
     key.tokens.reserve(static_cast<std::size_t>(max_matchable) * block_size_);
-    
+
     int matched = 0;
-    
+
     for (int b = 0; b < max_matchable; ++b) {
         const int start = b * block_size_;
-        
+
         for (int j = 0; j < block_size_; ++j) {
             int32_t tok = tokens[start + j];
             key.hash = hash_combine_token(key.hash, tok);
             key.tokens.push_back(tok);
         }
-        
+
         auto it = prefix_to_block_.find(key);
-        
+
         if (it == prefix_to_block_.end()) {
             break;
         }
-        
+
         ++matched;
-        
+
         if (matched_out != nullptr) {
             matched_out->push_back(it->second);
         }
     }
-    
+
     return matched;
 }
 
@@ -292,19 +292,19 @@ int BlockManager::match_prefix(std::span<const int32_t> tokens) const {
 bool BlockManager::can_allocate_tokens(std::span<const int32_t> tokens) const {
     std::vector<int> matched;
     int leading = match_blocks(tokens, &matched);
-    
+
     int cached = 0;
-    
+
     for (int block_id : matched) {
         if (block_meta_[block_id].ref_count == 0) {
             ++cached;
         }
     }
-    
+
     const int total = (static_cast<int>(tokens.size()) + block_size_ - 1) / block_size_;
     const int needed = total - leading;
     const int available = free_count_ - cached;
-    
+
     return available >= needed;
 }
 
