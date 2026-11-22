@@ -2570,3 +2570,4 @@
 - **a waiting queue drained as blocks free up** => 
 - **a title fitted to its line by shrinking the type** => 
 - **a toolbar that drops its least needed parts on a narrow screen** => 
+- **a status snapshot that says what was measured and what was left** => 

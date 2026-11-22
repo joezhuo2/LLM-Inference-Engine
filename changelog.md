@@ -28,6 +28,7 @@ Changes are grouped by branch, newest first, in the order the branches merge int
 - Part A: in the 3D pool sandbox a request that found no room waits and runs as soon as a finished request frees a block, first come first served, as the scheduler does, instead of never running; the readout says when that happened. The workbench's bar caption is shorter ("Try it yourself: what the cache can reuse"), since the longer one was cut off at 352 px.
 - Part A: the five longest prefix caching step titles are shorter ("same start, same keys and values", "every block is keyed by its prefix", "published when its step ends", "a hit leaves only its own prefill", "same keys, nearly the same answers"), since the book's page titles shrank them to 64 to 74% of their size to fit; they now keep 81% or more. The search index and the one-hour path counts are regenerated for them.
 - Part A: on phones (480 px and less) the Every Byte bar hides the beat caption, which had 34 px and showed two letters, and the beat dots, which pushed the contents, ideas and other buttons past the bar's edge on every spread with several camera beats (423 px of buttons in 358 px); the play button still steps through the beats. The prefix caching sandbox spread gets room under its last line so it can scroll clear of the bar.
+- Part A: `docs/claude/status.md` has the snapshot of prefix caching on the site: what is in, how the text fit was measured, the KV replay decision, and what is open.
 
 ## web/book-perf
 
