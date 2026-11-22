@@ -450,3 +450,25 @@ Joe wrote prefix caching on `BlockManager` (issue #99) on `kv/prefix-cache-impl`
 Open:
 - `truncate` to a length inside a published block leaves the block published, and the next `append_slot` writes into it. Nothing calls `publish` yet, so nothing breaks today; the scheduler branch must either never publish past what a rollback can reach or unpublish on truncate. No test covers it.
 - The scheduler side (admission through `can_allocate_tokens` and `allocate_tokens`, prefill from the returned count, `publish` after a step) is not started. The site still says prefix caching is not implemented in the engine, which stays true until then.
+
+## Snapshot 2026-11-21: prefix caching wired
+
+Branch `kv/prefix-cache-impl` (Branch 164), in the main checkout at Joe's request, nothing pushed. Claude wired Joe's `BlockManager` prefix cache into the engine (the scheduler and `truncate` are Part C written by Claude at Joe's request, the rest Part A). Commits, each with its changelog and learning-log lines:
+
+- 94816d5: `BlockManager::truncate` to a length inside a published block takes that block out of the prefix map, and inside a block another sequence holds it throws and changes nothing; two tests in `tests/unit/test_prefix_cache.cpp` fail without it.
+- 83fe8f5: with `SchedulerConfig::prefix_cache` (off in the library, so existing callers and tests are unchanged) admission goes through `can_allocate_tokens` and `allocate_tokens`, a prefill step starts at the cached count (`Step::cached`, `PrefillChunk::first`; plain, flash and chunked prefill), only uncached rows count against `max_prefill_tokens`, and `update` publishes every token whose keys and values the finished step wrote (all but the last sampled token, after the draft rollback), only when the step completed a prefill or filled a block; `prefix_counts()`. CPU tests with a fake model that checks every key each row reads; GPU tests: reused keys and values bit-identical to recomputed ones, greedy outputs equal up to a 3-ulp near tie.
+- 10f68f8: on by default in `serve` and `bench`, `--no-prefix-cache`; `/metrics` `tokens.prefill_total`, `cached_total`, `prefix_hit_rate`; bench summary `prefix_cache`, `prefill_tokens`, `cached_tokens`, `prefix_hit_rate`.
+- 0bb158f: `bench --shared-prefix N`.
+- 23cce91: `scripts/prefix_cache_sweep.sh` and `scripts/prefix_cache_report.py`.
+- The commit with this snapshot: `results.md` "Prefix caching" (measured at 23cce91), `results/prefix/`, the chat trace re-recorded with the cache on, README, architecture, ownership and api text.
+
+Rules worth keeping: a block is published only after the step that wrote it finished and only up to the tokens whose keys and values are written, so a speculative rollback (which only reaches rows of the current step) never touches a published block; a sequence writes only into its last, partial block, which is never published or shared; `truncate` is the guard if either ever changes.
+
+Gates: 94816d5 with the GPU suite (870 and 420 tests). The GPU dropped during the gate of 83fe8f5 (that run passed tests 1 to 828 of 886, the new GPU tests among them, then every test failed with the device gone), so 83fe8f5 to 23cce91 were gated without it (429 to 432 tests); the GPU came back and the commit with this snapshot passed the full suite with the gpu label.
+
+Open:
+- `web/` is not updated: the site still says prefix caching is not wired in. `web/scripts/kv-replay.mjs` models no sharing; the new chat trace passes its free-block check only because its 5 reused blocks belonged to requests that had finished, and a trace where two live requests share blocks would fail it. The block ids it draws also differ from the engine's now, since freed published blocks stay cached instead of going blank.
+- Greedy outputs with the cache on and off agree only up to near ties (52 of 58 identical in the tests), the same as chunked prefill; bit-identical outputs would need GEMMs whose rows do not depend on how many rows a step holds.
+- At a 1,024-token prefix the cold first request measured about 25 ms faster with the cache on than off although it does the same work; not explained.
+- No per-request cached count in `/v1/steps` or in the chat completion's `usage`; no copy-on-write (n > 1 sampling); the sweep has no eviction and no HTTP.
+- 94816d5's subject is 77 characters, over the 72 of `working_rules.md`.
