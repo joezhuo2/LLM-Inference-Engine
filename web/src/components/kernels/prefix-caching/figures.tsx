@@ -125,10 +125,10 @@ export function ChainFigure() {
       {blocks.map((b, i) => (
         <g key={i}>
           <Cell x={X + i * bw} y={44} w={bw} tone="plain" text={`block ${i}: ${b}`} />
-          <motion.g {...on(0.06 + i * 0.1)}>
-            <motion.g {...grow(0.06 + i * 0.1, 0.12 + i * 0.1)}>
-              <rect x={X} y={80 + i * 22} width={(i + 1) * bw - 3} height={12} rx={2} className="fill-accent/40" />
-            </motion.g>
+          <motion.g {...grow(0.06 + i * 0.1, 0.12 + i * 0.1)}>
+            <rect x={X} y={80 + i * 22} width={(i + 1) * bw - 3} height={12} rx={2} className="fill-accent/40" />
+          </motion.g>
+          <motion.g {...on(0.12 + i * 0.1)}>
             <Label x={X + (i + 1) * bw - 10} y={90 + i * 22} anchor="end" className="fill-text">{`key of block ${i}`}</Label>
           </motion.g>
         </g>
@@ -168,16 +168,14 @@ export function TablesFigure() {
       {tableA.map((b, i) => (
         <Cell key={i} x={X + 110 + i * tw} y={36} w={tw} h={20} tone={i < 4 ? "computed" : "warn"} text={String(b)} />
       ))}
-      <Label x={X} y={174}>the KV pool</Label>
+      <Label x={px(8)} y={174}>the KV pool</Label>
       {Array.from({ length: pool }, (_, i) => {
         const b = i + 1;
-        const tone = b <= 4 ? "computed" : b === 5 || b === 6 ? "warn" : "blank";
-        return (
-          <g key={b}>
-            <Cell x={px(b)} y={182} w={pw} h={30} tone={tone} text={String(b)} />
-          </g>
-        );
+        return <Cell key={b} x={px(b)} y={182} w={pw} h={30} tone={b <= 4 ? "computed" : b === 5 ? "warn" : "blank"} text={String(b)} />;
       })}
+      <motion.g {...on(0.5)}>
+        <Cell x={px(6)} y={182} w={pw} h={30} tone="warn" text="6" />
+      </motion.g>
       {tableA.map((b, i) => (
         <motion.line key={`a${i}`} x1={X + 110 + i * tw + 18} y1={58} x2={px(b) + 19} y2={180} strokeWidth={1} className="stroke-text/50" {...draw(0.04 + i * 0.03, 0.2 + i * 0.03)} />
       ))}
@@ -210,10 +208,10 @@ export function PublishFigure() {
   const { on, grow } = useLoop(16);
   const sw = 150;
   const steps = [
-    { label: "step 1", rows: ["A: system prompt + question", "B: system prompt + question"], tone: "computed" as const },
-    { label: "step 2", rows: ["A, B: decode"], tone: "plain" as const },
-    { label: "step 3", rows: ["C: system prompt reused", "A, B: decode"], tone: "cached" as const },
-  ];
+    { label: "step 1", rows: [["A: system prompt + question", "computed"], ["B: system prompt + question", "computed"]] },
+    { label: "step 2", rows: [["A, B: decode", "plain"]] },
+    { label: "step 3", rows: [["C: system prompt reused", "cached"], ["A, B: decode", "plain"]] },
+  ] as const;
   return (
     <Frame label="A and B are admitted in step 1 and both compute the system prompt, because nothing is published until the step finishes. At the end of step 1 their full blocks are published, and C, admitted in step 3, reuses them">
       <Label x={X} y={22} className="fill-text">published when the step that wrote it ends</Label>
@@ -221,8 +219,8 @@ export function PublishFigure() {
         <motion.g key={s.label} {...on(0.06 + i * 0.22)}>
           <Label x={X + i * (sw + 20)} y={56} className="fill-text">{s.label}</Label>
           <motion.g {...grow(0.06 + i * 0.22, 0.14 + i * 0.22)}>
-            {s.rows.map((r, k) => (
-              <Cell key={k} x={X + i * (sw + 20)} y={66 + k * 30} w={sw} tone={k === 0 ? s.tone : "plain"} text={r} />
+            {s.rows.map(([text, tone], k) => (
+              <Cell key={k} x={X + i * (sw + 20)} y={66 + k * 30} w={sw} tone={tone} text={text} />
             ))}
           </motion.g>
         </motion.g>

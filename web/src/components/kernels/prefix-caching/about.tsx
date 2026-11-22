@@ -24,7 +24,7 @@ export const prefixAbout: StoryStep = {
   ),
 };
 
-export const prefixAboutCaption = `measured ${prefix.date} on the ${prefix.gpu}: ${p.quiet.on.requests} requests sharing a ${fmt(p.shared)}-token start, arriving ${prefix.quietArrivals.replace("/s", " a second")}; the median later request, median of ${p.quiet.on.runs} runs (results.md, Prefix caching); the blocks above are illustrative`;
+export const prefixAboutCaption = `measured ${prefix.date} on the ${prefix.gpu}: ${p.quiet.on.requests} requests sharing a ${fmt(p.shared)}-token start, arriving ${prefix.quietArrivals.replace("/s", " a second")}; the median later request, median of ${p.quiet.on.runs} runs (results.md, Prefix caching)`;
 
 export function PrefixAboutStory() {
   return <StickyStory kicker="the idea" steps={[prefixAbout]} caption={() => prefixAboutCaption} figure={() => <ShareFigure />} />;

@@ -2552,3 +2552,4 @@
 - **a hit rate that is block arithmetic** => 
 - **a build that fails when a hand-written table and its data files disagree** => 
 - **a claim guarded by a check that throws when the data stops supporting it** => 
+- **an SVG label that fades in with the bar it names** => 
