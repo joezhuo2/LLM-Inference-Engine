@@ -2546,3 +2546,5 @@
 - **why a cache hit lowers the time to the first token but not the time per token** => 
 - **a before and after run to show that a new default changes nothing** => 
 - **a build that fails when the line an excerpt ends on changes** => 
+- **a file name that records the settings of a run** => 
+- **a median over runs of a median over requests** => 

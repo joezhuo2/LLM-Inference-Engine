@@ -9,6 +9,7 @@ import launchGapsJson from "@/data/launch_gaps.json";
 import modelShapeJson from "@/data/model_shape.json";
 import onchipJson from "@/data/onchip.json";
 import prefillStepJson from "@/data/prefill_step.json";
+import prefixJson from "@/data/prefix.json";
 import profilingJson from "@/data/profiling.json";
 import resultsDocJson from "@/data/results_doc.json";
 import samplingLogitsJson from "@/data/sampling_logits.json";
@@ -139,6 +140,16 @@ export function speculativeExample(): SpeculativeExample {
   const example = speculativeExampleJson as unknown as Partial<SpeculativeExample>;
   if (!example.steps) throw new Error("results/speculative_example.json is missing, so the speculative decoding chapter has no recorded steps (scripts/speculative_example.py writes it)");
   return example as SpeculativeExample;
+}
+
+export type PrefixRow = { shared: number; own: number; rate: number; arrivals: string; cache: "on" | "off"; requests: number; runs: number; first_ttft_ms: number; later_ttft_ms: number; hit_rate: number; output_tps: number; prefill_tokens: number; cached_tokens: number };
+
+export type PrefixRuns = { date: string; gpu: string; commit: string | null; rows: PrefixRow[] };
+
+export function prefixRuns(): PrefixRuns {
+  const runs = prefixJson as unknown as PrefixRuns;
+  if (!runs.rows.length) throw new Error("results/prefix/ has no runs, so the prefix caching chapter has no measurements (scripts/prefix_cache_sweep.sh writes them)");
+  return runs;
 }
 
 export type Doc = "profiling" | "results";

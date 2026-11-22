@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { replayKv } from "./kv-replay.mjs";
 import { parseFlashKernel, parseGraphRule, parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 import { parseLaunchGaps, parsePrefillStep, parseProfiling } from "./profiling.mjs";
+import { prefixRows, prefixRun } from "./prefix-runs.mjs";
 
 const web = resolve(fileURLToPath(import.meta.url), "../..");
 const results = resolve(web, "../results");
@@ -100,6 +101,20 @@ function readOnchip() {
   if (!existsSync(path)) return [];
   const [header, ...rows] = parseCsv(readFileSync(path, "utf8"));
   return rows.map((row) => Object.fromEntries(header.map((key, i) => [key, value(row[i] ?? "")])));
+}
+
+function readPrefix() {
+  const dir = join(results, "prefix");
+  if (!existsSync(dir)) return { rows: [] };
+  const table = (path) => {
+    const [header, ...rows] = parseCsv(readFileSync(path, "utf8"));
+    return rows.map((row) => Object.fromEntries(header.map((key, i) => [key, value(row[i] ?? "")])));
+  };
+  const runs = readdirSync(dir)
+    .filter((name) => name.endsWith("_summary.csv"))
+    .sort()
+    .map((name) => prefixRun(name, table(join(dir, name))[0], table(join(dir, name.replace("_summary", "")))));
+  return { date: runs[0]?.date, gpu: runs[0]?.gpu, commit: recordedIn(dir), rows: prefixRows(runs) };
 }
 
 function git(...args) {
@@ -207,4 +222,6 @@ writeFileSync(join(dataDir, "sampling_logits.json"), JSON.stringify(samplingLogi
 const speculativeFile = join(results, "speculative_example.json");
 const speculativeExample = existsSync(speculativeFile) ? JSON.parse(readFileSync(speculativeFile, "utf8")) : {};
 writeFileSync(join(dataDir, "speculative_example.json"), JSON.stringify(speculativeExample));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, sampling logits ${samplingLogits.contexts?.length ?? 0} contexts, ${onchip.length} on-chip rows, environment ${environment.commit ?? "missing"}`);
+const prefix = readPrefix();
+writeFileSync(join(dataDir, "prefix.json"), JSON.stringify(prefix));
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, sampling logits ${samplingLogits.contexts?.length ?? 0} contexts, ${onchip.length} on-chip rows, prefix cache ${prefix.rows.length} settings, environment ${environment.commit ?? "missing"}`);
