@@ -528,12 +528,12 @@
   "steps": [
    {
     "id": "same-keys",
-    "title": "the same start gives the same keys and values",
+    "title": "same start, same keys and values",
     "words": 132
    },
    {
     "id": "chain",
-    "title": "a block's key is every token before its end",
+    "title": "every block is keyed by its prefix",
     "words": 152
    },
    {
@@ -543,7 +543,7 @@
    },
    {
     "id": "publish",
-    "title": "published when the step that wrote it ends",
+    "title": "published when its step ends",
     "words": 127
    },
    {
@@ -553,7 +553,7 @@
    },
    {
     "id": "ttft",
-    "title": "a hit leaves only the request's own prefill",
+    "title": "a hit leaves only its own prefill",
     "group": "measured",
     "words": 200
    },
@@ -565,7 +565,7 @@
    },
    {
     "id": "same-output",
-    "title": "the same keys, nearly the same answers",
+    "title": "same keys, nearly the same answers",
     "group": "how it got built",
     "words": 155
    }

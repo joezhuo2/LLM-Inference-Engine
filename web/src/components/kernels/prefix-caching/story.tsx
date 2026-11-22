@@ -28,7 +28,7 @@ const prediction: Prediction = expectAnswer({
 const steps: StoryStep[] = [
   {
     id: "same-keys",
-    title: "the same start gives the same keys and values",
+    title: "same start, same keys and values",
     body: (
       <>
         <p>
@@ -43,7 +43,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "chain",
-    title: "a block's key is every token before its end",
+    title: "every block is keyed by its prefix",
     body: (
       <>
         <p>
@@ -75,7 +75,7 @@ const steps: StoryStep[] = [
   },
   {
     id: "publish",
-    title: "published when the step that wrote it ends",
+    title: "published when its step ends",
     body: (
       <>
         <p>
@@ -108,7 +108,7 @@ const steps: StoryStep[] = [
   {
     id: "ttft",
     group: "measured",
-    title: "a hit leaves only the request's own prefill",
+    title: "a hit leaves only its own prefill",
     body: (
       <>
         <p>
@@ -145,7 +145,7 @@ const steps: StoryStep[] = [
   {
     id: "same-output",
     group: "how it got built",
-    title: "the same keys, nearly the same answers",
+    title: "same keys, nearly the same answers",
     body: (
       <>
         <p>
