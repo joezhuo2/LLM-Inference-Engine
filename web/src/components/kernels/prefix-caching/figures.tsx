@@ -99,7 +99,7 @@ export function SameKeysFigure() {
           </motion.g>
         </g>
       ))}
-      <motion.path d={`M${X + 4 * cw + 30} 92 C ${X + 4 * cw + 30} 76, ${X + 30} 76, ${X + 30} 88`} fill="none" strokeWidth={1.2} className="stroke-accent" {...on(0.4)} />
+      <motion.path d={`M${X + 4 * cw + 30} 112 C ${X + 4 * cw + 30} 132, ${X + 30} 132, ${X + 30} 114`} fill="none" strokeWidth={1.2} className="stroke-accent" {...on(0.4)} />
       <motion.g {...on(0.4)}>
         <Label x={X + 2 * cw} y={250} className="fill-text">{`"tutor" reads its own token and the ${4} before it`}</Label>
       </motion.g>
@@ -248,7 +248,7 @@ export function PublishFigure() {
 
 type Slot = "blank" | "held" | "cached" | "taken";
 const slots: Slot[] = ["cached", "cached", "cached", "cached", "held", "held", "blank", "blank", "cached", "cached", "held", "held"];
-const order = [3, 4, 1, 2, 0, 0, 0, 0, 7, 8, 0, 0];
+const order = [4, 3, 2, 1, 0, 0, 0, 0, 6, 5, 0, 0];
 
 export function PoolFigure() {
   const { on } = useLoop(16);
