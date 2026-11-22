@@ -127,6 +127,12 @@ export const engineRows: EngineRow[] = [
     llamacpp: { path: "tools/server/server-context.cpp", line: 3989, symbol: "update_slots", note: "Prompt tokens join after the decode tokens, up to n_batch per step, so a long prompt takes several steps. llama_context::decode cuts each batch into n_ubatch pieces." },
   },
   {
+    slug: "prefix-caching",
+    idea: "a shared prompt start, computed once",
+    vllm: { path: "vllm/v1/core/kv_cache_manager.py", line: 288, symbol: "KVCacheManager.get_computed_blocks", note: "Finds the full blocks already cached for a prompt by hashes chained from the first block (hash_block_tokens in kv_cache_utils.py) and leaves the last token to compute. BlockPool counts each block's holders (ref_cnt); released blocks join one free queue, least recently used and chain ends first. enable_prefix_caching is on by default." },
+    llamacpp: { path: "tools/server/server-context.cpp", line: 4124, symbol: "pre_decode", note: "No block is shared between slots: each slot keeps its own cache, and a new prompt reuses the tokens it has in common with what that slot held last (cache_prompt, on by default). server_prompt_cache in server-task.cpp keeps whole slot states in host memory (--cache-ram) and loads the closest one." },
+  },
+  {
     slug: "where-the-time-went",
     idea: "profiling a step kernel by kernel",
     vllm: { path: "vllm/profiler/wrapper.py", line: 682, symbol: "CudaProfilerWrapper", note: "Starts and stops the CUDA profiler around a window so Nsight Systems records only that part. TorchProfilerWrapper in the same file uses the PyTorch profiler." },

@@ -36,6 +36,7 @@ struct Options {
     int token_budget = 0;
     int speculate = 0;
     bool speculate_adaptive = false;
+    bool no_prefix_cache = false;
     std::vector<std::string> cors_origins = server::kDefaultCorsOrigins;
     std::vector<std::string> allow_hosts;
     server::SamplingDefaults defaults{};
@@ -73,7 +74,8 @@ server::HttpOptions http_options(const Options& o, const ModelConfig& config) {
                                    {"graph_steps", o.graphs ? o.graph_steps : 0},
                                    {"token_budget", o.token_budget},
                                    {"speculate", o.speculate},
-                                   {"speculate_adaptive", o.speculate_adaptive}};
+                                   {"speculate_adaptive", o.speculate_adaptive},
+                                   {"prefix_cache", !o.no_prefix_cache}};
     return {.cors_origins = o.cors_origins,
             .allowed_hosts = allowed_hosts(o),
             .defaults = o.defaults,
@@ -98,7 +100,8 @@ void run(const Options& o) {
                                                       .graph_steps = o.graph_steps,
                                                       .token_budget = o.token_budget,
                                                       .speculate = o.speculate,
-                                                      .speculate_adaptive = o.speculate_adaptive});
+                                                      .speculate_adaptive = o.speculate_adaptive,
+                                                      .prefix_cache = !o.no_prefix_cache});
     server::ServingLoop loop(
         *backend, [&](std::span<const int32_t> ids) { return tokenizer.decode(ids); },
         w.config.eos_id);
@@ -175,6 +178,10 @@ void add_serve_command(CLI::App& app) {
                   "With --speculate: each sequence starts at that many draft tokens, halves its "
                   "limit after a step that rejects one and doubles it back after a step that "
                   "accepts them all");
+    cmd->add_flag("--no-prefix-cache", opts->no_prefix_cache,
+                  "Turn off prefix caching: by default a request whose prompt starts with whole "
+                  "blocks of tokens that are still in the KV cache reuses their keys and values "
+                  "and prefills only the rest; the output does not change");
     cmd->add_option("--cors-origin", opts->cors_origins,
                     "Origin allowed to call the server from a browser, such as "
                     "https://example.vercel.app; repeat for several (default: "

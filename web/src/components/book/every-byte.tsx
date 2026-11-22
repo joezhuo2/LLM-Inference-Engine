@@ -25,7 +25,7 @@ import { GlossaryArticle } from "./glossary-article";
 import { FitPage, type LensHandle, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, ideasRoute, isDeep, setIdeasView, deepGroup, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStop, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText, glossarySpreads, glossaryStops, glossaryTitle, engineStops } from "./front-matter";
+import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, ideasRoute, isDeep, setIdeasView, deepGroup, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStops, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText, glossarySpreads, glossaryStops, glossaryTitle, engineStops } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
@@ -134,7 +134,7 @@ function compose(raw: Record<string, Stop[]>) {
   return { stops, meta };
 }
 
-const base: Record<string, Stop[]> = { start: startStops(), contents: [contentsStop()], beyond: beyondStops(0), engines: engineStops(0), estimates: estimateStops(0), errata: errataStops(0), glossary: glossaryStops(0) };
+const base: Record<string, Stop[]> = { start: startStops(), contents: contentsStops(), beyond: beyondStops(0), engines: engineStops(0), estimates: estimateStops(0), errata: errataStops(0), glossary: glossaryStops(0) };
 const initial = compose(base);
 
 export function EveryByte() {
@@ -747,7 +747,7 @@ export function EveryByte() {
                 <Scramble key={page} text={`${open ? `${leftPage(page)}–${page * 2 - 1}` : 1} / ${total * 2 - 1}`} numeric durationMs={700} />
               </span>
             )}
-            <span className="min-w-0 max-w-[22rem] truncate">
+            <span className={clsx("min-w-0 max-w-[22rem] truncate", open && "max-[480px]:hidden")}>
               {!open && saved ? (
                 <button type="button" data-continue onClick={() => void resume(saved)} className="link-underline max-w-full truncate text-left text-text">
                   {`continue at page ${saved.page}, ${saved.name} →`}
@@ -756,7 +756,7 @@ export function EveryByte() {
                 <Scramble key={caption} text={caption} durationMs={900} />
               )}
             </span>
-            <span className="flex shrink-0 items-center gap-0.5">
+            <span className="flex shrink-0 items-center gap-0.5 max-[480px]:hidden">
               {open &&
                 beats.length > 1 &&
                 beats.map((b, i) => (

@@ -67,6 +67,7 @@ ServeStats run_batched(Scheduler& scheduler, PagedRunner& runner, Sampler& sampl
             ++finished;
         }
     }
+    stats.prefix = scheduler.prefix_counts();
     return stats;
 }
 

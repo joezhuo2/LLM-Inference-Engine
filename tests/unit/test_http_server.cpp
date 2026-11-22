@@ -132,6 +132,17 @@ TEST_F(HttpServerTest, MetricsHaveTheContractFieldsAndNullLatencyAtFirst) {
     EXPECT_EQ(j["steps_total"], 0);
 }
 
+TEST_F(HttpServerTest, MetricsCountPrefillTokensAndTheOnesTheCacheHeld) {
+    start(always_11);
+    const auto res = client().Post("/v1/chat/completions", chat_body(4, false), "application/json");
+    ASSERT_TRUE(res);
+    const Json usage = Json::parse(res->body)["usage"];
+    const Json m = Json::parse(client().Get("/metrics")->body);
+    EXPECT_EQ(m["tokens"]["prefill_total"], usage["prompt_tokens"]);
+    EXPECT_EQ(m["tokens"]["cached_total"], 0);
+    EXPECT_EQ(m["tokens"]["prefix_hit_rate"], 0.0);
+}
+
 TEST_F(HttpServerTest, PreflightFromTheDevServerAllowsThePrivateNetwork) {
     start(always_11);
     const auto res = client().Options("/v1/chat/completions",

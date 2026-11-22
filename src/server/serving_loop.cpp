@@ -203,6 +203,8 @@ void ServingLoop::record_queues() {
     counters_.waiting = scheduler.num_waiting();
     counters_.running = scheduler.num_running();
     counters_.blocks_free = scheduler.blocks().num_free();
+    counters_.prefill_total = scheduler.prefix_counts().prefill;
+    counters_.cached_total = scheduler.prefix_counts().cached;
 }
 
 }  // namespace engine::server

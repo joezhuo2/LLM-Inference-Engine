@@ -19,9 +19,10 @@ const lines: Record<string, string> = {
   "memory-budget": "Fit fixed model weights and a growing KV cache into the same finite device memory.",
   serving: "Follow the scheduler as it admits waiting requests and reclaims blocks under pressure.",
   "chunked-prefill": "Spread a long prompt across several steps so other requests can keep decoding.",
+  "prefix-caching": "Keep the keys and values of a shared prompt start and let later requests point their block tables at them.",
   "where-the-time-went": "Revisit the complete decode step through the profiler and see which work still dominates.",
   quantization: "Store each weight in fewer bytes so every decoded token has less memory to read.",
-  beyond: "Look outward to quantization, shared prefixes, draft models, and larger machines.",
+  beyond: "Look outward to quantization, finer prefix sharing, draft models, and larger machines.",
   "dead-ends": "Reopen the experiments that fell short and inspect the tradeoffs their measurements exposed.",
 };
 

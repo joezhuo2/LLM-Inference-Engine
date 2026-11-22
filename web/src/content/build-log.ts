@@ -2,6 +2,7 @@ import { measured as tableValue } from "@/content/kernels/types";
 import { cellNumber, embeddingLaunch, medianOf, profilingTable } from "@/lib/data";
 import { more as specMore, spec, specFmt } from "./kernels/speculative-decoding";
 import { shardedForward } from "./kernels/tensor-parallelism";
+import { pcFmt, prefix } from "./kernels/prefix-caching";
 
 export type Bar = { label: string; value: number; highlight?: boolean };
 
@@ -16,7 +17,7 @@ export type Entry = {
   title: string;
   text: string;
   metric?: Metric;
-  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles" | "speculate" | "rank" | "shards";
+  scene?: "bandwidth" | "reduce" | "gemm" | "weights" | "smem" | "vram" | "warps" | "tokenize" | "generate" | "sample" | "roofline" | "chunked" | "buckets" | "sweep" | "lookup" | "tiles" | "speculate" | "rank" | "shards" | "prefix";
 };
 
 export type Milestone = { id: string; name: string; dates: string; goal: string; entries: Entry[] };
@@ -418,7 +419,7 @@ export const milestones: Milestone[] = [
   {
     id: "M6",
     name: "refinements",
-    dates: "Nov 4 to 14",
+    dates: "Nov 4 to 21",
     goal: "Refine how the engine serves requests now that it has shipped, and take a first step past one GPU.",
     entries: [
       {
@@ -552,6 +553,24 @@ export const milestones: Milestone[] = [
             { label: "whole model", value: forward.wholeMsPerToken },
             { label: "2 ranks", value: forward.msPerToken[1], highlight: true },
             { label: "4 ranks", value: forward.msPerToken[2] },
+          ],
+        },
+      },
+      {
+        date: "Nov 21",
+        prs: [226],
+        branch: "kv/prefix-cache-impl",
+        scene: "prefix",
+        title: "Requests that start the same way share their first blocks",
+        text: `Prefix caching keeps the keys and values of every full block a finished step wrote, keyed by all the tokens up to the end of the block. A later request whose prompt starts with those blocks puts the same physical blocks into its own block table and prefills only the rest. Joe wrote it in the block manager: a count of holders per block, a map from keys to blocks and a list of released blocks to evict from, oldest first. Claude wired it into the scheduler at his request, on by default. At a ${pcFmt(prefix.largest.shared)}-token shared prefix a later request's time to the first token fell from ${pcFmt(prefix.largest.quiet.off.later_ttft_ms)} to ${pcFmt(prefix.largest.quiet.on.later_ttft_ms)} ms, and with ${prefix.requests} requests at once the engine wrote ${pcFmt(prefix.speedup(prefix.largest), 1)} times the tokens per second (measured). The reused keys and values are bit-identical; ${prefix.sameOut.same} of ${prefix.sameOut.outputs} greedy outputs are identical and the rest split at near ties, as with chunked prefill.`,
+        metric: {
+          kind: "bars",
+          label: `measured ms to a later request's first token, ${pcFmt(prefix.largest.shared)} shared tokens`,
+          unit: "ms",
+          digits: 1,
+          bars: [
+            { label: "cache off", value: prefix.largest.quiet.off.later_ttft_ms },
+            { label: "cache on", value: prefix.largest.quiet.on.later_ttft_ms, highlight: true },
           ],
         },
       },

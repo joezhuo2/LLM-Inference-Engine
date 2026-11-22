@@ -442,3 +442,53 @@ Not done or not right yet:
 - RoPE's 3D exhibit says "fast kernel, one token 2.5 µs" where the prose and caption say 6.5 µs (two data columns); it was there before this round.
 - Not looked at by eye by the lead: glossary spreads, the quantization chapter, most rounded spreads, dark-theme book spreads. Nothing was checked in a real browser with a GPU: all checks ran in headless Chrome with software WebGL.
 - `next build` and `next dev` stop now and then with the Next.js 16.4.3 security notice and pass on the next run; the fix is the upgrade to 16.4.6.
+
+## Snapshot 2026-11-21: kv/prefix-cache-impl (Branch 164)
+
+Joe wrote prefix caching on `BlockManager` (issue #99) on `kv/prefix-cache-impl`. Claude's review found two bugs (the room check in `allocate_tokens` compared against the matched blocks instead of the blocks to take; `publish` refused fewer tokens than the sequence length); Joe fixed both in c932364. Then Claude merged `origin/main` into the branch, removed the second `BlockManager::truncate` that main had in `src/sched/speculative.cpp` (the branch defines it in `block_manager.cpp`; the two linked twice), moved the tests to `tests/unit/test_prefix_cache.cpp`, removed `todo_unit_tests`, and updated the changelog, learning log, `README.md` and `ownership.md`.
+
+Open:
+- `truncate` to a length inside a published block leaves the block published, and the next `append_slot` writes into it. Nothing calls `publish` yet, so nothing breaks today; the scheduler branch must either never publish past what a rollback can reach or unpublish on truncate. No test covers it.
+- The scheduler side (admission through `can_allocate_tokens` and `allocate_tokens`, prefill from the returned count, `publish` after a step) is not started. The site still says prefix caching is not implemented in the engine, which stays true until then.
+
+## Snapshot 2026-11-21: prefix caching wired
+
+Branch `kv/prefix-cache-impl` (Branch 164), in the main checkout at Joe's request, nothing pushed. Claude wired Joe's `BlockManager` prefix cache into the engine (the scheduler and `truncate` are Part C written by Claude at Joe's request, the rest Part A). Commits, each with its changelog and learning-log lines:
+
+- 94816d5: `BlockManager::truncate` to a length inside a published block takes that block out of the prefix map, and inside a block another sequence holds it throws and changes nothing; two tests in `tests/unit/test_prefix_cache.cpp` fail without it.
+- 83fe8f5: with `SchedulerConfig::prefix_cache` (off in the library, so existing callers and tests are unchanged) admission goes through `can_allocate_tokens` and `allocate_tokens`, a prefill step starts at the cached count (`Step::cached`, `PrefillChunk::first`; plain, flash and chunked prefill), only uncached rows count against `max_prefill_tokens`, and `update` publishes every token whose keys and values the finished step wrote (all but the last sampled token, after the draft rollback), only when the step completed a prefill or filled a block; `prefix_counts()`. CPU tests with a fake model that checks every key each row reads; GPU tests: reused keys and values bit-identical to recomputed ones, greedy outputs equal up to a 3-ulp near tie.
+- 10f68f8: on by default in `serve` and `bench`, `--no-prefix-cache`; `/metrics` `tokens.prefill_total`, `cached_total`, `prefix_hit_rate`; bench summary `prefix_cache`, `prefill_tokens`, `cached_tokens`, `prefix_hit_rate`.
+- 0bb158f: `bench --shared-prefix N`.
+- 23cce91: `scripts/prefix_cache_sweep.sh` and `scripts/prefix_cache_report.py`.
+- The commit with this snapshot: `results.md` "Prefix caching" (measured at 23cce91), `results/prefix/`, the chat trace re-recorded with the cache on, README, architecture, ownership and api text.
+
+Rules worth keeping: a block is published only after the step that wrote it finished and only up to the tokens whose keys and values are written, so a speculative rollback (which only reaches rows of the current step) never touches a published block; a sequence writes only into its last, partial block, which is never published or shared; `truncate` is the guard if either ever changes.
+
+Gates: 94816d5 with the GPU suite (870 and 420 tests). The GPU dropped during the gate of 83fe8f5 (that run passed tests 1 to 828 of 886, the new GPU tests among them, then every test failed with the device gone), so 83fe8f5 to 23cce91 were gated without it (429 to 432 tests); the GPU came back and the commit with this snapshot passed the full suite with the gpu label.
+
+Open:
+- `web/` is not updated: the site still says prefix caching is not wired in. `web/scripts/kv-replay.mjs` models no sharing; the new chat trace passes its free-block check only because its 5 reused blocks belonged to requests that had finished, and a trace where two live requests share blocks would fail it. The block ids it draws also differ from the engine's now, since freed published blocks stay cached instead of going blank.
+- Greedy outputs with the cache on and off agree only up to near ties (52 of 58 identical in the tests), the same as chunked prefill; bit-identical outputs would need GEMMs whose rows do not depend on how many rows a step holds.
+- At a 1,024-token prefix the cold first request measured about 25 ms faster with the cache on than off although it does the same work; not explained.
+- No per-request cached count in `/v1/steps` or in the chat completion's `usage`; no copy-on-write (n > 1 sampling); the sweep has no eviction and no HTTP.
+- 94816d5's subject is 77 characters, over the 72 of `working_rules.md`.
+
+## Snapshot 2026-11-22: prefix caching on the site
+
+Branch `kv/prefix-cache-impl` (Branch 164), main checkout, web and docs only, nothing pushed. Claude added prefix caching to the site as chapter 19, after chunked prefill (Part IV, many requests), and fixed every place that said it was not implemented. Seventeen commits, 57a1bcc to this one; each passed the web gate on the working tree at its time (other uncommitted work set aside with `git stash` where it could matter), none was rebuilt alone in a detached worktree. A `git pull` started a rebase in this checkout at 21:01 on 2026-11-21 (not Claude's); it was aborted and nothing was lost.
+
+Done:
+- Data: `web/scripts/prefix-runs.mjs` (tests `prefix-runs.test.mjs`) reads `results/prefix/*_summary.csv` and the request CSVs into `src/data/prefix.json` with the medians of `scripts/prefix_cache_report.py`; `sync-data.mjs` also takes the same-output counts (52 of 58, 3 ulps, 22 layers) and the 2,048-token prefill budget from the `results.md` text. `content/kernels/prefix-caching.ts` checks the `results.md` table against `results/prefix/` and throws when they disagree or a claim stops holding (a hit lowers the later TTFT and raises the all-at-once tokens per second at every length, the cold first request is faster with the cache on, the sandbox arithmetic equals the cached tokens of every run).
+- `/kernels/prefix-caching`: the idea, eight steps with their own figures, a prediction, the DOM sandbox (`share.ts`, tests `prefix-share.test.mjs`), excerpts of `match_blocks`, `allocate_tokens` and the publish rule, a timeline from the stub (#203), review, six glossary terms, an engines map row (vLLM `KVCacheManager.get_computed_blocks`, llama.cpp `pre_decode`, read at the tags), two exercises (the stub at 703bac4, an open one off a block edge).
+- `/every-byte/prefix-caching`: lead-in with a 3D exhibit, a spread per step (3D pool and measured-bar exhibits, flat figures for the rest), a 3D sandbox spread with four rails (shared start, requests, pool, what happens) on a TypeScript port of the block manager (`pool.ts`, tests `prefix-pool.test.mjs`), the DOM sandbox as the workbench, review and exercises.
+- Registries: `bookOrder`, `kernelStories`, `bookChapters`, `story-view.tsx`, reviews, glossary, engines map, kernels atlas, machine stage test, main timeline (Nov 21, scene "prefix"), exercises and specs, search index and one-hour path counts.
+- Fixed: Beyond (intro, topic "prefix caching, past whole blocks", figure, card, description, atlas line), the serving admission excerpt (it broke the static build after 83fe8f5), the admission glossary term, the KV replay copy (paged KV chapter, review, serving workbench), the dashboard label.
+- Every Byte: the contents takes two spreads (Parts I to III, then IV, V and the back of the book; rows 100 units with 50-unit titles, were 52 and 26); on phones the bar hides its caption and beat dots so the contents and other buttons fit.
+- Text fit measured over CDP (canvas `fillText` hooked for text off its canvas, overlapping or shrunk by a card; DOM scroll size against client size; SVG text against its viewBox), dark and light, 1440 and 390 px, on all chapter spreads, both contents spreads, the touched paged KV, serving and Beyond spreads, nine scroll pages, both sandboxes at their extremes. Checkers in `~/.cache/llmie-main/` (`fitcheck.mjs`, `canvas-hook.js`, `fitall.sh`, `fitsum.py`).
+
+Decided and left: `web/scripts/kv-replay.mjs` and the KV visualizer still model the block manager without sharing. The trace has no prompt tokens and no per-request cached counts, so the replay cannot know which blocks a request shared; it passes its free-block check because cached blocks count as free, a trace where two live requests share blocks would fail it, and its block ids are not the engine's. Modelling it needs cached counts or prompt tokens in the trace.
+
+Open:
+- No PR for the implementation yet: the timeline entry and the stub exercise have none, and the exercise diffs c932364 against the stub. Add the PR when it exists.
+- Left as found: book titles that `fitFont` shrinks (this chapter's now 81% or more; Beyond's "speculative decoding with a draft model" 73%), paged KV 3D cards that `createCard` shrinks (down to 75%), two overlapping labels in the serving visualizer, the dashboard tiles that wrap and clip at 390 px, the timeline's "rank of 2, one call per copy" label truncated at 390 px, and the engines map's chunked-prefill row naming `update_slots` for a line inside `pre_decode` at llama.cpp v1.0.0.
+- Not checked in a real browser with a GPU; motion and the 3D sandbox drags were checked in headless Chrome with software WebGL only.

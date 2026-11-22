@@ -25,12 +25,14 @@ add_executable(unit_tests
   unit/test_metrics_window.cpp
   unit/test_model_weights.cpp
   unit/test_paged_batch.cpp
+  unit/test_prefix_cache.cpp
   unit/test_reference_golden.cpp
   unit/test_request.cpp
   unit/test_safetensors.cpp
   unit/test_scheduler.cpp
   unit/test_scheduler_cancel.cpp
   unit/test_scheduler_chunked.cpp
+  unit/test_scheduler_prefix.cpp
   unit/test_scheduler_speculative.cpp
   unit/test_serving_loop.cpp
   unit/test_speculative.cpp
@@ -87,6 +89,7 @@ if(ENGINE_CUDA)
     gpu/test_rope_fast.cpp
     gpu/test_sample.cpp
     gpu/test_serve.cpp
+    gpu/test_serve_prefix_cache.cpp
     gpu/test_server.cpp
     gpu/test_sharded_runner.cpp
     gpu/test_smoke.cpp
@@ -114,13 +117,6 @@ if(ENGINE_CUDA)
   target_link_libraries(todo_gpu_tests PRIVATE engine_runtime GTest::gtest_main)
   gtest_discover_tests(todo_gpu_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS "todo_joe;gpu")
 endif()
-
-add_executable(todo_unit_tests
-  todo/unit/test_prefix_cache.cpp
-)
-target_include_directories(todo_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(todo_unit_tests PRIVATE engine_core GTest::gtest_main)
-gtest_discover_tests(todo_unit_tests DISCOVERY_MODE PRE_TEST PROPERTIES LABELS todo_joe)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)

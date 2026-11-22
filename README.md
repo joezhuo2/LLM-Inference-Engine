@@ -89,7 +89,7 @@ Decoding one token at batch 1 reads every weight except all but one row of the e
 
 Built since the MVP and measured in `results.md`: chunked prefill, FlashAttention-style prefill, finer CUDA Graph buckets, speculative decoding by prompt lookup or with a draft model, and a tensor-parallel forward pass with every shard on one GPU (`engine generate --tensor-parallel`).
 
-Next, each already in the tree as a stub with its spec and tests: decode attention that loads each KV head once for the 8 query heads that share it, prefix caching in the block manager, and FP8 for the KV cache and the GEMMs. After those: Llama-3.2-1B and other models, and a draft model that makes speculative decoding faster (TinyStories-110M makes it slower).
+Prefix caching is on in `serve` and `bench` (`--no-prefix-cache` turns it off): once a step has written a full block of 16 tokens, the block manager keeps it under every token from the start of the sequence, and a later request whose prompt starts with such blocks shares them (a count per block, least recently released evicted first) and prefills only the rest: with a shared 1,024-token prefix the time to the first token of a request falls from 127 to 24 ms, and 32 requests submitted at once finish with 3.0x the output tokens per second (`results.md`, "Prefix caching"). Next, each already in the tree as a stub with its spec and tests: decode attention that loads each KV head once for the 8 query heads that share it, and FP8 for the KV cache and the GEMMs. After those: Llama-3.2-1B and other models, and a draft model that makes speculative decoding faster (TinyStories-110M makes it slower).
 
 ## Hardware
 

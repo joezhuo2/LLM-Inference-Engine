@@ -51,6 +51,8 @@ struct Counters {
     int64_t steps_total = 0;
     int64_t drafted_total = 0;
     int64_t draft_accepted_total = 0;
+    int64_t prefill_total = 0;
+    int64_t cached_total = 0;
 };
 
 struct MetricsSnapshot {

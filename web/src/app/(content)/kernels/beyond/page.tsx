@@ -11,7 +11,7 @@ import { beyondIntro, beyondTitle, beyondTopics } from "@/content/beyond";
 import { enginesTitle } from "@/content/engines-map";
 import { estimates } from "@/content/estimates";
 
-const description = "What this engine leaves out, in the book's own unit of bytes per token: quantization, a draft model that pays for speculative decoding, prefix caching and multiple GPUs. Only the draft model was tried and measured here, and the split of the weights for several GPUs.";
+const description = "What this engine leaves out, in the book's own unit of bytes per token: quantization, a draft model that pays for speculative decoding, prefix caching past whole blocks and multiple GPUs. The draft model, the split of the weights for several GPUs and prefix caching in whole blocks were built and measured here.";
 
 export const metadata: Metadata = { title: beyondTitle, description };
 

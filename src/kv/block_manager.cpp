@@ -1,10 +1,12 @@
 #include "engine/kv/block_manager.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace engine {
 
@@ -19,14 +21,38 @@ int checked_num_blocks(int num_blocks, int block_size) {
     return num_blocks;
 }
 
+std::size_t hash_combine_token(std::size_t seed, int32_t token) noexcept {
+    std::uint64_t x = static_cast<std::uint64_t>(static_cast<uint32_t>(token));
+    x += 0x9e3779b97f4a7c15ULL;
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+    x = x ^ (x >> 31);
+
+    return seed ^ (static_cast<size_t>(x) + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2));
+}
+
 }  // namespace
 
 BlockManager::BlockManager(int num_blocks, int block_size)
     : num_blocks_(checked_num_blocks(num_blocks, block_size)),
       block_size_(block_size),
       free_count_(num_blocks_ - 1),
-      free_blocks_(num_blocks_, true) {
+      free_blocks_(num_blocks_, true),
+      block_meta_(checked_num_blocks(num_blocks, block_size)) {
     free_blocks_[0] = false;
+}
+
+void BlockManager::evict_block(int id) {
+    auto& meta = block_meta_[id];
+
+    if (meta.published) {
+        lru_cached_.erase(meta.lru_it);
+        prefix_to_block_.erase(meta.key);
+        meta.published = false;
+        meta.key = PrefixKey{};
+    }
+
+    free_blocks_[id] = true;
 }
 
 int BlockManager::allocate_block() {
@@ -34,16 +60,44 @@ int BlockManager::allocate_block() {
         if (free_blocks_[i]) {
             free_blocks_[i] = false;
             free_count_--;
+            block_meta_[i].ref_count = 1;
             return i;
         }
     }
+
+    if (!lru_cached_.empty()) {
+        int victim = lru_cached_.front();
+        evict_block(victim);
+        free_blocks_[victim] = false;
+        free_count_--;
+        block_meta_[victim].ref_count = 1;
+        return victim;
+    }
+
     throw std::runtime_error("[BlockManager] Out of free blocks despite prior check.");
 }
 
 void BlockManager::free_block(int block_id) {
-    if (block_id >= 0 && block_id < num_blocks_ && !free_blocks_[block_id]) {
-        free_blocks_[block_id] = true;
+    if (block_id <= 0 || block_id >= num_blocks_) {
+        return;
+    }
+
+    auto& meta = block_meta_[block_id];
+
+    if (meta.ref_count <= 0) {
+        return;
+    }
+
+    meta.ref_count--;
+
+    if (meta.ref_count == 0) {
         free_count_++;
+
+        if (meta.published) {
+            meta.lru_it = lru_cached_.insert(lru_cached_.end(), block_id);
+        } else {
+            free_blocks_[block_id] = true;
+        }
     }
 }
 
@@ -134,11 +188,50 @@ int BlockManager::append_slot(SeqId seq) {
 void BlockManager::free(SeqId seq) {
     auto& seq_data = get_sequence(seq);
 
-    for (int block_id : seq_data.table) {
-        free_block(block_id);
+    for (auto it = seq_data.table.rbegin(); it != seq_data.table.rend(); ++it) {
+        free_block(*it);
     }
 
     sequences_.erase(seq);
+}
+
+void BlockManager::truncate(SeqId seq, int length) {
+    auto& seq_data = get_sequence(seq);
+
+    if (length < 1 || length > seq_data.length) {
+        throw std::invalid_argument(
+            "[BlockManager] invalid truncate length " + std::to_string(length) + " for sequence " +
+            std::to_string(seq) + " of length " + std::to_string(seq_data.length));
+    }
+
+    if (length == seq_data.length) {
+        return;
+    }
+
+    if (length % block_size_ != 0) {
+        auto& meta = block_meta_[seq_data.table[length / block_size_]];
+
+        if (meta.ref_count > 1) {
+            throw std::invalid_argument("[BlockManager] cannot truncate sequence " +
+                                        std::to_string(seq) + " to " + std::to_string(length) +
+                                        " inside a block other sequences share");
+        }
+
+        if (meta.published) {
+            prefix_to_block_.erase(meta.key);
+            meta.published = false;
+            meta.key = PrefixKey{};
+        }
+    }
+
+    int new_blocks = (length + block_size_ - 1) / block_size_;
+
+    while (static_cast<int>(seq_data.table.size()) > new_blocks) {
+        free_block(seq_data.table.back());
+        seq_data.table.pop_back();
+    }
+
+    seq_data.length = length;
 }
 
 int BlockManager::slot(SeqId seq, int pos) const {
@@ -165,51 +258,185 @@ int BlockManager::num_free() const {
     return free_count_;
 }
 
-/*
-TODO(JOE): prefix caching (match_prefix, can_allocate_tokens, allocate_tokens, publish, ref_count, num_cached)
+int BlockManager::match_blocks(std::span<const int32_t> tokens,
+                               std::vector<int>* matched_out) const {
+    if (tokens.empty()) {
+        throw std::invalid_argument("[BlockManager] tokens must not be empty.");
+    }
 
-Purpose. Issue #99. Today every request computes the keys and values of its whole prompt, even when the first thousand tokens are the same chat template and system prompt as the request before it. The keys and values of a token depend only on the tokens up to it, so two sequences that start with the same tokens can read the same physical blocks. These six functions let the block manager find the full blocks a new sequence can reuse, count how many sequences hold each block, and keep the blocks of a freed sequence around until the memory is needed. The scheduler then starts the prefill of a request at the first token that was not found. Nothing changes on the device: a block table row may simply name a block that another row also names.
+    const int max_matchable = static_cast<int>((tokens.size() - 1) / block_size_);
 
-Words. A block is blank when no sequence holds it and it has no published content, in use when at least one sequence holds it, and cached when no sequence holds it but it is published. A block is published once publish has recorded which tokens its keys and values were computed for: all the tokens of the sequence from position 0 to the end of that block. Only full blocks are ever published.
+    if (max_matchable <= 0) {
+        return 0;
+    }
 
-Interface. Declared in include/engine/kv/block_manager.h. match_prefix(tokens) returns how many leading tokens of tokens can be reused right now: block_size * b, where b is the largest number such that for every i < b there is a published block for tokens[0 .. (i + 1) * block_size), and b <= (tokens.size() - 1) / block_size. The last token is never matched, because the model has to run on at least one row to produce the logits the first new token is sampled from. match_prefix is const and does not change the eviction order. can_allocate_tokens(tokens) says whether allocate_tokens would succeed. allocate_tokens(seq, tokens) registers seq with length tokens.size(): the first b entries of its table are the matched blocks, in order, and the rest are fresh blocks; it returns block_size * b, the number of tokens whose keys and values are already in the cache. publish(seq, tokens) tells the manager that the keys and values of the first tokens.size() tokens of seq are written and that those tokens are tokens (prompt and generated tokens alike); each full block in that range becomes published. ref_count(block) is the number of registered sequences whose table holds block. num_cached() is the number of cached blocks.
+    PrefixKey key;
+    key.hash = 0;
+    key.tokens.reserve(static_cast<std::size_t>(max_matchable) * block_size_);
 
-Semantics. Matching is by the whole chain, not by a block's own 16 tokens: a block whose tokens equal another block's but whose earlier tokens differ holds different keys and values and must not match. The plan (docs/claude/build_plan.md, P5) hashes each full block by (hash of the previous block, its token ids) and keeps a hash to block map. A 64-bit hash is not proof: two different prefixes must never match, so keep what you need to compare the tokens on a hit. If you key a block by its parent's physical block id instead, remember that the parent can be evicted and its id reused for other tokens while the child is still in the map. Counting: num_free() becomes blank blocks plus cached blocks, since both can be handed out. A fresh block is the lowest numbered blank block, as today; only when no blank block is left is a cached block evicted (its published record is dropped and it is handed out). Eviction takes the least recently used cached block, where a block's time of use is the moment its count last fell to 0, and the blocks released by one free(seq) are ordered so that the last block of the table is evicted first and the first block last (a chain is only useful from its start). A block matched by an allocate_tokens call is never evicted by that same call. allocate_tokens adds 1 to the count of every matched block (a cached one becomes in use again and leaves the eviction order) and gives each fresh block a count of 1. So with m matched blocks of which z are cached, the call needs ceil(n / block_size) - m fresh blocks out of num_free() - z. free(seq) subtracts 1 from the count of each block of seq; a block that reaches 0 becomes cached if it is published and blank if not. publish skips blocks that are already published; if another block is already published for the same tokens (two requests computed the same prefix side by side), the first one stays in the map and this sequence's block stays unpublished and private. publish may be called again with more tokens as a sequence grows. allocate(seq, num_tokens), can_allocate, append_slot, can_append, slot, table and length keep their meaning, with blocks coming from blank first and evictions second; blocks from allocate are unpublished until publish is called.
+    int matched = 0;
 
-Why there is no copy on write here. A sequence writes only into its last block, and only while that block is partial. Partial blocks are never published, so they are never shared, and append_slot on a sequence whose last block is full takes a fresh block. Copy on write is only needed for sharing partial blocks (n > 1 sampling from one prompt), which is not part of this stub.
+    for (int b = 0; b < max_matchable; ++b) {
+        const int start = b * block_size_;
 
-Errors. Throw std::invalid_argument with a message starting with [BlockManager] when: tokens is empty in match_prefix, can_allocate_tokens or allocate_tokens; seq is already registered or there are not enough blocks in allocate_tokens (nothing may change in that case); seq is not registered or tokens.size() is above length(seq) in publish (an empty tokens there is valid and does nothing); block is below 0 or not below num_blocks in ref_count. ref_count(0) is 0: block 0 stays the reserved block. The caller guarantees that the tokens passed to publish really are the tokens of seq and that their keys and values are fully written (the step that computed them has finished on the device).
+        for (int j = 0; j < block_size_; ++j) {
+            int32_t tok = tokens[start + j];
+            key.hash = hash_combine_token(key.hash, tok);
+            key.tokens.push_back(tok);
+        }
 
-Edge cases. tokens of length 1 never match. A prompt of exactly k full blocks matches at most k - 1. block_size 1. A request that matches blocks which are all still in use needs free blocks only for the rest. Preemption gets cheap for free: a preempted sequence whose blocks were published finds them again when it is readmitted, unless they were evicted in between.
+        auto it = prefix_to_block_.find(key);
 
-What to compare against. The tests keep their own record of which tokens each physical block was published for and check every match against it over a few thousand random allocate, append, publish and free calls. For speed, the plan's done-when: a benchmark where every request shares a 1,000-token system prompt, TTFT on a miss against TTFT on a hit, which should fall by the prefill time of the matched tokens; report the hit rate too.
+        if (it == prefix_to_block_.end()) {
+            break;
+        }
 
-What is not here. The scheduler side is a separate branch once the tests pass: admission calls can_allocate_tokens and allocate_tokens with the request's tokens, prefill starts at the returned count, publish is called after the step that wrote a block has been updated, and finished and cancelled requests keep going through free. After that a flag on engine serve and engine bench, hit counters in the metrics, shared blocks highlighted on the KV block map and the numbers in results.md.
+        ++matched;
 
-Tests that prove it. tests/todo/unit/test_prefix_cache.cpp (target todo_unit_tests, label todo_joe), 27 tests checked against a throwaway implementation and eight mutants of it: matching and its limits, sharing and counts, what free keeps, the eviction order, duplicates, generated tokens, block sizes 1 to 32, every rejected argument, and 6,000 random calls per block size against a record of what each block holds. Run them with ctest --preset cpu -L todo_joe. The existing tests in tests/unit/test_block_manager.cpp must keep passing unchanged. When all pass, move the file to tests/unit/, add it to unit_tests and delete todo_unit_tests.
-*/
-int BlockManager::match_prefix(std::span<const int32_t>) const {
-    throw std::logic_error("unimplemented: BlockManager::match_prefix");
+        if (matched_out != nullptr) {
+            matched_out->push_back(it->second);
+        }
+    }
+
+    return matched;
 }
 
-bool BlockManager::can_allocate_tokens(std::span<const int32_t>) const {
-    throw std::logic_error("unimplemented: BlockManager::can_allocate_tokens");
+int BlockManager::match_prefix(std::span<const int32_t> tokens) const {
+    return match_blocks(tokens, nullptr) * block_size_;
 }
 
-int BlockManager::allocate_tokens(SeqId, std::span<const int32_t>) {
-    throw std::logic_error("unimplemented: BlockManager::allocate_tokens");
+bool BlockManager::can_allocate_tokens(std::span<const int32_t> tokens) const {
+    std::vector<int> matched;
+    int leading = match_blocks(tokens, &matched);
+
+    int cached = 0;
+
+    for (int block_id : matched) {
+        if (block_meta_[block_id].ref_count == 0) {
+            ++cached;
+        }
+    }
+
+    const int total = (static_cast<int>(tokens.size()) + block_size_ - 1) / block_size_;
+    const int needed = total - leading;
+    const int available = free_count_ - cached;
+
+    return available >= needed;
 }
 
-void BlockManager::publish(SeqId, std::span<const int32_t>) {
-    throw std::logic_error("unimplemented: BlockManager::publish");
+int BlockManager::allocate_tokens(SeqId seq, std::span<const int32_t> tokens) {
+    if (tokens.empty()) {
+        throw std::invalid_argument("[BlockManager] tokens must not be empty.");
+    }
+
+    if (sequences_.find(seq) != sequences_.end()) {
+        throw std::invalid_argument("[BlockManager] sequence id " + std::to_string(seq) +
+                                    " is already registered.");
+    }
+
+    std::vector<int> matched;
+    int leading = match_blocks(tokens, &matched);
+
+    int cached = 0;
+
+    for (int block_id : matched) {
+        if (block_meta_[block_id].ref_count == 0) {
+            ++cached;
+        }
+    }
+
+    const int total = (static_cast<int>(tokens.size()) + block_size_ - 1) / block_size_;
+    const int needed = total - leading;
+    const int available = free_count_ - cached;
+
+    if (available < needed) {
+        throw std::invalid_argument(
+            "[BlockManager] out of memory. Insufficient free blocks for sequence " +
+            std::to_string(seq) + " (requested tokens: " + std::to_string(tokens.size()) + ")");
+    }
+
+    for (int block_id : matched) {
+        auto& meta = block_meta_[block_id];
+        if (meta.ref_count == 0) {
+            lru_cached_.erase(meta.lru_it);
+            --free_count_;
+        }
+
+        ++meta.ref_count;
+    }
+
+    Sequence seq_data;
+    seq_data.length = static_cast<int>(tokens.size());
+    seq_data.table.reserve(total);
+    seq_data.table.insert(seq_data.table.end(), matched.begin(), matched.end());
+
+    for (int i = 0; i < needed; ++i) {
+        seq_data.table.push_back(allocate_block());
+    }
+
+    sequences_[seq] = std::move(seq_data);
+    return leading * block_size_;
 }
 
-int BlockManager::ref_count(int) const {
-    throw std::logic_error("unimplemented: BlockManager::ref_count");
+void BlockManager::publish(SeqId seq, std::span<const int32_t> tokens) {
+    const auto& seq_data = get_sequence(seq);
+
+    if (static_cast<int>(tokens.size()) > seq_data.length) {
+        throw std::invalid_argument("[BlockManager] Token count (" + std::to_string(tokens.size()) +
+                                    ") does not match sequence length (" +
+                                    std::to_string(seq_data.length) + ")");
+    }
+
+    const int full_blocks = static_cast<int>(tokens.size()) / block_size_;
+
+    if (full_blocks <= 0) {
+        return;
+    }
+
+    PrefixKey key;
+    key.hash = 0;
+    key.tokens.reserve(static_cast<std::size_t>(full_blocks) * block_size_);
+
+    for (int b = 0; b < full_blocks; ++b) {
+        const int start = b * block_size_;
+
+        for (int j = 0; j < block_size_; ++j) {
+            const int32_t tok = tokens[start + j];
+            key.hash = hash_combine_token(key.hash, tok);
+            key.tokens.push_back(tok);
+        }
+
+        const int block_id = seq_data.table[b];
+        auto& meta = block_meta_[block_id];
+
+        if (meta.published) {
+            continue;
+        }
+
+        auto [it, inserted] = prefix_to_block_.emplace(key, block_id);
+
+        if (inserted) {
+            meta.published = true;
+            meta.key = key;
+        }
+    }
+}
+
+int BlockManager::ref_count(int block) const {
+    if (block < 0 || block >= num_blocks_) {
+        throw std::invalid_argument("[BlockManager] block id out of bounds: " +
+                                    std::to_string(block));
+    }
+
+    if (block == 0) {
+        return 0;
+    }
+
+    return block_meta_[block].ref_count;
 }
 
 int BlockManager::num_cached() const {
-    throw std::logic_error("unimplemented: BlockManager::num_cached");
+    return static_cast<int>(lru_cached_.size());
 }
 
 }  // namespace engine

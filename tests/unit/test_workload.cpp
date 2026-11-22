@@ -123,6 +123,32 @@ TEST(Workload, PinnedTokensKeepWorkloadsComparableAcrossMachines) {
     EXPECT_EQ(w.requests[1].max_new_tokens, 4);
 }
 
+TEST(Workload, ASharedPrefixStartsEveryPromptAndLeavesTheRestRandom) {
+    auto config = small(20);
+    config.shared_prefix = 40;
+    const auto w = make_workload(config);
+    const std::vector<int32_t> prefix(w.requests[0].prompt.begin(),
+                                      w.requests[0].prompt.begin() + 40);
+    EXPECT_EQ(prefix[0], config.bos_id);
+    std::set<std::vector<int32_t>> distinct;
+    for (const auto& r : w.requests) {
+        ASSERT_GE(r.prompt.size(), 45u);
+        ASSERT_LE(r.prompt.size(), 49u);
+        EXPECT_TRUE(std::equal(prefix.begin(), prefix.end(), r.prompt.begin()));
+        for (size_t j = 1; j < r.prompt.size(); ++j) {
+            EXPECT_NE(r.prompt[j], config.bos_id);
+            EXPECT_NE(r.prompt[j], config.eos_id);
+        }
+        distinct.insert(r.prompt);
+    }
+    EXPECT_GT(distinct.size(), 15u);
+    config.shared_prefix = -1;
+    EXPECT_THROW(make_workload(config), std::invalid_argument);
+    config.shared_prefix = 4;
+    config.prompts = {{1, 2, 3}};
+    EXPECT_THROW(make_workload(config), std::invalid_argument);
+}
+
 TEST(Workload, EveryRequestArrivesAtOnceWithoutARate) {
     const auto w = make_workload(small(20));
     ASSERT_EQ(w.arrivals.size(), 20u);

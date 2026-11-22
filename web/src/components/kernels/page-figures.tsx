@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { type DeadEndKind, kindLabel } from "@/content/dead-ends";
 import { fitEstimate } from "@/content/estimates";
+import { prefix } from "@/content/kernels/prefix-caching";
 import { Label } from "./frame";
 import { useLoop } from "./loop";
 import { SharesFigure } from "./tensor-parallelism/figures";
@@ -159,22 +160,32 @@ function Draft() {
 }
 
 function Prefix() {
-  const { on, grow, move } = useLoop(14);
+  const { on, grow } = useLoop(14);
+  const block = 4;
   const shared = 10;
-  const own = [4, 5];
+  const total = 14;
   const cell = 26;
+  const whole = Math.floor(shared / block) * block;
   const cells = (from: number, count: number, y: number, cls: string) => Array.from({ length: count }, (_, i) => <rect key={i} x={X + (from + i) * cell} y={y} width={cell - 3} height={18} rx={2} className={cls} />);
+  const edges = Array.from({ length: total / block + 1 }, (_, i) => <line key={i} x1={X + i * block * cell - 1.5} y1={20} x2={X + i * block * cell - 1.5} y2={124} strokeDasharray="2 3" className="stroke-border" />);
   return (
-    <Fig h={150} label={`Two requests share a prefix of ${shared} tokens. The first prefills all ${shared + own[0]}; the second reuses the prefix's keys and values and prefills only its own ${own[1]}`} caption="illustrative token counts; one cell is one prompt token's keys and values">
-      <Label x={X} y={18} className="fill-text">{`request 1: prefill reads the weights for all ${shared + own[0]} tokens`}</Label>
-      <motion.g {...grow(0.04, 0.26)}>
-        {cells(0, shared, 26, "fill-text/60")}
-        {cells(shared, own[0], 26, "fill-accent")}
+    <Fig h={150} label={`A later request shares its first ${shared} tokens with a cached prompt. In blocks of ${block}, this engine reuses ${whole} and computes the other ${shared - whole} shared tokens again; a cache that matches any run of tokens reuses all ${shared}`} caption={`illustrative: blocks of ${block} tokens here, ${prefix.block} in the engine; one cell is one prompt token's keys and values`}>
+      {edges}
+      <Label x={X} y={14} className="fill-text">{`whole blocks, as in this engine: ${whole} of ${shared} shared tokens reused`}</Label>
+      <motion.g {...grow(0.04, 0.24)}>
+        {cells(0, whole, 26, "fill-text/35")}
+        {cells(whole, shared - whole, 26, "fill-warn/70")}
+        {cells(shared, total - shared, 26, "fill-accent")}
       </motion.g>
-      <Label x={X} y={92} className="fill-text">{`request 2, same first ${shared} tokens: they are reused, ${own[1]} are prefilled`}</Label>
-      <motion.g {...move(0.36, 0.52, 0, 74, true, 0.94)}>{cells(0, shared, 26, "fill-text/30")}</motion.g>
-      <motion.g {...on(0.56)}>
-        <motion.g {...grow(0.58, 0.68)}>{cells(shared, own[1], 100, "fill-accent")}</motion.g>
+      <motion.g {...on(0.26)}>
+        <Label x={X + whole * cell} y={62} className="fill-warn">{`${shared - whole} shared tokens computed again`}</Label>
+      </motion.g>
+      <Label x={X} y={90} className="fill-text">{`any shared run, as in a radix tree: all ${shared} reused`}</Label>
+      <motion.g {...on(0.4)}>
+        <motion.g {...grow(0.42, 0.62)}>
+          {cells(0, shared, 100, "fill-text/35")}
+          {cells(shared, total - shared, 100, "fill-accent")}
+        </motion.g>
       </motion.g>
     </Fig>
   );

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { replayKv } from "./kv-replay.mjs";
 import { parseFlashKernel, parseGraphRule, parseModelShape, parseRooflineContext } from "./model-shape.mjs";
 import { parseLaunchGaps, parsePrefillStep, parseProfiling } from "./profiling.mjs";
+import { prefixRows, prefixRun } from "./prefix-runs.mjs";
 
 const web = resolve(fileURLToPath(import.meta.url), "../..");
 const results = resolve(web, "../results");
@@ -102,6 +103,20 @@ function readOnchip() {
   return rows.map((row) => Object.fromEntries(header.map((key, i) => [key, value(row[i] ?? "")])));
 }
 
+function readPrefix() {
+  const dir = join(results, "prefix");
+  if (!existsSync(dir)) return { rows: [] };
+  const table = (path) => {
+    const [header, ...rows] = parseCsv(readFileSync(path, "utf8"));
+    return rows.map((row) => Object.fromEntries(header.map((key, i) => [key, value(row[i] ?? "")])));
+  };
+  const runs = readdirSync(dir)
+    .filter((name) => name.endsWith("_summary.csv"))
+    .sort()
+    .map((name) => prefixRun(name, table(join(dir, name))[0], table(join(dir, name.replace("_summary", "")))));
+  return { date: runs[0]?.date, gpu: runs[0]?.gpu, commit: recordedIn(dir), rows: prefixRows(runs) };
+}
+
 function git(...args) {
   return execFileSync("git", args, { cwd: web, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
@@ -151,6 +166,8 @@ const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsTe
 const loadRun = /Engine runs measured ([\d-]+(?: to [\d-]+)?) at commit (\w+) on ([^;.]+)/.exec(resultsText);
 const slo = /SLO: TTFT at most ([\d.]+) ms and TPOT at most ([\d.]+) ms/.exec(resultsText);
 const loadTrace = /In the whole-prompt run at (\d+) QPS[^)]*\), ([\d,]+) prefill steps take ([\d.]+) of the ([\d.]+) seconds, ([\d.]+) ms per prompt token, and the ([\d,]+) decode steps average ([\d.]+) ms/.exec(resultsText);
+const prefixSame = /bit-identical, in all (\d+) layers[\s\S]*?(\d+) of (\d+) outputs are identical and the other (\d+) split at a near tie, within (\d+) BF16 ulps/.exec(resultsText);
+const prefixBudget = /admits as many whole prompts as fit in ([\d,]+) tokens before anything is published/.exec(resultsText);
 const num = (text) => Number(text.replaceAll(",", ""));
 const resultsDoc = {
   sections: parseProfiling(resultsText),
@@ -158,6 +175,8 @@ const resultsDoc = {
   load: loadRun ? { date: loadRun[1], commit: loadRun[2], gpu: loadRun[3] } : null,
   slo: slo ? { ttft_ms: Number(slo[1]), tpot_ms: Number(slo[2]) } : null,
   load_trace: loadTrace ? { qps: num(loadTrace[1]), prefill_steps: num(loadTrace[2]), prefill_s: num(loadTrace[3]), run_s: num(loadTrace[4]), ms_per_prompt_token: num(loadTrace[5]), decode_steps: num(loadTrace[6]), decode_ms: num(loadTrace[7]) } : null,
+  prefix_same: prefixSame ? { layers: num(prefixSame[1]), same: num(prefixSame[2]), outputs: num(prefixSame[3]), split: num(prefixSame[4]), ulps: num(prefixSame[5]) } : null,
+  prefix_budget: prefixBudget ? num(prefixBudget[1]) : null,
 };
 const modelShape = { ...parseModelShape(readFileSync(resolve(web, "../tests/unit/test_config.cpp"), "utf8")), roofline_context: parseRooflineContext(resultsText) };
 const repoText = (path) => readFileSync(resolve(web, "..", path), "utf8");
@@ -207,4 +226,6 @@ writeFileSync(join(dataDir, "sampling_logits.json"), JSON.stringify(samplingLogi
 const speculativeFile = join(results, "speculative_example.json");
 const speculativeExample = existsSync(speculativeFile) ? JSON.parse(readFileSync(speculativeFile, "utf8")) : {};
 writeFileSync(join(dataDir, "speculative_example.json"), JSON.stringify(speculativeExample));
-console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, sampling logits ${samplingLogits.contexts?.length ?? 0} contexts, ${onchip.length} on-chip rows, environment ${environment.commit ?? "missing"}`);
+const prefix = readPrefix();
+writeFileSync(join(dataDir, "prefix.json"), JSON.stringify(prefix));
+console.log(`sync-data: ${summaries.length} summaries, ${traces.length} traces, ${profiling.length} profiling sections, ${resultsDoc.sections.length} results sections, ${Object.keys(decodeSteps).length} decode step profiles, ${Object.keys(launchGaps).length} launch gap lines, KV replay ${kvReplay.steps?.length ?? 0} steps, KV demo ${kvDemo.requests?.length ?? 0} requests, sampling logits ${samplingLogits.contexts?.length ?? 0} contexts, ${onchip.length} on-chip rows, prefix cache ${prefix.rows.length} settings, environment ${environment.commit ?? "missing"}`);

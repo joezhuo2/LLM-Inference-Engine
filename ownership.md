@@ -59,5 +59,7 @@ Everything below has landed unless its row says stub.
 | Tensor parallelism: the layout of one rank (`plan_shard_layout`) | C | Joe, finished by Claude at Joe's request |
 | Tensor parallelism: `ShardedRunner`, `all_reduce_add`, `engine generate --tensor-parallel` | A and B | Claude |
 | The site (`web/`) | A | Claude; Joe reviews and edits |
-| Prefix caching on `BlockManager` (`match_prefix`, `allocate_tokens`, `publish`) | C | stub, spec and tests by Claude; Joe is writing it |
+| Prefix caching on `BlockManager` (`match_prefix`, `allocate_tokens`, `publish`) | C | Joe; stub, spec and tests by Claude |
+| Prefix caching in the scheduler (admission through `allocate_tokens`, prefill from the cached count, `publish` after the step, `prefix_counts`) and `BlockManager::truncate` taking a block out of the cache | C | written by Claude at Joe's request |
+| `--no-prefix-cache`, the prefix counters in `/metrics` and the bench summary, `bench --shared-prefix`, `scripts/prefix_cache_sweep.sh` and its report | A | Claude |
 | FP8 KV cache (`write_kv_fp8`, `paged_attention_decode_fp8`), `gemm_fp8`, grouped decode attention (`paged_attention_decode_grouped`) | C | stubs, specs and tests by Claude; not written yet |

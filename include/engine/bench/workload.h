@@ -27,6 +27,7 @@ struct WorkloadConfig {
     uint64_t seed = 0;
     SamplingParams params{};
     std::vector<std::vector<int32_t>> prompts{};
+    int shared_prefix = 0;
 };
 
 struct Workload {

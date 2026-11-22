@@ -23,12 +23,14 @@ struct SchedulerConfig {
     int max_draft = 0;
     int max_ngram = 3;
     bool adaptive_draft = false;
+    bool prefix_cache = false;
 };
 
 struct Step {
     bool prefill = false;
     std::vector<SeqId> seqs{};
     std::vector<std::vector<int32_t>> drafts{};
+    std::vector<int> cached{};
 };
 
 struct PrefillChunk {
@@ -60,6 +62,11 @@ struct DraftCounts {
     int64_t accepted = 0;
 };
 
+struct PrefixCounts {
+    int64_t prefill = 0;
+    int64_t cached = 0;
+};
+
 class Scheduler {
 public:
     explicit Scheduler(const SchedulerConfig& config);
@@ -76,10 +83,13 @@ public:
     int num_waiting() const;
     int num_running() const;
     const DraftCounts& draft_counts() const;
+    const PrefixCounts& prefix_counts() const;
     void set_draft_source(DraftSource source);
 
 private:
     std::vector<std::vector<int32_t>> reserve_drafts(std::span<const SeqId> decode, int spare_rows);
+    bool can_admit(std::span<const int32_t> tokens) const;
+    int admit(SeqId id, std::span<const int32_t> tokens);
 
     SchedulerConfig config_;
     BlockManager block_manager_;
@@ -95,6 +105,8 @@ private:
     std::unordered_map<SeqId, int> draft_limit_;
     DraftCounts draft_counts_;
     DraftSource draft_source_;
+    PrefixCounts prefix_counts_;
+    size_t pending_decodes_ = 0;
 };
 
 }  // namespace engine

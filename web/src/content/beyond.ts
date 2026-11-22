@@ -4,6 +4,7 @@ import { kernelStory } from "./kernels";
 import { profilingTable } from "@/lib/data";
 import { shardedForward } from "./kernels/tensor-parallelism";
 import { more, spec, specFmt as fmt } from "./kernels/speculative-decoding";
+import { prefix } from "./kernels/prefix-caching";
 
 export type BeyondSource = { label: string; href: string };
 export type BeyondTopic = { id: string; title: string; unit: string; paragraphs: string[]; source: BeyondSource; estimate?: string };
@@ -32,7 +33,7 @@ export { beyondTitle };
 export const beyondIntro = [
   `This book's argument fits in one sentence. At batch 1 a decode step reads every weight once, so tokens per second can be no higher than the memory bandwidth divided by the bytes read per token. Chapter ${chapterNumber("foundations")}, ${title("foundations")}, sets up that bound, and chapter ${chapterNumber("gemm")}, ${title("gemm")}, measures the projections against it.`,
   "The engine in this book stops at one model in BF16 on one GPU. Real engines go further in four ways, and each one changes the bytes read per token.",
-  `Quantization and prefix caching are not implemented or measured in this engine (quantization is planned, and chapter ${chapterNumber("quantization")} has its arithmetic), and of multiple GPUs the engine has the split, checked on one GPU: chapter ${chapterNumber("tensor-parallelism")}, ${title("tensor-parallelism")}. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model runs too, with a draft model that turned out too slow to pay. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
+  `Quantization is not implemented or measured in this engine (it is planned, and chapter ${chapterNumber("quantization")} has its arithmetic), and of multiple GPUs the engine has the split, checked on one GPU: chapter ${chapterNumber("tensor-parallelism")}, ${title("tensor-parallelism")}. Speculative decoding is, in its simplest form: chapter ${chapterNumber("speculative-decoding")}, ${title("speculative-decoding")}, guesses by copying from the context. The form with a draft model runs too, with a draft model that turned out too slow to pay. Prefix caching is in, for whole blocks of a shared start: chapter ${chapterNumber("prefix-caching")}, ${title("prefix-caching")}. What follows says what each one does to the book's unit and what it costs, with one source to read for each.`,
 ];
 
 export const beyondTopics: BeyondTopic[] = [
@@ -62,11 +63,12 @@ export const beyondTopics: BeyondTopic[] = [
   },
   {
     id: "prefix-caching",
-    title: "prefix caching",
-    unit: "no weight reads for a shared prefix",
+    title: "prefix caching, past whole blocks",
+    unit: "a shared start's keys and values, stored once",
     paragraphs: [
-      "Many requests begin with the same tokens: a system prompt, a document, the earlier turns of a chat. The keys and values of a prefix depend only on the tokens in it, so they can be computed once and reused. A request that starts with a cached prefix skips prefill for those tokens. They cost no weight reads at all, and only the rest of the prompt is prefilled.",
-      `The block tables of chapter ${chapterNumber("paged-kv")}, ${title("paged-kv")}, are the structure that makes this possible: a request finds its keys and values through a block table, and two tables can point at the same blocks. This engine does not do it. Its BlockManager marks each block free or used, a block belongs to one request, and all of a request's blocks are freed when it ends. Sharing needs a count of the requests that use each block, a copy when a request has to write into a shared block (copy on write), and a way to find the longest cached prefix of a new prompt, such as the radix tree of SGLang's RadixAttention.`,
+      `Chapter ${chapterNumber("prefix-caching")} shares the keys and values of a prompt start in whole blocks of ${prefix.block} tokens. A later request's block table points at the cached blocks and its prefill starts after them, so the shared tokens cost no prefill, and their keys and values are stored once however many requests hold them. At a ${fmt(prefix.largest.shared)}-token shared start a later request's time to the first token fell from ${fmt(prefix.largest.quiet.off.later_ttft_ms, 0)} to ${fmt(prefix.largest.quiet.on.later_ttft_ms, 0)} ms (measured).`,
+      `Only whole blocks match. A start shorter than a block, and the shared tokens past its last whole block, are computed again by every request. SGLang's RadixAttention keeps its cache as a radix tree of token sequences, so any shared run of tokens matches, and it schedules the waiting requests that share the longest cached prefix first, which keeps more of a start in the cache when many prompts branch from a few.`,
+      "This engine never writes into a shared block: a sequence writes only past its full blocks. Sampling several answers from one prompt, or beam search, would want the answers to share the prompt's last, partial block and copy it only when one of them writes into it, copy on write; the engine samples one answer per request. Its cache also lives only in GPU memory, so an evicted block is gone, where other servers keep cached prompts in host memory as well.",
     ],
     source: { label: "SGLang: Efficient Execution of Structured Language Model Programs (Zheng et al., 2023)", href: "https://arxiv.org/abs/2312.07104" },
   },

@@ -369,6 +369,37 @@ Under load the median time per output token falls with the adaptive limit at eve
 
 Limits. Ten prompts, one model, one GPU, one draft model. The draft model guesses greedily and one sequence at a time, and its guesses were not measured with sampling, with several requests or under load; `engine serve` has no `--draft-model`. With sampling a guess is kept only when it equals the sampled token; the rule that keeps a guess with a probability set by both models is not implemented. Whether the outputs with the adaptive limit match the plain ones token for token was not counted here (the tests compare them up to near ties). 64 requests per rate.
 
+## Prefix caching
+
+From `scripts/prefix_cache_sweep.sh` and `scripts/prefix_cache_report.py` (#99): `engine bench --max-batch 16 --graphs --num-requests 32 --shared-prefix P --prompt-len 64 --output-len 32 --seed 0`, where every prompt is the same P random tokens (BOS first, like a system prompt) followed by 64 of its own, greedy, once with the prefix cache on (the default) and once with `--no-prefix-cache`, with Poisson arrivals at 2 per second (a request usually finds the engine idle or decoding) and with all 32 submitted at once, median of 3 runs. Measured on 2026-11-22 (UTC) on the RTX 5060 Laptop GPU, release build, at commit 23cce91, driver 591.84.
+
+"First request" is request 0 of the timed run: nothing is in the cache yet (the warmup requests run on a scheduler of their own), so it prefills all P + 64 tokens either way. "Later requests" is the median TTFT of the other 31. The prefill step is the median wall time of the prefill steps that do not hold request 0, scheduling and sampling included, from the step traces the sweep keeps in `build/prefix_traces`. The hit rate is the share of all admitted tokens whose keys and values were already in the cache.
+
+| shared prefix | own tokens | arrivals | cache | first request TTFT ms | later requests TTFT p50 ms | prefill step p50 ms | hit rate | output tok/s | runs |
+|---|---|---|---|---|---|---|---|---|---|
+| 256 | 64 | 2/s | on | 32.3 | 19.5 | 13.7 | 77.5% | 69.4 | 3 |
+| 256 | 64 | 2/s | off | 31.9 | 41.3 | 33.7 | 0.0% | 69.3 | 3 |
+| 256 | 64 | at once | on | 185.9 | 871.6 | 93.5 | 65.0% | 781.2 | 3 |
+| 256 | 64 | at once | off | 183.7 | 1268.0 | 192.0 | 0.0% | 480.1 | 3 |
+| 512 | 64 | 2/s | on | 58.6 | 21.7 | 15.2 | 86.1% | 69.5 | 3 |
+| 512 | 64 | 2/s | off | 58.0 | 65.0 | 56.8 | 0.0% | 69.2 | 3 |
+| 512 | 64 | at once | on | 201.9 | 1004.5 | 121.0 | 80.6% | 643.5 | 3 |
+| 512 | 64 | at once | off | 200.4 | 1866.4 | 183.6 | 0.0% | 308.9 | 3 |
+| 1024 | 64 | 2/s | on | 127.9 | 24.4 | 17.6 | 91.2% | 69.3 | 3 |
+| 1024 | 64 | 2/s | off | 157.1 | 127.1 | 116.8 | 0.0% | 68.9 | 3 |
+| 1024 | 64 | at once | on | 131.7 | 1184.1 | 149.3 | 91.2% | 522.9 | 3 |
+| 1024 | 64 | at once | off | 154.4 | 3057.1 | 126.2 | 0.0% | 174.9 | 3 |
+
+Reading it. One at a time (2 per second), the cache takes the time to the first token of a request that shares the prefix from 41.3 to 19.5 ms at 256 shared tokens, from 65.0 to 21.7 ms at 512 and from 127.1 to 24.4 ms at 1,024: what is left is the prefill of the request's own 64 tokens, a step of 14 to 18 ms that grows only a little with P because those 64 rows attend to all P + 64 keys. So a hit saves the prefill time of the shared tokens, which is what P5 asked for. The first request is the cold case and pays the whole prefill (32, 59 and 128 ms with the cache on). At 1,024 the first request measured 152 to 159 ms in the six runs with the cache off and 122 to 134 ms in the six with it on, although it does the same work in both (no cached tokens); the cause was not found. At 2 per second the output tokens per second do not move, since the arrivals limit them.
+
+All at once, the first prefill step admits as many whole prompts as fit in 2,048 tokens before anything is published (6 at 256, 3 at 512, 1 at 1,024), and every later admission finds the prefix, counts only its 64 uncached rows against those 2,048 tokens and joins a larger prefill step. The batch fills sooner: 1.6x the output tokens per second at 256 (781 against 480), 2.1x at 512 (644 against 309) and 3.0x at 1,024 (523 against 175), and the median TTFT of the later requests falls from 1.27 to 0.87 s, 1.87 to 1.00 s and 3.06 to 1.18 s. The hit rates are what whole blocks allow: P is a multiple of 16, so at 2 per second 31 of the 32 requests find all P tokens (31 x 1,024 / (32 x 1,088) = 91.2%), and all at once the requests of the first step find nothing (26 of 32 hit at 256, 65.0%).
+
+Same output. `tests/gpu/test_serve_prefix_cache.cpp` checks that the keys and values a hit reuses are bit-identical, in all 22 layers and with flash and paged prefill, to the ones the request writes when it prefills its whole prompt, and compares greedy outputs with the cache on and off over a shared 186-token prefix with different questions and repeats, concurrent requests, eviction and preemption in a 40-block pool, `--speculate 4`, chunked and paged prefill and a second chat turn that reuses the first answer: 52 of 58 outputs are identical and the other 6 split at a near tie, within 3 BF16 ulps of the contiguous runner's best logit. The splits come from computing a request's own rows as a separate chunk, not from the cache: with the cache off, chunked prefill at a budget of 176 splits one of the same requests at the same token (18981 against 23708, 3 ulps).
+
+The existing numbers. The cache is on by default, so every batched benchmark above now runs with it; none of them shares a whole block between requests (random prompts, or one request at a time), so their scheduling does not change. One before and after run of the binaries at d655ec7 and 23cce91 (2026-11-22, three runs each of the 32-request batch-16 workload with graphs of the first table, two runs each of 4 QPS from "Under load") showed 0 cached tokens, the same 128 steps, 1,602 against 1,605 output tokens per second and TPOT p50 8.88 against 8.85 ms at batch 16, and 636 against 632 tokens per second, TPOT p50 11.17 against 11.29 ms at 4 QPS, inside the spread of the runs (both binaries ran about 8% below the 1,738.5 tokens per second of the 2026-11-16 table that day, so compare these pairs with each other only); the stall probe's prompts (15 chat prompts and one long one) also have 0 cached tokens, so the tables above keep their dates and commits. The chat trace the site replays (`results/traces/chat_b16_rate4.json`) was re-recorded with the cache on: its prompts share only the chat template, shorter than a block, so only the four prompts asked a second time hit (80 of 830 prefill tokens).
+
+Limits. Random tokens and one prefix per run; a real system prompt behaves the same, but a cache only helps when prompts start with the same whole 16-token blocks, so the chat template alone (under 16 tokens) gains nothing. One GPU, one model, no HTTP in the path, and the sweep keeps the prefix far smaller than the 12,915 blocks of cache, so no eviction happened in it (eviction is covered by the tests).
+
 ## Batch-1 decode bandwidth
 
 ![Weights read per decode token against the measured peak](results/plots/batch1_bandwidth.png)

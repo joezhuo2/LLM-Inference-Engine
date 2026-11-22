@@ -90,7 +90,7 @@ export const serving: KernelStory = {
   },
   sandbox: {
     title: "try it yourself",
-    intro: `Two workbenches. The first serves three real chat requests from a small block pool by the rules of the BlockManager and the scheduler: a request is admitted when blocks for its whole length are free, every decode step appends one slot, a full pool preempts the newest request. It has no max_batch, so the pool is its only limit. Add requests, then switch to contiguous to run the same arrivals with every request reserving its prompt plus the tokens it may generate. The second replays a run the engine recorded, step by step: which requests shared each step and which blocks they held.`,
+    intro: `Two workbenches. The first serves three real chat requests from a small block pool by the rules of the BlockManager and the scheduler with the prefix cache off: a request is admitted when blocks for its whole length are free, every decode step appends one slot, a full pool preempts the newest request. It has no max_batch, so the pool is its only limit. Add requests, then switch to contiguous to run the same arrivals with every request reserving its prompt plus the tokens it may generate. The second replays a run the engine recorded, step by step: which requests shared each step and which blocks they held, with block ids replayed by those same rules, so without the prefix cache the run had on.`,
   },
   sources: [
     { path: "src/sched/scheduler.cpp", label: "admit, decode, preempt, retire" },
@@ -111,8 +111,8 @@ export const serving: KernelStory = {
     {
       file: "src/sched/scheduler.cpp",
       from: "    while (!waiting_queue_.empty() &&",
-      to: "        tokens_admitted += req_length;",
-      caption: "Admission in schedule(): while a slot is free, the front of the queue joins if blocks for its whole length are free; the first request that does not fit stops the loop",
+      to: "        tokens_admitted += req_length - cached;",
+      caption: "Admission in schedule(): while a slot is free, the front of the queue joins if blocks for its whole length are free; the first request that does not fit stops the loop. cached is what the prefix cache already holds of the prompt, 0 with --no-prefix-cache",
     },
     {
       file: "src/sched/scheduler.cpp",

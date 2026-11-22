@@ -15,6 +15,7 @@ struct GpuBackendOptions {
     int token_budget = 0;
     int speculate = 0;
     bool speculate_adaptive = false;
+    bool prefix_cache = false;
 };
 
 std::unique_ptr<Backend> make_gpu_backend(const DeviceWeights& weights,
