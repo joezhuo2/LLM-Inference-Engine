@@ -454,7 +454,7 @@ function exerciseSteps(e: Exercise): ExerciseStep[] {
     { title: "Go back to the day the stub landed", text: `Commit ${e.start}: the function throws, the tests are written.`, commands: [cloneCommand, checkout, build] },
     { title: "Run the tests and watch them fail", commands: [test] },
     { title: "Make them pass", text: `Write it in ${e.file}, from the spec and the tests in ${e.tests}.` },
-    { title: "Compare", text: `Then read ${implLabel(e)} in PR ${e.implPrs.join(", PR ")}, or diff it against the stub:`, commands: [compareCommand(e)] },
+    { title: "Compare", text: e.implPrs.length ? `Then read ${implLabel(e)} in PR ${e.implPrs.join(", PR ")}, or diff it against the stub:` : `Then diff ${implLabel(e)} against the stub:`, commands: [compareCommand(e)] },
   ];
 }
 

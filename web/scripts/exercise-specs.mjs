@@ -23,6 +23,7 @@ export const specSources = [
   { id: "flash-prefill", start: "4c406f7", file: "src/kernels/flash_prefill.cu", title: "flash_attention_prefill" },
   { id: "speculative", start: "865c3b5", file: "src/sched/speculative.cpp", title: "speculative decoding by prompt lookup (propose_prompt_lookup, count_accepted, BlockManager::truncate)" },
   { id: "tensor-parallel", start: "ac6d5f0", file: "src/loader/tensor_parallel.cpp", title: "plan_shard_layout" },
+  { id: "prefix-cache", start: "703bac4", file: "src/kv/block_manager.cpp", title: "prefix caching (match_prefix, can_allocate_tokens, allocate_tokens, publish, ref_count, num_cached)" },
 ];
 
 export function parseSpecs(source) {

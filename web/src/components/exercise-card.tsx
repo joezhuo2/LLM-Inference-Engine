@@ -129,16 +129,22 @@ function StubSteps({ e }: { e: Extract<Exercise, { kind: "stub" }> }) {
         </Step>
         <Step n={4} title="Compare">
           <p className="text-muted">
-            Then read {implLabel(e)} in{" "}
-            {e.implPrs.map((n, i) => (
-              <span key={n}>
-                {i > 0 && ", "}
-                <a href={prUrl(n)} className="link-underline text-text">
-                  PR {n}
-                </a>
-              </span>
-            ))}
-            , or diff it against the stub:
+            {e.implPrs.length === 0 ? (
+              `Then diff ${implLabel(e)} against the stub:`
+            ) : (
+              <>
+                Then read {implLabel(e)} in{" "}
+                {e.implPrs.map((n, i) => (
+                  <span key={n}>
+                    {i > 0 && ", "}
+                    <a href={prUrl(n)} className="link-underline text-text">
+                      PR {n}
+                    </a>
+                  </span>
+                ))}
+                , or diff it against the stub:
+              </>
+            )}
           </p>
           <Commands lines={[compareCommand(e)]} />
         </Step>
