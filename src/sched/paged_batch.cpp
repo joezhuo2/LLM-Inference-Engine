@@ -63,14 +63,18 @@ PagedBatch build_paged_batch(const Step& step, const Scheduler& scheduler, int m
     batch.max_blocks = max_blocks;
     require(step.drafts.empty() || (!step.prefill && step.drafts.size() == step.seqs.size()),
             "drafts must be empty or hold one entry per decode sequence");
+    require(step.cached.empty() || (step.prefill && step.cached.size() == step.seqs.size()),
+            "cached must be empty or hold one entry per prefill sequence");
     for (size_t i = 0; i < step.seqs.size(); ++i) {
         const SeqId id = step.seqs[i];
         const std::span<const int32_t> draft = draft_of(step.drafts, i);
         const int length = scheduler.blocks().length(id);
-        const int first = step.prefill ? 0 : length - 1 - int(draft.size());
+        const int first = !step.prefill         ? length - 1 - int(draft.size())
+                          : step.cached.empty() ? 0
+                                                : step.cached[i];
         if (step.prefill) {
             batch.chunk_starts.push_back(int32_t(batch.num_tokens()));
-            batch.cached_lens.push_back(0);
+            batch.cached_lens.push_back(first);
         }
         append_rows(batch, scheduler, id, first, length - first, draft);
     }

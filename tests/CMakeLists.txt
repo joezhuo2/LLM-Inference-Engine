@@ -32,6 +32,7 @@ add_executable(unit_tests
   unit/test_scheduler.cpp
   unit/test_scheduler_cancel.cpp
   unit/test_scheduler_chunked.cpp
+  unit/test_scheduler_prefix.cpp
   unit/test_scheduler_speculative.cpp
   unit/test_serving_loop.cpp
   unit/test_speculative.cpp
@@ -88,6 +89,7 @@ if(ENGINE_CUDA)
     gpu/test_rope_fast.cpp
     gpu/test_sample.cpp
     gpu/test_serve.cpp
+    gpu/test_serve_prefix_cache.cpp
     gpu/test_server.cpp
     gpu/test_sharded_runner.cpp
     gpu/test_smoke.cpp

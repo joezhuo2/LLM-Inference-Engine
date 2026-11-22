@@ -2534,3 +2534,8 @@
 - **checking for room before changing anything, so a failed call leaves no trace** => 
 - **why a rollback must not cut into a published block** => 
 - **refusing a call that would write into a block another sequence holds** => 
+- **a prefill that starts at the cached count** => 
+- **publishing only the keys and values a finished step wrote** => 
+- **a hit rate counted in tokens** => 
+- **a fake model that checks every key a row reads** => 
+- **why a different chunk boundary can flip a near tie (batch invariance)** => 
