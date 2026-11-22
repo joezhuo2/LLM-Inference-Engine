@@ -232,6 +232,9 @@ export const pagedKvSteps: StoryStep[] = [
           <span className="text-accent">{replay.max_block}</span> blocks after the null block.
         </p>
         <p>
+          That is the block manager of this chapter, and these block ids come from replaying the run by its rules. The run itself had the prefix cache of chapter {chapterNumber("prefix-caching")} on, which keeps a finished request&apos;s full blocks for later requests and hands out blank blocks first, so the engine&apos;s own ids differ.
+        </p>
+        <p>
           If the pool does run out, the scheduler takes a running request&apos;s blocks back and recomputes its tokens later. Which request it picks, what that request loses and why its output does not change is chapter {chapterNumber("serving")}.
         </p>
       </>
@@ -282,7 +285,7 @@ export const pagedKvSteps: StoryStep[] = [
     body: (
       <>
         <p>
-          On the right is the whole recorded run, replayed through the same allocation rules at half speed: chat requests arriving at a steady rate,
+          On the right is the whole recorded run, replayed through this chapter&apos;s allocation rules at half speed: chat requests arriving at a steady rate,
           up to {replay.max_running} at once. Each block shows the request that holds it and how full it is. Drag the slider to stop at any step.
         </p>
         <p>

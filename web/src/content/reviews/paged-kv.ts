@@ -22,7 +22,7 @@ export const review: ChapterReview = {
   takeaways: [
     `Nobody knows a request's final length when it arrives, so a contiguous row must reserve the worst case. Handing out ${B}-token blocks as the request grows took ${about(sharePct)}% of what worst-case reservation would have taken at the recorded run's busiest step.`,
     `A request keeps a block table, the list of physical blocks it owns in order, and token pos lives at slot table[pos / ${B}] · ${B} + pos mod ${B}. The blocks can be anywhere in the pool, so write_kv only has to follow the table.`,
-    `A finished request gives its blocks back and the lowest free id goes out first, so the pool is reused; the whole recorded run stayed within blocks 1 to ${replay.max_block}. If the pool runs out, the newest request is preempted and its tokens are recomputed later, with the same outputs.`,
+    `A finished request gives its blocks back and the lowest free id goes out first, so the pool is reused; replayed by these rules, the whole recorded run stays within blocks 1 to ${replay.max_block}. If the pool runs out, the newest request is preempted and its tokens are recomputed later, with the same outputs.`,
   ],
   questions: [
     {
