@@ -341,7 +341,7 @@ function introRows(def: ChapterDef) {
   def.steps.forEach((s, k) => {
     if (s.group && s.group !== def.steps[k - 1]?.group) starts[k] = s.group;
   });
-  if (def.workbench.length > 0) starts[steps] = "try it yourself";
+  if (def.workbench.length > 0 && def.steps[steps - 1]?.group !== "try it yourself") starts[steps] = "try it yourself";
   if (built > reviewed) starts[reviewed] = "review";
   if (titles.length > built) starts[built] = "build it yourself";
   const fit = listRows(titles.length, Object.keys(starts).map(Number), 380, H - 270, ROW);

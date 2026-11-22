@@ -2563,3 +2563,5 @@
 - **a stub exercise whose implementation has no pull request yet** => 
 - **a generated file rebuilt from the static pages** => 
 - **the order of a least recently used list after a reversed free** => 
+- **a sandbox with several rails in one 3D exhibit** => 
+- **a port of a block manager checked against hand-traced block ids** => 

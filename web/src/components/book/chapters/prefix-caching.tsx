@@ -10,7 +10,9 @@ import { chapterNumber } from "@/content/book-order";
 import { pairs, pcFmt as fmt, prefix, prefixCaching } from "@/content/kernels/prefix-caching";
 import type { Beat } from "../book-scene";
 import { type ChapterDef, close, flat, type OverlayProps, overview, type WorkbenchPage, withLead } from "../chapter";
-import { createPrefixModel, lanesExhibit, type PcLanes, type PcNumbers, type PcPool, type PcSlot } from "./prefix-caching-model";
+import { poolBlock, poolOwn } from "@/components/kernels/prefix-caching/pool";
+import type { StoryStep } from "@/components/kernels/sticky-story";
+import { createPrefixModel, lanesExhibit, type PcLanes, type PcNumbers, type PcPool, type PcSandbox, type PcSlot } from "./prefix-caching-model";
 import { joinParts } from "./segments";
 
 const own = prefix.own;
@@ -94,7 +96,47 @@ const burst: PcLanes = {
   })),
 };
 
-const numbers: PcNumbers = { lead, tables, pool, ttft, burst };
+const blocks = (n: number) => `${n} ${n === 1 ? "block" : "blocks"}`;
+const stepNames = ["arrive", "finish", "another start", "the start again"];
+
+const sandbox: PcSandbox = {
+  title: "run a pool yourself",
+  sub: "blue: held, taller when shared · ink: cached · glass: blank · pink: evicted, handed out again",
+  shared: { label: "shared start", values: [0, 1, 2, 3, 4], start: 3, text: (v) => `${v * poolBlock} tokens` },
+  requests: { label: "requests", values: [1, 2, 3, 4, 5], start: 2, text: (v) => String(v) },
+  pool: { label: "pool", values: [6, 8, 10, 12, 16], start: 2, text: (v) => blocks(v) },
+  steps: stepNames,
+  restStep: 2,
+  lines: (ph, step, k) => {
+    const waiting = ph.rows.filter((r) => r.state === "waiting").length;
+    const head = [
+      waiting ? `${waiting} of ${k.requests} ${k.requests === 1 ? "request waits" : "requests wait"}: no room in ${blocks(k.pool)}` : `${k.requests} ${k.requests === 1 ? "request" : "requests"} with the same ${k.shared * poolBlock}-token start, one step each`,
+      `they all finish: ${blocks(ph.cached)} stay cached, and count as free`,
+      ph.evicted.length ? `another start: blank blocks first, then ${blocks(ph.evicted.length)} evicted` : "another start: it fits in blank blocks, nothing evicted",
+      ph.rows[ph.rows.length - 1]?.reused ? `the same start again: it finds ${blocks(ph.rows[ph.rows.length - 1].reused / poolBlock)} still cached` : "the same start again: nothing of it is left to find",
+    ][step];
+    return [head, `tokens prefilled ${ph.prefilled} · tokens reused ${ph.reused}`, ph.evicted.length ? `evicted: ${ph.evicted.join(", ")}, the end of a chain first` : `${blocks(ph.held)} held · ${blocks(ph.cached)} cached · ${blocks(ph.blank)} blank`];
+  },
+};
+
+const numbers: PcNumbers = { lead, tables, pool, ttft, burst, sandbox };
+
+const poolStep: StoryStep = {
+  id: "pool-sandbox",
+  group: "try it yourself",
+  title: "run a pool yourself",
+  body: (
+    <>
+      <p>
+        The pool on the right follows the block manager&apos;s rules, ported to TypeScript from match_blocks, allocate_tokens, publish and free in src/kv/block_manager.cpp. Requests arrive one per step with the same start and {poolOwn} tokens of their own, so each one&apos;s last block is its own.
+      </p>
+      <p>
+        The first three pink balls set the shared start, the number of requests and the size of the pool. The fourth steps through what happens: the requests arrive and share the start&apos;s blocks, they finish and the shared blocks stay cached, another start needs room and evicts, and the shared start comes back and finds what is left.
+      </p>
+      <p>A block held by several requests stands taller and is marked ×2, ×3. Each table lists a request&apos;s blocks, shared ones in blue. Make the pool small and the requests many: sharing needs the start&apos;s blocks once, plus one block per request.</p>
+    </>
+  ),
+};
 
 const rail = close("The rail: drag to another step", [0.5, 0.02, 0.2], 0.9, 0.34, 0, 46);
 
@@ -107,6 +149,7 @@ const beats: Beat[][] = [
   [overview("A later request's time to the first token"), close("Close up: cache off against cache on", [0.4, 0.04, -0.35], 0.8, 0.3, -12, 38), close("From the side: the bars by prefix length", [0.5, 0.04, -0.3], 0.8, 0.3, 24, 26), rail],
   [overview(`All ${prefix.requests} requests at once`), close("Close up: tokens per second, off and on", [0.4, 0.04, -0.35], 0.8, 0.3, -12, 38), close("From the side: the gain grows with the prefix", [0.5, 0.04, -0.3], 0.8, 0.3, 24, 26), rail],
   [flat("Bit-identical keys, nearly identical answers")],
+  [overview("A pool you can change"), close("Close up: the pool, block by block", [0.5, 0.04, -0.42], 0.9, 0.24, -10, 40), close("From the side: the block tables", [0.5, 0.04, -0.24], 0.9, 0.3, 22, 30), close("The rails: drag to change the pool", [0.5, 0.02, 0.22], 0.9, 0.24, 0, 46)],
 ];
 
 const instructions = [
@@ -118,6 +161,7 @@ const instructions = [
   "Drag the pink ball to another prefix length: the blue bar barely moves.",
   "Drag the pink ball to another prefix length: the longer the shared start, the larger the gain.",
   "Count the pink outputs: each one split at a near tie, not at a different key or value.",
+  "Drag the pink balls: the first three change the start, the requests and the pool; the fourth steps through arrive, finish, another start and the start again.",
 ];
 
 const workbench: WorkbenchPage[] = [
@@ -153,10 +197,10 @@ const chapter: ChapterDef = {
   number: chapterNumber("prefix-caching"),
   title: "prefix caching",
   formula: prefixCaching.formula,
-  steps: prefixSteps,
-  captions: prefixCaptions,
-  exhibits: [null, null, 0, null, 1, 2, 3, null],
-  overlays: ["keys", "chain", null, "publish", null, null, null, "same"],
+  steps: [...prefixSteps, poolStep],
+  captions: [...prefixCaptions, `a TypeScript port of the BlockManager rules in src/kv/block_manager.cpp; blocks of ${poolBlock} tokens; the pool is illustrative, the engine's holds ${fmt(prefix.pool)} blocks`],
+  exhibits: [null, null, 0, null, 1, 2, 3, null, 4],
+  overlays: ["keys", "chain", null, "publish", null, null, null, "same", null],
   instructions,
   beats,
   workbench,
