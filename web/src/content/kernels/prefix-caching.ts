@@ -76,6 +76,7 @@ const largestOn = Math.round(largest.quiet.on.later_ttft_ms);
 export const prefixCaching: KernelStory = {
   slug: "prefix-caching",
   index: 19,
+  book: true,
   about: true,
   title: "prefix caching",
   short: `Many requests start with the same tokens. Keep the keys and values of every full block a step writes, and a later request that starts the same way skips their prefill: ${largestOff} ms to the first token became ${largestOn} at a ${pcFmt(largest.shared)}-token shared prefix (measured).`,
