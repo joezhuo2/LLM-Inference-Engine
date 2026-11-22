@@ -2555,3 +2555,4 @@
 - **an SVG label that fades in with the bar it names** => 
 - **a lane of bars whose widths ease to the choice on the rail** => 
 - **a block whose material shows its state** => 
+- **a timeline entry whose numbers come from the same chapter data** => 
