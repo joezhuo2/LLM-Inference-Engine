@@ -25,7 +25,7 @@ import { GlossaryArticle } from "./glossary-article";
 import { FitPage, type LensHandle, Magnifier, PAGE_DESIGN_WIDTH } from "./book-view";
 import { type ChapterDef, chapterStops, stepNumber } from "./chapter";
 import { bookChapters } from "./chapters";
-import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, ideasRoute, isDeep, setIdeasView, deepGroup, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStops, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText, glossarySpreads, glossaryStops, glossaryTitle, engineStops } from "./front-matter";
+import { beyondSpreadOf, beyondSpreads, beyondStops, beyondUnitsNote, beyondUnitsTitle, bookOrder, bookRoute, routeIndex, routeLine, ideasRoute, isDeep, setIdeasView, routePage, routeSection, reviewOverlay, routeStep, setBookRoute, bookParts, bookTitles, chapterPage, chapterTitle, leftPage, contentsStops, errataIntro, estimateOf, errataSpreads, errataStops, errataTitle, estimateStops, exerciseStops, introStop, numberPages, reviewCount, reviewStops, startStops, startText, glossarySpreads, glossaryStops, glossaryTitle, engineStops } from "./front-matter";
 import type { Kit } from "./ink";
 import { type Fonts, loadFonts, readFonts, readRuns } from "./typeset";
 import { BOOK, bookHref } from "./paths";
@@ -45,13 +45,14 @@ type Meta = { key: string; local: number; slug?: string; exhibit: number | null 
 type Place = { closed: true } | { closed: false; key: string; at: string };
 type Saved = { key: string; at: string; page: number; name: string };
 
-const ideasQuery = "view=ideas";
-const ideasKey = "every-byte:view";
-const ideasName = "ideas only";
+const learnQuery = "mode=learn";
+const learnKey = "every-byte:learning";
+const learnName = "learning mode";
+const learnAdds = "the reviews, exercises and deep dives";
 const placeKey = "every-byte:place";
 const urlOf = (key: string, short: boolean, ideas: boolean, at = "") => {
   const [path, hash] = bookHref(key).split("#");
-  const query = [short ? shortPathQuery : ideas ? ideasQuery : "", at && `at=${encodeURIComponent(at)}`].filter(Boolean).join("&");
+  const query = [short ? shortPathQuery : ideas ? "" : learnQuery, at && `at=${encodeURIComponent(at)}`].filter(Boolean).join("&");
   return `${path}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
 };
 
@@ -87,9 +88,9 @@ function readSaved(): Saved | undefined {
 }
 const sectionName = (key: string) => (key === "start" ? "start here" : chapterSlugs.includes(key) ? chapterTitle(key) : key === "beyond" ? beyondTitle : key === "estimates" ? estimatesTitle : key === "errata" ? errataTitle : "contents");
 const inUrl = (query: string) => window.location.search.slice(1).split("&").includes(query);
-const ideasSaved = () => {
+const learnSaved = () => {
   try {
-    return localStorage.getItem(ideasKey) === "ideas";
+    return localStorage.getItem(learnKey) === "on";
   } catch {
     return false;
   }
@@ -175,9 +176,9 @@ export function EveryByte() {
   const [short, setShort] = useState(false);
   const [lensOn, setLensOn] = useState(true);
   const shortRef = useRef(false);
-  const [ideas, setIdeas] = useState(false);
+  const [ideas, setIdeas] = useState(true);
   const [saved, setSaved] = useState<Saved>();
-  const ideasRef = useRef(false);
+  const ideasRef = useRef(true);
 
   useEffect(() => void numberBook().then(setTotal), []);
 
@@ -209,7 +210,7 @@ export function EveryByte() {
   useEffect(() => {
     const sync = () => {
       setMode(inUrl(shortPathQuery));
-      setIdeasMode(inUrl(ideasQuery) || ideasSaved());
+      setIdeasMode(!inUrl(learnQuery) && !learnSaved());
       setSaved(readSaved());
     };
     sync();
@@ -392,7 +393,7 @@ export function EveryByte() {
     (on: boolean) => {
       setIdeasMode(on);
       try {
-        localStorage.setItem(ideasKey, on ? "ideas" : "all");
+        localStorage.setItem(learnKey, on ? "off" : "on");
       } catch {}
       const m = book.current.meta[stopRef.current];
       if (scene.current?.isOpen) setUrl(stopRef.current, false);
@@ -685,7 +686,11 @@ export function EveryByte() {
   const order = shortOn ? route.order : ideasOn ? ideasRoute() : [];
   const routeAt = meta ? routeIndex(meta.key, meta.local, order) : -1;
   const lastPage = order.length && meta ? !routeStep(meta.key, meta.local, 1, order) : stop === stops.length - 1;
-  const ideasTip = short ? `the ${shortPathName} is on: leave it to read ${ideasName}` : ideas ? "show every page" : `${ideasName}: skip ${deepGroup}`;
+  const ideasTip = short ? `the ${shortPathName} is on: leave it to use ${learnName}` : ideas ? `${learnName}: add ${learnAdds}` : `${learnName} is on: skip ${learnAdds}`;
+  // the count follows the pages a reader turns: the hour path or the skipped pages shrink it, an off-route page keeps the full book's numbers
+  const counted = short && route.order.length ? route.order : ideas && total > 0 ? ideasRoute() : [];
+  const countAt = open && meta ? routeIndex(meta.key, meta.local, counted) : -1;
+  const pageCount = !open ? `1 / ${counted.length ? 2 * counted.length + 1 : total * 2 - 1}` : countAt >= 0 ? `${2 * countAt + 2}–${2 * countAt + 3} / ${2 * counted.length + 1}` : `${leftPage(page)}–${page * 2 - 1} / ${total * 2 - 1}`;
   const hourButton = (
     <button type="button" data-book-link="#path" onClick={enterShort} className="link-underline mt-2 block text-left text-text">
       {`If you have an hour: read the ${shortPathName} →`}
@@ -744,7 +749,7 @@ export function EveryByte() {
             </button>
             {total > 0 && (
               <span className="shrink-0 text-text">
-                <Scramble key={page} text={`${open ? `${leftPage(page)}–${page * 2 - 1}` : 1} / ${total * 2 - 1}`} numeric durationMs={700} />
+                <Scramble key={pageCount} text={pageCount} numeric durationMs={700} />
               </span>
             )}
             <span className={clsx("min-w-0 max-w-[22rem] truncate", open && "max-[480px]:hidden")}>
@@ -780,20 +785,20 @@ export function EveryByte() {
               </button>
               <button
                 type="button"
-                aria-label={ideasName}
-                aria-pressed={ideas && !short}
+                aria-label={learnName}
+                aria-pressed={!ideas && !short}
                 aria-disabled={short || undefined}
                 {...tipProps(ideasTip)}
                 onClick={(e) => {
                   if (short) return;
                   toggleIdeas(!ideas);
-                  if (e.currentTarget.matches(":hover, :focus-visible")) setTip((t) => t && { ...t, label: ideas ? `${ideasName}: skip ${deepGroup}` : "show every page" });
+                  if (e.currentTarget.matches(":hover, :focus-visible")) setTip((t) => t && { ...t, label: ideas ? `${learnName} is on: skip ${learnAdds}` : `${learnName}: add ${learnAdds}` });
                 }}
-                className={clsx("pressable rounded-full p-1.5 transition-[color,opacity] duration-500 ease-in-out motion-reduce:transition-none", short ? "cursor-default opacity-30" : "hover:text-text", ideas && !short && "text-accent")}
+                className={clsx("pressable rounded-full p-1.5 transition-[color,opacity] duration-500 ease-in-out motion-reduce:transition-none", short ? "cursor-default opacity-30" : "hover:text-text", !ideas && !short && "text-accent")}
               >
                 <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-none stroke-current" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6.5 14h3M6 12h4M8 3.5a3.5 3.5 0 0 0-2 6.4V12h4V9.9a3.5 3.5 0 0 0-2-6.4z" />
-                  <path data-rays d="M8 .8v.9M3 5.8h.9M12.1 5.8h.9M4.3 2.3l.6.6M11.7 2.3l-.6.6" className={clsx("origin-center transition-[opacity,scale] duration-500 ease-in-out motion-reduce:transition-none", ideas && !short ? "scale-100 opacity-100" : "scale-50 opacity-0")} />
+                  <path data-rays d="M8 .8v.9M3 5.8h.9M12.1 5.8h.9M4.3 2.3l.6.6M11.7 2.3l-.6.6" className={clsx("origin-center transition-[opacity,scale] duration-500 ease-in-out motion-reduce:transition-none", !ideas && !short ? "scale-100 opacity-100" : "scale-50 opacity-0")} />
                 </svg>
               </button>
               <Link href={otherHref} aria-label={def ? "reading view" : "list view"} {...tipProps(def ? "reading view" : "list view")} className="pressable rounded-full p-1.5 hover:text-text max-sm:hidden">
@@ -810,28 +815,28 @@ export function EveryByte() {
           {tip?.label}
         </span>
         <AnimatePresence>
-          {(shortOn || ideasOn) && (
+          {(shortOn || (ideasOn && routeAt < 0)) && (
             <motion.div
               key={shortOn ? "short" : "ideas"}
               data-short-path={shortOn || undefined}
               data-ideas-only={ideasOn || undefined}
-              aria-label={shortOn ? shortPathName : ideasName}
+              aria-label={shortOn ? shortPathName : learnName}
               initial={{ opacity: 0, y: reduced ? 0 : -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: reduced ? 0 : -10 }}
               transition={{ duration: reduced ? 0 : 0.7, ease: "easeInOut" }}
               className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--pill-edge)] bg-surface/55 py-1 pl-4 pr-1.5 tabular-nums text-xs text-muted shadow-lg shadow-[color:var(--pill-shadow)] backdrop-blur-xl backdrop-saturate-150"
             >
-              <span className="text-text">{shortOn ? shortPathName : ideasName}</span>
-              <span>{routeAt >= 0 ? `${routeAt + 1} of ${order.length}` : shortOn ? "off the path, turn the page to rejoin" : "a deep dive, turn the page to skip it"}</span>
+              <span className="text-text">{shortOn ? shortPathName : "skipped page"}</span>
+              <span>{routeAt >= 0 ? `${routeAt + 1} of ${order.length}` : shortOn ? "off the path, turn the page to rejoin" : `only in ${learnName}, turn the page to go on`}</span>
               <button type="button" onClick={shortOn ? leaveShort : () => toggleIdeas(false)} className="pressable rounded-full border-l border-border px-2.5 py-0.5 hover:text-text">
-                {shortOn ? "leave" : "show every page"}
+                {shortOn ? "leave" : learnName}
               </button>
             </motion.div>
           )}
         </AnimatePresence>
         {overlay && narrow && (
-          <div data-theme="light" className={clsx("book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]", (shortOn || ideasOn) && "pt-14")}>
+          <div data-theme="light" className={clsx("book-overlay absolute inset-0 touch-auto overflow-y-auto bg-[var(--book-paper)] p-5 text-[var(--text)] [scrollbar-width:none]", (shortOn || (ideasOn && routeAt < 0)) && "pt-14")}>
             <div ref={setPageEl} />
           </div>
         )}
