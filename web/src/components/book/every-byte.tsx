@@ -747,7 +747,7 @@ export function EveryByte() {
                 <Scramble key={page} text={`${open ? `${leftPage(page)}–${page * 2 - 1}` : 1} / ${total * 2 - 1}`} numeric durationMs={700} />
               </span>
             )}
-            <span className="min-w-0 max-w-[22rem] truncate">
+            <span className={clsx("min-w-0 max-w-[22rem] truncate", open && "max-[480px]:hidden")}>
               {!open && saved ? (
                 <button type="button" data-continue onClick={() => void resume(saved)} className="link-underline max-w-full truncate text-left text-text">
                   {`continue at page ${saved.page}, ${saved.name} →`}
@@ -756,7 +756,7 @@ export function EveryByte() {
                 <Scramble key={caption} text={caption} durationMs={900} />
               )}
             </span>
-            <span className="flex shrink-0 items-center gap-0.5">
+            <span className="flex shrink-0 items-center gap-0.5 max-[480px]:hidden">
               {open &&
                 beats.length > 1 &&
                 beats.map((b, i) => (

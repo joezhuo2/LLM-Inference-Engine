@@ -186,7 +186,13 @@ const figures: Record<string, () => ReactNode> = {
 
 function PrefixOverlay({ kind, target, narrow }: OverlayProps) {
   if (!target || !kind) return null;
-  if (kind === "sandbox") return createPortal(<PrefixSandbox />, target);
+  if (kind === "sandbox")
+    return createPortal(
+      <div className="max-sm:pb-14">
+        <PrefixSandbox />
+      </div>,
+      target,
+    );
   const figure = figures[kind];
   if (!figure) return null;
   return createPortal(<div className={narrow ? "aspect-[560/400] w-full" : "h-[34rem]"}>{figure()}</div>, target);
