@@ -111,8 +111,8 @@ export const serving: KernelStory = {
     {
       file: "src/sched/scheduler.cpp",
       from: "    while (!waiting_queue_.empty() &&",
-      to: "        tokens_admitted += req_length;",
-      caption: "Admission in schedule(): while a slot is free, the front of the queue joins if blocks for its whole length are free; the first request that does not fit stops the loop",
+      to: "        tokens_admitted += req_length - cached;",
+      caption: "Admission in schedule(): while a slot is free, the front of the queue joins if blocks for its whole length are free; the first request that does not fit stops the loop. cached is what the prefix cache already holds of the prompt, 0 with --no-prefix-cache",
     },
     {
       file: "src/sched/scheduler.cpp",

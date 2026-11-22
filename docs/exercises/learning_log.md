@@ -2545,3 +2545,4 @@
 - **a cold request against warm ones** => 
 - **why a cache hit lowers the time to the first token but not the time per token** => 
 - **a before and after run to show that a new default changes nothing** => 
+- **a build that fails when the line an excerpt ends on changes** => 
