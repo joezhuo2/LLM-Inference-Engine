@@ -2561,3 +2561,4 @@
 - **cache-aware scheduling** => 
 - **a replay that models the rules of a chapter, not the engine of today** => 
 - **a stub exercise whose implementation has no pull request yet** => 
+- **a generated file rebuilt from the static pages** => 

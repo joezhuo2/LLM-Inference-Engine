@@ -502,7 +502,7 @@
    {
     "id": "reuse",
     "title": "freed blocks go out again first",
-    "words": 99
+    "words": 152
    },
    {
     "id": "bigger",
@@ -517,9 +517,57 @@
    },
    {
     "id": "replay",
-    "title": "a busy run held 65 of 12,915 blocks",
+    "title": "a busy run held 63 of 12,915 blocks",
     "group": "measured",
     "words": 141
+   }
+  ]
+ },
+ "prefix-caching": {
+  "about": 150,
+  "steps": [
+   {
+    "id": "same-keys",
+    "title": "the same start gives the same keys and values",
+    "words": 132
+   },
+   {
+    "id": "chain",
+    "title": "a block's key is every token before its end",
+    "words": 152
+   },
+   {
+    "id": "tables",
+    "title": "two block tables, one physical block",
+    "words": 165
+   },
+   {
+    "id": "publish",
+    "title": "published when the step that wrote it ends",
+    "words": 127
+   },
+   {
+    "id": "cached",
+    "title": "a released block stays cached",
+    "words": 150
+   },
+   {
+    "id": "ttft",
+    "title": "a hit leaves only the request's own prefill",
+    "group": "measured",
+    "words": 200
+   },
+   {
+    "id": "burst",
+    "title": "all at once, the batch fills sooner",
+    "group": "measured",
+    "words": 150
+   },
+   {
+    "id": "same-output",
+    "title": "the same keys, nearly the same answers",
+    "group": "how it got built",
+    "words": 155
    }
   ]
  },
@@ -654,7 +702,7 @@
    {
     "id": "fit",
     "title": "divide the pool by what requests hold",
-    "words": 152
+    "words": 153
    },
    {
     "id": "max-batch",
