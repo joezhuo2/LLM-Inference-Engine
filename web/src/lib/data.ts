@@ -128,7 +128,7 @@ export type LoadRun = { date: string; commit: string; gpu: string };
 
 export type LoadTrace = { qps: number; prefill_steps: number; prefill_s: number; run_s: number; ms_per_prompt_token: number; decode_steps: number; decode_ms: number };
 
-export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null; slo: { ttft_ms: number; tpot_ms: number } | null; load_trace?: LoadTrace | null };
+export const resultsDoc = resultsDocJson as unknown as { sections: ProfilingSection[]; ceilings: { gbs: number; tflops: number } | null; load: LoadRun | null; slo: { ttft_ms: number; tpot_ms: number } | null; load_trace?: LoadTrace | null; prefix_same?: PrefixSame | null; prefix_budget?: number | null };
 
 export const loadTrace = (): LoadTrace | null => resultsDoc.load_trace ?? null;
 
@@ -142,9 +142,11 @@ export function speculativeExample(): SpeculativeExample {
   return example as SpeculativeExample;
 }
 
-export type PrefixRow = { shared: number; own: number; rate: number; arrivals: string; cache: "on" | "off"; requests: number; runs: number; first_ttft_ms: number; later_ttft_ms: number; hit_rate: number; output_tps: number; prefill_tokens: number; cached_tokens: number };
+export type PrefixRow = { shared: number; own: number; rate: number; arrivals: string; cache: "on" | "off"; max_batch: number; requests: number; runs: number; first_ttft_ms: number; later_ttft_ms: number; hit_rate: number; output_tps: number; prefill_tokens: number; cached_tokens: number };
 
 export type PrefixRuns = { date: string; gpu: string; commit: string | null; rows: PrefixRow[] };
+
+export type PrefixSame = { layers: number; same: number; outputs: number; split: number; ulps: number };
 
 export function prefixRuns(): PrefixRuns {
   const runs = prefixJson as unknown as PrefixRuns;

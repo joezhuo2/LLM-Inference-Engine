@@ -41,6 +41,9 @@ import { ServingAboutStory } from "./serving/about";
 import { ServingSandbox } from "./serving/sandbox";
 import { SpeculativeSandbox } from "./speculative-decoding/sandbox";
 import { TensorAboutStory } from "./tensor-parallelism/about";
+import { PrefixAboutStory } from "./prefix-caching/about";
+import { PrefixSandbox } from "./prefix-caching/sandbox";
+import { PrefixStory } from "./prefix-caching/story";
 import { TensorSandbox } from "./tensor-parallelism/sandbox";
 import { TensorStory } from "./tensor-parallelism/story";
 import { ServingStory } from "./serving/story";
@@ -94,6 +97,8 @@ export function KernelStoryView({ slug }: { slug: string }) {
       return <SpeculativeStory />;
     case "tensor-parallelism":
       return <TensorStory />;
+    case "prefix-caching":
+      return <PrefixStory />;
     case "quantization":
       return <QuantStory />;
     default:
@@ -150,6 +155,8 @@ export function KernelAboutView({ slug }: { slug: string }) {
       return <SpeculativeAboutStory />;
     case "tensor-parallelism":
       return <TensorAboutStory />;
+    case "prefix-caching":
+      return <PrefixAboutStory />;
     case "quantization":
       return <QuantAboutStory />;
     default:
@@ -195,6 +202,8 @@ export function KernelSandboxView({ slug }: { slug: string }) {
       return <SpeculativeSandbox />;
     case "tensor-parallelism":
       return <TensorSandbox />;
+    case "prefix-caching":
+      return <PrefixSandbox />;
     case "quantization":
       return <QuantSandbox />;
     default:

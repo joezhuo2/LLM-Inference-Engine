@@ -166,6 +166,8 @@ const ceilings = /Ceilings: ([\d.]+) GB\/s and ([\d.]+) TFLOP\/s/.exec(resultsTe
 const loadRun = /Engine runs measured ([\d-]+(?: to [\d-]+)?) at commit (\w+) on ([^;.]+)/.exec(resultsText);
 const slo = /SLO: TTFT at most ([\d.]+) ms and TPOT at most ([\d.]+) ms/.exec(resultsText);
 const loadTrace = /In the whole-prompt run at (\d+) QPS[^)]*\), ([\d,]+) prefill steps take ([\d.]+) of the ([\d.]+) seconds, ([\d.]+) ms per prompt token, and the ([\d,]+) decode steps average ([\d.]+) ms/.exec(resultsText);
+const prefixSame = /bit-identical, in all (\d+) layers[\s\S]*?(\d+) of (\d+) outputs are identical and the other (\d+) split at a near tie, within (\d+) BF16 ulps/.exec(resultsText);
+const prefixBudget = /admits as many whole prompts as fit in ([\d,]+) tokens before anything is published/.exec(resultsText);
 const num = (text) => Number(text.replaceAll(",", ""));
 const resultsDoc = {
   sections: parseProfiling(resultsText),
@@ -173,6 +175,8 @@ const resultsDoc = {
   load: loadRun ? { date: loadRun[1], commit: loadRun[2], gpu: loadRun[3] } : null,
   slo: slo ? { ttft_ms: Number(slo[1]), tpot_ms: Number(slo[2]) } : null,
   load_trace: loadTrace ? { qps: num(loadTrace[1]), prefill_steps: num(loadTrace[2]), prefill_s: num(loadTrace[3]), run_s: num(loadTrace[4]), ms_per_prompt_token: num(loadTrace[5]), decode_steps: num(loadTrace[6]), decode_ms: num(loadTrace[7]) } : null,
+  prefix_same: prefixSame ? { layers: num(prefixSame[1]), same: num(prefixSame[2]), outputs: num(prefixSame[3]), split: num(prefixSame[4]), ulps: num(prefixSame[5]) } : null,
+  prefix_budget: prefixBudget ? num(prefixBudget[1]) : null,
 };
 const modelShape = { ...parseModelShape(readFileSync(resolve(web, "../tests/unit/test_config.cpp"), "utf8")), roofline_context: parseRooflineContext(resultsText) };
 const repoText = (path) => readFileSync(resolve(web, "..", path), "utf8");

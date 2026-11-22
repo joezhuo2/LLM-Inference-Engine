@@ -18,11 +18,12 @@ import { review as memoryBudget } from "./memory-budget";
 import { review as quantization } from "./quantization";
 import { review as speculativeDecoding } from "./speculative-decoding";
 import { review as tensorParallelism } from "./tensor-parallelism";
+import { review as prefixCaching } from "./prefix-caching";
 import { chapterNumber } from "../book-order";
 import { kernelStory } from "../kernels";
 import type { ChapterReview, ReviewQuestion } from "./types";
 
-const reviews: Record<string, ChapterReview> = { foundations, gemm, rope, "paged-kv": pagedKv, "paged-attention": pagedAttention, "attention-v2": attentionV2, "split-attention": splitAttention, "add-rmsnorm": addRmsnorm, swiglu, sampling, "cuda-graphs": cudaGraphs, "chunked-prefill": chunkedPrefill, "flash-prefill": flashPrefill, serving, "where-the-time-went": whereTheTimeWent, "one-token": oneToken, "memory-budget": memoryBudget, "speculative-decoding": speculativeDecoding, "tensor-parallelism": tensorParallelism, quantization };
+const reviews: Record<string, ChapterReview> = { foundations, gemm, rope, "paged-kv": pagedKv, "paged-attention": pagedAttention, "attention-v2": attentionV2, "split-attention": splitAttention, "add-rmsnorm": addRmsnorm, swiglu, sampling, "cuda-graphs": cudaGraphs, "chunked-prefill": chunkedPrefill, "flash-prefill": flashPrefill, serving, "where-the-time-went": whereTheTimeWent, "one-token": oneToken, "memory-budget": memoryBudget, "speculative-decoding": speculativeDecoding, "tensor-parallelism": tensorParallelism, "prefix-caching": prefixCaching, quantization };
 
 export const chapterReview = (slug: string): ChapterReview | undefined => (reviews[slug]?.takeaways.length ? reviews[slug] : undefined);
 

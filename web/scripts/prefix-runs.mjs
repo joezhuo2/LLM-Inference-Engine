@@ -20,6 +20,7 @@ export function prefixRun(file, summary, requests) {
     rate: Number(match[3]),
     run: Number(match[4]),
     own: summary.prompt_len,
+    max_batch: summary.max_batch,
     requests: requests.length,
     first_ttft_ms: first.ttft_s * 1e3,
     later_ttft_ms: median(later) * 1e3,
@@ -40,6 +41,6 @@ export function prefixRows(runs) {
   }
   const of = (group, key) => median(group.map((r) => r[key]));
   return [...groups.values()]
-    .map((g) => ({ shared: g[0].shared, own: g[0].own, rate: g[0].rate, arrivals: g[0].rate === 0 ? "at once" : `${g[0].rate}/s`, cache: g[0].cache, requests: g[0].requests, runs: g.length, first_ttft_ms: of(g, "first_ttft_ms"), later_ttft_ms: of(g, "later_ttft_ms"), hit_rate: of(g, "hit_rate"), output_tps: of(g, "output_tps"), prefill_tokens: of(g, "prefill_tokens"), cached_tokens: of(g, "cached_tokens") }))
+    .map((g) => ({ shared: g[0].shared, own: g[0].own, rate: g[0].rate, arrivals: g[0].rate === 0 ? "at once" : `${g[0].rate}/s`, cache: g[0].cache, max_batch: g[0].max_batch, requests: g[0].requests, runs: g.length, first_ttft_ms: of(g, "first_ttft_ms"), later_ttft_ms: of(g, "later_ttft_ms"), hit_rate: of(g, "hit_rate"), output_tps: of(g, "output_tps"), prefill_tokens: of(g, "prefill_tokens"), cached_tokens: of(g, "cached_tokens") }))
     .sort((a, b) => a.shared - b.shared || b.rate - a.rate || (a.cache === "on" ? -1 : 1));
 }

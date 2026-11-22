@@ -9,6 +9,7 @@ import { memoryBudget } from "./memory-budget";
 import { oneToken } from "./one-token";
 import { pagedAttention } from "./paged-attention";
 import { pagedKv } from "./paged-kv";
+import { prefixCaching } from "./prefix-caching";
 import { quantization } from "./quantization";
 import { rope } from "./rope";
 import { sampling } from "./sampling";
@@ -22,7 +23,7 @@ import { deadEnds } from "../dead-ends";
 import { beyondTitle, bookOrder, chapterNumber } from "../book-order";
 import type { KernelStory } from "./types";
 
-const stories = [oneToken, foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, flashPrefill, memoryBudget, serving, speculativeDecoding, tensorParallelism, whereTheTimeWent, quantization];
+const stories = [oneToken, foundations, pagedAttention, addRmsnorm, rope, swiglu, gemm, cudaGraphs, pagedKv, splitAttention, attentionV2, sampling, chunkedPrefill, prefixCaching, flashPrefill, memoryBudget, serving, speculativeDecoding, tensorParallelism, whereTheTimeWent, quantization];
 
 if (stories.length !== bookOrder.length || stories.some((k) => !bookOrder.includes(k.slug))) throw new Error("content/kernels: every story needs a place in bookOrder (content/book-order.ts)");
 

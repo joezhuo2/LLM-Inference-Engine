@@ -2548,3 +2548,7 @@
 - **a build that fails when the line an excerpt ends on changes** => 
 - **a file name that records the settings of a run** => 
 - **a median over runs of a median over requests** => 
+- **a block key that covers every token before the block** => 
+- **a hit rate that is block arithmetic** => 
+- **a build that fails when a hand-written table and its data files disagree** => 
+- **a claim guarded by a check that throws when the data stops supporting it** => 
