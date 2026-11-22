@@ -85,6 +85,21 @@ Workload make_workload(const WorkloadConfig& config) {
     validate(config.params);
     for (const auto& prompt : config.prompts)
         if (prompt.empty()) throw std::invalid_argument("workload: a fixed prompt is empty");
+    if (config.shared_prefix < 0 || (config.shared_prefix > 0 && !config.prompts.empty()))
+        throw std::invalid_argument(
+            "workload: shared_prefix must not be negative, and must be 0 with fixed prompts");
+
+    const auto random_token = [&](SplitMix64& g) {
+        auto token = int32_t(g.below(uint64_t(config.vocab - 2)));
+        for (const int32_t special :
+             {std::min(config.bos_id, config.eos_id), std::max(config.bos_id, config.eos_id)})
+            if (token >= special) ++token;
+        return token;
+    };
+    SplitMix64 prefix_rng(~config.seed);
+    std::vector<int32_t> shared;
+    if (config.shared_prefix > 0) shared.push_back(config.bos_id);
+    while (int(shared.size()) < config.shared_prefix) shared.push_back(random_token(prefix_rng));
 
     SplitMix64 rng(config.seed);
     Workload w;
@@ -98,15 +113,10 @@ Workload make_workload(const WorkloadConfig& config) {
         if (!config.prompts.empty()) {
             r.prompt = config.prompts[size_t(i) % config.prompts.size()];
         } else {
-            r.prompt.resize(size_t(rng.between(config.prompt_len)));
-            r.prompt[0] = config.bos_id;
-            for (size_t j = 1; j < r.prompt.size(); ++j) {
-                auto token = int32_t(rng.below(uint64_t(config.vocab - 2)));
-                for (const int32_t special : {std::min(config.bos_id, config.eos_id),
-                                              std::max(config.bos_id, config.eos_id)})
-                    if (token >= special) ++token;
-                r.prompt[j] = token;
-            }
+            const auto length = size_t(rng.between(config.prompt_len));
+            r.prompt = shared.empty() ? std::vector<int32_t>{config.bos_id} : shared;
+            for (size_t j = shared.empty() ? 1 : 0; j < length; ++j)
+                r.prompt.push_back(random_token(rng));
         }
         if (i > 0 && config.request_rate > 0.0) t -= std::log1p(-rng.unit()) / config.request_rate;
         w.arrivals.push_back(t);

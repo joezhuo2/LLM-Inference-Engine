@@ -49,6 +49,7 @@ struct Options {
     std::filesystem::path model;
     int num_requests = 64;
     std::string prompt_len = "128";
+    int shared_prefix = 0;
     std::string output_len = "256";
     double request_rate = 0.0;
     int max_batch = 0;
@@ -129,7 +130,8 @@ void run(const Options& o) {
                       .eos_id = config.eos_id,
                       .request_rate = o.request_rate,
                       .seed = o.seed,
-                      .params = {o.temperature, o.seed, o.top_k, o.top_p}};
+                      .params = {o.temperature, o.seed, o.top_k, o.top_p},
+                      .shared_prefix = o.shared_prefix};
     std::optional<Tokenizer> tokenizer;
     if (!o.prompts.empty() || !o.trace.empty()) tokenizer.emplace(o.model / "tokenizer.model");
     if (!o.prompts.empty()) {
@@ -140,7 +142,8 @@ void run(const Options& o) {
         wc.prompt_len = {int(shortest->size()), int(longest->size())};
     }
     Workload workload = make_workload(wc);
-    const int64_t context = int64_t(wc.prompt_len.max) + wc.output_len.max - 1;
+    const int64_t longest_prompt = int64_t(wc.shared_prefix) + wc.prompt_len.max;
+    const int64_t context = longest_prompt + wc.output_len.max - 1;
     if (context > config.max_positions)
         throw std::invalid_argument("the longest prompt plus output needs " +
                                     std::to_string(context) + " tokens of context; the model has " +
@@ -191,7 +194,7 @@ void run(const Options& o) {
     }
     if (batched) {
         num_blocks = kv_cache_blocks(w.config, kKvBlockSize, device_free_bytes());
-        const int64_t max_prefill = std::max<int64_t>(wc.prompt_len.max, 2048);
+        const int64_t max_prefill = std::max<int64_t>(longest_prompt, 2048);
         sc = {.num_blocks = num_blocks,
               .block_size = kKvBlockSize,
               .max_batch = o.max_batch,
@@ -211,7 +214,7 @@ void run(const Options& o) {
         if (o.graphs)
             graphs.emplace(*paged_runner, decode_graph_buckets(o.max_batch, o.graph_steps));
     } else {
-        one_runner.emplace(w.config, w.weights, wc.prompt_len.max, context, nullptr);
+        one_runner.emplace(w.config, w.weights, longest_prompt, context, nullptr);
     }
     std::vector<StepTrace> steps;
     const auto drive = [&](Workload& load, Clock::time_point start, bool timed) {
@@ -281,6 +284,7 @@ void run(const Options& o) {
         {"top_k", std::to_string(o.top_k)},
         {"top_p", csv_number(o.top_p)},
         {"stop_at_eos", o.stop_at_eos ? "1" : "0"},
+        {"shared_prefix", std::to_string(wc.shared_prefix)},
     };
     for (auto& field : summary_fields(s)) fields.push_back(std::move(field));
     if (batched) {
@@ -323,6 +327,7 @@ void run(const Options& o) {
         meta["speculate_adaptive"] = o.speculate_adaptive;
         meta["draft_model"] = o.draft_model.filename().string();
         meta["prefix_cache"] = !o.no_prefix_cache;
+        meta["shared_prefix"] = wc.shared_prefix;
         meta["kv_blocks"] = num_blocks;
         meta["block_size"] = kKvBlockSize;
         meta["num_requests"] = o.num_requests;
@@ -439,6 +444,11 @@ void add_bench_command(CLI::App& app) {
     cmd->add_option("--prompt-len", opts->prompt_len,
                     "Prompt tokens, BOS included: N, or MIN:MAX drawn uniformly per request")
         ->capture_default_str();
+    cmd->add_option("--shared-prefix", opts->shared_prefix,
+                    "Start every random prompt with the same N tokens (BOS and N - 1 random ones, "
+                    "like a shared system prompt) followed by its own --prompt-len random tokens")
+        ->capture_default_str()
+        ->check(CLI::NonNegativeNumber);
     cmd->add_option(
            "--prompts", opts->prompts,
            "Chat prompts JSON in the format of scripts/prompts.json; request i uses prompt "

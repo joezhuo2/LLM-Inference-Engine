@@ -2541,3 +2541,4 @@
 - **why a different chunk boundary can flip a near tie (batch invariance)** => 
 - **a switch that is on in the commands but off in the library** => 
 - **a running total against a ratio in a metrics endpoint** => 
+- **a second random stream, so an option leaves the old draws unchanged** => 
