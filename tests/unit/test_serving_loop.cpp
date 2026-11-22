@@ -94,6 +94,20 @@ TEST(ServingLoop, ASpeculativeStepStreamsEveryTokenItWroteInOrder) {
     EXPECT_EQ(m.counters.finished_total, 1);
 }
 
+TEST(ServingLoop, MetricsCountPrefillTokensAndTheOnesTheCacheHeld) {
+    ScriptedBackend backend([](const Request&) { return int32_t(12); }, 64, 16, 256,
+                            milliseconds(0), 0, true);
+    ServingLoop loop(backend, word_decode, kEos);
+    const Ticket first = loop.submit(ask(40, 2));
+    run_until_idle(loop);
+    const Ticket second = loop.submit(ask(40, 2));
+    run_until_idle(loop);
+    EXPECT_EQ(text_of(drain(second)), text_of(drain(first)));
+    const auto m = loop.metrics();
+    EXPECT_EQ(m.counters.prefill_total, 80);
+    EXPECT_EQ(m.counters.cached_total, 32);
+}
+
 TEST(ServingLoop, AStopStringInsideASpeculativeStepEndsTheAnswerThere) {
     ScriptedBackend backend(
         [](const Request& r) { return int32_t(100 + (r.prompt.size() + r.output.size()) % 4); }, 64,

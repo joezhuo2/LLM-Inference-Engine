@@ -67,6 +67,7 @@ Written by `engine bench --trace out.json` (batched mode only, the timed run onl
     "token_budget": 0,
     "speculate": 0,
     "speculate_adaptive": false,
+    "prefix_cache": true,
     "kv_blocks": 12915,
     "block_size": 16,
     "num_requests": 24,
@@ -103,7 +104,7 @@ build/release/bin/engine bench --model models/tinyllama --prompts scripts/prompt
 build/release/bin/engine serve --model models/tinyllama --graphs
 ```
 
-Listens on `127.0.0.1:8000` once the model is loaded (`--host`, `--port`); `--max-batch` (default 16), `--graphs`, `--graph-steps`, `--token-budget`, `--speculate` and `--speculate-adaptive` are those of `bench`, and `--temperature`, `--top-k`, `--top-p` and `--max-tokens` set what a request gets when it does not say. One engine thread runs the scheduler; HTTP worker threads hand it requests and read tokens through queues, so requests join the batch between steps.
+Listens on `127.0.0.1:8000` once the model is loaded (`--host`, `--port`); `--max-batch` (default 16), `--graphs`, `--graph-steps`, `--token-budget`, `--speculate`, `--speculate-adaptive` and `--no-prefix-cache` are those of `bench`, and `--temperature`, `--top-k`, `--top-p` and `--max-tokens` set what a request gets when it does not say. One engine thread runs the scheduler; HTTP worker threads hand it requests and read tokens through queues, so requests join the batch between steps.
 
 ### `GET /health`
 
@@ -117,10 +118,10 @@ A snapshot; the dashboard polls it about once a second.
 {
   "version": 1,
   "time_s": 512.3,
-  "meta": {"engine_version": "0.1.0", "gpu": "...", "model": "tinyllama", "max_batch": 16, "graphs": true, "graph_steps": 1, "token_budget": 0, "speculate": 0, "speculate_adaptive": false},
+  "meta": {"engine_version": "0.1.0", "gpu": "...", "model": "tinyllama", "max_batch": 16, "graphs": true, "graph_steps": 1, "token_budget": 0, "speculate": 0, "speculate_adaptive": false, "prefix_cache": true},
   "requests": {"waiting": 2, "running": 9, "finished_total": 341, "preemptions_total": 3},
   "kv": {"blocks_total": 12915, "blocks_free": 11020, "block_size": 16},
-  "tokens": {"output_total": 48211, "output_per_s": 812.4, "drafted_total": 0, "draft_accepted_total": 0},
+  "tokens": {"output_total": 48211, "output_per_s": 812.4, "drafted_total": 0, "draft_accepted_total": 0, "prefill_total": 61203, "cached_total": 20480, "prefix_hit_rate": 0.3346},
   "latency": {
     "ttft_s": {"p50": 0.031, "p99": 0.210},
     "tpot_s": {"p50": 0.0112, "p99": 0.0164}
@@ -129,7 +130,7 @@ A snapshot; the dashboard polls it about once a second.
 }
 ```
 
-`output_per_s` covers the last 10 seconds (or the time since start when that is shorter); the latency percentiles cover the requests that finished in the last 60 seconds (`null` when there are none, and `tpot_s` also ignores one-token answers). TTFT counts from when the HTTP request was received. `finished_total` and the latency cover answers that reached their end (EOS, a stop string or `max_tokens`), not requests whose client went away. `output_total` counts every token written to an answer. `drafted_total` and `draft_accepted_total` count the guessed tokens of `--speculate` and the ones that became output. `preemptions_total` counts prefill steps of sequences that already had output. `blocks_total` includes the null block 0, so an idle server has `blocks_free` = `blocks_total` - 1.
+`output_per_s` covers the last 10 seconds (or the time since start when that is shorter); the latency percentiles cover the requests that finished in the last 60 seconds (`null` when there are none, and `tpot_s` also ignores one-token answers). TTFT counts from when the HTTP request was received. `finished_total` and the latency cover answers that reached their end (EOS, a stop string or `max_tokens`), not requests whose client went away. `output_total` counts every token written to an answer. `drafted_total` and `draft_accepted_total` count the guessed tokens of `--speculate` and the ones that became output. `prefill_total` counts the tokens of every sequence the scheduler admitted (a preempted one again when it comes back), `cached_total` the ones whose keys and values were already in the KV cache, so their prefill was skipped, and `prefix_hit_rate` is the second over the first (0 before the first request and with `--no-prefix-cache`). `preemptions_total` counts prefill steps of sequences that already had output. `blocks_total` includes the null block 0, so an idle server has `blocks_free` = `blocks_total` - 1.
 
 ### `GET /v1/steps` (Server-Sent Events)
 

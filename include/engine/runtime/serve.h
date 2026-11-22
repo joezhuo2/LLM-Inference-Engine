@@ -17,6 +17,7 @@ struct ServeStats {
     int min_free_blocks = -1;
     int64_t drafted = 0;
     int64_t accepted = 0;
+    PrefixCounts prefix{};
 };
 
 std::vector<Request> serve_step(Scheduler& scheduler, PagedRunner& runner, Sampler& sampler,

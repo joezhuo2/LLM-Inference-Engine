@@ -2539,3 +2539,5 @@
 - **a hit rate counted in tokens** => 
 - **a fake model that checks every key a row reads** => 
 - **why a different chunk boundary can flip a near tie (batch invariance)** => 
+- **a switch that is on in the commands but off in the library** => 
+- **a running total against a ratio in a metrics endpoint** => 

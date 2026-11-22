@@ -39,7 +39,7 @@ struct OwnedStream {
 };
 
 SchedulerConfig scheduler_config(const ModelConfig& config, int num_blocks, int max_batch,
-                                 int max_draft, bool adaptive_draft) {
+                                 int max_draft, bool adaptive_draft, bool prefix_cache) {
     return {.num_blocks = num_blocks,
             .block_size = kKvBlockSize,
             .max_batch = max_batch,
@@ -47,7 +47,8 @@ SchedulerConfig scheduler_config(const ModelConfig& config, int num_blocks, int 
             .max_context = int(config.max_positions),
             .eos_id = config.eos_id,
             .max_draft = max_draft,
-            .adaptive_draft = adaptive_draft};
+            .adaptive_draft = adaptive_draft,
+            .prefix_cache = prefix_cache};
 }
 
 class GpuBackend final : public Backend {
@@ -55,7 +56,7 @@ public:
     GpuBackend(const DeviceWeights& w, const GpuBackendOptions& o)
         : config_(scheduler_config(w.config,
                                    kv_cache_blocks(w.config, kKvBlockSize, device_free_bytes()),
-                                   o.max_batch, o.speculate, o.speculate_adaptive)),
+                                   o.max_batch, o.speculate, o.speculate_adaptive, o.prefix_cache)),
           scheduler_(config_),
           stream_(o.graphs),
           cache_(w.config, config_.num_blocks, kKvBlockSize),

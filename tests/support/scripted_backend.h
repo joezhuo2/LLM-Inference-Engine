@@ -30,14 +30,15 @@ public:
     explicit ScriptedBackend(Next next, int num_blocks = 64, int block_size = 16,
                              int max_context = 256,
                              std::chrono::milliseconds delay = std::chrono::milliseconds(0),
-                             int max_draft = 0)
+                             int max_draft = 0, bool prefix_cache = false)
         : scheduler_({.num_blocks = num_blocks,
                       .block_size = block_size,
                       .max_batch = 8,
                       .max_prefill_tokens = max_context,
                       .max_context = max_context,
                       .eos_id = kEos,
-                      .max_draft = max_draft}),
+                      .max_draft = max_draft,
+                      .prefix_cache = prefix_cache}),
           num_blocks_(num_blocks),
           next_(std::move(next)),
           delay_(delay) {}

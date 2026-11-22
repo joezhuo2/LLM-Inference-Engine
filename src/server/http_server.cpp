@@ -93,7 +93,11 @@ Json metrics_json(const MetricsSnapshot& m, const Json& meta, int block_size) {
              {{"output_total", c.output_total},
               {"output_per_s", m.output_per_s},
               {"drafted_total", c.drafted_total},
-              {"draft_accepted_total", c.draft_accepted_total}}},
+              {"draft_accepted_total", c.draft_accepted_total},
+              {"prefill_total", c.prefill_total},
+              {"cached_total", c.cached_total},
+              {"prefix_hit_rate",
+               c.prefill_total > 0 ? double(c.cached_total) / double(c.prefill_total) : 0.0}}},
             {"latency", {{"ttft_s", latency_json(m.ttft_s)}, {"tpot_s", latency_json(m.tpot_s)}}},
             {"steps_total", c.steps_total}};
 }
