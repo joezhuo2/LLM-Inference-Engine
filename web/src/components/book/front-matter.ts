@@ -33,7 +33,7 @@ export function numberPages(spreads: Record<string, number>): number {
   let page = 2;
   for (const key of sections.filter((k) => !bookOrder.includes(k) || spreads[k] !== undefined)) {
     firstPage[key] = page;
-    page += key === "start" ? startSpreads : key === "contents" ? 1 : key === "beyond" ? beyondSpreads.length : key === "engines" ? 2 : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : key === "glossary" ? glossarySpreads.length : spreads[key];
+    page += key === "start" ? startSpreads : key === "contents" ? contentsSpreads : key === "beyond" ? beyondSpreads.length : key === "engines" ? 2 : key === "estimates" ? estimateSpreads : key === "errata" ? errataSpreads.length : key === "glossary" ? glossarySpreads.length : spreads[key];
   }
   endPage = page;
   return page - 1;
@@ -128,83 +128,117 @@ function routeDot(ctx: Ctx, x: number, y: number, palette: BookPalette) {
 }
 
 const CONTENTS_TOP = 380;
-const CONTENTS_BOTTOM = H - 330;
+const CONTENTS_ROW = 100;
+export const contentsSpreads = 2;
 
-function contentsRows(parts: typeof bookParts, withErrata: boolean, scale = 1) {
-  const rows: { kind: "part" | "entry"; y: number; text: string; number?: string; page?: number; href?: string; slug?: string }[] = [];
-  let y = CONTENTS_TOP;
-  const pitch = ROW * scale;
-  for (const part of parts) {
-    rows.push({ kind: "part", y, text: `Part ${part.numeral} · ${part.title}` });
-    y += 78 * scale;
-    for (const slug of part.slugs) {
-      rows.push({ kind: "entry", y, text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), page: chapterPage(slug), href: bookHref(slug), slug });
-      y += pitch;
-    }
-    y += 40 * scale;
+type ContentsEntry = { text: string; number?: string; key: string; href: string; slug?: string };
+type ContentsBlock = { head: string; entries: ContentsEntry[] };
+type ContentsSheet = { side: Side; blocks: ContentsBlock[]; bottom: number; title?: string; route?: boolean; note?: boolean };
+
+const chapterEntry = (slug: string): ContentsEntry => ({ text: chapterTitle(slug), number: String(bookOrder.indexOf(slug) + 1), key: slug, href: bookHref(slug), slug });
+const partHead = (p: (typeof bookParts)[number], more = false) => `Part ${p.numeral} · ${p.title}${more ? ", continued" : ""}`;
+
+function halves(parts: typeof bookParts): [ContentsBlock[], ContentsBlock[]] {
+  const cut = Math.floor(parts.reduce((n, p) => n + p.slugs.length, 0) / 2);
+  const left: ContentsBlock[] = [];
+  const right: ContentsBlock[] = [];
+  let seen = 0;
+  for (const p of parts) {
+    const k = Math.max(0, Math.min(p.slugs.length, cut - seen));
+    if (k > 0) left.push({ head: partHead(p), entries: p.slugs.slice(0, k).map(chapterEntry) });
+    if (k < p.slugs.length) right.push({ head: partHead(p, k > 0), entries: p.slugs.slice(k).map(chapterEntry) });
+    seen += p.slugs.length;
   }
-  if (withErrata) {
-    rows.push({ kind: "entry", y: y + 20 * scale, text: "Beyond this engine", page: chapterPage("beyond"), href: "#beyond" });
-    rows.push({ kind: "entry", y: y + 20 * scale + pitch, text: "Where this lives in other engines", page: chapterPage("engines"), href: "#engines" });
-    rows.push({ kind: "entry", y: y + 20 * scale + 2 * pitch, text: "Estimate it yourself", page: chapterPage("estimates"), href: "#estimates" });
-    rows.push({ kind: "entry", y: y + 20 * scale + 3 * pitch, text: `Errata: ${errataTitle}`, page: chapterPage("errata"), href: "#errata" });
-    rows.push({ kind: "entry", y: y + 20 * scale + 4 * pitch, text: glossaryTitle, page: chapterPage("glossary"), href: "#glossary" });
-  }
-  return rows;
+  return [left, right];
 }
 
-const contentsScale = (parts: typeof bookParts, withErrata: boolean) => Math.min(1, (CONTENTS_BOTTOM - CONTENTS_TOP) / (contentsRows(parts, withErrata).at(-1)!.y - CONTENTS_TOP));
+function contentsSheets(): ContentsSheet[][] {
+  const stepEnd = bookParts.findIndex((p) => p.title === "one step") + 1;
+  const [l1, r1] = halves(bookParts.slice(0, stepEnd));
+  const back: ContentsBlock = {
+    head: "the back of the book",
+    entries: [
+      { text: "Beyond this engine", key: "beyond", href: "#beyond" },
+      { text: "Where this lives in other engines", key: "engines", href: "#engines" },
+      { text: "Estimate it yourself", key: "estimates", href: "#estimates" },
+      { text: `Errata: ${errataTitle}`, key: "errata", href: "#errata" },
+      { text: glossaryTitle, key: "glossary", href: "#glossary" },
+    ],
+  };
+  return [
+    [
+      { side: "left", blocks: l1, bottom: H - 330, title: "Contents", route: true },
+      { side: "right", blocks: r1, bottom: H - 220, note: true },
+    ],
+    [
+      { side: "left", blocks: bookParts.slice(stepEnd).map((p) => ({ head: partHead(p), entries: p.slugs.map(chapterEntry) })), bottom: H - 220, title: "Contents, continued" },
+      { side: "right", blocks: [back], bottom: H - 220, note: true },
+    ],
+  ];
+}
 
-function contentsPage(side: Side, parts: typeof bookParts, withErrata: boolean, scale: number) {
+function sheetRows(sheet: ContentsSheet, max: number) {
+  const entries = sheet.blocks.flatMap((b) => b.entries);
+  const starts: number[] = [];
+  sheet.blocks.reduce((k, b) => (starts.push(k), k + b.entries.length), 0);
+  const fit = listRows(entries.length, starts, CONTENTS_TOP, sheet.bottom, max);
+  return { step: fit.step, rows: fit.rows.map((r) => (r.head !== undefined ? { y: r.y, head: sheet.blocks[starts.indexOf(r.head)].head } : { y: r.y, entry: entries[r.k!] })) };
+}
+
+export const contentsStep = () => Math.min(...contentsSheets().flat().map((s) => sheetRows(s, CONTENTS_ROW).step));
+
+function contentsPage(sheet: ContentsSheet, step: number) {
+  const { side } = sheet;
   const x0 = side === "left" ? 130 : 170;
   const x1 = side === "left" ? W - 170 : W - 130;
-  const rows = contentsRows(parts, withErrata, scale);
-  const links: PageLink[] = rows
-    .filter((r) => r.href)
-    .map((r) => ({ side, box: toBox(x0, x1, r.y, ROW * scale), href: r.href!, label: r.number ? `chapter ${r.number}, ${r.text}` : r.text }));
-  if (side === "left") links.push({ side, box: [x0 / W, (H - 215) / H, x1 / W, (H - 145) / H], href: "#path", label: routeLink });
+  const links: PageLink[] = sheetRows(sheet, step).rows.flatMap((r) => (r.entry ? [{ side, box: toBox(x0, x1, r.y, step), href: r.entry.href, label: r.entry.number ? `chapter ${r.entry.number}, ${r.entry.text}` : r.entry.text }] : []));
+  if (sheet.route) links.push({ side, box: [x0 / W, (H - 215) / H, x1 / W, (H - 145) / H], href: "#path", label: routeLink });
   const paint = (canvas: HTMLCanvasElement, palette: BookPalette, fonts: Fonts) => {
     const { ctx, x0, x1 } = begin(canvas, side);
-    if (side === "left") {
+    const k = step / ROW;
+    if (sheet.title) {
       ctx.fillStyle = palette.faint;
       ctx.font = `26px ${fonts.sans}`;
       ctx.fillText("Every Byte", x0, 150);
       ctx.fillStyle = palette.ink;
-      ctx.font = `92px ${fonts.serif}`;
-      ctx.fillText("Contents", x0, 260);
+      fitFont(ctx, sheet.title, 92, x1 - x0, fonts.serif);
+      ctx.fillText(sheet.title, x0, 260);
     }
-    for (const row of contentsRows(parts, withErrata, scale)) {
-      if (row.kind === "part") {
-        ctx.fillStyle = palette.faint;
-        ctx.font = `26px ${fonts.sans}`;
-        ctx.fillText(row.text, x0, row.y);
-        continue;
-      }
-      if (row.slug && route.chapters.includes(row.slug)) routeDot(ctx, x0 - 28, row.y - 13, palette);
-      ctx.fillStyle = palette.faint;
-      ctx.font = `${40 * scale}px ${fonts.serif}`;
-      if (row.number) ctx.fillText(row.number, x0, row.y);
-      ctx.fillStyle = palette.ink;
-      ctx.font = `${46 * scale}px ${fonts.serif}`;
-      const tx = x0 + 70;
-      ctx.fillText(row.text, tx, row.y);
-      const link = links.find((l) => l.href === row.href);
-      if (link) link.lines = [under(ctx, row.text, tx, row.y, 46 * scale)];
-      const end = tx + ctx.measureText(row.text).width + 18;
-      if (row.page === undefined) continue;
-      ctx.font = `30px ${fonts.sans}`;
-      const page = String(leftPage(row.page));
-      const pw = ctx.measureText(page).width;
-      ctx.fillStyle = palette.faint;
-      ctx.fillText(page, x1 - pw, row.y);
-      for (let x = end; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
-    }
-    if (side === "right") {
+    if (sheet.note) {
       ctx.fillStyle = palette.blue;
       ctx.font = `40px ${fonts.serif}`;
-      paragraph(ctx, ideasView ? "Click a chapter to open it. Ideas only is on: the deep dives are turned for you." : "Click a chapter to open it.", x0, Math.max(H - 250, rows[rows.length - 1].y + 110), x1 - x0, 48);
+      paragraph(ctx, ideasView ? "Click a chapter to open it. Ideas only is on: the deep dives are turned for you." : "Click a chapter to open it.", x0, 230, x1 - x0, 48);
     }
-    if (side === "left" && route.chapters.length) {
+    for (const row of sheetRows(sheet, step).rows) {
+      if (!row.entry) {
+        ctx.fillStyle = palette.faint;
+        ctx.font = `${Math.round(28 * k)}px ${fonts.sans}`;
+        ctx.fillText(row.head, x0, row.y);
+        continue;
+      }
+      const e = row.entry;
+      if (e.slug && route.chapters.includes(e.slug)) routeDot(ctx, x0 - 28, row.y - 13 * k, palette);
+      ctx.fillStyle = palette.faint;
+      ctx.font = `${40 * k}px ${fonts.serif}`;
+      if (e.number) ctx.fillText(e.number, x0, row.y);
+      const tx = x0 + 70 * k;
+      ctx.font = `${30 * k}px ${fonts.sans}`;
+      const first = chapterPage(e.key);
+      const page = first === undefined ? "" : String(leftPage(first));
+      const pw = ctx.measureText(page).width;
+      if (page) {
+        ctx.fillText(page, x1 - pw, row.y);
+      }
+      ctx.fillStyle = palette.ink;
+      fitFont(ctx, e.text, 46 * k, x1 - pw - 40 - tx, fonts.serif);
+      ctx.fillText(e.text, tx, row.y);
+      const link = links.find((l) => l.href === e.href);
+      if (link) link.lines = [under(ctx, e.text, tx, row.y, parseFloat(ctx.font))];
+      if (!page) continue;
+      ctx.fillStyle = palette.faint;
+      for (let x = tx + ctx.measureText(e.text).width + 18; x < x1 - pw - 22; x += 16) ctx.fillRect(x, row.y - 4, 3, 3);
+    }
+    if (sheet.route && route.chapters.length) {
       routeDot(ctx, x0 + 8, H - 249, palette);
       ctx.fillStyle = palette.faint;
       ctx.font = `28px ${fonts.sans}`;
@@ -294,15 +328,14 @@ const flatStop = (spread: number, caption: string, title: string, paragraphs: st
   beats: [{ caption, frame: frames.spread }],
 });
 
-export function contentsStop(spread = 0): Stop {
-  const scale = Math.min(contentsScale(bookParts.slice(0, 2), false), contentsScale(bookParts.slice(2), true));
-  const left = contentsPage("left", bookParts.slice(0, 2), false, scale);
-  const right = contentsPage("right", bookParts.slice(2), true, scale);
-  return {
-    ...flatStop(spread, "Contents: click a chapter to open it", "Contents", bookOrder.map(chapterTitle)),
-    paint: { left: left.paint, right: right.paint },
-    links: [...left.links, ...right.links],
-  };
+export function contentsStops(): Stop[] {
+  const step = contentsStep();
+  return contentsSheets().map(([l, r], i) => {
+    const left = contentsPage(l, step);
+    const right = contentsPage(r, step);
+    const titles = [...l.blocks, ...r.blocks].flatMap((b) => b.entries.map((e) => e.text));
+    return { ...flatStop(i, `Contents, ${i + 1} of ${contentsSpreads}: click a chapter to open it`, i === 0 ? "Contents" : "Contents, continued", titles), paint: { left: left.paint, right: right.paint }, links: [...left.links, ...right.links] };
+  });
 }
 
 export type ErrataSpread = { left: DeadEnd | null; right: DeadEnd | null };

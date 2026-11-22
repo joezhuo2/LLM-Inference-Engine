@@ -2565,3 +2565,5 @@
 - **the order of a least recently used list after a reversed free** => 
 - **a sandbox with several rails in one 3D exhibit** => 
 - **a port of a block manager checked against hand-traced block ids** => 
+- **a list split across facing pages at a part boundary** => 
+- **one row pitch shared by every page of a list** => 
