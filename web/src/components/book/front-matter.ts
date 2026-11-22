@@ -112,7 +112,7 @@ export function routeSection(key: string, delta: 1 | -1, short: boolean): string
 export const deepGroup = "how it got built";
 const deepNote = "deep dive, skip on a first read";
 let deep = new Set<string>();
-let ideasView = false;
+let ideasView = true;
 export const setIdeasView = (on: boolean) => void (ideasView = on);
 export const isDeep = (key: string, local: number) => deep.has(`${key}:${local}`);
 export function ideasRoute(): RouteStop[] {
@@ -207,7 +207,7 @@ function contentsPage(sheet: ContentsSheet, step: number) {
     if (sheet.note) {
       ctx.fillStyle = palette.blue;
       ctx.font = `40px ${fonts.serif}`;
-      paragraph(ctx, ideasView ? "Click a chapter to open it. Ideas only is on: the deep dives are turned for you." : "Click a chapter to open it.", x0, 230, x1 - x0, 48);
+      paragraph(ctx, ideasView ? "Click a chapter to open it. Learning mode adds the reviews, exercises and deep dives." : "Click a chapter to open it.", x0, 230, x1 - x0, 48);
     }
     for (const row of sheetRows(sheet, step).rows) {
       if (!row.entry) {
@@ -1327,7 +1327,8 @@ export const startWords = countWords([...forWho, ...needFirst, ...tokenLife, ...
 export const startSpreadCount = startSpreads;
 
 export function setBookRoute(defs: ChapterDef[]) {
-  deep = new Set(defs.flatMap((d) => d.steps.flatMap((s, i) => (s.group === deepGroup ? [`${d.slug}:${i}`] : []))));
+  // skipped outside learning mode: deep dives, then the review and exercise spreads after the sandboxes
+  deep = new Set(defs.flatMap((d) => [...d.steps.flatMap((s, i) => (s.group === deepGroup ? [`${d.slug}:${i}`] : [])), ...Array.from({ length: reviewCount(d.slug) + chapterExercises(d.slug).length }, (_, j) => `${d.slug}:${d.steps.length + d.workbench.length + j}`)]));
   const found = shortRoute(defs.map((d) => ({ slug: d.slug, steps: d.steps.slice(d.lead ?? 0) })), startWords, startSpreads);
   const chapterStopsOf = (c: { slug: string; picks: number[] }) => {
     const lead = defs.find((d) => d.slug === c.slug)?.lead ?? 0;

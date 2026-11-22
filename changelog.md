@@ -2,6 +2,11 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## web/learning-mode
+
+- Part A: Every Byte opens in the ideas-only reading by default, which now also turns past each chapter's review and exercise spreads (the sandboxes stay); the bulb button is "learning mode" and adds the reviews, exercises and deep dives back (`?mode=learn`, remembered in `every-byte:learning`). The page count in the bar counts only the pages that reading turns: the one-hour path reads `/ 115`, the default `/ 489` and learning mode the full `/ 627`; a skipped page reached by a link keeps the full book's numbers and shows a "skipped page" pill. The one-hour path was checked against the built pages and is unchanged: 9 chapters, 57 spreads, about 60 minutes.
+- Part A: `/kernels` has an intro once the site loader is done: the machine fades in and swings in from the left onto its resting place, and the title, the line and the links rise in one after the other (off with reduced motion and without JavaScript).
+
 ## kv/prefix-cache-impl
 
 - Part A: the prefix caching timeline entries and the stub exercise name pull request 226.

@@ -7,6 +7,7 @@ import { KernelSearch } from "@/components/kernels/kernel-search";
 import { atlasIntro, atlasStories } from "@/content/kernels-atlas";
 import { shortPathName } from "@/content/short-path";
 import { readPalette } from "@/lib/canvas";
+import { useIntroDone } from "@/lib/intro";
 import { usePrefersReducedMotion } from "@/lib/reduced-motion";
 import s from "./atlas.module.css";
 import { drawMachine, machineAge, machineStages, setMachineInk } from "./machine";
@@ -15,7 +16,7 @@ const padNumber = (n: number) => String(n).padStart(2, "0");
 const total = padNumber(atlasStories.length);
 const stages = machineStages(atlasStories.map((story) => story.slug));
 const ramp = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
-const noScript = `.${s.text}{position:static;transform:none;opacity:1;visibility:visible;width:auto;text-align:left}.${s.atlas}{max-width:64rem;margin:auto;padding:2.5rem 16px}.${s.chapter}{height:auto;margin-bottom:3rem}.${s.chapter}:nth-child(n) .${s.text}{text-align:left}.${s.chapter}:nth-child(n) p{margin-left:0}.${s.scene},.${s.meter},.${s.hint},.${s.openIndex}{display:none}@layer base{div[hidden][id^="S:"]{display:block!important}}main [role=status][aria-label=loading]{display:none}footer{order:1}`;
+const noScript = `.${s.text}{position:static;transform:none;opacity:1;visibility:visible;width:auto;text-align:left}.${s.atlas}{max-width:64rem;margin:auto;padding:2.5rem 16px}.${s.chapter}{height:auto;margin-bottom:3rem}.${s.chapter}:nth-child(n) .${s.text}{text-align:left}.${s.chapter}:nth-child(n) p{margin-left:0}.${s.scene},.${s.meter},.${s.hint},.${s.openIndex}{display:none}.${s.intro}>*{animation:none}@layer base{div[hidden][id^="S:"]{display:block!important}}main [role=status][aria-label=loading]{display:none}footer{order:1}`;
 
 function Extras() {
   return (
@@ -41,6 +42,8 @@ export function Atlas() {
   const openRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const entriesRef = useRef<HTMLDivElement>(null);
+  const introDone = useIntroDone();
+  const startIntro = useRef<() => void>(undefined);
 
   useEffect(() => {
     const chapters = chaptersRef.current!, dialog = dialogRef.current!, machine = machineRef.current!, meter = meterRef.current!, hint = hintRef.current!;
@@ -204,7 +207,13 @@ export function Atlas() {
     addEventListener("scroll", onWindowScroll, { passive: true });
     dialog.addEventListener("scroll", onPaneScroll, { passive: true });
 
-    let frame = 0, lastSample = -1, active = -1, step = 1, origin = 0;
+    let frame = 0, lastSample = -1, active = -1, step = 1, origin = 0, introAt = -1;
+    const introMs = 2600;
+    startIntro.current = () => {
+      if (reduced.matches) return;
+      introAt = performance.now();
+      queue();
+    };
     function render() {
       frame = 0;
       const last = captions.length - 1;
@@ -223,10 +232,15 @@ export function Atlas() {
       hint.hidden = progress > 0.3;
       meter.style.transform = "scaleX(" + progress / last + ")";
       const sample = reduced.matches ? index : progress;
-      if (sample !== lastSample) {
-        drawMachine(machine, machineAge(stages, sample - 1), reduced.matches, trip?.side ?? Math.cos(sample * Math.PI));
+      const settled = Math.cos(sample * Math.PI);
+      // the intro swings the camera in from the left side and eases onto wherever the scroll is
+      const intro = introAt < 0 ? 1 : Math.min(1, (performance.now() - introAt) / introMs);
+      if (sample !== lastSample || introAt >= 0) {
+        drawMachine(machine, machineAge(stages, sample - 1), reduced.matches, trip?.side ?? settled + (-1 - settled) * (1 - intro) ** 3);
         lastSample = sample;
       }
+      if (intro < 1) queue();
+      else introAt = -1;
     }
     function queue() {
       if (!frame) frame = requestAnimationFrame(render);
@@ -272,8 +286,12 @@ export function Atlas() {
     };
   }, [reducedMotion]);
 
+  useEffect(() => {
+    if (introDone) startIntro.current?.();
+  }, [introDone]);
+
   return (
-    <div className={s.atlas}>
+    <div className={introDone ? `${s.atlas} ${s.played}` : s.atlas}>
       <noscript>
         <style>{noScript}</style>
       </noscript>
@@ -285,7 +303,7 @@ export function Atlas() {
       </button>
       <div ref={chaptersRef} className={s.chapters} role="region" aria-label="Inference stories from transistor to server">
         <section id="kernels" className={s.chapter}>
-          <div className={s.text}>
+          <div className={`${s.text} ${s.intro}`}>
             <h1>kernels</h1>
             <p>{atlasIntro}</p>
             <Extras />
