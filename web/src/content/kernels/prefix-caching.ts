@@ -134,7 +134,7 @@ export const prefixCaching: KernelStory = {
     },
     {
       date: "Nov 21",
-      prs: [],
+      prs: [226],
       branch: "kv/prefix-cache-impl",
       version: "impl",
       author: "joe",
@@ -143,7 +143,7 @@ export const prefixCaching: KernelStory = {
     },
     {
       date: "Nov 21",
-      prs: [],
+      prs: [226],
       branch: "kv/prefix-cache-impl",
       version: "wired",
       author: "claude",

@@ -458,7 +458,7 @@ export const exercises: Exercise[] = [
     tests: "tests/todo/unit/test_prefix_cache.cpp",
     filter: "^PrefixCache\\.",
     stubPrs: [203],
-    implPrs: [],
+    implPrs: [226],
     end: "c932364",
     author: "joe",
   },
