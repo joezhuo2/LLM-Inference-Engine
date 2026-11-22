@@ -2556,3 +2556,6 @@
 - **a lane of bars whose widths ease to the choice on the rail** => 
 - **a block whose material shows its state** => 
 - **a timeline entry whose numbers come from the same chapter data** => 
+- **a radix tree of token sequences** => 
+- **copy on write** => 
+- **cache-aware scheduling** => 

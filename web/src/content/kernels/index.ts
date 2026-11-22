@@ -39,7 +39,7 @@ export const kernelCards: KernelCard[] = kernelStories.map((k) => {
   const first = k.timeline[0]?.date;
   const last = k.timeline[k.timeline.length - 1]?.date;
   return { slug: k.slug, index: k.index, title: k.title, short: k.short, dates: first === last ? (first ?? "") : `${first} – ${last}`, ready: true };
-}).concat({ slug: "beyond", index: kernelStories.length + 1, title: beyondTitle, short: "What the engine leaves out, in bytes per token: quantization, a draft model that pays for speculative decoding, prefix caching and multiple GPUs.", dates: "", ready: true }, {
+}).concat({ slug: "beyond", index: kernelStories.length + 1, title: beyondTitle, short: "What the engine leaves out, in bytes per token: quantization, a draft model that pays for speculative decoding, prefix caching past whole blocks and multiple GPUs.", dates: "", ready: true }, {
   slug: "dead-ends",
   index: kernelStories.length + 2,
   title: "what didn't work",
