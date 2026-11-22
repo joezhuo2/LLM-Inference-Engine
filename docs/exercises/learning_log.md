@@ -2567,3 +2567,4 @@
 - **a port of a block manager checked against hand-traced block ids** => 
 - **a list split across facing pages at a part boundary** => 
 - **one row pitch shared by every page of a list** => 
+- **a waiting queue drained as blocks free up** => 

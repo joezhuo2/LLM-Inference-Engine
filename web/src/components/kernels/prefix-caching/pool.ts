@@ -89,7 +89,7 @@ export class MiniPool {
 export type PoolKnobs = { shared: number; requests: number; pool: number };
 export type PoolSlot = { state: "blank" | "held" | "cached" | "evicted"; count: number };
 export type PoolRow = { label: string; blocks: number[]; shared: number; reused: number; prefilled: number; state: "running" | "finished" | "waiting"; need: number };
-export type PoolPhase = { slots: PoolSlot[]; rows: PoolRow[]; reused: number; prefilled: number; evicted: number[]; held: number; cached: number; blank: number };
+export type PoolPhase = { slots: PoolSlot[]; rows: PoolRow[]; reused: number; prefilled: number; evicted: number[]; held: number; cached: number; blank: number; late: number };
 
 export const poolBlock = 16;
 export const poolOwn = 8;
@@ -100,18 +100,22 @@ export function poolRun(k: PoolKnobs): PoolPhase[] {
   const rows: PoolRow[] = [];
   let reused = 0;
   let prefilled = 0;
+  let late = 0;
   const phases: PoolPhase[] = [];
+  const prompts = new Map<number, number[]>();
   const admit = (seq: number, label: string, tokens: number[]) => {
+    prompts.set(seq, tokens);
     const need = Math.ceil(tokens.length / poolBlock) - p.matchBlocks(tokens).length;
     if (!p.canAllocateTokens(tokens)) {
-      rows.push({ label, blocks: [], shared: 0, reused: 0, prefilled: 0, state: "waiting", need });
-      return;
+      rows[seq] = { label, blocks: [], shared: 0, reused: 0, prefilled: 0, state: "waiting", need };
+      return false;
     }
     const cached = p.allocateTokens(seq, tokens);
     p.publish(seq, tokens);
     reused += cached;
     prefilled += tokens.length - cached;
-    rows.push({ label, blocks: [...(p.tables.get(seq) ?? [])], shared: cached / poolBlock, reused: cached, prefilled: tokens.length - cached, state: "running", need });
+    rows[seq] = { label, blocks: [...(p.tables.get(seq) ?? [])], shared: cached / poolBlock, reused: cached, prefilled: tokens.length - cached, state: "running", need };
+    return true;
   };
   const finish = (seq: number) => {
     if (!p.tables.has(seq)) return;
@@ -121,11 +125,19 @@ export function poolRun(k: PoolKnobs): PoolPhase[] {
   const snap = (since: number) => {
     const evicted = p.evicted.slice(since);
     const slots = p.blocks.slice(1).map((m, i): PoolSlot => ({ state: m.ref > 0 ? (evicted.includes(i + 1) ? "evicted" : "held") : m.published ? "cached" : "blank", count: m.ref }));
-    phases.push({ slots, rows: rows.map((r) => ({ ...r })), reused, prefilled, evicted, held: slots.filter((s) => s.count > 0).length, cached: p.lru.length, blank: p.freeCount() - p.lru.length });
+    phases.push({ slots, rows: rows.map((r) => ({ ...r })), reused, prefilled, evicted, held: slots.filter((s) => s.count > 0).length, cached: p.lru.length, blank: p.freeCount() - p.lru.length, late });
   };
   for (let r = 0; r < k.requests; r++) admit(r, `request ${r + 1}`, [...start, ...Array.from({ length: poolOwn }, (_, i) => 100 * (r + 1) + i)]);
   snap(0);
-  for (let r = 0; r < k.requests; r++) finish(r);
+  const running = rows.flatMap((r, seq) => (r.state === "running" ? [seq] : []));
+  const queue = rows.flatMap((r, seq) => (r.state === "waiting" ? [seq] : []));
+  while (running.length) {
+    finish(running.shift()!);
+    while (queue.length && admit(queue[0], rows[queue[0]].label, prompts.get(queue[0])!)) {
+      running.push(queue.shift()!);
+      late++;
+    }
+  }
   snap(p.evicted.length);
   const before = p.evicted.length;
   const blank = p.freeCount() - p.lru.length;

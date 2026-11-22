@@ -23,10 +23,14 @@ test("released published blocks stay cached; another start takes blank blocks fi
   assert.deepEqual(again.evicted, [3, 10]);
 });
 
-test("a request waits when the pool has no room even with sharing, and sharing fits requests that would not fit alone", () => {
-  const [arrive] = poolRun({ shared: 2, requests: 5, pool: 6 });
+test("a request waits when the pool has no room even with sharing, and runs once a finished request frees a block", () => {
+  const [arrive, done] = poolRun({ shared: 2, requests: 5, pool: 6 });
   assert.deepEqual(arrive.rows.map((r) => r.state), ["running", "running", "running", "running", "waiting"]);
   assert.equal(arrive.rows[4].need, 1);
+  assert.deepEqual(done.rows.map((r) => r.state), ["finished", "finished", "finished", "finished", "finished"]);
+  assert.equal(done.rows[4].reused, 32);
+  assert.deepEqual(done.rows[4].blocks, [1, 2, 3]);
+  assert.equal(done.cached, 2);
 });
 
 test("the block of the last token is never matched, and a failed check changes nothing", () => {

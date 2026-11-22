@@ -111,7 +111,7 @@ const sandbox: PcSandbox = {
     const waiting = ph.rows.filter((r) => r.state === "waiting").length;
     const head = [
       waiting ? `${waiting} of ${k.requests} ${k.requests === 1 ? "request waits" : "requests wait"}: no room in ${blocks(k.pool)}` : `${k.requests} ${k.requests === 1 ? "request" : "requests"} with the same ${k.shared * poolBlock}-token start, one step each`,
-      `they all finish: ${blocks(ph.cached)} stay cached, and count as free`,
+      ph.late ? `the waiting ones run as others finish; ${blocks(ph.cached)} stay cached` : `they all finish: ${blocks(ph.cached)} stay cached, and count as free`,
       ph.evicted.length ? `another start: blank blocks first, then ${blocks(ph.evicted.length)} evicted` : "another start: it fits in blank blocks, nothing evicted",
       ph.rows[ph.rows.length - 1]?.reused ? `the same start again: it finds ${blocks(ph.rows[ph.rows.length - 1].reused / poolBlock)} still cached` : "the same start again: nothing of it is left to find",
     ][step];
@@ -168,7 +168,7 @@ const workbench: WorkbenchPage[] = [
   {
     title: "share a prefix yourself",
     overlay: "sandbox",
-    caption: "Try it yourself: change the shared start and see what the cache can reuse",
+    caption: "Try it yourself: what the cache can reuse",
     paragraphs: [
       `Set the length of the shared start, the tokens each request adds and how the ${prefix.requests} requests arrive. The arithmetic is the block manager's: only whole ${prefix.block}-token blocks are shared, the block of the last prompt token is computed, and requests admitted in the same step find nothing.`,
       `Move the start off a multiple of ${prefix.block}, to ${fmt(pairs[last].shared - 8)} say. The last few shared tokens now sit in a block with the request's own, and that block is computed in every request.`,
