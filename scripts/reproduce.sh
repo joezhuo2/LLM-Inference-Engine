@@ -36,7 +36,7 @@ and then refreshes the measured blocks of results.md.
 
 Environment: MODEL (default models/tinyllama), PEAK_GB_S (measured DRAM bandwidth, 323.6),
 PEAK_TFLOPS (measured BF16 GEMM peak from scripts/gemm_peak.cu, 34.5),
-REPEATS (3), HF_REPEATS (1), PYTHON (default ~/.venvs/llmie/bin/python, else python3),
+REPEATS (3), HF_REPEATS (3), PYTHON (default ~/.venvs/llmie/bin/python, else python3),
 LLAMA_BATCHED_BENCH and LLAMA_GGUF (default where scripts/setup_llamacpp.sh puts them),
 VLLM_PYTHON (default where scripts/setup_vllm.sh puts it).
 Plug the laptop in, use maximum performance mode and close other GPU programs first.
@@ -70,7 +70,7 @@ model=${MODEL:-models/tinyllama}
 peak=${PEAK_GB_S:-323.6}
 peak_tflops=${PEAK_TFLOPS:-34.5}
 repeats=${REPEATS:-3}
-hf_repeats=${HF_REPEATS:-1}
+hf_repeats=${HF_REPEATS:-3}
 python=${PYTHON:-$HOME/.venvs/llmie/bin/python}
 llama_batched=${LLAMA_BATCHED_BENCH:-$HOME/.cache/llmie/llama.cpp/build/bin/llama-batched-bench}
 llama_gguf=${LLAMA_GGUF:-models/tinyllama-bf16.gguf}

@@ -2,6 +2,12 @@
 
 Changes are grouped by branch, newest first, in the order the branches merge into `main`. Each entry is tagged with its part of the delegation: Part A and Part B entries are written by Claude and reviewed by Joe, and Part C entries are written by Joe.
 
+## results/refresh-2026-11-23
+
+- Part A: README rewritten: a Features table with one measured number and its commit per feature (TP, speculative decoding, prefix caching, chunked and FlashAttention prefill included), the "Beyond the MVP" section folded into it and a short "Next", HuggingFace's run-to-run spread (318 to 548 tokens/s at batch 16 on the same workload, 3.2x to 5.5x) and the source of every other batch-1 time and of the batch sweep's 1,424 tokens/s stated.
+- Part A: the site names the run behind each number: the homepage stats carry their commit, date, workload and HF's spread; the timeline's first benchmark uses the d5debf7 run's own medians (107.6, 427.6 and 1,014.2 tokens/s; 531.9 for HF came from no recorded run), and the CUDA Graphs, roofline, llama.cpp, batch sweep and tensor-parallel entries give their commits and conditions. The bandwidth figure renders 323.6 GB/s before its animation starts instead of 0.0.
+- Part A: `scripts/reproduce.sh` runs HuggingFace three times by default. A full rerun on 2026-11-23 (commit d04ed14) was discarded: the GPU was held at a power cap and every system ran 10% to 14% slower.
+
 ## web/learning-mode
 
 - Part A: Every Byte opens in the ideas-only reading by default, which now also turns past each chapter's review and exercise spreads (the sandboxes stay); the bulb button is "learning mode" and adds the reviews, exercises and deep dives back (`?mode=learn`, remembered in `every-byte:learning`). The page count in the bar counts only the pages that reading turns: the one-hour path reads `/ 115`, the default `/ 489` and learning mode the full `/ 627`; a skipped page reached by a link keeps the full book's numbers and shows a "skipped page" pill. The one-hour path was checked against the built pages and is unchanged: 9 chapters, 57 spreads, about 60 minutes.
