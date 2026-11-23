@@ -1,5 +1,5 @@
 import { measured as tableValue } from "@/content/kernels/types";
-import { cellNumber, embeddingLaunch, medianOf, profilingTable } from "@/lib/data";
+import { cellNumber, embeddingLaunch, environment, medianOf, profilingTable } from "@/lib/data";
 import { more as specMore, spec, specFmt } from "./kernels/speculative-decoding";
 import { shardedForward } from "./kernels/tensor-parallelism";
 import { pcFmt, prefix } from "./kernels/prefix-caching";
@@ -253,16 +253,16 @@ export const milestones: Milestone[] = [
         prs: [36, 38],
         branch: "tools/baselines",
         title: "Benchmark and a baseline",
-        text: "A workload of 32 requests, run by the engine and by Hugging Face transformers on the same GPU.",
+        text: "A workload of 32 requests of 64 prompt and 64 output tokens, run by the engine and by Hugging Face transformers on the same GPU. These are the first results, with the naive kernels still in the forward pass.",
         metric: {
           kind: "bars",
-          label: "output tokens per second",
+          label: "measured output tokens per second, commit d5debf7, Oct 15: engine median of 3 runs, HF one run",
           unit: "tok/s",
           digits: 0,
           bars: [
-            { label: "engine, batch 1", value: 108.7 },
-            { label: "HF, batch 16", value: 531.9 },
-            { label: "engine, batch 16", value: 1013.8, highlight: true },
+            { label: "engine, batch 1", value: 107.6 },
+            { label: "HF, batch 16", value: 427.6 },
+            { label: "engine, batch 16", value: 1014.2, highlight: true },
           ],
         },
       },
@@ -306,7 +306,7 @@ export const milestones: Milestone[] = [
         prs: [44],
         branch: "runtime/cuda-graphs-impl",
         title: "CUDA Graphs",
-        text: "The whole decode step is captured once per batch size and replayed with a single launch, so the GPU stops waiting on the CPU. Time per token at batch 1 went from 9.49 to 8.51 ms.",
+        text: "The whole decode step is captured once per batch size and replayed with a single launch, so the GPU stops waiting on the CPU. Time per token at batch 1 went from 9.49 to 8.51 ms (measured on commit 6b170a5, Oct 17, before the faster attention and norm kernels below).",
         metric: {
           kind: "bars",
           label: "GPU idle during a decode step",
@@ -388,7 +388,7 @@ export const milestones: Milestone[] = [
         text: "llama.cpp built from source for the same GPU, on BF16 GGUF weights and the same workload. The engine is ahead at every batch size.",
         metric: {
           kind: "bars",
-          label: "output tokens per second at batch 16, current results",
+          label: `measured output tokens per second at batch 16, current results: commit ${environment.commit}, ${String(environment.date).slice(0, 10)}, ${environment.workload}`,
           unit: "tok/s",
           digits: 0,
           bars: [
@@ -405,7 +405,7 @@ export const milestones: Milestone[] = [
         scene: "roofline",
         title: "How close to the hardware",
         text: "A roofline from the measured peaks (323.6 GB/s, 34.5 TFLOP/s). At batch 1 the matrix-vector products run at 91 to 102% of the bandwidth roof; at batch 16 attention is what is left.",
-        metric: { kind: "value", value: "82%", label: "of the bandwidth roof for a whole batch-1 step" },
+        metric: { kind: "value", value: "82%", label: "of the bandwidth roof for a whole batch-1 step, measured Oct 25 (results commit b4b79bc), before later kernel work" },
       },
       {
         date: "Oct 25",
@@ -465,7 +465,7 @@ export const milestones: Milestone[] = [
         text: `Every earlier result stopped at max batch ${sweepBatches[0]}. A sweep up to ${sweepBatches[sweepBatches.length - 1]} shows where batching stops paying on this GPU: throughput with graphs climbs from ${whole(sweepTokens(sweepBatches[0]))} to ${whole(sweepTokens(knee))} tok/s at max batch ${knee}, then flattens to ${afterKnee.map((b) => whole(sweepTokens(b))).join(" and ")}. Past ${knee} the step time doubles with the rows: at ${afterKnee[0]} attention is ${tableValue(sweep, { "max batch": afterKnee[0] }, "attention share", 1, "results")}% of a step's GPU time and the GEMMs have turned compute bound.`,
         metric: {
           kind: "bars",
-          label: "measured output tokens per second with graphs, by max batch",
+          label: `measured output tokens per second with graphs, by max batch: commit 434e99d, Nov 9, twice as many requests as the max batch, before the FlashAttention prefill default and with a headless Chrome using about 6 CPU cores; max batch 16 reads ${whole(sweepTokens(sweepBatches[0]))} here against ${whole(Math.round(medianOf("engine_graphs", 16, "output_throughput") ?? 0))} in the main results (commit ${environment.commit}, same workload), and the sweep has not been rerun`,
           unit: "tok/s",
           digits: 0,
           bars: sweepBatches.map((b) => ({ label: `max batch ${b}`, value: sweepTokens(b), highlight: b === knee })),
@@ -546,7 +546,7 @@ export const milestones: Milestone[] = [
         text: `ShardedRunner runs the forward pass on the shards. Every rank has its own weights, K/V cache and scratch buffers, and each layer adds the partial results of the ranks into the residual stream twice. This laptop has one GPU, so the ranks take turns on it: it checks that the split computes the model, and it cannot be faster. One rank gives the whole model's logits bit for bit. With 2 and 4 ranks the logits come within ${forward.maxLogitDiff} and every greedy token is the same (measured). A token takes ${forward.msPerToken[1].toFixed(2)} ms with 2 ranks and ${forward.msPerToken[2].toFixed(2)} with 4, against ${forward.wholeMsPerToken.toFixed(2)} for the whole model. The late upload calls that took 130 to 180 ms more are explained too: when a process mostly waits on pinned memory, the driver lowers the GPU's clocks after some seconds. A real load uploads once, before that. What a second GPU would gain is still not measured.`,
         metric: {
           kind: "bars",
-          label: "measured ms per token, ranks taking turns on one GPU",
+          label: "measured ms per token, ranks taking turns on one GPU: commit 284c886, Nov 14, naive kernels and no CUDA Graphs on both sides, so not the paged runner's time",
           unit: "ms",
           digits: 2,
           bars: [

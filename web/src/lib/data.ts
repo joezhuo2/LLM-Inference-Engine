@@ -277,7 +277,18 @@ export function headlineStats(): { label: string; value: string }[] {
   return [
     { label: "tokens/s at batch 16", value: format(graphs16, 0) },
     { label: "batch 16 over batch 1", value: graphs1 && graphs16 ? `${format(graphs16 / graphs1)}x` : "–" },
-    { label: "over HuggingFace", value: graphs16 && hf16 ? `${format(graphs16 / hf16)}x` : "–" },
+    { label: "over HuggingFace, one run", value: graphs16 && hf16 ? `${format(graphs16 / hf16)}x` : "–" },
     { label: "ms per token at batch 1", value: format(tpot1 === undefined ? undefined : tpot1 * 1e3, 2) },
   ];
+}
+
+// shortcut: HuggingFace batch-16 tok/s over every recorded run of this workload (git history of results/hf_b16_r1_summary.csv, plus 3 runs on 2026-11-23); update it when HF is rerun.
+const hfBatch16Range = [318, 548];
+
+// The run every headline number comes from, so each one can be checked against results.md.
+export function headlineSource(): string {
+  const day = String(environment.date ?? "").slice(0, 10);
+  const graphs16 = medianOf("engine_graphs", 16, "output_throughput") ?? 0;
+  const [lo, hi] = hfBatch16Range;
+  return `measured on ${String(environment.gpu ?? "unknown GPU").replace(/^NVIDIA GeForce /, "")}, commit ${environment.commit}, ${day}, all in one run of scripts/reproduce.sh: ${environment.workload}; HuggingFace ran once here; its CPU-bound loop has given ${lo} to ${hi} tok/s at batch 16 over every run of this workload so far, ${format(graphs16 / hi)}x to ${format(graphs16 / lo)}x`;
 }

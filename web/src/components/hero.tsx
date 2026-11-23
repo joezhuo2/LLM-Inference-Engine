@@ -1,6 +1,6 @@
 import { Scramble } from "@/components/scramble";
 import { TokenRain } from "@/components/token-rain";
-import { headlineStats } from "@/lib/data";
+import { headlineSource, headlineStats } from "@/lib/data";
 
 export function Hero({ next }: { next?: { href: string; label: string } }) {
   const stats = headlineStats();
@@ -34,6 +34,7 @@ export function Hero({ next }: { next?: { href: string; label: string } }) {
               </div>
             ))}
           </dl>
+          <p className="max-w-2xl text-xs text-muted">{headlineSource()}</p>
           <div className="flex flex-wrap items-end justify-between gap-4 tabular-nums text-xs text-muted">
             <p className="max-w-md">
               each falling word is a token the engine generated in a recorded run; heavier rain means more tokens per

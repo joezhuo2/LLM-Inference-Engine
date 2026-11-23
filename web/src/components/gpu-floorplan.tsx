@@ -84,7 +84,8 @@ function Floorplan() {
 function Bandwidth() {
   const { move, reduced } = useLoop(5);
   const peak = parseFloat(bandwidth);
-  const value = useMotionValue(0);
+  // Start at the peak so the server-rendered page (and a page before its scripts load) shows the measured number, not 0.0.
+  const value = useMotionValue(peak);
   const text = useTransform(value, (v) => `${v.toFixed(1)} GB/s`);
   useEffect(() => {
     if (reduced) {
